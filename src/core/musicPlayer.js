@@ -1,4 +1,4 @@
-const { spawn } = require("child_process"); // Required to run yt-dlp
+const { spawn } = require("child_process");
 const path = require("path");
 const {
   joinVoiceChannel,
@@ -12,6 +12,11 @@ const ytSearch = require("yt-search");
 const logger = require("./logger");
 
 const queues = new Map();
+
+// Helper: Get the path to the local yt-dlp.exe
+function getYtDlpPath() {
+  return path.resolve(__dirname, "../../yt-dlp.exe");
+}
 
 function getQueue(guildId) {
   return queues.get(guildId);
@@ -43,14 +48,21 @@ function createQueue(interaction) {
     player,
     songs: [],
     nowPlaying: null,
+    autoplay: false, // <--- NEW: Autoplay state
   };
 
   connection.subscribe(player);
 
-  player.on(AudioPlayerStatus.Idle, () => {
+  // EVENT: Song Finished
+  player.on(AudioPlayerStatus.Idle, async () => {
+    const lastSong = queue.nowPlaying;
     queue.songs.shift();
+
     if (queue.songs.length > 0) {
       playSong(queue);
+    } else if (queue.autoplay && lastSong) {
+      // <--- NEW: Handle Autoplay
+      await handleAutoplay(queue, lastSong);
     } else {
       queue.nowPlaying = null;
     }
@@ -58,7 +70,6 @@ function createQueue(interaction) {
 
   player.on("error", (error) => {
     logger.error(`Audio player error: ${error.message}`);
-    // Skip the broken song and try the next one
     queue.songs.shift();
     if (queue.songs.length > 0) {
       playSong(queue);
@@ -69,8 +80,53 @@ function createQueue(interaction) {
   return queue;
 }
 
+// NEW: Logic to find and play a related song
+async function handleAutoplay(queue, lastSong) {
+  try {
+    if (queue.textChannel) {
+      queue.textChannel
+        .send("🔄 **Autoplay:** Finding a related song...")
+        .catch(() => {});
+    }
+
+    // Search for the last song title to find related content
+    // We look for a 'Mix' or just similar results
+    const searchResult = await ytSearch(lastSong.title);
+
+    if (!searchResult || !searchResult.videos.length) {
+      if (queue.textChannel)
+        queue.textChannel.send("Could not find a related song to autoplay.");
+      return;
+    }
+
+    // Try to pick a video that isn't the exact same URL
+    // We pick from the top 5 results to get something relevant
+    let nextVideo =
+      searchResult.videos.find((v) => v.url !== lastSong.url) ||
+      searchResult.videos[0];
+
+    // If we still have the same song (rare), just pick the second one
+    if (nextVideo.url === lastSong.url && searchResult.videos.length > 1) {
+      nextVideo = searchResult.videos[1];
+    }
+
+    const track = {
+      title: nextVideo.title,
+      url: nextVideo.url,
+      durationInSec: nextVideo.seconds,
+      requestedBy: "Jasper (Autoplay)",
+    };
+
+    queue.songs.push(track);
+    playSong(queue);
+  } catch (error) {
+    logger.error(`Autoplay error: ${error.message}`);
+    if (queue.textChannel)
+      queue.textChannel.send("❌ Failed to autoplay next song.");
+  }
+}
+
 async function resolveTrack(query) {
-  // 1. Search using yt-search (It is reliable for finding videos)
   const searchResult = await ytSearch(query);
   if (searchResult && searchResult.videos.length > 0) {
     const video = searchResult.videos[0];
@@ -83,38 +139,51 @@ async function resolveTrack(query) {
   throw new Error("No results found on YouTube.");
 }
 
+// Helper to fetch playlist data
+function fetchPlaylistData(url) {
+  return new Promise((resolve, reject) => {
+    const ytDlpPath = getYtDlpPath();
+    const args = ["--flat-playlist", "-J", url];
+
+    const process = spawn(ytDlpPath, args);
+    let data = "";
+    let error = "";
+
+    process.stdout.on("data", (chunk) => (data += chunk));
+    process.stderr.on("data", (chunk) => (error += chunk));
+
+    process.on("close", (code) => {
+      if (code !== 0) {
+        reject(new Error(`yt-dlp failed: ${error}`));
+      } else {
+        try {
+          const parsed = JSON.parse(data);
+          resolve(parsed);
+        } catch (err) {
+          reject(new Error("Failed to parse playlist JSON"));
+        }
+      }
+    });
+  });
+}
+
 async function playSong(queue) {
   const song = queue.songs[0];
   if (!song) return;
 
   try {
-    logger.info(`Attempting to stream with yt-dlp: ${song.title}`);
+    logger.info(`Attempting to stream: ${song.title}`);
 
-    // ----------------------------------------------------------
-    // EXTERNAL STREAMING: Spawn yt-dlp process
-    // ----------------------------------------------------------
-
-    // Point to the yt-dlp.exe in your root folder
-    const ytDlpPath = path.resolve(__dirname, "../../yt-dlp.exe");
-
-    // Arguments:
-    // -f bestaudio: Get best audio
-    // -o - : Output to stdout (standard output) so we can pipe it
-    // -q : Quiet mode (don't log to console)
+    const ytDlpPath = getYtDlpPath();
     const args = ["-f", "bestaudio", "-o", "-", "-q", song.url];
 
     const ytDlpProcess = spawn(ytDlpPath, args);
 
-    // Handle spawn errors (e.g., file not found)
     ytDlpProcess.on("error", (err) => {
       logger.error(`Failed to spawn yt-dlp: ${err.message}`);
-      logger.warn("Make sure yt-dlp.exe is in the root folder!");
-      // Manually trigger skip
       queue.player.emit("error", new Error("yt-dlp spawn failed"));
     });
 
-    // Create resource from the process output (stdout)
-    // We turn off volume control for performance (inlineVolume: false)
     const resource = createAudioResource(ytDlpProcess.stdout, {
       inputType: StreamType.Arbitrary,
       inlineVolume: false,
@@ -192,6 +261,85 @@ async function enqueue(interaction, query) {
   } catch (error) {
     await interaction.editReply(`❌ Error: ${error.message}`);
   }
+}
+
+async function enqueuePlaylist(interaction, url) {
+  const voiceChannel = interaction.member.voice.channel;
+  if (!voiceChannel) {
+    await interaction.reply({
+      content: "You must be in a voice channel.",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const permissions = voiceChannel.permissionsFor(interaction.client.user);
+  if (
+    !permissions ||
+    !permissions.has("Connect") ||
+    !permissions.has("Speak")
+  ) {
+    await interaction.reply({
+      content: "I need permissions to play music!",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply();
+
+  try {
+    const data = await fetchPlaylistData(url);
+    const entries = data.entries || (data._type === "playlist" ? [] : [data]);
+
+    if (!entries.length) {
+      throw new Error("Could not find any songs in this playlist.");
+    }
+
+    let queue = getQueue(interaction.guild.id);
+    if (!queue) {
+      queue = createQueue(interaction);
+    }
+
+    const songsToAdd = entries.map((entry) => ({
+      title: entry.title || "Unknown Title",
+      url: entry.url || `https://www.youtube.com/watch?v=${entry.id}`,
+      durationInSec: entry.duration || 0,
+      requestedBy: interaction.user.tag,
+    }));
+
+    queue.songs.push(...songsToAdd);
+
+    if (!queue.nowPlaying && queue.songs.length === songsToAdd.length) {
+      await playSong(queue);
+    }
+
+    await interaction.editReply(
+      `✅ **Added ${songsToAdd.length} songs** from playlist: **${
+        data.title || "YouTube Playlist"
+      }**`
+    );
+  } catch (error) {
+    logger.error(`Playlist error: ${error.message}`);
+    await interaction.editReply(`❌ Failed to load playlist: ${error.message}`);
+  }
+}
+
+// NEW: Toggle Autoplay Function
+async function toggleAutoplay(interaction) {
+  const queue = getQueue(interaction.guild.id);
+  if (!queue) {
+    await interaction.reply({
+      content: "There is no active queue to enable autoplay on.",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  queue.autoplay = !queue.autoplay;
+  await interaction.reply(
+    `🔄 **Autoplay is now ${queue.autoplay ? "ENABLED" : "DISABLED"}**`
+  );
 }
 
 async function skip(interaction) {
@@ -312,6 +460,8 @@ async function nowPlaying(interaction) {
 
 module.exports = {
   enqueue,
+  enqueuePlaylist,
+  toggleAutoplay, // <--- Exported new function
   skip,
   stop,
   pause,
