@@ -47,18 +47,26 @@ npm install
 > `npm uninstall play-dl`
 > `npm install yt-search`
 
-### 3\. ⚠️ Download yt-dlp (Crucial Step)
+### 3\. ⚠️ yt-dlp (Downloader)
 
-This bot **requires** the `yt-dlp` executable to function. It is NOT installed by npm.
+This bot **requires** the `yt-dlp` executable to function.
 
-1.  Go to the **[yt-dlp GitHub Releases](https://www.google.com/search?q=https://github.com/yt-dlp/yt-dlp/releases/latest)**.
+- When you run `npm install`, the postinstall script will attempt to automatically download the **latest** yt-dlp binary for your platform and place it in the project root.
+- If you prefer to manage the binary manually (or you're offline), you can skip the automatic download by setting the `YT_DLP_SKIP_POSTINSTALL` environment variable before running `npm install`:
+
+```bash
+YT_DLP_SKIP_POSTINSTALL=1 npm install
+```
+
+If the postinstall script cannot download yt-dlp (e.g., no network), you can still install it manually:
+
+1.  Go to the **[yt-dlp GitHub Releases](https://github.com/yt-dlp/yt-dlp/releases/latest)**.
 2.  Download the executable for your system:
-      * **Windows:** Download `yt-dlp.exe`.
-      * **Linux/Mac:** Download `yt-dlp` (and run `chmod +x yt-dlp`).
+  * **Windows:** Download `yt-dlp.exe`.
+  * **Linux/Mac:** Download `yt-dlp` (and run `chmod +x yt-dlp`).
 3.  **Place the file in the ROOT folder** of this project (the same folder where `package.json` is).
 
 **Folder Structure should look like this:**
-
 ```text
 Jasper/
 ├── src/

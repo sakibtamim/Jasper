@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node src/index.js",
-    "deploy:commands": "node src/deploy-commands.js"
+    "deploy:commands": "node src/deploy-commands.js",
+    "postinstall": "node ./scripts/install-yt-dlp.js"
   },
   "keywords": [
     "discord",
