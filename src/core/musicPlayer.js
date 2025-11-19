@@ -8,6 +8,12 @@ const {
   NoSubscriberBehavior,
   StreamType,
 } = require("@discordjs/voice");
+const {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ComponentType,
+} = require("discord.js");
 const ytSearch = require("yt-search");
 const logger = require("./logger");
 
@@ -48,12 +54,11 @@ function createQueue(interaction) {
     player,
     songs: [],
     nowPlaying: null,
-    autoplay: false, // <--- NEW: Autoplay state
+    autoplay: false,
   };
 
   connection.subscribe(player);
 
-  // EVENT: Song Finished
   player.on(AudioPlayerStatus.Idle, async () => {
     const lastSong = queue.nowPlaying;
     queue.songs.shift();
@@ -61,7 +66,6 @@ function createQueue(interaction) {
     if (queue.songs.length > 0) {
       playSong(queue);
     } else if (queue.autoplay && lastSong) {
-      // <--- NEW: Handle Autoplay
       await handleAutoplay(queue, lastSong);
     } else {
       queue.nowPlaying = null;
@@ -80,7 +84,6 @@ function createQueue(interaction) {
   return queue;
 }
 
-// NEW: Logic to find and play a related song
 async function handleAutoplay(queue, lastSong) {
   try {
     if (queue.textChannel) {
@@ -89,8 +92,6 @@ async function handleAutoplay(queue, lastSong) {
         .catch(() => {});
     }
 
-    // Search for the last song title to find related content
-    // We look for a 'Mix' or just similar results
     const searchResult = await ytSearch(lastSong.title);
 
     if (!searchResult || !searchResult.videos.length) {
@@ -99,13 +100,10 @@ async function handleAutoplay(queue, lastSong) {
       return;
     }
 
-    // Try to pick a video that isn't the exact same URL
-    // We pick from the top 5 results to get something relevant
     let nextVideo =
       searchResult.videos.find((v) => v.url !== lastSong.url) ||
       searchResult.videos[0];
 
-    // If we still have the same song (rare), just pick the second one
     if (nextVideo.url === lastSong.url && searchResult.videos.length > 1) {
       nextVideo = searchResult.videos[1];
     }
@@ -139,7 +137,6 @@ async function resolveTrack(query) {
   throw new Error("No results found on YouTube.");
 }
 
-// Helper to fetch playlist data
 function fetchPlaylistData(url) {
   return new Promise((resolve, reject) => {
     const ytDlpPath = getYtDlpPath();
@@ -172,7 +169,7 @@ async function playSong(queue) {
   if (!song) return;
 
   try {
-    logger.info(`Attempting to stream: ${song.title}`);
+    logger.info(`Attempting to stream with yt-dlp: ${song.title}`);
 
     const ytDlpPath = getYtDlpPath();
     const args = ["-f", "bestaudio", "-o", "-", "-q", song.url];
@@ -195,12 +192,98 @@ async function playSong(queue) {
     logger.info(
       `Now playing in ${queue.voiceChannel.guild.name}: ${song.title}`
     );
+
+    // -------------------------------------------------------
+    // NEW: BUTTONS SETUP
+    // -------------------------------------------------------
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("pause_resume")
+        .setLabel("⏸️ Pause")
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId("skip")
+        .setLabel("⏭️ Skip")
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId("stop")
+        .setLabel("⏹️ Stop")
+        .setStyle(ButtonStyle.Danger)
+    );
+
+    let playingMessage;
     if (queue.textChannel) {
-      queue.textChannel
+      playingMessage = await queue.textChannel
         .send({
           content: `▶️ **Now playing:** [${song.title}](${song.url})`,
+          components: [row],
         })
         .catch(() => {});
+    }
+
+    // Setup Collector to handle button clicks
+    if (playingMessage) {
+      const collector = playingMessage.createMessageComponentCollector({
+        componentType: ComponentType.Button,
+        time: song.durationInSec > 0 ? song.durationInSec * 1000 : 3600000, // Listen until song ends
+      });
+
+      collector.on("collect", async (i) => {
+        // Security: Ensure clicker is in the same voice channel
+        if (
+          !i.member.voice.channelId ||
+          i.member.voice.channelId !== queue.voiceChannel.id
+        ) {
+          return i.reply({
+            content: "You need to be in the voice channel to control music!",
+            ephemeral: true,
+          });
+        }
+
+        if (i.customId === "pause_resume") {
+          if (queue.player.state.status === AudioPlayerStatus.Paused) {
+            queue.player.unpause();
+            // Update button to show "Pause" again
+            const newRow = ActionRowBuilder.from(playingMessage.components[0]);
+            newRow.components[0]
+              .setLabel("⏸️ Pause")
+              .setStyle(ButtonStyle.Secondary);
+            await i.update({ components: [newRow] });
+          } else {
+            queue.player.pause();
+            // Update button to show "Resume"
+            const newRow = ActionRowBuilder.from(playingMessage.components[0]);
+            newRow.components[0]
+              .setLabel("▶️ Resume")
+              .setStyle(ButtonStyle.Success);
+            await i.update({ components: [newRow] });
+          }
+        } else if (i.customId === "skip") {
+          await i.reply({ content: `⏭️ **Skipped** by ${i.user.username}` });
+          queue.player.stop();
+          collector.stop();
+        } else if (i.customId === "stop") {
+          await i.reply({ content: `⏹️ **Stopped** by ${i.user.username}` });
+          queue.songs = [];
+          queue.player.stop();
+          if (queue.connection) queue.connection.destroy();
+          queues.delete(queue.voiceChannel.guild.id);
+          collector.stop();
+        }
+      });
+
+      // Disable buttons when the song ends
+      collector.on("end", () => {
+        try {
+          const disabledRow = ActionRowBuilder.from(
+            playingMessage.components[0]
+          );
+          disabledRow.components.forEach((btn) => btn.setDisabled(true));
+          playingMessage.edit({ components: [disabledRow] }).catch(() => {});
+        } catch (e) {
+          // Message might have been deleted, ignore
+        }
+      });
     }
   } catch (error) {
     logger.error(`Failed to play song: ${error.message}`);
@@ -325,7 +408,6 @@ async function enqueuePlaylist(interaction, url) {
   }
 }
 
-// NEW: Toggle Autoplay Function
 async function toggleAutoplay(interaction) {
   const queue = getQueue(interaction.guild.id);
   if (!queue) {
@@ -461,7 +543,7 @@ async function nowPlaying(interaction) {
 module.exports = {
   enqueue,
   enqueuePlaylist,
-  toggleAutoplay, // <--- Exported new function
+  toggleAutoplay,
   skip,
   stop,
   pause,

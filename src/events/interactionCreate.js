@@ -5,6 +5,26 @@ module.exports = {
   name: Events.InteractionCreate,
   once: false,
   async execute(interaction) {
+    // 1. Handle Autocomplete Requests
+    if (interaction.isAutocomplete()) {
+      const command = interaction.client.commands.get(interaction.commandName);
+
+      if (!command) {
+        console.error(
+          `No command matching ${interaction.commandName} was found.`
+        );
+        return;
+      }
+
+      try {
+        await command.autocomplete(interaction);
+      } catch (error) {
+        console.error(error);
+      }
+      return;
+    }
+
+    // 2. Handle Standard Slash Commands
     if (!interaction.isChatInputCommand()) return;
 
     const command = interaction.client.commands.get(interaction.commandName);
@@ -13,18 +33,22 @@ module.exports = {
     try {
       await command.execute(interaction);
     } catch (error) {
-      logger.error(`Error executing command ${interaction.commandName}: ${error.stack || error.message}`);
+      logger.error(
+        `Error executing command ${interaction.commandName}: ${
+          error.stack || error.message
+        }`
+      );
       if (interaction.deferred || interaction.replied) {
         await interaction.followUp({
           content: "Sorry, something went wrong while executing that command.",
-          ephemeral: true
+          ephemeral: true,
         });
       } else {
         await interaction.reply({
           content: "Sorry, something went wrong while executing that command.",
-          ephemeral: true
+          ephemeral: true,
         });
       }
     }
-  }
+  },
 };
