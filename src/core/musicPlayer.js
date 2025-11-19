@@ -1,5 +1,6 @@
-const { spawn } = require("child_process");
+const { spawn, spawnSync } = require("child_process");
 const path = require("path");
+const fs = require("fs");
 const {
   joinVoiceChannel,
   createAudioPlayer,
@@ -21,7 +22,33 @@ const queues = new Map();
 
 // Helper: Get the path to the local yt-dlp.exe
 function getYtDlpPath() {
-  return path.resolve(__dirname, "../../yt-dlp.exe");
+  // Try to find system-installed yt-dlp first (platform-specific)
+  try {
+    const isWin = process.platform === "win32";
+    const whichCmd = isWin ? "where" : "which";
+    // Prefer the standard binary name for the platform
+    const candidates = isWin ? ["yt-dlp.exe", "yt-dlp"] : ["yt-dlp"];
+
+    for (const bin of candidates) {
+      const res = spawnSync(whichCmd, [bin], { encoding: "utf8" });
+      if (res.status === 0 && res.stdout) {
+        const p = res.stdout.split(/\r?\n/)[0].trim();
+        if (p) return p;
+      }
+    }
+  } catch (e) {
+    // Ignore — we will fall back to a local static binary below
+  }
+
+  // Fallback: local static binary inside the repository (previous behavior)
+  const localBinaryName = process.platform === "win32" ? "yt-dlp.exe" : "yt-dlp";
+  const localPath = path.resolve(__dirname, `../../${localBinaryName}`);
+  if (fs.existsSync(localPath)) return localPath;
+
+  // If nothing was found, throw an informative error
+  throw new Error(
+    "yt-dlp not found. Please install yt-dlp and ensure it is on your PATH, or add a static yt-dlp binary next to the app."
+  );
 }
 
 function getQueue(guildId) {
