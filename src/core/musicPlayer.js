@@ -1,17 +1,16 @@
+const { spawn } = require("child_process"); // Required to run yt-dlp
+const path = require("path");
 const {
   joinVoiceChannel,
   createAudioPlayer,
   createAudioResource,
   AudioPlayerStatus,
-  NoSubscriberBehavior
+  NoSubscriberBehavior,
+  StreamType,
 } = require("@discordjs/voice");
-const playdl = require("play-dl");
+const ytSearch = require("yt-search");
 const logger = require("./logger");
 
-/**
- * Guild music queues
- * Map<guildId, { voiceChannel, textChannel, connection, player, songs: Array, nowPlaying }>
- */
 const queues = new Map();
 
 function getQueue(guildId) {
@@ -28,13 +27,13 @@ function createQueue(interaction) {
     channelId: voiceChannel.id,
     guildId: voiceChannel.guild.id,
     adapterCreator: voiceChannel.guild.voiceAdapterCreator,
-    selfDeaf: true
+    selfDeaf: true,
   });
 
   const player = createAudioPlayer({
     behaviors: {
-      noSubscriber: NoSubscriberBehavior.Play
-    }
+      noSubscriber: NoSubscriberBehavior.Play,
+    },
   });
 
   const queue = {
@@ -43,7 +42,7 @@ function createQueue(interaction) {
     connection,
     player,
     songs: [],
-    nowPlaying: null
+    nowPlaying: null,
   };
 
   connection.subscribe(player);
@@ -59,6 +58,7 @@ function createQueue(interaction) {
 
   player.on("error", (error) => {
     logger.error(`Audio player error: ${error.message}`);
+    // Skip the broken song and try the next one
     queue.songs.shift();
     if (queue.songs.length > 0) {
       playSong(queue);
@@ -70,84 +70,137 @@ function createQueue(interaction) {
 }
 
 async function resolveTrack(query) {
-  let video;
-
-  // If it's a valid YouTube URL, use it directly; otherwise search
-  const validated = playdl.yt_validate(query);
-  if (validated === "video" || validated === "shorts") {
-    video = await playdl.video_info(query);
-  } else {
-    const results = await playdl.search(query, { limit: 1, source: { youtube: "video" } });
-    if (!results.length) {
-      throw new Error("No results found on YouTube.");
-    }
-    video = await playdl.video_info(results[0].url);
+  // 1. Search using yt-search (It is reliable for finding videos)
+  const searchResult = await ytSearch(query);
+  if (searchResult && searchResult.videos.length > 0) {
+    const video = searchResult.videos[0];
+    return {
+      title: video.title,
+      url: video.url,
+      durationInSec: video.seconds,
+    };
   }
-
-  return {
-    title: video.video_details.title,
-    url: video.video_details.url,
-    durationInSec: video.video_details.durationInSec
-  };
+  throw new Error("No results found on YouTube.");
 }
 
 async function playSong(queue) {
   const song = queue.songs[0];
   if (!song) return;
 
-  const stream = await playdl.stream(song.url, { discordPlayerCompatibility: true });
-  const resource = createAudioResource(stream.stream, { inputType: stream.type });
+  try {
+    logger.info(`Attempting to stream with yt-dlp: ${song.title}`);
 
-  queue.player.play(resource);
-  queue.nowPlaying = song;
+    // ----------------------------------------------------------
+    // EXTERNAL STREAMING: Spawn yt-dlp process
+    // ----------------------------------------------------------
 
-  logger.info(`Now playing in ${queue.voiceChannel.guild.name}: ${song.title}`);
-  if (queue.textChannel) {
-    queue.textChannel.send({
-      content: `▶️ **Now playing:** [${song.title}](${song.url})`
-    }).catch(() => {});
+    // Point to the yt-dlp.exe in your root folder
+    const ytDlpPath = path.resolve(__dirname, "../../yt-dlp.exe");
+
+    // Arguments:
+    // -f bestaudio: Get best audio
+    // -o - : Output to stdout (standard output) so we can pipe it
+    // -q : Quiet mode (don't log to console)
+    const args = ["-f", "bestaudio", "-o", "-", "-q", song.url];
+
+    const ytDlpProcess = spawn(ytDlpPath, args);
+
+    // Handle spawn errors (e.g., file not found)
+    ytDlpProcess.on("error", (err) => {
+      logger.error(`Failed to spawn yt-dlp: ${err.message}`);
+      logger.warn("Make sure yt-dlp.exe is in the root folder!");
+      // Manually trigger skip
+      queue.player.emit("error", new Error("yt-dlp spawn failed"));
+    });
+
+    // Create resource from the process output (stdout)
+    // We turn off volume control for performance (inlineVolume: false)
+    const resource = createAudioResource(ytDlpProcess.stdout, {
+      inputType: StreamType.Arbitrary,
+      inlineVolume: false,
+    });
+
+    queue.player.play(resource);
+    queue.nowPlaying = song;
+
+    logger.info(
+      `Now playing in ${queue.voiceChannel.guild.name}: ${song.title}`
+    );
+    if (queue.textChannel) {
+      queue.textChannel
+        .send({
+          content: `▶️ **Now playing:** [${song.title}](${song.url})`,
+        })
+        .catch(() => {});
+    }
+  } catch (error) {
+    logger.error(`Failed to play song: ${error.message}`);
+    queue.songs.shift();
+    playSong(queue);
   }
 }
 
 async function enqueue(interaction, query) {
   const voiceChannel = interaction.member.voice.channel;
   if (!voiceChannel) {
-    await interaction.reply({ content: "You must be in a voice channel to summon Jasper.", ephemeral: true });
+    await interaction.reply({
+      content: "You must be in a voice channel to summon Jasper.",
+      ephemeral: true,
+    });
     return;
   }
 
   const permissions = voiceChannel.permissionsFor(interaction.client.user);
-  if (!permissions || !permissions.has("Connect") || !permissions.has("Speak")) {
-    await interaction.reply({ content: "I need the **Connect** and **Speak** permissions to play music!", ephemeral: true });
+  if (
+    !permissions ||
+    !permissions.has("Connect") ||
+    !permissions.has("Speak")
+  ) {
+    await interaction.reply({
+      content:
+        "I need the **Connect** and **Speak** permissions to play music!",
+      ephemeral: true,
+    });
     return;
   }
 
   await interaction.deferReply();
 
-  const track = await resolveTrack(query);
-  let queue = getQueue(interaction.guild.id);
+  try {
+    const track = await resolveTrack(query);
+    let queue = getQueue(interaction.guild.id);
 
-  if (!queue) {
-    queue = createQueue(interaction);
-  }
+    if (!queue) {
+      queue = createQueue(interaction);
+    }
 
-  queue.songs.push({
-    ...track,
-    requestedBy: interaction.user.tag
-  });
+    queue.songs.push({
+      ...track,
+      requestedBy: interaction.user.tag,
+    });
 
-  if (queue.songs.length === 1 && !queue.nowPlaying) {
-    await playSong(queue);
-    await interaction.editReply(`▶️ **Now playing:** [${track.title}](${track.url})`);
-  } else {
-    await interaction.editReply(`✅ **Queued:** [${track.title}](${track.url})`);
+    if (queue.songs.length === 1 && !queue.nowPlaying) {
+      await playSong(queue);
+      await interaction.editReply(
+        `▶️ **Now playing:** [${track.title}](${track.url})`
+      );
+    } else {
+      await interaction.editReply(
+        `✅ **Queued:** [${track.title}](${track.url})`
+      );
+    }
+  } catch (error) {
+    await interaction.editReply(`❌ Error: ${error.message}`);
   }
 }
 
 async function skip(interaction) {
   const queue = getQueue(interaction.guild.id);
   if (!queue || !queue.nowPlaying) {
-    await interaction.reply({ content: "There's nothing playing to skip.", ephemeral: true });
+    await interaction.reply({
+      content: "There's nothing playing to skip.",
+      ephemeral: true,
+    });
     return;
   }
   queue.player.stop(true);
@@ -157,12 +210,17 @@ async function skip(interaction) {
 async function stop(interaction) {
   const queue = getQueue(interaction.guild.id);
   if (!queue) {
-    await interaction.reply({ content: "Nothing to stop – the queue is already empty.", ephemeral: true });
+    await interaction.reply({
+      content: "Nothing to stop – the queue is already empty.",
+      ephemeral: true,
+    });
     return;
   }
   queue.songs = [];
   queue.player.stop(true);
-  queue.connection.destroy();
+  if (queue.connection) {
+    queue.connection.destroy();
+  }
   queues.delete(interaction.guild.id);
   await interaction.reply("⏹️ Stopped playback and cleared the queue.");
 }
@@ -170,7 +228,10 @@ async function stop(interaction) {
 async function pause(interaction) {
   const queue = getQueue(interaction.guild.id);
   if (!queue || !queue.nowPlaying) {
-    await interaction.reply({ content: "There's nothing playing to pause.", ephemeral: true });
+    await interaction.reply({
+      content: "There's nothing playing to pause.",
+      ephemeral: true,
+    });
     return;
   }
   queue.player.pause();
@@ -180,7 +241,10 @@ async function pause(interaction) {
 async function resume(interaction) {
   const queue = getQueue(interaction.guild.id);
   if (!queue || !queue.nowPlaying) {
-    await interaction.reply({ content: "There's nothing paused to resume.", ephemeral: true });
+    await interaction.reply({
+      content: "There's nothing paused to resume.",
+      ephemeral: true,
+    });
     return;
   }
   queue.player.unpause();
@@ -192,7 +256,9 @@ function formatDuration(seconds) {
   const m = Math.floor((seconds % 3600) / 60);
   const s = Math.floor(seconds % 60);
   if (h > 0) {
-    return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+    return `${h}:${m.toString().padStart(2, "0")}:${s
+      .toString()
+      .padStart(2, "0")}`;
   }
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
@@ -207,7 +273,11 @@ async function showQueue(interaction) {
   const lines = [];
 
   if (queue.nowPlaying) {
-    lines.push(`▶️ **Now:** [${queue.nowPlaying.title}](${queue.nowPlaying.url}) — \`${formatDuration(queue.nowPlaying.durationInSec)}\``);
+    lines.push(
+      `▶️ **Now:** [${queue.nowPlaying.title}](${
+        queue.nowPlaying.url
+      }) — \`${formatDuration(queue.nowPlaying.durationInSec)}\``
+    );
   }
 
   const upcoming = queue.songs.slice(1);
@@ -215,7 +285,11 @@ async function showQueue(interaction) {
     lines.push("");
     lines.push("📜 **Up Next:**");
     upcoming.slice(0, 10).forEach((song, index) => {
-      lines.push(`${index + 1}. [${song.title}](${song.url}) — \`${formatDuration(song.durationInSec)}\` • requested by **${song.requestedBy}**`);
+      lines.push(
+        `${index + 1}. [${song.title}](${song.url}) — \`${formatDuration(
+          song.durationInSec
+        )}\` • requested by **${song.requestedBy}**`
+      );
     });
     if (upcoming.length > 10) {
       lines.push(`…and ${upcoming.length - 10} more.`);
@@ -231,7 +305,9 @@ async function nowPlaying(interaction) {
     await interaction.reply("Nothing is currently playing.");
     return;
   }
-  await interaction.reply(`▶️ **Now playing:** [${queue.nowPlaying.title}](${queue.nowPlaying.url})`);
+  await interaction.reply(
+    `▶️ **Now playing:** [${queue.nowPlaying.title}](${queue.nowPlaying.url})`
+  );
 }
 
 module.exports = {
@@ -241,5 +317,5 @@ module.exports = {
   pause,
   resume,
   showQueue,
-  nowPlaying
+  nowPlaying,
 };
