@@ -332,7 +332,11 @@ async function playSong(queue) {
       new ButtonBuilder()
         .setCustomId("stop")
         .setLabel("⏹️ Stop")
-        .setStyle(ButtonStyle.Danger)
+        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId("toggle_autoplay")
+        .setLabel(`Autoplay: ${queue.autoplay ? "ON" : "OFF"}`)
+        .setStyle(queue.autoplay ? ButtonStyle.Success : ButtonStyle.Secondary)
     );
 
     let playingMessage;
@@ -402,6 +406,19 @@ async function playSong(queue) {
           if (queue.connection) queue.connection.destroy();
           queues.delete(queue.voiceChannel.guild.id);
           collector.stop();
+        } else if (i.customId === "toggle_autoplay") {
+          queue.autoplay = !queue.autoplay;
+          const newRow = ActionRowBuilder.from(playingMessage.components[0]);
+          const autoplayBtn = newRow.components.find(
+            (c) => c.data.custom_id === "toggle_autoplay"
+          );
+          if (autoplayBtn) {
+            autoplayBtn.setLabel(`Autoplay: ${queue.autoplay ? "ON" : "OFF"}`);
+            autoplayBtn.setStyle(
+              queue.autoplay ? ButtonStyle.Success : ButtonStyle.Secondary
+            );
+          }
+          await i.update({ components: [newRow] });
         }
       });
 
