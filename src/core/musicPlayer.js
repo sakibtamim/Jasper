@@ -113,16 +113,16 @@ function createQueue(interaction) {
 // Helper: Generate random search queries for varied music
 function getRandomMusicQuery() {
   const queries = [
-    "popular music 2024",
-    "trending songs",
-    "top hits",
-    "best music",
-    "viral songs",
-    "popular songs",
-    "music hits",
-    "top music",
-    "trending music",
-    "popular hits",
+    "popular song",
+    "trending song",
+    "top hit song",
+    "best song",
+    "viral song",
+    "new music video",
+    "official music video",
+    "latest song",
+    "hit song",
+    "music video",
   ];
   return queries[Math.floor(Math.random() * queries.length)];
 }
@@ -145,17 +145,36 @@ async function handleAutoplay(queue, lastSong) {
       return;
     }
 
-    // Pick a random video from the results (not just the first one)
+    // Filter out playlists and only get individual videos
+    const individualVideos = searchResult.videos.filter((video) => {
+      const title = video.title.toLowerCase();
+      // Exclude playlists, mixes, and compilations
+      return (
+        !title.includes("playlist") &&
+        !title.includes("mix -") &&
+        !title.includes("compilation") &&
+        !title.includes("full album") &&
+        video.type === "video"
+      );
+    });
+
+    if (!individualVideos.length) {
+      if (queue.textChannel)
+        queue.textChannel.send("Could not find a suitable song to autoplay.");
+      return;
+    }
+
+    // Pick a random video from the filtered results
     const randomIndex = Math.floor(
-      Math.random() * Math.min(10, searchResult.videos.length)
+      Math.random() * Math.min(10, individualVideos.length)
     );
-    let nextVideo = searchResult.videos[randomIndex];
+    let nextVideo = individualVideos[randomIndex];
 
     // Ensure we don't play the same song that just finished
-    if (nextVideo.url === lastSong.url && searchResult.videos.length > 1) {
+    if (nextVideo.url === lastSong.url && individualVideos.length > 1) {
       const alternateIndex =
-        (randomIndex + 1) % Math.min(10, searchResult.videos.length);
-      nextVideo = searchResult.videos[alternateIndex];
+        (randomIndex + 1) % Math.min(10, individualVideos.length);
+      nextVideo = individualVideos[alternateIndex];
     }
 
     const track = {
