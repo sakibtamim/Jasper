@@ -40,22 +40,11 @@ function followRedirect(url, opts, max = 10) {
 
 (async () => {
   console.log(`Postinstall: Fetching yt-dlp for platform: ${process.platform}`);
-  // If the binary already exists in repo root, skip
-  if (fs.existsSync(outPath)) {
-    console.log(`yt-dlp already present at ${outPath} — skipping download`);
+  const { findYtDlpPath } = require('../src/utils/ytDlpHelper');
+  const existingPath = findYtDlpPath();
+  if (existingPath) {
+    console.log(`yt-dlp found at ${existingPath} — skipping download`);
     process.exit(0);
-  }
-
-  // If yt-dlp exists on PATH, skip the download
-  try {
-    const whichCmd = isWin ? 'where' : 'which';
-    const whichRes = spawnSync(whichCmd, [assetName], { encoding: 'utf8' });
-    if (whichRes.status === 0 && whichRes.stdout) {
-      console.log('yt-dlp found on PATH — skipping download.');
-      process.exit(0);
-    }
-  } catch (e) {
-    // ignore — proceed to download
   }
   try {
     const res = await followRedirect(downloadUrl, { headers: { 'User-Agent': 'node.js' } });
@@ -65,7 +54,7 @@ function followRedirect(url, opts, max = 10) {
       res.pipe(file);
       res.on('error', (err) => {
         file.close();
-        fs.unlink(tmpPath, () => {});
+        fs.unlink(tmpPath, () => { });
         reject(err);
       });
       file.on('finish', () => {
@@ -73,7 +62,7 @@ function followRedirect(url, opts, max = 10) {
       });
       file.on('error', (err) => {
         file.close();
-        fs.unlink(tmpPath, () => {});
+        fs.unlink(tmpPath, () => { });
         reject(err);
       });
     });

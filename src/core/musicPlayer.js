@@ -20,35 +20,29 @@ const logger = require("./logger");
 
 const queues = new Map();
 
+const { findYtDlpPath } = require("../utils/ytDlpHelper");
+
 // Helper: Get the path to the local yt-dlp.exe
 function getYtDlpPath() {
-  // Try to find system-installed yt-dlp first (platform-specific)
-  try {
-    const isWin = process.platform === "win32";
-    const whichCmd = isWin ? "where" : "which";
-    // Prefer the standard binary name for the platform
-    const candidates = isWin ? ["yt-dlp.exe", "yt-dlp"] : ["yt-dlp"];
-
-    for (const bin of candidates) {
-      const res = spawnSync(whichCmd, [bin], { encoding: "utf8" });
-      if (res.status === 0 && res.stdout) {
-        const p = res.stdout.split(/\r?\n/)[0].trim();
-        if (p) return p;
-      }
-    }
-  } catch (e) {
-    // Ignore — we will fall back to a local static binary below
-  }
-
-  // Fallback: local static binary inside the repository (previous behavior)
-  const localBinaryName = process.platform === "win32" ? "yt-dlp.exe" : "yt-dlp";
-  const localPath = path.resolve(__dirname, `../../${localBinaryName}`);
-  if (fs.existsSync(localPath)) return localPath;
+  const path = findYtDlpPath();
+  if (path) return path;
 
   // If nothing was found, throw an informative error
   throw new Error(
     "yt-dlp not found. Please install yt-dlp and ensure it is on your PATH, or add a static yt-dlp binary next to the app."
   );
+}
+
+async function setVoiceStatus(channel, status) {
+  try {
+    if (channel && typeof channel.setStatus === "function") {
+      // Truncate to 500 chars just in case
+      const safeStatus = status.substring(0, 500);
+      await channel.setStatus(safeStatus);
+    }
+  } catch (error) {
+    logger.warn(`Failed to set voice channel status: ${error.message}`);
+  }
 }
 
 function getQueue(guildId) {
@@ -96,6 +90,7 @@ function createQueue(interaction) {
       await handleAutoplay(queue, lastSong);
     } else {
       queue.nowPlaying = null;
+      setVoiceStatus(queue.voiceChannel, "");
     }
   });
 
@@ -116,7 +111,7 @@ async function handleAutoplay(queue, lastSong) {
     if (queue.textChannel) {
       queue.textChannel
         .send("🔄 **Autoplay:** Finding a related song...")
-        .catch(() => {});
+        .catch(() => { });
     }
 
     const searchResult = await ytSearch(lastSong.title);
@@ -220,6 +215,8 @@ async function playSong(queue) {
       `Now playing in ${queue.voiceChannel.guild.name}: ${song.title}`
     );
 
+    setVoiceStatus(queue.voiceChannel, `[Playing] ${song.title}`);
+
     // -------------------------------------------------------
     // NEW: BUTTONS SETUP
     // -------------------------------------------------------
@@ -245,7 +242,7 @@ async function playSong(queue) {
           content: `▶️ **Now playing:** [${song.title}](${song.url})`,
           components: [row],
         })
-        .catch(() => {});
+        .catch(() => { });
     }
 
     // Setup Collector to handle button clicks
@@ -270,6 +267,7 @@ async function playSong(queue) {
         if (i.customId === "pause_resume") {
           if (queue.player.state.status === AudioPlayerStatus.Paused) {
             queue.player.unpause();
+            setVoiceStatus(queue.voiceChannel, `[Playing] ${queue.nowPlaying.title}`);
             // Update button to show "Pause" again
             const newRow = ActionRowBuilder.from(playingMessage.components[0]);
             newRow.components[0]
@@ -278,6 +276,7 @@ async function playSong(queue) {
             await i.update({ components: [newRow] });
           } else {
             queue.player.pause();
+            setVoiceStatus(queue.voiceChannel, `[PAUSED] ${queue.nowPlaying.title}`);
             // Update button to show "Resume"
             const newRow = ActionRowBuilder.from(playingMessage.components[0]);
             newRow.components[0]
@@ -291,6 +290,7 @@ async function playSong(queue) {
           collector.stop();
         } else if (i.customId === "stop") {
           await i.reply({ content: `⏹️ **Stopped** by ${i.user.username}` });
+          setVoiceStatus(queue.voiceChannel, "");
           queue.songs = [];
           queue.player.stop();
           if (queue.connection) queue.connection.destroy();
@@ -306,7 +306,7 @@ async function playSong(queue) {
             playingMessage.components[0]
           );
           disabledRow.components.forEach((btn) => btn.setDisabled(true));
-          playingMessage.edit({ components: [disabledRow] }).catch(() => {});
+          playingMessage.edit({ components: [disabledRow] }).catch(() => { });
         } catch (e) {
           // Message might have been deleted, ignore
         }
@@ -425,8 +425,7 @@ async function enqueuePlaylist(interaction, url) {
     }
 
     await interaction.editReply(
-      `✅ **Added ${songsToAdd.length} songs** from playlist: **${
-        data.title || "YouTube Playlist"
+      `✅ **Added ${songsToAdd.length} songs** from playlist: **${data.title || "YouTube Playlist"
       }**`
     );
   } catch (error) {
@@ -474,6 +473,7 @@ async function stop(interaction) {
     return;
   }
   queue.songs = [];
+  setVoiceStatus(queue.voiceChannel, "");
   queue.player.stop(true);
   if (queue.connection) {
     queue.connection.destroy();
@@ -492,6 +492,7 @@ async function pause(interaction) {
     return;
   }
   queue.player.pause();
+  setVoiceStatus(queue.voiceChannel, `[PAUSED] ${queue.nowPlaying.title}`);
   await interaction.reply("⏸️ Paused.");
 }
 
@@ -505,6 +506,7 @@ async function resume(interaction) {
     return;
   }
   queue.player.unpause();
+  setVoiceStatus(queue.voiceChannel, `[Playing] ${queue.nowPlaying.title}`);
   await interaction.reply("▶️ Resumed.");
 }
 
@@ -531,8 +533,7 @@ async function showQueue(interaction) {
 
   if (queue.nowPlaying) {
     lines.push(
-      `▶️ **Now:** [${queue.nowPlaying.title}](${
-        queue.nowPlaying.url
+      `▶️ **Now:** [${queue.nowPlaying.title}](${queue.nowPlaying.url
       }) — \`${formatDuration(queue.nowPlaying.durationInSec)}\``
     );
   }
