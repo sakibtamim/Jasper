@@ -41,10 +41,9 @@ async function setVoiceStatus(channel, status) {
     const safeStatus = status.substring(0, 500);
 
     // Use Raw API: /channels/{id}/voice-status
-    await channel.client.rest.put(
-      `/channels/${channel.id}/voice-status`,
-      { body: { status: safeStatus } }
-    );
+    await channel.client.rest.put(`/channels/${channel.id}/voice-status`, {
+      body: { status: safeStatus },
+    });
   } catch (error) {
     logger.warn(`Failed to set voice channel status: ${error.message}`);
   }
@@ -106,33 +105,83 @@ function createQueue(interaction) {
       playSong(queue);
     }
   });
-
   queues.set(voiceChannel.guild.id, queue);
   return queue;
+}
+
+// Constants for Autoplay
+const AUTOPLAY_SEARCH_QUERIES = [
+  "popular song",
+  "trending song",
+  "top hit song",
+  "best song",
+  "viral song",
+  "new music video",
+  "official music video",
+  "latest song",
+  "hit song",
+  "music video",
+];
+
+const AUTOPLAY_FILTER_KEYWORDS = [
+  "playlist",
+  "mix -",
+  "compilation",
+  "full album",
+];
+
+const AUTOPLAY_POOL_SIZE = 10;
+
+// Helper: Generate random search queries for varied music
+function getRandomMusicQuery() {
+  return AUTOPLAY_SEARCH_QUERIES[
+    Math.floor(Math.random() * AUTOPLAY_SEARCH_QUERIES.length)
+  ];
 }
 
 async function handleAutoplay(queue, lastSong) {
   try {
     if (queue.textChannel) {
       queue.textChannel
-        .send("🔄 **Autoplay:** Finding a related song...")
-        .catch(() => { });
+        .send("🔄 **Autoplay:** Finding a new song...")
+        .catch(() => {});
     }
 
-    const searchResult = await ytSearch(lastSong.title);
+    // Search for varied music instead of the same song
+    const searchQuery = getRandomMusicQuery();
+    const searchResult = await ytSearch(searchQuery);
 
     if (!searchResult || !searchResult.videos.length) {
       if (queue.textChannel)
-        queue.textChannel.send("Could not find a related song to autoplay.");
+        queue.textChannel.send("Could not find a song to autoplay.");
       return;
     }
 
-    let nextVideo =
-      searchResult.videos.find((v) => v.url !== lastSong.url) ||
-      searchResult.videos[0];
+    // Filter out playlists and only get individual videos
+    const individualVideos = searchResult.videos.filter((video) => {
+      const title = video.title.toLowerCase();
+      // Exclude playlists, mixes, and compilations
+      const isExcluded = AUTOPLAY_FILTER_KEYWORDS.some((keyword) =>
+        title.includes(keyword)
+      );
+      return !isExcluded && video.type === "video";
+    });
 
-    if (nextVideo.url === lastSong.url && searchResult.videos.length > 1) {
-      nextVideo = searchResult.videos[1];
+    if (!individualVideos.length) {
+      if (queue.textChannel)
+        queue.textChannel.send("Could not find a suitable song to autoplay.");
+      return;
+    }
+
+    // Pick a random video from the filtered results
+    const poolSize = Math.min(AUTOPLAY_POOL_SIZE, individualVideos.length);
+    const randomIndex = Math.floor(Math.random() * poolSize);
+    let nextVideo = individualVideos[randomIndex];
+
+    // Ensure we don't play the same song that just finished
+    if (nextVideo.url === lastSong.url && individualVideos.length > 1) {
+      const alternateIndex = (randomIndex + 1) % poolSize;
+      nextVideo = individualVideos[alternateIndex];
     }
 
     const track = {
@@ -293,7 +342,7 @@ async function playSong(queue) {
           content: `▶️ **Now playing:** [${song.title}](${song.url})`,
           components: [row],
         })
-        .catch(() => { });
+        .catch(() => {});
     }
 
     // Setup Collector to handle button clicks
@@ -318,7 +367,10 @@ async function playSong(queue) {
         if (i.customId === "pause_resume") {
           if (queue.player.state.status === AudioPlayerStatus.Paused) {
             queue.player.unpause();
-            setVoiceStatus(queue.voiceChannel, `[Playing] ${queue.nowPlaying.title}`);
+            setVoiceStatus(
+              queue.voiceChannel,
+              `[Playing] ${queue.nowPlaying.title}`
+            );
             // Update button to show "Pause" again
             const newRow = ActionRowBuilder.from(playingMessage.components[0]);
             newRow.components[0]
@@ -327,7 +379,10 @@ async function playSong(queue) {
             await i.update({ components: [newRow] });
           } else {
             queue.player.pause();
-            setVoiceStatus(queue.voiceChannel, `[PAUSED] ${queue.nowPlaying.title}`);
+            setVoiceStatus(
+              queue.voiceChannel,
+              `[PAUSED] ${queue.nowPlaying.title}`
+            );
             // Update button to show "Resume"
             const newRow = ActionRowBuilder.from(playingMessage.components[0]);
             newRow.components[0]
@@ -357,7 +412,7 @@ async function playSong(queue) {
             playingMessage.components[0]
           );
           disabledRow.components.forEach((btn) => btn.setDisabled(true));
-          playingMessage.edit({ components: [disabledRow] }).catch(() => { });
+          playingMessage.edit({ components: [disabledRow] }).catch(() => {});
         } catch (e) {
           // Message might have been deleted, ignore
         }
@@ -458,7 +513,9 @@ async function enqueuePlaylist(interaction, url) {
     if (data.title && data.title.startsWith("Mix -") && entries.length > 50) {
       entries = entries.slice(0, 50);
       truncated = true;
-      logger.info(`Truncated autogenerated playlist '${data.title}' to 50 songs.`);
+      logger.info(
+        `Truncated autogenerated playlist '${data.title}' to 50 songs.`
+      );
     }
 
     if (!entries.length) {
@@ -485,7 +542,8 @@ async function enqueuePlaylist(interaction, url) {
 
     const truncatedMsg = truncated ? " (truncated to 50 for performance)" : "";
     await interaction.editReply(
-      `✅ **Added ${songsToAdd.length} songs** from playlist: **${data.title || "YouTube Playlist"
+      `✅ **Added ${songsToAdd.length} songs** from playlist: **${
+        data.title || "YouTube Playlist"
       }**${truncatedMsg}`
     );
   } catch (error) {
@@ -593,7 +651,8 @@ async function showQueue(interaction) {
 
   if (queue.nowPlaying) {
     lines.push(
-      `▶️ **Now:** [${queue.nowPlaying.title}](${queue.nowPlaying.url
+      `▶️ **Now:** [${queue.nowPlaying.title}](${
+        queue.nowPlaying.url
       }) — \`${formatDuration(queue.nowPlaying.durationInSec)}\``
     );
   }
