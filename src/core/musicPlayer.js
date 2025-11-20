@@ -34,12 +34,17 @@ function getYtDlpPath() {
 }
 
 async function setVoiceStatus(channel, status) {
+  if (!channel) return;
+
   try {
-    if (channel && typeof channel.setStatus === "function") {
-      // Truncate to 500 chars just in case
-      const safeStatus = status.substring(0, 500);
-      await channel.setStatus(safeStatus);
-    }
+    // Truncate to 500 chars just in case
+    const safeStatus = status.substring(0, 500);
+
+    // Use Raw API: /channels/{id}/voice-status
+    await channel.client.rest.put(
+      `/channels/${channel.id}/voice-status`,
+      { body: { status: safeStatus } }
+    );
   } catch (error) {
     logger.warn(`Failed to set voice channel status: ${error.message}`);
   }
