@@ -105,26 +105,38 @@ function createQueue(interaction) {
       playSong(queue);
     }
   });
-
   queues.set(voiceChannel.guild.id, queue);
   return queue;
 }
 
+// Constants for Autoplay
+const AUTOPLAY_SEARCH_QUERIES = [
+  "popular song",
+  "trending song",
+  "top hit song",
+  "best song",
+  "viral song",
+  "new music video",
+  "official music video",
+  "latest song",
+  "hit song",
+  "music video",
+];
+
+const AUTOPLAY_FILTER_KEYWORDS = [
+  "playlist",
+  "mix -",
+  "compilation",
+  "full album",
+];
+
+const AUTOPLAY_POOL_SIZE = 10;
+
 // Helper: Generate random search queries for varied music
 function getRandomMusicQuery() {
-  const queries = [
-    "popular song",
-    "trending song",
-    "top hit song",
-    "best song",
-    "viral song",
-    "new music video",
-    "official music video",
-    "latest song",
-    "hit song",
-    "music video",
+  return AUTOPLAY_SEARCH_QUERIES[
+    Math.floor(Math.random() * AUTOPLAY_SEARCH_QUERIES.length)
   ];
-  return queries[Math.floor(Math.random() * queries.length)];
 }
 
 async function handleAutoplay(queue, lastSong) {
@@ -149,13 +161,10 @@ async function handleAutoplay(queue, lastSong) {
     const individualVideos = searchResult.videos.filter((video) => {
       const title = video.title.toLowerCase();
       // Exclude playlists, mixes, and compilations
-      return (
-        !title.includes("playlist") &&
-        !title.includes("mix -") &&
-        !title.includes("compilation") &&
-        !title.includes("full album") &&
-        video.type === "video"
+      const isExcluded = AUTOPLAY_FILTER_KEYWORDS.some((keyword) =>
+        title.includes(keyword)
       );
+      return !isExcluded && video.type === "video";
     });
 
     if (!individualVideos.length) {
@@ -165,15 +174,13 @@ async function handleAutoplay(queue, lastSong) {
     }
 
     // Pick a random video from the filtered results
-    const randomIndex = Math.floor(
-      Math.random() * Math.min(10, individualVideos.length)
-    );
+    const poolSize = Math.min(AUTOPLAY_POOL_SIZE, individualVideos.length);
+    const randomIndex = Math.floor(Math.random() * poolSize);
     let nextVideo = individualVideos[randomIndex];
 
     // Ensure we don't play the same song that just finished
     if (nextVideo.url === lastSong.url && individualVideos.length > 1) {
-      const alternateIndex =
-        (randomIndex + 1) % Math.min(10, individualVideos.length);
+      const alternateIndex = (randomIndex + 1) % poolSize;
       nextVideo = individualVideos[alternateIndex];
     }
 
