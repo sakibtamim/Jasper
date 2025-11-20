@@ -132,7 +132,13 @@ const AUTOPLAY_FILTER_KEYWORDS = [
 
 const AUTOPLAY_POOL_SIZE = 10;
 
-// Helper: Generate random search queries for varied music
+function getAutoplayButton(isEnabled) {
+  return new ButtonBuilder()
+    .setCustomId("toggle_autoplay")
+    .setLabel(`Autoplay: ${isEnabled ? "ON" : "OFF"}`)
+    .setStyle(isEnabled ? ButtonStyle.Success : ButtonStyle.Secondary);
+}
+
 function getRandomMusicQuery() {
   return AUTOPLAY_SEARCH_QUERIES[
     Math.floor(Math.random() * AUTOPLAY_SEARCH_QUERIES.length)
@@ -332,7 +338,8 @@ async function playSong(queue) {
       new ButtonBuilder()
         .setCustomId("stop")
         .setLabel("⏹️ Stop")
-        .setStyle(ButtonStyle.Danger)
+        .setStyle(ButtonStyle.Danger),
+      getAutoplayButton(queue.autoplay)
     );
 
     let playingMessage;
@@ -343,6 +350,9 @@ async function playSong(queue) {
           components: [row],
         })
         .catch(() => {});
+      if (playingMessage) {
+        queue.playingMessage = playingMessage;
+      }
     }
 
     // Setup Collector to handle button clicks
@@ -402,6 +412,13 @@ async function playSong(queue) {
           if (queue.connection) queue.connection.destroy();
           queues.delete(queue.voiceChannel.guild.id);
           collector.stop();
+        } else if (i.customId === "toggle_autoplay") {
+          queue.autoplay = !queue.autoplay;
+          const newRow = ActionRowBuilder.from(playingMessage.components[0]);
+          // Replace the last component (autoplay button) with the updated one
+          newRow.components.pop();
+          newRow.addComponents(getAutoplayButton(queue.autoplay));
+          await i.update({ components: [newRow] });
         }
       });
 
@@ -563,6 +580,20 @@ async function toggleAutoplay(interaction) {
   }
 
   queue.autoplay = !queue.autoplay;
+
+  // Update the UI button if a playing message exists
+  if (queue.playingMessage) {
+    try {
+      const newRow = ActionRowBuilder.from(queue.playingMessage.components[0]);
+      // Assuming autoplay button is the last one
+      newRow.components.pop();
+      newRow.addComponents(getAutoplayButton(queue.autoplay));
+      await queue.playingMessage.edit({ components: [newRow] });
+    } catch (error) {
+      logger.error(`Failed to update autoplay button: ${error.message}`);
+    }
+  }
+
   await interaction.reply(
     `🔄 **Autoplay is now ${queue.autoplay ? "ENABLED" : "DISABLED"}**`
   );
