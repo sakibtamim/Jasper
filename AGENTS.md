@@ -16,7 +16,7 @@ Its core feature is high-quality audio streaming using **yt-dlp** (an external c
 ### Prerequisites
 - Node.js v18+
 - FFmpeg (static binary usually handled by `ffmpeg-static` or system installed)
-- **yt-dlp**: This is CRITICAL. The bot expects a `yt-dlp` (or `yt-dlp.exe`) binary in the **ROOT** directory.
+- **yt-dlp**: This is CRITICAL. The bot searches for a `yt-dlp` (or `yt-dlp.exe`) binary, first checking the system's PATH, and then falling back to the project's **ROOT** directory.
 
 ### Installation
 1. `npm install`

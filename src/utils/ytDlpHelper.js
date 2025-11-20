@@ -12,12 +12,12 @@ const fs = require('fs');
 function findYtDlpPath() {
     const isWin = process.platform === 'win32';
     const assetName = isWin ? 'yt-dlp.exe' : 'yt-dlp';
+    const candidates = isWin ? ['yt-dlp.exe', 'yt-dlp'] : ['yt-dlp'];
 
     // 1. Try to find system-installed yt-dlp
     try {
         const whichCmd = isWin ? 'where' : 'which';
         // Prefer the standard binary name for the platform
-        const candidates = isWin ? ['yt-dlp.exe', 'yt-dlp'] : ['yt-dlp'];
 
         for (const bin of candidates) {
             const res = spawnSync(whichCmd, [bin], { encoding: 'utf8' });
@@ -33,13 +33,16 @@ function findYtDlpPath() {
     // 2. Check for local static binary in the project root
     // Assuming this file is in src/utils/, the root is ../../
     const root = path.resolve(__dirname, '../../');
-    const localPath = path.join(root, assetName);
 
-    if (fs.existsSync(localPath)) {
-        return localPath;
+    for (const bin of candidates) {
+        const localPath = path.join(root, bin);
+        if (fs.existsSync(localPath)) {
+            return localPath;
+        }
     }
 
     return null;
 }
 
 module.exports = { findYtDlpPath };
+
