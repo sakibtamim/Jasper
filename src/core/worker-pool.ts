@@ -1,6 +1,6 @@
-import { Client, GatewayIntentBits } from "discord.js";
+import { Client, GatewayIntentBits, ActivityType } from "discord.js";
 import logger from "./logger.js";
-import botConfigs, { BotConfig } from "../config/bots.js";
+import bots from "../config/bots.js";
 
 // Registry to hold all worker states
 const workers: WorkerState[] = [];
@@ -20,33 +20,30 @@ export interface WorkerState {
  * @returns {WorkerState[]}
  */
 function createBots(): WorkerState[] {
-    for (const config of botConfigs) {
-        if (!config.token) {
-            logger.warn(`Skipping bot ${config.name} due to missing token.`);
-            continue;
-        }
+    if (workers.length > 0) return workers;
 
+    for (const botConfig of bots) {
         const client = new Client({
-            intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
+            intents: [
+                GatewayIntentBits.Guilds,
+                GatewayIntentBits.GuildVoiceStates,
+                GatewayIntentBits.GuildMessages,
+                GatewayIntentBits.MessageContent,
+            ],
         });
 
-        const workerState: WorkerState = {
-            name: config.name,
+        workers.push({
+            name: botConfig.name,
             client: client,
-            role: config.role,
-            token: config.token, // Store token for easier login
+            role: botConfig.role,
+            token: botConfig.token,
             busy: false,
             guildId: null,
             voiceChannelId: null,
-        };
-
-        // Attach error handler to prevent crash
-        client.on("error", (err) => {
-            logger.error(`[${config.name}] Client error: ${err.message}`);
         });
-
-        workers.push(workerState);
     }
+
+    logger.info(`Initialized ${workers.length} bots.`);
     return workers;
 }
 
@@ -55,28 +52,23 @@ function createBots(): WorkerState[] {
  * @returns {Promise<void>}
  */
 async function loginBots(): Promise<void> {
-    // 1. Login Controller (Jasper) first
-    const controller = workers.find((w) => w.role === "controller");
-    if (controller) {
-        try {
-            await controller.client.login(controller.token);
-            logger.info(`[${controller.name}] Logged in as ${controller.role} (Leader)`);
-        } catch (error: any) {
-            logger.error(`[${controller.name}] Failed to login controller: ${error.message}`);
-        }
-    }
-
-    // 2. Login the rest of the workers
-    const others = workers.filter((w) => w.role !== "controller");
-    const promises = others.map(async (worker) => {
+    const loginPromises = workers.map(async (worker) => {
         try {
             await worker.client.login(worker.token);
-            logger.info(`[${worker.name}] Logged in as ${worker.role}`);
-        } catch (error: any) {
-            logger.error(`[${worker.name}] Failed to login: ${error.message}`);
+            logger.info(`Logged in as ${worker.name}`);
+
+            if (worker.role === 'worker') {
+                worker.client.user?.setPresence({
+                    activities: [{ name: "Waiting for tasks...", type: ActivityType.Custom }],
+                    status: "idle",
+                });
+            }
+        } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : String(error);
+            logger.error(`Failed to login ${worker.name}: ${msg}`);
         }
     });
-    await Promise.all(promises);
+    await Promise.all(loginPromises);
 }
 
 /**

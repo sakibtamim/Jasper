@@ -1,10 +1,9 @@
+
 import {
   joinVoiceChannel,
   createAudioPlayer,
   AudioPlayerStatus,
   NoSubscriberBehavior,
-  VoiceConnection,
-  AudioPlayer,
 } from "@discordjs/voice";
 import { ActionRowBuilder, ChatInputCommandInteraction, VoiceBasedChannel, GuildMember } from "discord.js";
 import logger from "./logger.js";
@@ -66,14 +65,14 @@ async function assignWorker(interaction: ChatInputCommandInteraction, voiceChann
       !workerPermissions.has("Speak")
     ) {
       await interaction.editReply(
-        `🚫 **${worker.name}** does not have permissions to join your channel!`
+        `🚫 ** ${worker.name}** does not have permissions to join your channel!`
       );
       workerPool.releaseWorker(voiceChannel.id);
       return null;
     }
-  } catch (err) {
+  } catch {
     await interaction.editReply(
-      `🚫 **${worker.name}** cannot access this channel (Is it invited to the server?).`
+      `🚫 ** ${worker.name}** cannot access this channel(Is it invited to the server ?).`
     );
     workerPool.releaseWorker(voiceChannel.id);
     return null;
@@ -81,11 +80,13 @@ async function assignWorker(interaction: ChatInputCommandInteraction, voiceChann
 
   // Flavor text
   if (worker.role === "worker") {
-    await (interaction.channel as any)
-      ?.send(
-        `🐾 **Jasper** is busy, summoning **${worker.name}** to handle the beats!`
-      )
-      .catch(() => { });
+    if (interaction.channel && interaction.channel.isSendable()) {
+      await interaction.channel
+        .send(
+          `🐾 ** Jasper ** is busy, summoning ** ${worker.name}** to handle the beats!`
+        )
+        .catch(() => { });
+    }
   }
 
   return worker;
@@ -124,7 +125,7 @@ async function validateAndCleanupQueue(interaction: ChatInputCommandInteraction,
   return queue;
 }
 
-async function createQueue(interaction: ChatInputCommandInteraction, worker: WorkerState, track: Song | null): Promise<Queue> {
+async function createQueue(interaction: ChatInputCommandInteraction, worker: WorkerState, _track: Song | null): Promise<Queue> {
   const voiceChannel = (interaction.member as GuildMember).voice.channel;
   if (!voiceChannel) {
     throw new Error("You must be in a voice channel to use this command.");
@@ -195,30 +196,32 @@ async function createQueue(interaction: ChatInputCommandInteraction, worker: Wor
       workerPool.releaseWorker(queue.voiceChannelId);
 
       // Send enhanced queue finished message
-      if (queue.textChannel) {
+      if (queue.textChannel && queue.textChannel.isSendable()) {
         try {
           const channel = await queue.worker.client.channels.fetch(
             queue.voiceChannelId
           );
-          const channelName = channel && 'name' in channel ? (channel as any).name : "the voice channel";
-          (queue.textChannel as any)
+          const channelName = channel && 'name' in channel ? (channel as { name: string }).name : "the voice channel";
+          queue.textChannel
             .send(
-              `🎶 **${queue.worker.name}** has finished the queue in **${channelName}**! Staying connected for 5 more minutes.`
+              `🎶 ** ${queue.worker.name}** has finished the queue in ** ${channelName}** !Staying connected for 5 more minutes.`
             )
-            .catch((err: any) =>
-              logger.warn(`Failed to send finished message: ${err.message}`)
+            .catch((err: unknown) =>
+              logger.warn(`Failed to send finished message: ${err instanceof Error ? err.message : String(err)} `)
             );
-        } catch (err: any) {
+        } catch (err: unknown) {
           logger.warn(
-            `Failed to fetch channel for finished message: ${err.message}`
+            `Failed to fetch channel for finished message: ${err instanceof Error ? err.message : String(err)} `
           );
-          (queue.textChannel as any)
-            .send(
-              `🎶 **${queue.worker.name}** has finished the queue! Staying connected for 5 more minutes.`
-            )
-            .catch((err: any) =>
-              logger.warn(`Failed to send finished message: ${err.message}`)
-            );
+          if (queue.textChannel.isSendable()) {
+            queue.textChannel
+              .send(
+                `🎶 ** ${queue.worker.name}** has finished the queue! Staying connected for 5 more minutes.`
+              )
+              .catch((err: unknown) =>
+                logger.warn(`Failed to send finished message: ${err instanceof Error ? err.message : String(err)} `)
+              );
+          }
         }
       }
 
@@ -238,7 +241,7 @@ async function createQueue(interaction: ChatInputCommandInteraction, worker: Wor
   });
 
   player.on("error", (error) => {
-    logger.error(`Audio player error: ${error.message}`);
+    logger.error(`Audio player error: ${error.message} `);
     queue.songs.shift();
     if (queue.songs.length > 0) {
       playSong(queue);
@@ -260,8 +263,9 @@ async function resolveTrack(query: string): Promise<Song> {
         durationInSec: videoData.duration,
         requestedBy: "Unknown", // Will be overwritten
       };
-    } catch (error: any) {
-      throw new Error(`Failed to resolve URL: ${error.message}`);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to resolve URL: ${msg} `);
     }
   }
 
@@ -333,16 +337,17 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string):
     if (queue.songs.length === 1 && !queue.nowPlaying) {
       await playSong(queue);
       await interaction.editReply(
-        `✅ **${queue.worker.name}** added to queue in **#${channelName}**: [${track.title}](${track.url})`
+        `✅ ** ${queue.worker.name}** added to queue in ** #${channelName}**: [${track.title}](${track.url})`
       );
     } else {
       await interaction.editReply(
-        `✅ **${queue.worker.name}** queued in **#${channelName}**: [${track.title}](${track.url})`
+        `✅ ** ${queue.worker.name}** queued in ** #${channelName}**: [${track.title}](${track.url})`
       );
     }
-  } catch (error: any) {
-    logger.error(error);
-    await interaction.editReply(`❌ Error: ${error.message}`);
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    logger.error(`Enqueue error: ${msg} `);
+    await interaction.editReply(`❌ Error: ${msg} `);
   }
 }
 
@@ -416,13 +421,16 @@ async function enqueuePlaylist(interaction: ChatInputCommandInteraction, url: st
       `✅ **Added ${songsToAdd.length} songs** from playlist: **${data.title || "YouTube Playlist"
       }**${truncatedMsg}`
     );
-  } catch (error: any) {
-    logger.error(`Playlist error: ${error.message}`);
-    await interaction.editReply(`❌ Failed to load playlist: ${error.message}`);
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    logger.error(`Playlist error: ${msg}`);
+    await interaction.editReply(`❌ Failed to load playlist: ${msg}`);
   }
 }
 
-async function toggleAutoplay(interaction: ChatInputCommandInteraction): Promise<void> {
+async function toggleAutoplay(
+  interaction: ChatInputCommandInteraction
+): Promise<void> {
   const voiceChannel = (interaction.member as GuildMember).voice.channel;
   if (!voiceChannel) {
     await interaction.reply({
@@ -444,12 +452,21 @@ async function toggleAutoplay(interaction: ChatInputCommandInteraction): Promise
 
   if (queue.playingMessage) {
     try {
-      const newRow = ActionRowBuilder.from(queue.playingMessage.components[0] as any);
-      newRow.components.pop();
-      newRow.addComponents(getAutoplayButton(queue.autoplay));
-      await queue.playingMessage.edit({ components: [newRow as any] });
-    } catch (error: any) {
-      logger.error(`Failed to update autoplay button: ${error.message}`);
+      const components = queue.playingMessage.components;
+      if (components && components.length > 0) {
+        const oldRow = components[0];
+        const newRow = ActionRowBuilder.from(oldRow.toJSON());
+
+        const componentsList = newRow.components;
+        if (componentsList.length > 0) {
+          componentsList.pop();
+          newRow.addComponents(getAutoplayButton(queue.autoplay));
+          await queue.playingMessage.edit({ components: [newRow] });
+        }
+      }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error(`Failed to update autoplay button: ${msg}`);
     }
   }
 

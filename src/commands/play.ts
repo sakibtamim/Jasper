@@ -33,8 +33,7 @@ export default {
       }));
 
       await interaction.respond(choices);
-    } catch (error) {
-      // If search fails, return empty to prevent crash
+    } catch { // If search fails, return empty to prevent crash
       await interaction.respond([]);
     }
   },

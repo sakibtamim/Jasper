@@ -5,3 +5,6 @@ node_modules/
 # Ignore downloaded yt-dlp binary (fetched by postinstall)
 yt-dlp
 yt-dlp.exe
+
+# Ignore build output
+dist/
