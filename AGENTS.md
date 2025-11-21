@@ -18,7 +18,7 @@ Its core feature is high-quality audio streaming using **yt-dlp** (an external c
 ### Prerequisites
 - Node.js v18+
 - FFmpeg (static binary usually handled by `ffmpeg-static` or system installed)
-- **yt-dlp**: This is CRITICAL. The bot searches for a `yt-dlp` (or `yt-dlp.exe`) binary using a custom helper (`src/utils/ytDlpHelper.js`), first checking the system's PATH, and then falling back to the project's **ROOT** directory.
+- **yt-dlp**: This is CRITICAL. The bot searches for a `yt-dlp` (or `yt-dlp.exe`) binary using a custom helper (`src/utils/yt-dlp-helper.js`), first checking the system's PATH, and then falling back to the project's **ROOT** directory.
 - **Additional Worker Bots** (Optional): You can add additional worker bots by adding environment variables in the format `<NAME>_TOKEN=...` (e.g., `MISTY_TOKEN=...`). These will be automatically loaded and used to handle multiple voice channels simultaneously.
 
 ### Installation
@@ -45,9 +45,15 @@ Jasper/
 ├── src/
 │   ├── commands/       # Slash command definitions (e.g., play.js, stop.js)
 │   ├── config/         # Configuration (bots.js - Multi-bot setup)
-│   ├── core/           # Core logic (MusicPlayer, Logger, WorkerPool)
-│   ├── events/         # Event handlers (ready, interactionCreate)
-│   ├── utils/          # Utility functions (ytDlpHelper.js)
+│   ├── core/           # Core logic
+│   │   ├── audio/      # Audio modules (queue-manager.js, playback-engine.js, stream-handler.js)
+│   │   ├── ui/         # UI modules (player-controls.js)
+│   │   ├── utils/      # Core utilities (voice-utils.js)
+│   │   ├── music-player.js # Facade for audio logic
+│   │   ├── worker-pool.js  # Worker bot management
+│   │   └── logger.js       # Logging utility
+│   ├── events/         # Event handlers (ready.js, interaction-create.js)
+│   ├── utils/          # General utilities (yt-dlp-helper.js, embed-factory.js)
 │   ├── deploy-commands.js # Script to register slash commands
 │   └── index.js        # Entry point
 ├── scripts/            # Maintenance scripts (install-yt-dlp.js)
@@ -71,7 +77,7 @@ Defines the bot configuration for the Worker Pool:
   - Each worker is automatically named based on the env var name.
   - Workers handle playback duties, allowing multiple simultaneous voice channels.
 
-#### 3. Worker Pool (`src/core/workerPool.js`)
+#### 3. Worker Pool (`src/core/worker-pool.js`)
 Manages multiple bot instances to enable concurrent playback:
 - **Bot Creation**: Creates discord.js Client instances for all configured bots.
 - **Login Management**: Logs in the controller first, then all workers in parallel.
@@ -83,16 +89,13 @@ Manages multiple bot instances to enable concurrent playback:
 - **State Tracking**: Maintains each worker's busy status, assigned guild, and voice channel.
 - **Cleanup**: Releases workers when playback ends.
 
-#### 4. Music Player (`src/core/musicPlayer.js`)
-This is the heart of the bot. It manages:
-- **Worker Integration**: Requests a worker from the pool before joining a voice channel.
-- **Queues**: A `Map<VoiceChannelId, QueueObject>` stores the state for each voice channel.
-- **Playback**: Spawns `yt-dlp` processes to stream audio data into an FFmpeg-compatible stream for Discord.
-- **Controls**: Handles Play, Pause, Resume, Skip, Stop.
-- **Autoplay**: Automatically finds related songs when the queue ends.
-- **Voice Status**: Updates the voice channel status to `[Playing] Song Name` or `[PAUSED] Song Name`.
-- **UI**: Attaches interactive buttons (Pause, Skip, Stop, Autoplay Toggle) to the "Now Playing" message.
-- **Cleanup**: Automatically releases workers and destroys connections when the queue finishes.
+#### 4. Music Player (`src/core/music-player.js`)
+This is the facade for the audio system. It orchestrates the following modules:
+- **Queue Manager** (`src/core/audio/queue-manager.js`): Manages `Map<VoiceChannelId, QueueObject>` state.
+- **Stream Handler** (`src/core/audio/stream-handler.js`): Handles `yt-dlp` process spawning and metadata fetching.
+- **Playback Engine** (`src/core/audio/playback-engine.js`): Handles the `AudioPlayer`, event listeners, and "Now Playing" UI updates.
+- **Player Controls** (`src/core/ui/player-controls.js`): Generates button components.
+- **Voice Utils** (`src/core/utils/voice-utils.js`): Helper functions for voice status and validation.
 
 #### 5. Commands (`src/commands/*.js`)
 - Each file exports:
@@ -107,10 +110,10 @@ This is the heart of the bot. It manages:
 
 #### 6. Event Handlers (`src/events/*.js`)
 - `ready.js`: Runs once when the bot connects.
-- `interactionCreate.js`: Routes interactions to the appropriate command or autocomplete handler.
+- `interaction-create.js`: Routes interactions to the appropriate command or autocomplete handler.
 
 #### 7. Utilities (`src/utils/*.js`)
-- `ytDlpHelper.js`: Encapsulates the logic for finding the `yt-dlp` binary on the system or in the project root.
+- `yt-dlp-helper.js`: Encapsulates the logic for finding the `yt-dlp` binary on the system or in the project root.
 
 ## 4. Development Workflows
 
@@ -133,14 +136,14 @@ This is the heart of the bot. It manages:
 4. Restart the bot.
 
 ### Modifying Audio Logic
-- Edit `src/core/musicPlayer.js`.
-- **Important**: This file handles the `yt-dlp` process spawning. Use `src/utils/ytDlpHelper.js` to resolve the binary path.
+- Edit `src/core/music-player.js` or its sub-modules in `src/core/audio/`.
+- **Important**: `src/core/audio/stream-handler.js` handles the `yt-dlp` process spawning. Use `src/utils/yt-dlp-helper.js` to resolve the binary path.
 - **Worker Pool**: Music player requests workers via `workerPool.allocateWorker()` before creating a queue. Always release workers with `workerPool.releaseWorker()` when done.
 - **Queue Management**: The `queues` Map is keyed by `voiceChannelId` (not `guildId`) to support multiple channels per guild. Ensure you handle concurrency correctly.
 
 ### Handling Interactions
-- If you add new UI components (buttons, select menus), handle them in the `interactionCreate` event or within the command that spawned them (using a `ComponentCollector`).
-- `musicPlayer.js` currently uses a `ComponentCollector` on the "Now Playing" message to handle playback buttons.
+- If you add new UI components (buttons, select menus), handle them in the `interaction-create.js` event or within the command that spawned them (using a `ComponentCollector`).
+- `playback-engine.js` currently uses a `ComponentCollector` on the "Now Playing" message to handle playback buttons.
 
 ## 5. Common Issues & Debugging
 

@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "discord.js";
-import music from "../core/musicPlayer.js";
+import music from "../core/music-player.js";
 
 export default {
   data: new SlashCommandBuilder()

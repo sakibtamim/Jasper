@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { Collection } from "discord.js";
 import logger from "./core/logger.js";
-import workerPool from "./core/workerPool.js";
+import workerPool from "./core/worker-pool.js";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);

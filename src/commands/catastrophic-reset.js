@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from "discord.js";
-import musicPlayer from "../core/musicPlayer.js";
-import workerPool from "../core/workerPool.js";
+import musicPlayer from "../core/music-player.js";
+import workerPool from "../core/worker-pool.js";
 import logger from "../core/logger.js";
 
 export default {

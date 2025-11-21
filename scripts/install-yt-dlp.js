@@ -5,7 +5,7 @@ import path from 'path';
 import os from 'os';
 import { spawnSync } from 'child_process';
 import { fileURLToPath } from 'url';
-import { findYtDlpPath } from '../src/utils/ytDlpHelper.js';
+import { findYtDlpPath } from '../src/utils/yt-dlp-helper.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
