@@ -1,0 +1,180 @@
+const { Client, GatewayIntentBits } = require("discord.js");
+const logger = require("./logger");
+const botConfigs = require("../config/bots");
+
+// Registry to hold all worker states
+const workers = [];
+
+/**
+ * @typedef {Object} WorkerState
+ * @property {string} name
+ * @property {Client} client
+ * @property {'controller'|'worker'} role
+ * @property {boolean} busy
+ * @property {string|null} guildId
+ * @property {string|null} voiceChannelId
+ */
+
+/**
+ * Create all bot clients defined in config but do not login yet
+ * @returns {WorkerState[]}
+ */
+function createBots() {
+    for (const config of botConfigs) {
+        if (!config.token) {
+            logger.warn(`Skipping bot ${config.name} due to missing token.`);
+            continue;
+        }
+
+        const client = new Client({
+            intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
+        });
+
+        const workerState = {
+            name: config.name,
+            client: client,
+            role: config.role,
+            busy: false,
+            guildId: null,
+            voiceChannelId: null,
+        };
+
+        // Attach error handler to prevent crash
+        client.on("error", (err) => {
+            logger.error(`[${config.name}] Client error: ${err.message}`);
+        });
+
+        workers.push(workerState);
+    }
+    return workers;
+}
+
+/**
+ * Login all bots
+ * @returns {Promise<void>}
+ */
+async function loginBots() {
+    // 1. Login Controller (Jasper) first
+    const controller = workers.find((w) => w.role === "controller");
+    if (controller) {
+        const config = botConfigs.find((c) => c.name === controller.name);
+        try {
+            await controller.client.login(config.token);
+            logger.info(`[${controller.name}] Logged in as ${controller.role} (Leader)`);
+        } catch (error) {
+            logger.error(`[${controller.name}] Failed to login controller: ${error.message}`);
+        }
+    }
+
+    // 2. Login the rest of the workers
+    const others = workers.filter((w) => w.role !== "controller");
+    const promises = others.map(async (worker) => {
+        const config = botConfigs.find((c) => c.name === worker.name);
+        try {
+            await worker.client.login(config.token);
+            logger.info(`[${worker.name}] Logged in as ${worker.role}`);
+        } catch (error) {
+            logger.error(`[${worker.name}] Failed to login: ${error.message}`);
+        }
+    });
+    await Promise.all(promises);
+}
+
+/**
+ * Get the controller worker (Jasper)
+ * @returns {WorkerState|undefined}
+ */
+function getController() {
+    return workers.find((w) => w.role === "controller");
+}
+
+/**
+ * Find a worker already assigned to a specific voice channel
+ * @param {string} guildId
+ * @param {string} voiceChannelId
+ * @returns {WorkerState|null}
+ */
+function findWorkerByVoiceChannel(guildId, voiceChannelId) {
+    return (
+        workers.find(
+            (w) => w.guildId === guildId && w.voiceChannelId === voiceChannelId
+        ) || null
+    );
+}
+
+/**
+ * Allocate a worker for a voice channel.
+ * Priority:
+ * 1. Worker already in that channel.
+ * 2. Idle worker bot.
+ * 3. Idle controller bot (if enabled/allowed).
+ * @param {string} guildId
+ * @param {string} voiceChannelId
+ * @returns {WorkerState|null}
+ */
+function allocateWorker(guildId, voiceChannelId) {
+    // 1. Check if someone is already there
+    const existing = findWorkerByVoiceChannel(guildId, voiceChannelId);
+    if (existing) return existing;
+
+    // 2. Check if Controller (Jasper) is free (Prioritize Leader)
+    const controller = getController();
+    if (controller && !controller.busy) {
+        return controller;
+    }
+
+    // 3. Find an idle worker
+    const idleWorker = workers.find(
+        (w) => w.role === "worker" && !w.busy
+    );
+
+    if (idleWorker) {
+        return idleWorker;
+    }
+
+    // 4. Everyone is busy
+    return null;
+}
+
+/**
+ * Mark a worker as busy in a channel
+ * @param {WorkerState} worker
+ * @param {string} guildId
+ * @param {string} voiceChannelId
+ */
+function setWorkerBusy(worker, guildId, voiceChannelId) {
+    worker.busy = true;
+    worker.guildId = guildId;
+    worker.voiceChannelId = voiceChannelId;
+    logger.info(
+        `[WorkerPool] ${worker.name} assigned to guild ${guildId} channel ${voiceChannelId}`
+    );
+}
+
+/**
+ * Release a worker (mark as idle)
+ * @param {string} voiceChannelId
+ */
+function releaseWorker(voiceChannelId) {
+    const worker = workers.find((w) => w.voiceChannelId === voiceChannelId);
+    if (worker) {
+        logger.info(
+            `[WorkerPool] ${worker.name} released from channel ${voiceChannelId}`
+        );
+        worker.busy = false;
+        worker.guildId = null;
+        worker.voiceChannelId = null;
+    }
+}
+
+module.exports = {
+    createBots,
+    loginBots,
+    getController,
+    allocateWorker,
+    findWorkerByVoiceChannel,
+    setWorkerBusy,
+    releaseWorker,
+    workers, // Exporting for debug/inspection if needed
+};
+

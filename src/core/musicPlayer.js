@@ -18,7 +18,8 @@ const {
 const ytSearch = require("yt-search");
 const logger = require("./logger");
 
-const queues = new Map();
+const queues = new Map(); // Key: voiceChannelId
+const workerPool = require("./workerPool");
 
 const { findYtDlpPath } = require("../utils/ytDlpHelper");
 
@@ -33,15 +34,15 @@ function getYtDlpPath() {
   );
 }
 
-async function setVoiceStatus(channel, status) {
-  if (!channel) return;
+async function setVoiceStatus(client, channelId, status) {
+  if (!channelId) return;
 
   try {
     // Truncate to 500 chars just in case
     const safeStatus = status.substring(0, 500);
 
     // Use Raw API: /channels/{id}/voice-status
-    await channel.client.rest.put(`/channels/${channel.id}/voice-status`, {
+    await client.rest.put(`/channels/${channelId}/voice-status`, {
       body: { status: safeStatus },
     });
   } catch (error) {
@@ -49,21 +50,25 @@ async function setVoiceStatus(channel, status) {
   }
 }
 
-function getQueue(guildId) {
-  return queues.get(guildId);
+function getQueue(voiceChannelId) {
+  return queues.get(voiceChannelId);
 }
 
-function createQueue(interaction) {
+async function createQueue(interaction, worker, track) {
   const voiceChannel = interaction.member.voice.channel;
   if (!voiceChannel) {
     throw new Error("You must be in a voice channel to use this command.");
   }
 
+  // Fetch the channel using the worker's client to get the correct adapter creator
+  const workerChannel = await worker.client.channels.fetch(voiceChannel.id);
+
   const connection = joinVoiceChannel({
-    channelId: voiceChannel.id,
-    guildId: voiceChannel.guild.id,
-    adapterCreator: voiceChannel.guild.voiceAdapterCreator,
+    channelId: workerChannel.id,
+    guildId: workerChannel.guild.id,
+    adapterCreator: workerChannel.guild.voiceAdapterCreator,
     selfDeaf: true,
+    group: worker.client.user.id, // CRITICAL: Use unique group for each bot to allow multiple connections in one guild
   });
 
   const player = createAudioPlayer({
@@ -73,16 +78,20 @@ function createQueue(interaction) {
   });
 
   const queue = {
-    voiceChannel,
+    voiceChannelId: voiceChannel.id,
+    guildId: voiceChannel.guild.id,
     textChannel: interaction.channel,
     connection,
     player,
     songs: [],
     nowPlaying: null,
     autoplay: false,
+    worker: worker, // Store the assigned worker
   };
 
   connection.subscribe(player);
+
+  workerPool.setWorkerBusy(worker, voiceChannel.guild.id, voiceChannel.id);
 
   player.on(AudioPlayerStatus.Idle, async () => {
     const lastSong = queue.nowPlaying;
@@ -94,7 +103,10 @@ function createQueue(interaction) {
       await handleAutoplay(queue, lastSong);
     } else {
       queue.nowPlaying = null;
-      setVoiceStatus(queue.voiceChannel, "");
+      setVoiceStatus(queue.worker.client, queue.voiceChannelId, "");
+      // Don't destroy immediately? Or do?
+      // For now, let's keep it open until stop or timeout?
+      // Original code didn't destroy on idle, just cleared status.
     }
   });
 
@@ -105,7 +117,8 @@ function createQueue(interaction) {
       playSong(queue);
     }
   });
-  queues.set(voiceChannel.guild.id, queue);
+
+  queues.set(voiceChannel.id, queue);
   return queue;
 }
 
@@ -150,7 +163,7 @@ async function handleAutoplay(queue, lastSong) {
     if (queue.textChannel) {
       queue.textChannel
         .send("🔄 **Autoplay:** Finding a new song...")
-        .catch(() => {});
+        .catch(() => { });
     }
 
     // Search for varied music instead of the same song
@@ -318,10 +331,10 @@ async function playSong(queue) {
     queue.nowPlaying = song;
 
     logger.info(
-      `Now playing in ${queue.voiceChannel.guild.name}: ${song.title}`
+      `Now playing in ${queue.guildId}: ${song.title}`
     );
 
-    setVoiceStatus(queue.voiceChannel, `[Playing] ${song.title}`);
+    setVoiceStatus(queue.worker.client, queue.voiceChannelId, `[Playing] ${song.title}`);
 
     // -------------------------------------------------------
     // NEW: BUTTONS SETUP
@@ -349,7 +362,7 @@ async function playSong(queue) {
           content: `▶️ **Now playing:** [${song.title}](${song.url})`,
           components: [row],
         })
-        .catch(() => {});
+        .catch(() => { });
       if (playingMessage) {
         queue.playingMessage = playingMessage;
       }
@@ -366,7 +379,7 @@ async function playSong(queue) {
         // Security: Ensure clicker is in the same voice channel
         if (
           !i.member.voice.channelId ||
-          i.member.voice.channelId !== queue.voiceChannel.id
+          i.member.voice.channelId !== queue.voiceChannelId
         ) {
           return i.reply({
             content: "You need to be in the voice channel to control music!",
@@ -378,7 +391,8 @@ async function playSong(queue) {
           if (queue.player.state.status === AudioPlayerStatus.Paused) {
             queue.player.unpause();
             setVoiceStatus(
-              queue.voiceChannel,
+              queue.worker.client,
+              queue.voiceChannelId,
               `[Playing] ${queue.nowPlaying.title}`
             );
             // Update button to show "Pause" again
@@ -390,7 +404,8 @@ async function playSong(queue) {
           } else {
             queue.player.pause();
             setVoiceStatus(
-              queue.voiceChannel,
+              queue.worker.client,
+              queue.voiceChannelId,
               `[PAUSED] ${queue.nowPlaying.title}`
             );
             // Update button to show "Resume"
@@ -406,11 +421,12 @@ async function playSong(queue) {
           collector.stop();
         } else if (i.customId === "stop") {
           await i.reply({ content: `⏹️ **Stopped** by ${i.user.username}` });
-          setVoiceStatus(queue.voiceChannel, "");
+          setVoiceStatus(queue.worker.client, queue.voiceChannelId, "");
           queue.songs = [];
           queue.player.stop();
           if (queue.connection) queue.connection.destroy();
-          queues.delete(queue.voiceChannel.guild.id);
+          queues.delete(queue.voiceChannelId);
+          workerPool.releaseWorker(queue.voiceChannelId);
           collector.stop();
         } else if (i.customId === "toggle_autoplay") {
           queue.autoplay = !queue.autoplay;
@@ -429,7 +445,7 @@ async function playSong(queue) {
             playingMessage.components[0]
           );
           disabledRow.components.forEach((btn) => btn.setDisabled(true));
-          playingMessage.edit({ components: [disabledRow] }).catch(() => {});
+          playingMessage.edit({ components: [disabledRow] }).catch(() => { });
         } catch (e) {
           // Message might have been deleted, ignore
         }
@@ -452,6 +468,8 @@ async function enqueue(interaction, query) {
     return;
   }
 
+  // Check permissions (Controller's permissions are enough to check generally, 
+  // but ideally we check the worker's permissions later. For now, assume if Jasper can see it, it's fine.)
   const permissions = voiceChannel.permissionsFor(interaction.client.user);
   if (
     !permissions ||
@@ -470,10 +488,41 @@ async function enqueue(interaction, query) {
 
   try {
     const track = await resolveTrack(query);
-    let queue = getQueue(interaction.guild.id);
+    let queue = getQueue(voiceChannel.id);
 
     if (!queue) {
-      queue = createQueue(interaction);
+      // Allocate a worker
+      const worker = workerPool.allocateWorker(interaction.guild.id, voiceChannel.id);
+      if (!worker) {
+        await interaction.editReply("🚫 **All members of the Heavenly Council of Fur are currently busy!** Please try again later.");
+        return;
+      }
+
+      // Check worker permissions using the worker's client view
+      try {
+        const workerChannel = await worker.client.channels.fetch(voiceChannel.id);
+        const workerPermissions = workerChannel.permissionsFor(worker.client.user);
+        if (!workerPermissions || !workerPermissions.has("Connect") || !workerPermissions.has("Speak")) {
+          await interaction.editReply(`🚫 **${worker.name}** does not have permissions to join your channel!`);
+          workerPool.releaseWorker(voiceChannel.id);
+          return;
+        }
+      } catch (err) {
+        // If fetch fails, the bot likely isn't in the guild or can't see the channel
+        await interaction.editReply(`🚫 **${worker.name}** cannot access this channel (Is it invited to the server?).`);
+        workerPool.releaseWorker(voiceChannel.id);
+        return;
+      }
+
+      // Flavor text
+      if (worker.role === 'worker') {
+        await interaction.channel.send(`🐾 **Jasper** is busy, summoning **${worker.name}** to handle the beats!`);
+      } else {
+        // Jasper himself
+        // await interaction.channel.send(`🎧 **Jasper** joins the channel!`);
+      }
+
+      queue = await createQueue(interaction, worker, track);
     }
 
     queue.songs.push({
@@ -492,6 +541,7 @@ async function enqueue(interaction, query) {
       );
     }
   } catch (error) {
+    logger.error(error);
     await interaction.editReply(`❌ Error: ${error.message}`);
   }
 }
@@ -539,9 +589,34 @@ async function enqueuePlaylist(interaction, url) {
       throw new Error("Could not find any songs in this playlist.");
     }
 
-    let queue = getQueue(interaction.guild.id);
+    let queue = getQueue(voiceChannel.id);
     if (!queue) {
-      queue = createQueue(interaction);
+      // Allocate a worker
+      const worker = workerPool.allocateWorker(interaction.guild.id, voiceChannel.id);
+      if (!worker) {
+        await interaction.editReply("🚫 **All members of the Heavenly Council of Fur are currently busy!** Please try again later.");
+        return;
+      }
+
+      // Check worker permissions using the worker's client view
+      try {
+        const workerChannel = await worker.client.channels.fetch(voiceChannel.id);
+        const workerPermissions = workerChannel.permissionsFor(worker.client.user);
+        if (!workerPermissions || !workerPermissions.has("Connect") || !workerPermissions.has("Speak")) {
+          await interaction.editReply(`🚫 **${worker.name}** does not have permissions to join your channel!`);
+          return;
+        }
+      } catch (err) {
+        await interaction.editReply(`🚫 **${worker.name}** cannot access this channel (Is it invited to the server?).`);
+        return;
+      }
+
+      // Flavor text
+      if (worker.role === 'worker') {
+        await interaction.channel.send(`🐾 **Jasper** is busy, summoning **${worker.name}** to handle the beats!`);
+      }
+
+      queue = await createQueue(interaction, worker, null);
     }
 
     const songsToAdd = entries.map((entry) => ({
@@ -559,8 +634,7 @@ async function enqueuePlaylist(interaction, url) {
 
     const truncatedMsg = truncated ? " (truncated to 50 for performance)" : "";
     await interaction.editReply(
-      `✅ **Added ${songsToAdd.length} songs** from playlist: **${
-        data.title || "YouTube Playlist"
+      `✅ **Added ${songsToAdd.length} songs** from playlist: **${data.title || "YouTube Playlist"
       }**${truncatedMsg}`
     );
   } catch (error) {
@@ -570,7 +644,12 @@ async function enqueuePlaylist(interaction, url) {
 }
 
 async function toggleAutoplay(interaction) {
-  const queue = getQueue(interaction.guild.id);
+  const voiceChannel = interaction.member.voice.channel;
+  if (!voiceChannel) {
+    await interaction.reply({ content: "You must be in a voice channel.", ephemeral: true });
+    return;
+  }
+  const queue = getQueue(voiceChannel.id);
   if (!queue) {
     await interaction.reply({
       content: "There is no active queue to enable autoplay on.",
@@ -600,7 +679,12 @@ async function toggleAutoplay(interaction) {
 }
 
 async function skip(interaction) {
-  const queue = getQueue(interaction.guild.id);
+  const voiceChannel = interaction.member.voice.channel;
+  if (!voiceChannel) {
+    await interaction.reply({ content: "You must be in a voice channel.", ephemeral: true });
+    return;
+  }
+  const queue = getQueue(voiceChannel.id);
   if (!queue || !queue.nowPlaying) {
     await interaction.reply({
       content: "There's nothing playing to skip.",
@@ -613,7 +697,12 @@ async function skip(interaction) {
 }
 
 async function stop(interaction) {
-  const queue = getQueue(interaction.guild.id);
+  const voiceChannel = interaction.member.voice.channel;
+  if (!voiceChannel) {
+    await interaction.reply({ content: "You must be in a voice channel.", ephemeral: true });
+    return;
+  }
+  const queue = getQueue(voiceChannel.id);
   if (!queue) {
     await interaction.reply({
       content: "Nothing to stop – the queue is already empty.",
@@ -622,17 +711,24 @@ async function stop(interaction) {
     return;
   }
   queue.songs = [];
-  setVoiceStatus(queue.voiceChannel, "");
+  queue.songs = [];
+  setVoiceStatus(queue.worker.client, queue.voiceChannelId, "");
   queue.player.stop(true);
   if (queue.connection) {
     queue.connection.destroy();
   }
-  queues.delete(interaction.guild.id);
+  queues.delete(queue.voiceChannelId);
+  workerPool.releaseWorker(queue.voiceChannelId);
   await interaction.reply("⏹️ Stopped playback and cleared the queue.");
 }
 
 async function pause(interaction) {
-  const queue = getQueue(interaction.guild.id);
+  const voiceChannel = interaction.member.voice.channel;
+  if (!voiceChannel) {
+    await interaction.reply({ content: "You must be in a voice channel.", ephemeral: true });
+    return;
+  }
+  const queue = getQueue(voiceChannel.id);
   if (!queue || !queue.nowPlaying) {
     await interaction.reply({
       content: "There's nothing playing to pause.",
@@ -641,12 +737,17 @@ async function pause(interaction) {
     return;
   }
   queue.player.pause();
-  setVoiceStatus(queue.voiceChannel, `[PAUSED] ${queue.nowPlaying.title}`);
+  setVoiceStatus(queue.worker.client, queue.voiceChannelId, `[PAUSED] ${queue.nowPlaying.title}`);
   await interaction.reply("⏸️ Paused.");
 }
 
 async function resume(interaction) {
-  const queue = getQueue(interaction.guild.id);
+  const voiceChannel = interaction.member.voice.channel;
+  if (!voiceChannel) {
+    await interaction.reply({ content: "You must be in a voice channel.", ephemeral: true });
+    return;
+  }
+  const queue = getQueue(voiceChannel.id);
   if (!queue || !queue.nowPlaying) {
     await interaction.reply({
       content: "There's nothing paused to resume.",
@@ -655,7 +756,7 @@ async function resume(interaction) {
     return;
   }
   queue.player.unpause();
-  setVoiceStatus(queue.voiceChannel, `[Playing] ${queue.nowPlaying.title}`);
+  setVoiceStatus(queue.worker.client, queue.voiceChannelId, `[Playing] ${queue.nowPlaying.title}`);
   await interaction.reply("▶️ Resumed.");
 }
 
@@ -672,7 +773,12 @@ function formatDuration(seconds) {
 }
 
 async function showQueue(interaction) {
-  const queue = getQueue(interaction.guild.id);
+  const voiceChannel = interaction.member.voice.channel;
+  if (!voiceChannel) {
+    await interaction.reply({ content: "You must be in a voice channel.", ephemeral: true });
+    return;
+  }
+  const queue = getQueue(voiceChannel.id);
   if (!queue || (!queue.nowPlaying && queue.songs.length === 0)) {
     await interaction.reply("The queue is empty.");
     return;
@@ -682,8 +788,7 @@ async function showQueue(interaction) {
 
   if (queue.nowPlaying) {
     lines.push(
-      `▶️ **Now:** [${queue.nowPlaying.title}](${
-        queue.nowPlaying.url
+      `▶️ **Now:** [${queue.nowPlaying.title}](${queue.nowPlaying.url
       }) — \`${formatDuration(queue.nowPlaying.durationInSec)}\``
     );
   }
@@ -708,7 +813,12 @@ async function showQueue(interaction) {
 }
 
 async function nowPlaying(interaction) {
-  const queue = getQueue(interaction.guild.id);
+  const voiceChannel = interaction.member.voice.channel;
+  if (!voiceChannel) {
+    await interaction.reply({ content: "You must be in a voice channel.", ephemeral: true });
+    return;
+  }
+  const queue = getQueue(voiceChannel.id);
   if (!queue || !queue.nowPlaying) {
     await interaction.reply("Nothing is currently playing.");
     return;
