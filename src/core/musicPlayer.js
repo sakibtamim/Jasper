@@ -863,4 +863,5 @@ module.exports = {
   resume,
   showQueue,
   nowPlaying,
+  getQueues: () => queues, // Export queues for music-status command
 };
