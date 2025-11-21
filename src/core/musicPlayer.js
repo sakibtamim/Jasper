@@ -39,7 +39,10 @@ async function validateInteraction(interaction) {
 
 async function assignWorker(interaction, voiceChannel) {
   // Allocate a worker
-  const worker = workerPool.allocateWorker(interaction.guild.id, voiceChannel.id);
+  const worker = workerPool.allocateWorker(
+    interaction.guild.id,
+    voiceChannel.id
+  );
   if (!worker) {
     await interaction.editReply(
       "🚫 **All members of the Heavenly Council of Fur are currently busy!** Please try again later."
@@ -76,7 +79,7 @@ async function assignWorker(interaction, voiceChannel) {
       .send(
         `🐾 **Jasper** is busy, summoning **${worker.name}** to handle the beats!`
       )
-      .catch(() => { });
+      .catch(() => {});
   }
 
   return worker;
@@ -127,8 +130,14 @@ async function validateAndCleanupQueue(interaction, voiceChannelId) {
 
   // If user's voice channel doesn't match the queue's channel, cleanup old queue
   if (queue.voiceChannelId !== voiceChannelId) {
-    const oldChannelName = await getChannelName(queue.worker.client, queue.voiceChannelId);
-    const newChannelName = await getChannelName(interaction.client, voiceChannelId);
+    const oldChannelName = await getChannelName(
+      queue.worker.client,
+      queue.voiceChannelId
+    );
+    const newChannelName = await getChannelName(
+      interaction.client,
+      voiceChannelId
+    );
 
     logger.info(
       `User switched channels from ${oldChannelName} (${queue.voiceChannelId}) to ${newChannelName} (${voiceChannelId}), cleaning up old queue`
@@ -215,6 +224,7 @@ async function createQueue(interaction, worker, track) {
     autoplay: false,
     worker: worker, // Store the assigned worker
     idleTimeout: null, // Track idle disconnect timeout
+    stopping: false, // Flag to prevent autoplay/idle logic when stopping manually
   };
 
   connection.subscribe(player);
@@ -222,6 +232,8 @@ async function createQueue(interaction, worker, track) {
   workerPool.setWorkerBusy(worker, voiceChannel.guild.id, voiceChannel.id);
 
   player.on(AudioPlayerStatus.Idle, async () => {
+    if (queue.stopping) return;
+
     const lastSong = queue.nowPlaying;
     queue.songs.shift();
 
@@ -233,7 +245,11 @@ async function createQueue(interaction, worker, track) {
       queue.nowPlaying = null;
 
       // Set idle status to show bot is ready for new requests
-      setVoiceStatus(queue.worker.client, queue.voiceChannelId, "[IDLE] Ready to Meow");
+      setVoiceStatus(
+        queue.worker.client,
+        queue.voiceChannelId,
+        "[IDLE] Ready to Meow"
+      );
 
       // Release worker immediately for reuse, but keep connection alive for 5 minutes
       workerPool.releaseWorker(queue.voiceChannelId);
@@ -241,22 +257,36 @@ async function createQueue(interaction, worker, track) {
       // Send enhanced queue finished message
       if (queue.textChannel) {
         try {
-          const channel = await queue.worker.client.channels.fetch(queue.voiceChannelId);
-          const channelName = channel ? channel.name : 'the voice channel';
+          const channel = await queue.worker.client.channels.fetch(
+            queue.voiceChannelId
+          );
+          const channelName = channel ? channel.name : "the voice channel";
           queue.textChannel
-            .send(`🎶 **${queue.worker.name}** has finished the queue in **${channelName}**! Staying connected for 5 more minutes.`)
-            .catch((err) => logger.warn(`Failed to send finished message: ${err.message}`));
+            .send(
+              `🎶 **${queue.worker.name}** has finished the queue in **${channelName}**! Staying connected for 5 more minutes.`
+            )
+            .catch((err) =>
+              logger.warn(`Failed to send finished message: ${err.message}`)
+            );
         } catch (err) {
-          logger.warn(`Failed to fetch channel for finished message: ${err.message}`);
+          logger.warn(
+            `Failed to fetch channel for finished message: ${err.message}`
+          );
           queue.textChannel
-            .send(`🎶 **${queue.worker.name}** has finished the queue! Staying connected for 5 more minutes.`)
-            .catch((err) => logger.warn(`Failed to send finished message: ${err.message}`));
+            .send(
+              `🎶 **${queue.worker.name}** has finished the queue! Staying connected for 5 more minutes.`
+            )
+            .catch((err) =>
+              logger.warn(`Failed to send finished message: ${err.message}`)
+            );
         }
       }
 
       // Set 5-minute idle timeout before disconnecting
       queue.idleTimeout = setTimeout(() => {
-        logger.info(`Disconnecting from ${queue.voiceChannelId} after 5 minutes of idle time`);
+        logger.info(
+          `Disconnecting from ${queue.voiceChannelId} after 5 minutes of idle time`
+        );
         // Clear voice status before disconnecting
         setVoiceStatus(queue.worker.client, queue.voiceChannelId, "");
         if (queue.connection) {
@@ -320,7 +350,7 @@ async function handleAutoplay(queue, lastSong) {
     if (queue.textChannel) {
       queue.textChannel
         .send("🔄 **Autoplay:** Finding a new song...")
-        .catch(() => { });
+        .catch(() => {});
     }
 
     // Search for varied music instead of the same song
@@ -487,11 +517,13 @@ async function playSong(queue) {
     queue.player.play(resource);
     queue.nowPlaying = song;
 
-    logger.info(
-      `Now playing in ${queue.guildId}: ${song.title}`
-    );
+    logger.info(`Now playing in ${queue.guildId}: ${song.title}`);
 
-    setVoiceStatus(queue.worker.client, queue.voiceChannelId, `[Playing] ${song.title}`);
+    setVoiceStatus(
+      queue.worker.client,
+      queue.voiceChannelId,
+      `[Playing] ${song.title}`
+    );
 
     // -------------------------------------------------------
     // NEW: BUTTONS SETUP
@@ -514,13 +546,16 @@ async function playSong(queue) {
 
     let playingMessage;
     if (queue.textChannel) {
-      const channelName = await getChannelName(queue.worker.client, queue.voiceChannelId);
+      const channelName = await getChannelName(
+        queue.worker.client,
+        queue.voiceChannelId
+      );
       playingMessage = await queue.textChannel
         .send({
           content: `▶️ **${queue.worker.name}** is now playing in **#${channelName}**: [${song.title}](${song.url})`,
           components: [row],
         })
-        .catch(() => { });
+        .catch(() => {});
       if (playingMessage) {
         queue.playingMessage = playingMessage;
       }
@@ -579,6 +614,7 @@ async function playSong(queue) {
           collector.stop();
         } else if (i.customId === "stop") {
           await i.reply({ content: `⏹️ **Stopped** by ${i.user.username}` });
+          queue.stopping = true;
           setVoiceStatus(queue.worker.client, queue.voiceChannelId, "");
           queue.songs = [];
           queue.player.stop();
@@ -603,7 +639,7 @@ async function playSong(queue) {
             playingMessage.components[0]
           );
           disabledRow.components.forEach((btn) => btn.setDisabled(true));
-          playingMessage.edit({ components: [disabledRow] }).catch(() => { });
+          playingMessage.edit({ components: [disabledRow] }).catch(() => {});
         } catch (e) {
           // Message might have been deleted, ignore
         }
@@ -620,7 +656,7 @@ async function enqueue(interaction, query) {
   const voiceChannel = await validateInteraction(interaction);
   if (!voiceChannel) return;
 
-  // Check permissions (Controller's permissions are enough to check generally, 
+  // Check permissions (Controller's permissions are enough to check generally,
   // but ideally we check the worker's permissions later. For now, assume if Jasper can see it, it's fine.)
   const permissions = voiceChannel.permissionsFor(interaction.client.user);
   if (
@@ -654,7 +690,9 @@ async function enqueue(interaction, query) {
     if (queue.idleTimeout) {
       clearTimeout(queue.idleTimeout);
       queue.idleTimeout = null;
-      logger.info(`Cleared idle timeout for ${queue.voiceChannelId} - new song added`);
+      logger.info(
+        `Cleared idle timeout for ${queue.voiceChannelId} - new song added`
+      );
     }
 
     queue.songs.push({
@@ -662,7 +700,10 @@ async function enqueue(interaction, query) {
       requestedBy: interaction.user.tag,
     });
 
-    const channelName = await getChannelName(queue.worker.client, queue.voiceChannelId);
+    const channelName = await getChannelName(
+      queue.worker.client,
+      queue.voiceChannelId
+    );
 
     if (queue.songs.length === 1 && !queue.nowPlaying) {
       await playSong(queue);
@@ -738,7 +779,9 @@ async function enqueuePlaylist(interaction, url) {
     if (queue.idleTimeout) {
       clearTimeout(queue.idleTimeout);
       queue.idleTimeout = null;
-      logger.info(`Cleared idle timeout for ${queue.voiceChannelId} - playlist added`);
+      logger.info(
+        `Cleared idle timeout for ${queue.voiceChannelId} - playlist added`
+      );
     }
 
     queue.songs.push(...songsToAdd);
@@ -749,7 +792,9 @@ async function enqueuePlaylist(interaction, url) {
 
     const truncatedMsg = truncated ? " (truncated to 50 for performance)" : "";
     await interaction.editReply(
-      `✅ **Added ${songsToAdd.length} songs** from playlist: **${data.title || "YouTube Playlist"}**${truncatedMsg}`
+      `✅ **Added ${songsToAdd.length} songs** from playlist: **${
+        data.title || "YouTube Playlist"
+      }**${truncatedMsg}`
     );
   } catch (error) {
     logger.error(`Playlist error: ${error.message}`);
@@ -760,7 +805,10 @@ async function enqueuePlaylist(interaction, url) {
 async function toggleAutoplay(interaction) {
   const voiceChannel = interaction.member.voice.channel;
   if (!voiceChannel) {
-    await interaction.reply({ content: "You must be in a voice channel.", ephemeral: true });
+    await interaction.reply({
+      content: "You must be in a voice channel.",
+      ephemeral: true,
+    });
     return;
   }
   const queue = getQueue(voiceChannel.id);
@@ -818,8 +866,12 @@ async function stop(interaction) {
     });
     return;
   }
-  const channelName = await getChannelName(queue.worker.client, queue.voiceChannelId);
+  const channelName = await getChannelName(
+    queue.worker.client,
+    queue.voiceChannelId
+  );
   queue.songs = [];
+  queue.stopping = true;
   setVoiceStatus(queue.worker.client, queue.voiceChannelId, "");
   queue.player.stop(true);
   if (queue.connection) {
@@ -827,7 +879,9 @@ async function stop(interaction) {
   }
   queues.delete(queue.voiceChannelId);
   workerPool.releaseWorker(queue.voiceChannelId);
-  await interaction.reply(`⏹️ **${queue.worker.name}** stopped playback in **#${channelName}** and cleared the queue.`);
+  await interaction.reply(
+    `⏹️ **${queue.worker.name}** stopped playback in **#${channelName}** and cleared the queue.`
+  );
 }
 
 async function pause(interaction) {
@@ -841,10 +895,19 @@ async function pause(interaction) {
     });
     return;
   }
-  const channelName = await getChannelName(queue.worker.client, queue.voiceChannelId);
+  const channelName = await getChannelName(
+    queue.worker.client,
+    queue.voiceChannelId
+  );
   queue.player.pause();
-  setVoiceStatus(queue.worker.client, queue.voiceChannelId, `[PAUSED] ${queue.nowPlaying.title}`);
-  await interaction.reply(`⏸️ **${queue.worker.name}** paused in **#${channelName}**.`);
+  setVoiceStatus(
+    queue.worker.client,
+    queue.voiceChannelId,
+    `[PAUSED] ${queue.nowPlaying.title}`
+  );
+  await interaction.reply(
+    `⏸️ **${queue.worker.name}** paused in **#${channelName}**.`
+  );
 }
 
 async function resume(interaction) {
@@ -858,10 +921,19 @@ async function resume(interaction) {
     });
     return;
   }
-  const channelName = await getChannelName(queue.worker.client, queue.voiceChannelId);
+  const channelName = await getChannelName(
+    queue.worker.client,
+    queue.voiceChannelId
+  );
   queue.player.unpause();
-  setVoiceStatus(queue.worker.client, queue.voiceChannelId, `[Playing] ${queue.nowPlaying.title}`);
-  await interaction.reply(`▶️ **${queue.worker.name}** resumed in **#${channelName}**.`);
+  setVoiceStatus(
+    queue.worker.client,
+    queue.voiceChannelId,
+    `[Playing] ${queue.nowPlaying.title}`
+  );
+  await interaction.reply(
+    `▶️ **${queue.worker.name}** resumed in **#${channelName}**.`
+  );
 }
 
 function formatDuration(seconds) {
@@ -889,7 +961,9 @@ async function showQueue(interaction) {
 
   if (queue.nowPlaying) {
     lines.push(
-      `▶️ **Now:** [${queue.nowPlaying.title}](${queue.nowPlaying.url}) — \`${formatDuration(queue.nowPlaying.durationInSec)}\``
+      `▶️ **Now:** [${queue.nowPlaying.title}](${
+        queue.nowPlaying.url
+      }) — \`${formatDuration(queue.nowPlaying.durationInSec)}\``
     );
   }
 
