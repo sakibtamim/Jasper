@@ -11,12 +11,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Extend Client to include commands
-declare module "discord.js" {
-  interface Client {
-    commands: Collection<string, any>;
-  }
-}
+
 
 (async () => {
   // 1. Create all bot clients

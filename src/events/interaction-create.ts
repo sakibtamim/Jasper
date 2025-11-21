@@ -16,10 +16,12 @@ export default {
         return;
       }
 
-      try {
-        await command.autocomplete(interaction);
-      } catch (error) {
-        console.error(error);
+      if (command.autocomplete) {
+        try {
+          await command.autocomplete(interaction);
+        } catch (error) {
+          console.error(error);
+        }
       }
       return;
     }

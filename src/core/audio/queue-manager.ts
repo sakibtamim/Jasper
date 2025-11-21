@@ -2,7 +2,7 @@ import logger from "../logger.js";
 import { setVoiceStatus } from "../utils/voice-utils.js";
 import workerPool from "../worker-pool.js";
 import { VoiceConnection, AudioPlayer } from "@discordjs/voice";
-import { TextBasedChannel } from "discord.js";
+import { TextBasedChannel, Message } from "discord.js";
 import { WorkerState } from "../worker-pool.js";
 
 export interface Song {
@@ -24,7 +24,7 @@ export interface Queue {
     worker: WorkerState;
     idleTimeout: NodeJS.Timeout | null;
     stopping: boolean;
-    playingMessage?: any; // Type this properly if possible, likely Message
+    playingMessage?: Message;
 }
 
 // Map<VoiceChannelId, QueueObject>

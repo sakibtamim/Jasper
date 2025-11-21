@@ -1,5 +1,6 @@
 import { createAudioResource, StreamType, AudioPlayerStatus } from "@discordjs/voice";
 import { ActionRowBuilder, ButtonStyle, ComponentType, ButtonBuilder, Message } from "discord.js";
+import { APIActionRowComponent, APIButtonComponent } from "discord-api-types/v10";
 import ytSearch from "yt-search";
 import logger from "../logger.js";
 import workerPool from "../worker-pool.js";
@@ -58,7 +59,7 @@ export async function handleAutoplay(queue: Queue, lastSong: Song): Promise<void
         }
 
         // Filter out playlists and only get individual videos
-        const individualVideos = searchResult.videos.filter((video: any) => {
+        const individualVideos = searchResult.videos.filter((video: ytSearch.VideoSearchResult) => {
             const title = video.title.toLowerCase();
             // Exclude playlists, mixes, and compilations
             const isExcluded = AUTOPLAY_FILTER_KEYWORDS.some((keyword) =>
@@ -176,11 +177,11 @@ export async function playSong(queue: Queue): Promise<void> {
                             `[Playing] ${queue.nowPlaying!.title}`
                         );
                         // Update button to show "Pause" again
-                        const newRow = ActionRowBuilder.from(playingMessage!.components[0] as any);
-                        (newRow.components[0] as any)
+                        const newRow = ActionRowBuilder.from<ButtonBuilder>(playingMessage!.components[0] as APIActionRowComponent<APIButtonComponent>);
+                        newRow.components[0]
                             .setLabel("⏸️ Pause")
                             .setStyle(ButtonStyle.Secondary);
-                        await i.update({ components: [newRow as any] });
+                        await i.update({ components: [newRow] });
                     } else {
                         queue.player.pause();
                         setVoiceStatus(
@@ -189,11 +190,11 @@ export async function playSong(queue: Queue): Promise<void> {
                             `[PAUSED] ${queue.nowPlaying!.title}`
                         );
                         // Update button to show "Resume"
-                        const newRow = ActionRowBuilder.from(playingMessage!.components[0] as any);
-                        (newRow.components[0] as any)
+                        const newRow = ActionRowBuilder.from<ButtonBuilder>(playingMessage!.components[0] as APIActionRowComponent<APIButtonComponent>);
+                        newRow.components[0]
                             .setLabel("▶️ Resume")
                             .setStyle(ButtonStyle.Success);
-                        await i.update({ components: [newRow as any] });
+                        await i.update({ components: [newRow] });
                     }
                 } else if (i.customId === "skip") {
                     await i.reply({ content: `⏭️ **Skipped** by ${i.user.username}` });
@@ -211,22 +212,20 @@ export async function playSong(queue: Queue): Promise<void> {
                     collector.stop();
                 } else if (i.customId === "toggle_autoplay") {
                     queue.autoplay = !queue.autoplay;
-                    const newRow = ActionRowBuilder.from(playingMessage!.components[0] as any);
+                    const newRow = ActionRowBuilder.from<ButtonBuilder>(playingMessage!.components[0] as APIActionRowComponent<APIButtonComponent>);
                     // Replace the last component (autoplay button) with the updated one
                     newRow.components.pop();
                     newRow.addComponents(getAutoplayButton(queue.autoplay));
-                    await i.update({ components: [newRow as any] });
+                    await i.update({ components: [newRow] });
                 }
             });
 
             // Disable buttons when the song ends
             collector.on("end", () => {
                 try {
-                    const disabledRow = ActionRowBuilder.from(
-                        playingMessage!.components[0] as any
-                    );
-                    disabledRow.components.forEach((btn: any) => btn.setDisabled(true));
-                    playingMessage!.edit({ components: [disabledRow as any] }).catch((error: any) => logger.warn(`Failed to disable buttons: ${error.message}`));
+                    const disabledRow = ActionRowBuilder.from<ButtonBuilder>(playingMessage!.components[0] as APIActionRowComponent<APIButtonComponent>);
+                    disabledRow.components.forEach((btn) => btn.setDisabled(true));
+                    playingMessage!.edit({ components: [disabledRow] }).catch((error: unknown) => logger.warn(`Failed to disable buttons: ${error instanceof Error ? error.message : String(error)}`));
                 } catch (e) {
                     // Message might have been deleted, ignore
                 }

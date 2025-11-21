@@ -33,7 +33,8 @@ export default {
       }));
 
       await interaction.respond(choices);
-    } catch { // If search fails, return empty to prevent crash
+    } catch (error) {
+      console.error(`Autocomplete failed for query "${focusedValue}":`, error);
       await interaction.respond([]);
     }
   },

@@ -126,7 +126,12 @@ async function validateAndCleanupQueue(interaction: ChatInputCommandInteraction,
 }
 
 async function createQueue(interaction: ChatInputCommandInteraction, worker: WorkerState, _track: Song | null): Promise<Queue> {
-  const voiceChannel = (interaction.member as GuildMember).voice.channel;
+  const member = interaction.member;
+  if (!(member instanceof GuildMember)) {
+    throw new Error("This command can only be used in a guild.");
+  }
+
+  const voiceChannel = member.voice.channel;
   if (!voiceChannel) {
     throw new Error("You must be in a voice channel to use this command.");
   }
@@ -455,12 +460,14 @@ async function toggleAutoplay(
       const components = queue.playingMessage.components;
       if (components && components.length > 0) {
         const oldRow = components[0];
+        // @ts-expect-error - Discord.js component types are too broad, this cast is necessary
         const newRow = ActionRowBuilder.from(oldRow.toJSON());
 
         const componentsList = newRow.components;
         if (componentsList.length > 0) {
           componentsList.pop();
           newRow.addComponents(getAutoplayButton(queue.autoplay));
+          // @ts-expect-error - ActionRowBuilder type compatibility issue with Discord.js API
           await queue.playingMessage.edit({ components: [newRow] });
         }
       }

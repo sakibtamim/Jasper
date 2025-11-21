@@ -1,8 +1,17 @@
-import { Client, VoiceBasedChannel, ChatInputCommandInteraction } from "discord.js";
+import { Client, VoiceBasedChannel, ChatInputCommandInteraction, GuildMember } from "discord.js";
 import logger from "../logger.js";
 
 export async function validateInteraction(interaction: ChatInputCommandInteraction): Promise<VoiceBasedChannel | null> {
-    const voiceChannel = (interaction.member as any)?.voice?.channel as VoiceBasedChannel | null;
+    const member = interaction.member;
+    if (!(member instanceof GuildMember)) {
+        await interaction.reply({
+            content: "This command can only be used in a guild.",
+            ephemeral: true,
+        });
+        return null;
+    }
+
+    const voiceChannel = member.voice.channel;
     if (!voiceChannel) {
         await interaction.reply({
             content: "You must be in a voice channel.",
@@ -33,7 +42,7 @@ export async function getChannelName(client: Client, channelId: string): Promise
     try {
         const channel = await client.channels.fetch(channelId);
         if (channel && 'name' in channel) {
-            return (channel as any).name;
+            return channel.name ?? "unknown channel";
         }
         return "unknown channel";
     } catch {

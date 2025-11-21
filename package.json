@@ -9,7 +9,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "lint": "eslint src/**/*.ts",
-    "deploy:commands": "node src/deploy-commands.js",
+    "deploy:commands": "tsx src/deploy-commands.ts",
     "postinstall": "npm run build && node ./scripts/install-yt-dlp.js"
   },
   "keywords": [
