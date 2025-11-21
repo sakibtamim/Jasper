@@ -5,7 +5,8 @@ import path from 'path';
 import os from 'os';
 import { spawnSync } from 'child_process';
 import { fileURLToPath } from 'url';
-import { findYtDlpPath } from '../src/utils/yt-dlp-helper.js';
+
+// Instead, we inline the logic to avoid dependency on build artifacts or TS files during install
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,6 +25,34 @@ const assetName = isWin ? 'yt-dlp.exe' : 'yt-dlp';
 const downloadUrl = `https://github.com/yt-dlp/yt-dlp/releases/latest/download/${assetName}`;
 const outPath = path.join(root, assetName);
 const tmpPath = outPath + '.download';
+
+function findYtDlpPath() {
+  const candidates = isWin ? ['yt-dlp.exe', 'yt-dlp'] : ['yt-dlp'];
+
+  // 1. Try to find system-installed yt-dlp
+  try {
+    const whichCmd = isWin ? 'where' : 'which';
+    for (const bin of candidates) {
+      const res = spawnSync(whichCmd, [bin], { encoding: 'utf8' });
+      if (res.status === 0 && res.stdout) {
+        const p = res.stdout.split(/\r?\n/)[0].trim();
+        if (p) return p;
+      }
+    }
+  } catch {
+    // Ignore system check failure
+  }
+
+  // 2. Check for local static binary in the project root
+  for (const bin of candidates) {
+    const localPath = path.join(root, bin);
+    if (fs.existsSync(localPath)) {
+      return localPath;
+    }
+  }
+
+  return null;
+}
 
 function followRedirect(url, opts, max = 10) {
   return new Promise((resolve, reject) => {
