@@ -111,6 +111,42 @@ async function setVoiceStatus(client, channelId, status) {
   }
 }
 
+async function getChannelName(client, channelId) {
+  try {
+    const channel = await client.channels.fetch(channelId);
+    return channel ? channel.name : "unknown channel";
+  } catch {
+    return "unknown channel";
+  }
+}
+
+async function validateAndCleanupQueue(interaction, voiceChannelId) {
+  const queue = getQueue(voiceChannelId);
+
+  if (!queue) return null;
+
+  // If user's voice channel doesn't match the queue's channel, cleanup old queue
+  if (queue.voiceChannelId !== voiceChannelId) {
+    const oldChannelName = await getChannelName(queue.worker.client, queue.voiceChannelId);
+    const newChannelName = await getChannelName(interaction.client, voiceChannelId);
+
+    logger.info(
+      `User switched channels from ${oldChannelName} (${queue.voiceChannelId}) to ${newChannelName} (${voiceChannelId}), cleaning up old queue`
+    );
+
+    // Clear old connection
+    if (queue.idleTimeout) clearTimeout(queue.idleTimeout);
+    setVoiceStatus(queue.worker.client, queue.voiceChannelId, "");
+    if (queue.connection) queue.connection.destroy();
+    queues.delete(queue.voiceChannelId);
+    workerPool.releaseWorker(queue.voiceChannelId);
+
+    return null; // Force creation of new queue
+  }
+
+  return queue;
+}
+
 function getQueue(voiceChannelId) {
   return queues.get(voiceChannelId);
 }
@@ -448,9 +484,10 @@ async function playSong(queue) {
 
     let playingMessage;
     if (queue.textChannel) {
+      const channelName = await getChannelName(queue.worker.client, queue.voiceChannelId);
       playingMessage = await queue.textChannel
         .send({
-          content: `▶️ **Now playing:** [${song.title}](${song.url})`,
+          content: `▶️ **${queue.worker.name}** is now playing in **#${channelName}**: [${song.title}](${song.url})`,
           components: [row],
         })
         .catch(() => { });
@@ -573,7 +610,7 @@ async function enqueue(interaction, query) {
 
   try {
     const track = await resolveTrack(query);
-    let queue = getQueue(voiceChannel.id);
+    let queue = await validateAndCleanupQueue(interaction, voiceChannel.id);
 
     if (!queue) {
       const worker = await assignWorker(interaction, voiceChannel);
@@ -595,15 +632,17 @@ async function enqueue(interaction, query) {
       requestedBy: interaction.user.tag,
     });
 
+    const channelName = await getChannelName(queue.worker.client, queue.voiceChannelId);
+
     if (queue.songs.length === 1 && !queue.nowPlaying) {
       await playSong(queue);
       // Don't send duplicate "Now playing" message here - playSong() already sends one with controls
       await interaction.editReply(
-        `✅ **Added to queue:** [${track.title}](${track.url})`
+        `✅ **${queue.worker.name}** added to queue in **#${channelName}**: [${track.title}](${track.url})`
       );
     } else {
       await interaction.editReply(
-        `✅ **Queued:** [${track.title}](${track.url})`
+        `✅ **${queue.worker.name}** queued in **#${channelName}**: [${track.title}](${track.url})`
       );
     }
   } catch (error) {
@@ -749,6 +788,7 @@ async function stop(interaction) {
     });
     return;
   }
+  const channelName = await getChannelName(queue.worker.client, queue.voiceChannelId);
   queue.songs = [];
   setVoiceStatus(queue.worker.client, queue.voiceChannelId, "");
   queue.player.stop(true);
@@ -757,7 +797,7 @@ async function stop(interaction) {
   }
   queues.delete(queue.voiceChannelId);
   workerPool.releaseWorker(queue.voiceChannelId);
-  await interaction.reply("⏹️ Stopped playback and cleared the queue.");
+  await interaction.reply(`⏹️ **${queue.worker.name}** stopped playback in **#${channelName}** and cleared the queue.`);
 }
 
 async function pause(interaction) {
@@ -771,9 +811,10 @@ async function pause(interaction) {
     });
     return;
   }
+  const channelName = await getChannelName(queue.worker.client, queue.voiceChannelId);
   queue.player.pause();
   setVoiceStatus(queue.worker.client, queue.voiceChannelId, `[PAUSED] ${queue.nowPlaying.title}`);
-  await interaction.reply("⏸️ Paused.");
+  await interaction.reply(`⏸️ **${queue.worker.name}** paused in **#${channelName}**.`);
 }
 
 async function resume(interaction) {
@@ -787,9 +828,10 @@ async function resume(interaction) {
     });
     return;
   }
+  const channelName = await getChannelName(queue.worker.client, queue.voiceChannelId);
   queue.player.unpause();
   setVoiceStatus(queue.worker.client, queue.voiceChannelId, `[Playing] ${queue.nowPlaying.title}`);
-  await interaction.reply("▶️ Resumed.");
+  await interaction.reply(`▶️ **${queue.worker.name}** resumed in **#${channelName}**.`);
 }
 
 function formatDuration(seconds) {
@@ -853,6 +895,31 @@ async function nowPlaying(interaction) {
   );
 }
 
+function clearAllQueues() {
+  logger.info(`[CatastrophicReset] Clearing ${queues.size} active queues`);
+
+  for (const [channelId, queue] of queues.entries()) {
+    // Clear idle timeout
+    if (queue.idleTimeout) {
+      clearTimeout(queue.idleTimeout);
+    }
+
+    // Clear voice status
+    setVoiceStatus(queue.worker.client, channelId, "");
+
+    // Destroy connection
+    if (queue.connection) {
+      queue.connection.destroy();
+    }
+
+    // Release worker
+    workerPool.releaseWorker(channelId);
+  }
+
+  queues.clear();
+  logger.info("[CatastrophicReset] All queues cleared");
+}
+
 module.exports = {
   enqueue,
   enqueuePlaylist,
@@ -864,4 +931,5 @@ module.exports = {
   showQueue,
   nowPlaying,
   getQueues: () => queues, // Export queues for music-status command
+  clearAllQueues,
 };

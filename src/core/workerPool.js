@@ -166,6 +166,18 @@ function releaseWorker(voiceChannelId) {
     }
 }
 
+/**
+ * Release all workers to idle state
+ */
+function releaseAllWorkers() {
+    for (const worker of workers) {
+        worker.busy = false;
+        worker.guildId = null;
+        worker.voiceChannelId = null;
+    }
+    logger.info("[WorkerPool] All workers released to idle state");
+}
+
 module.exports = {
     createBots,
     loginBots,
@@ -175,5 +187,5 @@ module.exports = {
     setWorkerBusy,
     releaseWorker,
     getWorkers: () => [...workers], // Return a copy for inspection
+    releaseAllWorkers,
 };
-
