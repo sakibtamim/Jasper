@@ -13,7 +13,6 @@ const __dirname = path.dirname(__filename);
  */
 export function findYtDlpPath() {
     const isWin = process.platform === 'win32';
-    const assetName = isWin ? 'yt-dlp.exe' : 'yt-dlp';
     const candidates = isWin ? ['yt-dlp.exe', 'yt-dlp'] : ['yt-dlp'];
     // 1. Try to find system-installed yt-dlp
     try {
@@ -28,7 +27,7 @@ export function findYtDlpPath() {
             }
         }
     }
-    catch (e) {
+    catch {
         // Ignore system check failure
     }
     // 2. Check for local static binary in the project root
