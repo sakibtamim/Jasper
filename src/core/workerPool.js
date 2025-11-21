@@ -34,6 +34,7 @@ function createBots() {
             name: config.name,
             client: client,
             role: config.role,
+            token: config.token, // Store token for easier login
             busy: false,
             guildId: null,
             voiceChannelId: null,
@@ -57,9 +58,8 @@ async function loginBots() {
     // 1. Login Controller (Jasper) first
     const controller = workers.find((w) => w.role === "controller");
     if (controller) {
-        const config = botConfigs.find((c) => c.name === controller.name);
         try {
-            await controller.client.login(config.token);
+            await controller.client.login(controller.token);
             logger.info(`[${controller.name}] Logged in as ${controller.role} (Leader)`);
         } catch (error) {
             logger.error(`[${controller.name}] Failed to login controller: ${error.message}`);
@@ -69,9 +69,8 @@ async function loginBots() {
     // 2. Login the rest of the workers
     const others = workers.filter((w) => w.role !== "controller");
     const promises = others.map(async (worker) => {
-        const config = botConfigs.find((c) => c.name === worker.name);
         try {
-            await worker.client.login(config.token);
+            await worker.client.login(worker.token);
             logger.info(`[${worker.name}] Logged in as ${worker.role}`);
         } catch (error) {
             logger.error(`[${worker.name}] Failed to login: ${error.message}`);

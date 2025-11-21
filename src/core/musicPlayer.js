@@ -549,14 +549,7 @@ async function enqueue(interaction, query) {
       const worker = await assignWorker(interaction, voiceChannel);
       if (!worker) return;
 
-      // Flavor text
-      if (worker.role === 'worker') {
-        await interaction.channel.send(`🐾 **Jasper** is busy, summoning **${worker.name}** to handle the beats!`);
-      } else {
-        // Jasper himself
-        // await interaction.channel.send(`🎧 **Jasper** joins the channel!`);
-      }
-
+      // Flavor text handled by assignWorker
       queue = await createQueue(interaction, worker, track);
     }
 
@@ -623,11 +616,7 @@ async function enqueuePlaylist(interaction, url) {
       const worker = await assignWorker(interaction, voiceChannel);
       if (!worker) return;
 
-      // Flavor text
-      if (worker.role === 'worker') {
-        await interaction.channel.send(`🐾 **Jasper** is busy, summoning **${worker.name}** to handle the beats!`);
-      }
-
+      // Flavor text handled by assignWorker
       queue = await createQueue(interaction, worker, null);
     }
 
@@ -646,8 +635,7 @@ async function enqueuePlaylist(interaction, url) {
 
     const truncatedMsg = truncated ? " (truncated to 50 for performance)" : "";
     await interaction.editReply(
-      `✅ **Added ${songsToAdd.length} songs** from playlist: **${data.title || "YouTube Playlist"
-      }**${truncatedMsg}`
+      `✅ **Added ${songsToAdd.length} songs** from playlist: **${data.title || "YouTube Playlist"}**${truncatedMsg}`
     );
   } catch (error) {
     logger.error(`Playlist error: ${error.message}`);
@@ -784,8 +772,7 @@ async function showQueue(interaction) {
 
   if (queue.nowPlaying) {
     lines.push(
-      `▶️ **Now:** [${queue.nowPlaying.title}](${queue.nowPlaying.url
-      }) — \`${formatDuration(queue.nowPlaying.durationInSec)}\``
+      `▶️ **Now:** [${queue.nowPlaying.title}](${queue.nowPlaying.url}) — \`${formatDuration(queue.nowPlaying.durationInSec)}\``
     );
   }
 

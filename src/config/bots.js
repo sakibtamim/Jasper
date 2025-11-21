@@ -15,20 +15,19 @@ const bots = [
 Object.keys(process.env).forEach((key) => {
     if (key.endsWith("_TOKEN") && key !== "DISCORD_TOKEN") {
         const token = process.env[key];
-        // Extract name: MISTY_TOKEN -> Misty
+        // Extract name: MISTY_TOKEN -> Misty, MY_BOT_TOKEN -> My Bot
         const name = key
             .replace("_TOKEN", "")
             .toLowerCase()
-            .replace(/^\w/, (c) => c.toUpperCase()); // Title Case
+            .split("_")
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(" ");
 
-        // Avoid duplicates if user manually added them (though we are replacing the manual list)
-        if (!bots.find((b) => b.name === name)) {
-            bots.push({
-                name: name,
-                token: token,
-                role: "worker",
-            });
-        }
+        bots.push({
+            name: name,
+            token: token,
+            role: "worker",
+        });
     }
 });
 
