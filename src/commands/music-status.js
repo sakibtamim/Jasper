@@ -27,7 +27,7 @@ export default {
             if (controller.busy) {
                 const track = getTrackInfo(controller.voiceChannelId);
                 activeLines.push(
-                    `** ${controller.name}** → <#${controller.voiceChannelId}>\n🎵 *${track}*`
+                    `**${controller.name}** → <#${controller.voiceChannelId}>\n🎵 *${track}*`
                 );
             } else {
                 idleLines.push(`**${controller.name}**`);

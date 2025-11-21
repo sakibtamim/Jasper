@@ -44,7 +44,7 @@ export async function handleAutoplay(queue, lastSong) {
         if (queue.textChannel) {
             queue.textChannel
                 .send("🔄 **Autoplay:** Finding a new song...")
-                .catch(() => { });
+                .catch((error) => logger.warn(`Failed to send autoplay message: ${error.message}`));
         }
 
         // Search for varied music instead of the same song
@@ -141,7 +141,7 @@ export async function playSong(queue) {
                     content: `▶️ **${queue.worker.name}** is now playing in **#${channelName}**: [${song.title}](${song.url})`,
                     components: [row],
                 })
-                .catch(() => { });
+                .catch((error) => logger.warn(`Failed to send playing message: ${error.message}`));
             if (playingMessage) {
                 queue.playingMessage = playingMessage;
             }
@@ -225,7 +225,7 @@ export async function playSong(queue) {
                         playingMessage.components[0]
                     );
                     disabledRow.components.forEach((btn) => btn.setDisabled(true));
-                    playingMessage.edit({ components: [disabledRow] }).catch(() => { });
+                    playingMessage.edit({ components: [disabledRow] }).catch((error) => logger.warn(`Failed to disable buttons: ${error.message}`));
                 } catch (e) {
                     // Message might have been deleted, ignore
                 }
