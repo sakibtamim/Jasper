@@ -53,7 +53,7 @@ async function loginBots(): Promise<void> {
     const loginPromises = workers.map(async (worker) => {
         try {
             await worker.client.login(worker.token);
-            logger.info(`Logged in as ${worker.name}`);
+            logger.info(`[${worker.name}] Logged in as ${worker.role}${worker.role === 'controller' ? ' (Leader)' : ''}`);
 
             if (worker.role === 'worker') {
                 worker.client.user?.setPresence({
