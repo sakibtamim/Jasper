@@ -8,6 +8,7 @@ import { setVoiceStatus, getChannelName } from "../utils/voice-utils.js";
 import { createStreamProcess } from "./stream-handler.js";
 import { createControlButtons, getAutoplayButton } from "../ui/player-controls.js";
 import { deleteQueue, Queue, Song } from "./queue-manager.js";
+import { GuildMember } from "discord.js";
 
 // Constants for Autoplay
 const AUTOPLAY_SEARCH_QUERIES = [
@@ -42,10 +43,10 @@ function getRandomMusicQuery(): string {
 
 export async function handleAutoplay(queue: Queue, lastSong: Song): Promise<void> {
     try {
-        if (queue.textChannel) {
-            (queue.textChannel as any)
+        if (queue.textChannel && 'send' in queue.textChannel) {
+            queue.textChannel
                 .send("🔄 **Autoplay:** Finding a new song...")
-                .catch((error: any) => logger.warn(`Failed to send autoplay message: ${error.message}`));
+                .catch((error: unknown) => logger.warn(`Failed to send autoplay message: ${error instanceof Error ? error.message : String(error)}`));
         }
 
         // Search for varied music instead of the same song
@@ -53,9 +54,9 @@ export async function handleAutoplay(queue: Queue, lastSong: Song): Promise<void
         const searchResult = await ytSearch(searchQuery);
 
         if (!searchResult || !searchResult.videos.length) {
-            if (queue.textChannel)
-                (queue.textChannel as any).send("Could not find a song to autoplay.");
-            return;
+            if (queue.textChannel && 'send' in queue.textChannel) {
+                queue.textChannel.send("Could not find a song to autoplay.");
+            } return;
         }
 
         // Filter out playlists and only get individual videos
@@ -69,9 +70,9 @@ export async function handleAutoplay(queue: Queue, lastSong: Song): Promise<void
         });
 
         if (!individualVideos.length) {
-            if (queue.textChannel)
-                (queue.textChannel as any).send("Could not find a suitable song to autoplay.");
-            return;
+            if (queue.textChannel && 'send' in queue.textChannel) {
+                queue.textChannel.send("Could not find a suitable song to autoplay.");
+            } return;
         }
 
         // Pick a random video from the filtered results
@@ -94,10 +95,11 @@ export async function handleAutoplay(queue: Queue, lastSong: Song): Promise<void
 
         queue.songs.push(track);
         playSong(queue);
-    } catch (error: any) {
-        logger.error(`Autoplay error: ${error.message}`);
-        if (queue.textChannel)
-            (queue.textChannel as any).send("❌ Failed to autoplay next song.");
+    } catch (error: unknown) {
+        logger.error(`Autoplay error: ${error instanceof Error ? error.message : String(error)}`);
+        if (queue.textChannel && 'send' in queue.textChannel) {
+            queue.textChannel.send("❌ An error occurred while trying to play the song.");
+        }
     }
 }
 
@@ -132,17 +134,17 @@ export async function playSong(queue: Queue): Promise<void> {
         const row = createControlButtons(queue.autoplay);
 
         let playingMessage: Message | undefined;
-        if (queue.textChannel) {
+        if (queue.textChannel && 'send' in queue.textChannel) {
             const channelName = await getChannelName(
                 queue.worker.client,
                 queue.voiceChannelId
             );
-            playingMessage = await (queue.textChannel as any)
+            playingMessage = await queue.textChannel
                 .send({
                     content: `▶️ **${queue.worker.name}** is now playing in **#${channelName}**: [${song.title}](${song.url})`,
                     components: [row],
                 })
-                .catch((error: any) => logger.warn(`Failed to send playing message: ${error.message}`)) as Message | undefined;
+                .catch((error: unknown) => logger.warn(`Failed to send playing message: ${error instanceof Error ? error.message : String(error)}`)) as Message | undefined;
             if (playingMessage) {
                 queue.playingMessage = playingMessage;
             }
@@ -156,8 +158,13 @@ export async function playSong(queue: Queue): Promise<void> {
             });
 
             collector.on("collect", async (i) => {
+                if (!(i.member instanceof GuildMember)) {
+                    await i.reply({ content: "This command can only be used in a guild.", ephemeral: true });
+                    return;
+                }
+
                 // Security: Ensure clicker is in the same voice channel
-                const memberVoiceChannelId = (i.member as any)?.voice?.channelId;
+                const memberVoiceChannelId = i.member.voice.channelId;
                 if (
                     !memberVoiceChannelId ||
                     memberVoiceChannelId !== queue.voiceChannelId

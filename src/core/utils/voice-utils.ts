@@ -33,8 +33,9 @@ export async function setVoiceStatus(client: Client, channelId: string, status: 
         await client.rest.put(`/channels/${channelId}/voice-status`, {
             body: { status: safeStatus },
         });
-    } catch (error: any) {
-        logger.warn(`Failed to set voice channel status: ${error.message}`);
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.warn(`Failed to set voice channel status: ${message}`);
     }
 }
 

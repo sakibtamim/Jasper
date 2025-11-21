@@ -14,10 +14,7 @@ export function createControlButtons(autoplay: boolean = false): ActionRowBuilde
             .setCustomId("stop")
             .setLabel("⏹️ Stop")
             .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-            .setCustomId("toggle_autoplay")
-            .setLabel(`Autoplay: ${autoplay ? "ON" : "OFF"}`)
-            .setStyle(autoplay ? ButtonStyle.Success : ButtonStyle.Secondary)
+        getAutoplayButton(autoplay)
     );
 
     return row;

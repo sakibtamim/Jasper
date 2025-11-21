@@ -10,7 +10,8 @@
     "build": "tsc",
     "lint": "eslint src/**/*.ts",
     "deploy:commands": "tsx src/deploy-commands.ts",
-    "postinstall": "npm run build && node ./scripts/install-yt-dlp.js"
+    "prepare": "npm run build",
+    "postinstall": "node ./scripts/install-yt-dlp.js"
   },
   "keywords": [
     "discord",
