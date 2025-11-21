@@ -10,6 +10,37 @@ It uses **yt-dlp** (an external command-line tool) to stream high-quality audio,
   - **Reliable Search:** Uses `yt-search` for accurate video results.
   - **Queue System:** View, skip, stop, and manage music queues per server.
   - **Now Playing:** Shows rich embeds with video thumbnails and duration.
+  - **Multi-Client Support:** "One Mind, Many Bodies" architecture allows multiple bots (Jasper + Workers) to play music simultaneously in different channels of the same server.
+
+## Multi-Client Architecture (Heavenly Council of Fur)
+
+Jasper supports a unique **Controller + Worker** architecture.
+- **Jasper (Controller):** The main bot you interact with via Slash Commands (`/play`, `/stop`).
+- **Workers (Misty, Tuki, etc.):** Additional bot accounts that handle the actual audio playback.
+
+**How it works:**
+1. You send a command to Jasper: `/play song`.
+2. If Jasper is free, he joins your channel and plays.
+3. If Jasper is busy in another channel, he summons a free **Worker Bot** (e.g., Misty) to your channel to play the music.
+4. This allows multiple voice channels to have music simultaneously, all controlled via Jasper!
+
+### Configuration
+To enable this, add tokens for your worker bots in the `.env` file:
+
+```env
+# Main Controller
+DISCORD_TOKEN=...
+
+# Worker Bots (Add as many as you like)
+MISTY_TOKEN=...
+TUKI_TOKEN=...
+JAFREEN_TOKEN=...
+```
+
+**Permissions:**
+Ensure ALL worker bots are invited to your server and have the following permissions in the voice channels:
+- `Connect`
+- `Speak`
 
 ## Tech Stack
 
