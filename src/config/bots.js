@@ -8,50 +8,28 @@ const bots = [
     },
 ];
 
-// Add workers from environment variables
-// Format: WORKER_NAME_TOKEN=token
-// Or specific known ones
-// Misty Token
-if (process.env.MISTY_TOKEN) {
-    bots.push({ name: "Misty", token: process.env.MISTY_TOKEN, role: "worker" });
-}
+// Dynamically load worker bots from environment variables
+// Looks for any env var ending in _TOKEN (excluding DISCORD_TOKEN)
+// Example: MISTY_TOKEN -> Name: Misty, Role: worker
 
-// Tuki Token
-if (process.env.TUKI_TOKEN) {
-    bots.push({ name: "Tuki", token: process.env.TUKI_TOKEN, role: "worker" });
-}
+Object.keys(process.env).forEach((key) => {
+    if (key.endsWith("_TOKEN") && key !== "DISCORD_TOKEN") {
+        const token = process.env[key];
+        // Extract name: MISTY_TOKEN -> Misty
+        const name = key
+            .replace("_TOKEN", "")
+            .toLowerCase()
+            .replace(/^\w/, (c) => c.toUpperCase()); // Title Case
 
-// Jafraan token
-if (process.env.JAFRAAN_TOKEN) {
-    bots.push({ name: "Jafraan", token: process.env.JAFRAAN_TOKEN, role: "worker" });
-}
-
-// Kalojam Token
-if (process.env.KALOJAM_TOKEN) {
-    bots.push({ name: "Kalojam", token: process.env.KALOJAM_TOKEN, role: "worker" });
-}
-
-// Chomchom Token
-if (process.env.CHOMCHOM_TOKEN) {
-    bots.push({ name: "Chomchom", token: process.env.CHOMCHOM_TOKEN, role: "worker" });
-}
-
-// Jafreen Token
-if (process.env.JAFREEN_TOKEN) {
-    bots.push({ name: "Jafreen", token: process.env.JAFREEN_TOKEN, role: "worker" });
-}
-
-// Chini Token
-if (process.env.CHINI_TOKEN) {
-    bots.push({ name: "Chini", token: process.env.CHINI_TOKEN, role: "worker" });
-}
-
-// Bundle Token
-if (process.env.BUNDLE_TOKEN) {
-    bots.push({ name: "Bundle", token: process.env.BUNDLE_TOKEN, role: "worker" });
-}
-
-// Also support a generic list if needed, but for now explicit names are fun
-// You can also parse a JSON string from an env var if you want dynamic scaling
+        // Avoid duplicates if user manually added them (though we are replacing the manual list)
+        if (!bots.find((b) => b.name === name)) {
+            bots.push({
+                name: name,
+                token: token,
+                role: "worker",
+            });
+        }
+    }
+});
 
 module.exports = bots;

@@ -23,6 +23,67 @@ const workerPool = require("./workerPool");
 
 const { findYtDlpPath } = require("../utils/ytDlpHelper");
 
+// --- Helpers ---
+
+async function validateInteraction(interaction) {
+  const voiceChannel = interaction.member.voice.channel;
+  if (!voiceChannel) {
+    await interaction.reply({
+      content: "You must be in a voice channel.",
+      ephemeral: true,
+    });
+    return null;
+  }
+  return voiceChannel;
+}
+
+async function assignWorker(interaction, voiceChannel) {
+  // Allocate a worker
+  const worker = workerPool.allocateWorker(interaction.guild.id, voiceChannel.id);
+  if (!worker) {
+    await interaction.editReply(
+      "🚫 **All members of the Heavenly Council of Fur are currently busy!** Please try again later."
+    );
+    return null;
+  }
+
+  // Check permissions
+  try {
+    const workerChannel = await worker.client.channels.fetch(voiceChannel.id);
+    const workerPermissions = workerChannel.permissionsFor(worker.client.user);
+    if (
+      !workerPermissions ||
+      !workerPermissions.has("Connect") ||
+      !workerPermissions.has("Speak")
+    ) {
+      await interaction.editReply(
+        `🚫 **${worker.name}** does not have permissions to join your channel!`
+      );
+      workerPool.releaseWorker(voiceChannel.id);
+      return null;
+    }
+  } catch (err) {
+    await interaction.editReply(
+      `🚫 **${worker.name}** cannot access this channel (Is it invited to the server?).`
+    );
+    workerPool.releaseWorker(voiceChannel.id);
+    return null;
+  }
+
+  // Flavor text
+  if (worker.role === "worker") {
+    await interaction.channel
+      .send(
+        `🐾 **Jasper** is busy, summoning **${worker.name}** to handle the beats!`
+      )
+      .catch(() => { });
+  }
+
+  return worker;
+}
+
+// --- End Helpers ---
+
 // Helper: Get the path to the local yt-dlp.exe
 function getYtDlpPath() {
   const path = findYtDlpPath();
@@ -459,14 +520,8 @@ async function playSong(queue) {
 }
 
 async function enqueue(interaction, query) {
-  const voiceChannel = interaction.member.voice.channel;
-  if (!voiceChannel) {
-    await interaction.reply({
-      content: "You must be in a voice channel to summon Jasper.",
-      ephemeral: true,
-    });
-    return;
-  }
+  const voiceChannel = await validateInteraction(interaction);
+  if (!voiceChannel) return;
 
   // Check permissions (Controller's permissions are enough to check generally, 
   // but ideally we check the worker's permissions later. For now, assume if Jasper can see it, it's fine.)
@@ -491,28 +546,8 @@ async function enqueue(interaction, query) {
     let queue = getQueue(voiceChannel.id);
 
     if (!queue) {
-      // Allocate a worker
-      const worker = workerPool.allocateWorker(interaction.guild.id, voiceChannel.id);
-      if (!worker) {
-        await interaction.editReply("🚫 **All members of the Heavenly Council of Fur are currently busy!** Please try again later.");
-        return;
-      }
-
-      // Check worker permissions using the worker's client view
-      try {
-        const workerChannel = await worker.client.channels.fetch(voiceChannel.id);
-        const workerPermissions = workerChannel.permissionsFor(worker.client.user);
-        if (!workerPermissions || !workerPermissions.has("Connect") || !workerPermissions.has("Speak")) {
-          await interaction.editReply(`🚫 **${worker.name}** does not have permissions to join your channel!`);
-          workerPool.releaseWorker(voiceChannel.id);
-          return;
-        }
-      } catch (err) {
-        // If fetch fails, the bot likely isn't in the guild or can't see the channel
-        await interaction.editReply(`🚫 **${worker.name}** cannot access this channel (Is it invited to the server?).`);
-        workerPool.releaseWorker(voiceChannel.id);
-        return;
-      }
+      const worker = await assignWorker(interaction, voiceChannel);
+      if (!worker) return;
 
       // Flavor text
       if (worker.role === 'worker') {
@@ -547,14 +582,8 @@ async function enqueue(interaction, query) {
 }
 
 async function enqueuePlaylist(interaction, url) {
-  const voiceChannel = interaction.member.voice.channel;
-  if (!voiceChannel) {
-    await interaction.reply({
-      content: "You must be in a voice channel.",
-      ephemeral: true,
-    });
-    return;
-  }
+  const voiceChannel = await validateInteraction(interaction);
+  if (!voiceChannel) return;
 
   const permissions = voiceChannel.permissionsFor(interaction.client.user);
   if (
@@ -591,25 +620,8 @@ async function enqueuePlaylist(interaction, url) {
 
     let queue = getQueue(voiceChannel.id);
     if (!queue) {
-      // Allocate a worker
-      const worker = workerPool.allocateWorker(interaction.guild.id, voiceChannel.id);
-      if (!worker) {
-        await interaction.editReply("🚫 **All members of the Heavenly Council of Fur are currently busy!** Please try again later.");
-        return;
-      }
-
-      // Check worker permissions using the worker's client view
-      try {
-        const workerChannel = await worker.client.channels.fetch(voiceChannel.id);
-        const workerPermissions = workerChannel.permissionsFor(worker.client.user);
-        if (!workerPermissions || !workerPermissions.has("Connect") || !workerPermissions.has("Speak")) {
-          await interaction.editReply(`🚫 **${worker.name}** does not have permissions to join your channel!`);
-          return;
-        }
-      } catch (err) {
-        await interaction.editReply(`🚫 **${worker.name}** cannot access this channel (Is it invited to the server?).`);
-        return;
-      }
+      const worker = await assignWorker(interaction, voiceChannel);
+      if (!worker) return;
 
       // Flavor text
       if (worker.role === 'worker') {
@@ -679,11 +691,8 @@ async function toggleAutoplay(interaction) {
 }
 
 async function skip(interaction) {
-  const voiceChannel = interaction.member.voice.channel;
-  if (!voiceChannel) {
-    await interaction.reply({ content: "You must be in a voice channel.", ephemeral: true });
-    return;
-  }
+  const voiceChannel = await validateInteraction(interaction);
+  if (!voiceChannel) return;
   const queue = getQueue(voiceChannel.id);
   if (!queue || !queue.nowPlaying) {
     await interaction.reply({
@@ -697,11 +706,8 @@ async function skip(interaction) {
 }
 
 async function stop(interaction) {
-  const voiceChannel = interaction.member.voice.channel;
-  if (!voiceChannel) {
-    await interaction.reply({ content: "You must be in a voice channel.", ephemeral: true });
-    return;
-  }
+  const voiceChannel = await validateInteraction(interaction);
+  if (!voiceChannel) return;
   const queue = getQueue(voiceChannel.id);
   if (!queue) {
     await interaction.reply({
@@ -710,7 +716,6 @@ async function stop(interaction) {
     });
     return;
   }
-  queue.songs = [];
   queue.songs = [];
   setVoiceStatus(queue.worker.client, queue.voiceChannelId, "");
   queue.player.stop(true);
@@ -723,11 +728,8 @@ async function stop(interaction) {
 }
 
 async function pause(interaction) {
-  const voiceChannel = interaction.member.voice.channel;
-  if (!voiceChannel) {
-    await interaction.reply({ content: "You must be in a voice channel.", ephemeral: true });
-    return;
-  }
+  const voiceChannel = await validateInteraction(interaction);
+  if (!voiceChannel) return;
   const queue = getQueue(voiceChannel.id);
   if (!queue || !queue.nowPlaying) {
     await interaction.reply({
@@ -742,11 +744,8 @@ async function pause(interaction) {
 }
 
 async function resume(interaction) {
-  const voiceChannel = interaction.member.voice.channel;
-  if (!voiceChannel) {
-    await interaction.reply({ content: "You must be in a voice channel.", ephemeral: true });
-    return;
-  }
+  const voiceChannel = await validateInteraction(interaction);
+  if (!voiceChannel) return;
   const queue = getQueue(voiceChannel.id);
   if (!queue || !queue.nowPlaying) {
     await interaction.reply({
@@ -773,11 +772,8 @@ function formatDuration(seconds) {
 }
 
 async function showQueue(interaction) {
-  const voiceChannel = interaction.member.voice.channel;
-  if (!voiceChannel) {
-    await interaction.reply({ content: "You must be in a voice channel.", ephemeral: true });
-    return;
-  }
+  const voiceChannel = await validateInteraction(interaction);
+  if (!voiceChannel) return;
   const queue = getQueue(voiceChannel.id);
   if (!queue || (!queue.nowPlaying && queue.songs.length === 0)) {
     await interaction.reply("The queue is empty.");
@@ -813,11 +809,8 @@ async function showQueue(interaction) {
 }
 
 async function nowPlaying(interaction) {
-  const voiceChannel = interaction.member.voice.channel;
-  if (!voiceChannel) {
-    await interaction.reply({ content: "You must be in a voice channel.", ephemeral: true });
-    return;
-  }
+  const voiceChannel = await validateInteraction(interaction);
+  if (!voiceChannel) return;
   const queue = getQueue(voiceChannel.id);
   if (!queue || !queue.nowPlaying) {
     await interaction.reply("Nothing is currently playing.");
