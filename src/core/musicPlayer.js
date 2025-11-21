@@ -151,11 +151,41 @@ function getQueue(voiceChannelId) {
   return queues.get(voiceChannelId);
 }
 
+function cleanupWorkerOldQueues(worker) {
+  // Find any queues that belong to this worker
+  for (const [channelId, queue] of queues.entries()) {
+    if (queue.worker.name === worker.name) {
+      logger.info(
+        `[Cleanup] Found old queue for ${worker.name} in channel ${channelId}, cleaning up before reassignment`
+      );
+
+      // Clear idle timeout
+      if (queue.idleTimeout) {
+        clearTimeout(queue.idleTimeout);
+      }
+
+      // Clear voice status
+      setVoiceStatus(worker.client, channelId, "");
+
+      // Destroy connection
+      if (queue.connection) {
+        queue.connection.destroy();
+      }
+
+      // Remove from map
+      queues.delete(channelId);
+    }
+  }
+}
+
 async function createQueue(interaction, worker, track) {
   const voiceChannel = interaction.member.voice.channel;
   if (!voiceChannel) {
     throw new Error("You must be in a voice channel to use this command.");
   }
+
+  // CRITICAL: Clean up any old queues this worker might have
+  cleanupWorkerOldQueues(worker);
 
   // Fetch the channel using the worker's client to get the correct adapter creator
   const workerChannel = await worker.client.channels.fetch(voiceChannel.id);
