@@ -65,14 +65,14 @@ async function assignWorker(interaction: ChatInputCommandInteraction, voiceChann
       !workerPermissions.has("Speak")
     ) {
       await interaction.editReply(
-        `🚫 ** ${worker.name}** does not have permissions to join your channel!`
+        `🚫 **${worker.name}** does not have permissions to join your channel!`
       );
       workerPool.releaseWorker(voiceChannel.id);
       return null;
     }
   } catch {
     await interaction.editReply(
-      `🚫 ** ${worker.name}** cannot access this channel(Is it invited to the server ?).`
+      `🚫 **${worker.name}** cannot access this channel (Is it invited to the server?).`
     );
     workerPool.releaseWorker(voiceChannel.id);
     return null;
@@ -83,7 +83,7 @@ async function assignWorker(interaction: ChatInputCommandInteraction, voiceChann
     if (interaction.channel && interaction.channel.isSendable()) {
       await interaction.channel
         .send(
-          `🐾 ** Jasper ** is busy, summoning ** ${worker.name}** to handle the beats!`
+          `🐾 **Jasper** is busy, summoning **${worker.name}** to handle the beats!`
         )
         .catch(() => { });
     }
@@ -204,7 +204,7 @@ async function createQueue(interaction: ChatInputCommandInteraction, worker: Wor
           const channelName = channel && 'name' in channel ? (channel as { name: string }).name : "the voice channel";
           queue.textChannel
             .send(
-              `🎶 ** ${queue.worker.name}** has finished the queue in ** ${channelName}** !Staying connected for 5 more minutes.`
+              `🎶 **${queue.worker.name}** has finished the queue in **${channelName}**! Staying connected for 5 more minutes.`
             )
             .catch((err: unknown) =>
               logger.warn(`Failed to send finished message: ${err instanceof Error ? err.message : String(err)} `)
@@ -216,7 +216,7 @@ async function createQueue(interaction: ChatInputCommandInteraction, worker: Wor
           if (queue.textChannel.isSendable()) {
             queue.textChannel
               .send(
-                `🎶 ** ${queue.worker.name}** has finished the queue! Staying connected for 5 more minutes.`
+                `🎶 **${queue.worker.name}** has finished the queue! Staying connected for 5 more minutes.`
               )
               .catch((err: unknown) =>
                 logger.warn(`Failed to send finished message: ${err instanceof Error ? err.message : String(err)} `)
@@ -337,11 +337,11 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string):
     if (queue.songs.length === 1 && !queue.nowPlaying) {
       await playSong(queue);
       await interaction.editReply(
-        `✅ ** ${queue.worker.name}** added to queue in ** #${channelName}**: [${track.title}](${track.url})`
+        `✅ **${queue.worker.name}** added to queue in **#${channelName}**: [${track.title}](${track.url})`
       );
     } else {
       await interaction.editReply(
-        `✅ ** ${queue.worker.name}** queued in ** #${channelName}**: [${track.title}](${track.url})`
+        `✅ **${queue.worker.name}** queued in **#${channelName}**: [${track.title}](${track.url})`
       );
     }
   } catch (error: unknown) {

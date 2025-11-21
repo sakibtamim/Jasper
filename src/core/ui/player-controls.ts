@@ -16,7 +16,7 @@ export function createControlButtons(autoplay: boolean = false): ActionRowBuilde
             .setStyle(ButtonStyle.Danger),
         new ButtonBuilder()
             .setCustomId("toggle_autoplay")
-            .setLabel(`🔄 Autoplay: ${autoplay ? "ON" : "OFF"}`)
+            .setLabel(`Autoplay: ${autoplay ? "ON" : "OFF"}`)
             .setStyle(autoplay ? ButtonStyle.Success : ButtonStyle.Secondary)
     );
 
@@ -26,6 +26,6 @@ export function createControlButtons(autoplay: boolean = false): ActionRowBuilde
 export function getAutoplayButton(autoplay: boolean): ButtonBuilder {
     return new ButtonBuilder()
         .setCustomId("toggle_autoplay")
-        .setLabel(`🔄 Autoplay: ${autoplay ? "ON" : "OFF"}`)
+        .setLabel(`Autoplay: ${autoplay ? "ON" : "OFF"}`)
         .setStyle(autoplay ? ButtonStyle.Success : ButtonStyle.Secondary);
 }
