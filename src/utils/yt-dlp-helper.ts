@@ -13,9 +13,8 @@ const __dirname = path.dirname(__filename);
  * 
  * @returns {string|null} Absolute path to the binary if found, otherwise null.
  */
-export function findYtDlpPath() {
+export function findYtDlpPath(): string | null {
     const isWin = process.platform === 'win32';
-    const assetName = isWin ? 'yt-dlp.exe' : 'yt-dlp';
     const candidates = isWin ? ['yt-dlp.exe', 'yt-dlp'] : ['yt-dlp'];
 
     // 1. Try to find system-installed yt-dlp
@@ -30,7 +29,7 @@ export function findYtDlpPath() {
                 if (p) return p;
             }
         }
-    } catch (e) {
+    } catch {
         // Ignore system check failure
     }
 
