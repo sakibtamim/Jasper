@@ -1,8 +1,8 @@
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
-const workerPool = require("../core/workerPool");
-const musicPlayer = require("../core/musicPlayer");
+import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import workerPool from "../core/worker-pool.js";
+import musicPlayer from "../core/music-player.js";
 
-module.exports = {
+export default {
     data: new SlashCommandBuilder()
         .setName("music-status")
         .setDescription("Shows which HCoF cats are currently playing music and where."),

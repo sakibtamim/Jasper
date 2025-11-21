@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Jasper – a Discord music bot themed after a big black Persian cat.",
   "main": "src/index.js",
+  "type": "module",
   "scripts": {
     "start": "node src/index.js",
     "dev": "node src/index.js",

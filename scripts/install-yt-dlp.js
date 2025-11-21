@@ -1,8 +1,14 @@
 #!/usr/bin/env node
-const https = require('https');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+import https from 'https';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import { spawnSync } from 'child_process';
+import { fileURLToPath } from 'url';
+import { findYtDlpPath } from '../src/utils/yt-dlp-helper.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Allow skipping the download via env var
 if (process.env.YT_DLP_SKIP_POSTINSTALL) {
@@ -18,7 +24,6 @@ const assetName = isWin ? 'yt-dlp.exe' : 'yt-dlp';
 const downloadUrl = `https://github.com/yt-dlp/yt-dlp/releases/latest/download/${assetName}`;
 const outPath = path.join(root, assetName);
 const tmpPath = outPath + '.download';
-const { spawnSync } = require('child_process');
 
 function followRedirect(url, opts, max = 10) {
   return new Promise((resolve, reject) => {
@@ -40,7 +45,6 @@ function followRedirect(url, opts, max = 10) {
 
 (async () => {
   console.log(`Postinstall: Fetching yt-dlp for platform: ${process.platform}`);
-  const { findYtDlpPath } = require('../src/utils/ytDlpHelper');
   const existingPath = findYtDlpPath();
   if (existingPath) {
     console.log(`yt-dlp found at ${existingPath} — skipping download`);

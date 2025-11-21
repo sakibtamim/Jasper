@@ -1,41 +1,40 @@
-const { spawn, spawnSync } = require("child_process");
-const path = require("path");
-const fs = require("fs");
-const {
+import {
   joinVoiceChannel,
   createAudioPlayer,
-  createAudioResource,
   AudioPlayerStatus,
   NoSubscriberBehavior,
-  StreamType,
-} = require("@discordjs/voice");
-const {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  ComponentType,
-} = require("discord.js");
-const ytSearch = require("yt-search");
-const logger = require("./logger");
+} from "@discordjs/voice";
+import { ActionRowBuilder } from "discord.js";
+import logger from "./logger.js";
+import workerPool from "./worker-pool.js";
 
-const queues = new Map(); // Key: voiceChannelId
-const workerPool = require("./workerPool");
+import {
+  validateInteraction,
+  setVoiceStatus,
+  getChannelName,
+  formatDuration,
+} from "./utils/voice-utils.js";
 
-const { findYtDlpPath } = require("../utils/ytDlpHelper");
+import {
+  getQueue,
+  setQueue,
+  deleteQueue,
+  getAllQueues,
+  cleanupWorkerOldQueues,
+  clearAllQueues,
+} from "./audio/queue-manager.js";
+
+import {
+  fetchVideoData,
+  fetchPlaylistData,
+  isUrl,
+} from "./audio/stream-handler.js";
+
+import { playSong, handleAutoplay } from "./audio/playback-engine.js";
+import { getAutoplayButton } from "./ui/player-controls.js";
+import ytSearch from "yt-search";
 
 // --- Helpers ---
-
-async function validateInteraction(interaction) {
-  const voiceChannel = interaction.member.voice.channel;
-  if (!voiceChannel) {
-    await interaction.reply({
-      content: "You must be in a voice channel.",
-      ephemeral: true,
-    });
-    return null;
-  }
-  return voiceChannel;
-}
 
 async function assignWorker(interaction, voiceChannel) {
   // Allocate a worker
@@ -79,48 +78,10 @@ async function assignWorker(interaction, voiceChannel) {
       .send(
         `🐾 **Jasper** is busy, summoning **${worker.name}** to handle the beats!`
       )
-      .catch(() => {});
+      .catch(() => { });
   }
 
   return worker;
-}
-
-// --- End Helpers ---
-
-// Helper: Get the path to the local yt-dlp.exe
-function getYtDlpPath() {
-  const path = findYtDlpPath();
-  if (path) return path;
-
-  // If nothing was found, throw an informative error
-  throw new Error(
-    "yt-dlp not found. Please install yt-dlp and ensure it is on your PATH, or add a static yt-dlp binary next to the app."
-  );
-}
-
-async function setVoiceStatus(client, channelId, status) {
-  if (!channelId) return;
-
-  try {
-    // Truncate to 500 chars just in case
-    const safeStatus = status.substring(0, 500);
-
-    // Use Raw API: /channels/{id}/voice-status
-    await client.rest.put(`/channels/${channelId}/voice-status`, {
-      body: { status: safeStatus },
-    });
-  } catch (error) {
-    logger.warn(`Failed to set voice channel status: ${error.message}`);
-  }
-}
-
-async function getChannelName(client, channelId) {
-  try {
-    const channel = await client.channels.fetch(channelId);
-    return channel ? channel.name : "unknown channel";
-  } catch {
-    return "unknown channel";
-  }
 }
 
 async function validateAndCleanupQueue(interaction, voiceChannelId) {
@@ -147,44 +108,13 @@ async function validateAndCleanupQueue(interaction, voiceChannelId) {
     if (queue.idleTimeout) clearTimeout(queue.idleTimeout);
     setVoiceStatus(queue.worker.client, queue.voiceChannelId, "");
     if (queue.connection) queue.connection.destroy();
-    queues.delete(queue.voiceChannelId);
+    deleteQueue(queue.voiceChannelId);
     workerPool.releaseWorker(queue.voiceChannelId);
 
     return null; // Force creation of new queue
   }
 
   return queue;
-}
-
-function getQueue(voiceChannelId) {
-  return queues.get(voiceChannelId);
-}
-
-function cleanupWorkerOldQueues(worker) {
-  // Find any queues that belong to this worker
-  for (const [channelId, queue] of queues.entries()) {
-    if (queue.worker.name === worker.name) {
-      logger.info(
-        `[Cleanup] Found old queue for ${worker.name} in channel ${channelId}, cleaning up before reassignment`
-      );
-
-      // Clear idle timeout
-      if (queue.idleTimeout) {
-        clearTimeout(queue.idleTimeout);
-      }
-
-      // Clear voice status
-      setVoiceStatus(worker.client, channelId, "");
-
-      // Destroy connection
-      if (queue.connection) {
-        queue.connection.destroy();
-      }
-
-      // Remove from map
-      queues.delete(channelId);
-    }
-  }
 }
 
 async function createQueue(interaction, worker, track) {
@@ -292,7 +222,7 @@ async function createQueue(interaction, worker, track) {
         if (queue.connection) {
           queue.connection.destroy();
         }
-        queues.delete(queue.voiceChannelId);
+        deleteQueue(queue.voiceChannelId);
       }, 5 * 60 * 1000); // 5 minutes
     }
   });
@@ -305,137 +235,8 @@ async function createQueue(interaction, worker, track) {
     }
   });
 
-  queues.set(voiceChannel.id, queue);
+  setQueue(voiceChannel.id, queue);
   return queue;
-}
-
-// Constants for Autoplay
-const AUTOPLAY_SEARCH_QUERIES = [
-  "popular song",
-  "trending song",
-  "top hit song",
-  "best song",
-  "viral song",
-  "new music video",
-  "official music video",
-  "latest song",
-  "hit song",
-  "music video",
-];
-
-const AUTOPLAY_FILTER_KEYWORDS = [
-  "playlist",
-  "mix -",
-  "compilation",
-  "full album",
-];
-
-const AUTOPLAY_POOL_SIZE = 10;
-
-function getAutoplayButton(isEnabled) {
-  return new ButtonBuilder()
-    .setCustomId("toggle_autoplay")
-    .setLabel(`Autoplay: ${isEnabled ? "ON" : "OFF"}`)
-    .setStyle(isEnabled ? ButtonStyle.Success : ButtonStyle.Secondary);
-}
-
-function getRandomMusicQuery() {
-  return AUTOPLAY_SEARCH_QUERIES[
-    Math.floor(Math.random() * AUTOPLAY_SEARCH_QUERIES.length)
-  ];
-}
-
-async function handleAutoplay(queue, lastSong) {
-  try {
-    if (queue.textChannel) {
-      queue.textChannel
-        .send("🔄 **Autoplay:** Finding a new song...")
-        .catch(() => {});
-    }
-
-    // Search for varied music instead of the same song
-    const searchQuery = getRandomMusicQuery();
-    const searchResult = await ytSearch(searchQuery);
-
-    if (!searchResult || !searchResult.videos.length) {
-      if (queue.textChannel)
-        queue.textChannel.send("Could not find a song to autoplay.");
-      return;
-    }
-
-    // Filter out playlists and only get individual videos
-    const individualVideos = searchResult.videos.filter((video) => {
-      const title = video.title.toLowerCase();
-      // Exclude playlists, mixes, and compilations
-      const isExcluded = AUTOPLAY_FILTER_KEYWORDS.some((keyword) =>
-        title.includes(keyword)
-      );
-      return !isExcluded && video.type === "video";
-    });
-
-    if (!individualVideos.length) {
-      if (queue.textChannel)
-        queue.textChannel.send("Could not find a suitable song to autoplay.");
-      return;
-    }
-
-    // Pick a random video from the filtered results
-    const poolSize = Math.min(AUTOPLAY_POOL_SIZE, individualVideos.length);
-    const randomIndex = Math.floor(Math.random() * poolSize);
-    let nextVideo = individualVideos[randomIndex];
-
-    // Ensure we don't play the same song that just finished
-    if (nextVideo.url === lastSong.url && individualVideos.length > 1) {
-      const alternateIndex = (randomIndex + 1) % poolSize;
-      nextVideo = individualVideos[alternateIndex];
-    }
-
-    const track = {
-      title: nextVideo.title,
-      url: nextVideo.url,
-      durationInSec: nextVideo.seconds,
-      requestedBy: "Jasper (Autoplay)",
-    };
-
-    queue.songs.push(track);
-    playSong(queue);
-  } catch (error) {
-    logger.error(`Autoplay error: ${error.message}`);
-    if (queue.textChannel)
-      queue.textChannel.send("❌ Failed to autoplay next song.");
-  }
-}
-
-function isUrl(text) {
-  return text.includes("youtube.com") || text.includes("youtu.be");
-}
-
-function fetchVideoData(url) {
-  return new Promise((resolve, reject) => {
-    const ytDlpPath = getYtDlpPath();
-    // -J: Dump JSON metadata
-    const args = ["-J", url];
-
-    const process = spawn(ytDlpPath, args);
-    let data = "";
-    let error = "";
-
-    process.stdout.on("data", (chunk) => (data += chunk));
-    process.stderr.on("data", (chunk) => (error += chunk));
-
-    process.on("close", (code) => {
-      if (code !== 0) {
-        reject(new Error(`yt-dlp failed: ${error}`));
-      } else {
-        try {
-          const parsed = JSON.parse(data);
-          resolve(parsed);
-        } catch (err) {
-          reject(new Error("Failed to parse video JSON"));
-        }
-      }
-    });
-  });
 }
 
 async function resolveTrack(query) {
@@ -465,199 +266,12 @@ async function resolveTrack(query) {
   throw new Error("No results found on YouTube.");
 }
 
-function fetchPlaylistData(url) {
-  return new Promise((resolve, reject) => {
-    const ytDlpPath = getYtDlpPath();
-    const args = ["--flat-playlist", "-J", url];
-
-    const process = spawn(ytDlpPath, args);
-    let data = "";
-    let error = "";
-
-    process.stdout.on("data", (chunk) => (data += chunk));
-    process.stderr.on("data", (chunk) => (error += chunk));
-
-    process.on("close", (code) => {
-      if (code !== 0) {
-        reject(new Error(`yt-dlp failed: ${error}`));
-      } else {
-        try {
-          const parsed = JSON.parse(data);
-          resolve(parsed);
-        } catch (err) {
-          reject(new Error("Failed to parse playlist JSON"));
-        }
-      }
-    });
-  });
-}
-
-async function playSong(queue) {
-  const song = queue.songs[0];
-  if (!song) return;
-
-  try {
-    logger.info(`Attempting to stream with yt-dlp: ${song.title}`);
-
-    const ytDlpPath = getYtDlpPath();
-    const args = ["-f", "bestaudio", "-o", "-", "-q", song.url];
-
-    const ytDlpProcess = spawn(ytDlpPath, args);
-
-    ytDlpProcess.on("error", (err) => {
-      logger.error(`Failed to spawn yt-dlp: ${err.message}`);
-      queue.player.emit("error", new Error("yt-dlp spawn failed"));
-    });
-
-    const resource = createAudioResource(ytDlpProcess.stdout, {
-      inputType: StreamType.Arbitrary,
-      inlineVolume: false,
-    });
-
-    queue.player.play(resource);
-    queue.nowPlaying = song;
-
-    logger.info(`Now playing in ${queue.guildId}: ${song.title}`);
-
-    setVoiceStatus(
-      queue.worker.client,
-      queue.voiceChannelId,
-      `[Playing] ${song.title}`
-    );
-
-    // -------------------------------------------------------
-    // NEW: BUTTONS SETUP
-    // -------------------------------------------------------
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("pause_resume")
-        .setLabel("⏸️ Pause")
-        .setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder()
-        .setCustomId("skip")
-        .setLabel("⏭️ Skip")
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId("stop")
-        .setLabel("⏹️ Stop")
-        .setStyle(ButtonStyle.Danger),
-      getAutoplayButton(queue.autoplay)
-    );
-
-    let playingMessage;
-    if (queue.textChannel) {
-      const channelName = await getChannelName(
-        queue.worker.client,
-        queue.voiceChannelId
-      );
-      playingMessage = await queue.textChannel
-        .send({
-          content: `▶️ **${queue.worker.name}** is now playing in **#${channelName}**: [${song.title}](${song.url})`,
-          components: [row],
-        })
-        .catch(() => {});
-      if (playingMessage) {
-        queue.playingMessage = playingMessage;
-      }
-    }
-
-    // Setup Collector to handle button clicks
-    if (playingMessage) {
-      const collector = playingMessage.createMessageComponentCollector({
-        componentType: ComponentType.Button,
-        time: song.durationInSec > 0 ? song.durationInSec * 1000 : 3600000, // Listen until song ends
-      });
-
-      collector.on("collect", async (i) => {
-        // Security: Ensure clicker is in the same voice channel
-        if (
-          !i.member.voice.channelId ||
-          i.member.voice.channelId !== queue.voiceChannelId
-        ) {
-          return i.reply({
-            content: "You need to be in the voice channel to control music!",
-            ephemeral: true,
-          });
-        }
-
-        if (i.customId === "pause_resume") {
-          if (queue.player.state.status === AudioPlayerStatus.Paused) {
-            queue.player.unpause();
-            setVoiceStatus(
-              queue.worker.client,
-              queue.voiceChannelId,
-              `[Playing] ${queue.nowPlaying.title}`
-            );
-            // Update button to show "Pause" again
-            const newRow = ActionRowBuilder.from(playingMessage.components[0]);
-            newRow.components[0]
-              .setLabel("⏸️ Pause")
-              .setStyle(ButtonStyle.Secondary);
-            await i.update({ components: [newRow] });
-          } else {
-            queue.player.pause();
-            setVoiceStatus(
-              queue.worker.client,
-              queue.voiceChannelId,
-              `[PAUSED] ${queue.nowPlaying.title}`
-            );
-            // Update button to show "Resume"
-            const newRow = ActionRowBuilder.from(playingMessage.components[0]);
-            newRow.components[0]
-              .setLabel("▶️ Resume")
-              .setStyle(ButtonStyle.Success);
-            await i.update({ components: [newRow] });
-          }
-        } else if (i.customId === "skip") {
-          await i.reply({ content: `⏭️ **Skipped** by ${i.user.username}` });
-          queue.player.stop();
-          collector.stop();
-        } else if (i.customId === "stop") {
-          await i.reply({ content: `⏹️ **Stopped** by ${i.user.username}` });
-          queue.stopping = true;
-          setVoiceStatus(queue.worker.client, queue.voiceChannelId, "");
-          queue.songs = [];
-          queue.player.stop();
-          if (queue.connection) queue.connection.destroy();
-          queues.delete(queue.voiceChannelId);
-          workerPool.releaseWorker(queue.voiceChannelId);
-          collector.stop();
-        } else if (i.customId === "toggle_autoplay") {
-          queue.autoplay = !queue.autoplay;
-          const newRow = ActionRowBuilder.from(playingMessage.components[0]);
-          // Replace the last component (autoplay button) with the updated one
-          newRow.components.pop();
-          newRow.addComponents(getAutoplayButton(queue.autoplay));
-          await i.update({ components: [newRow] });
-        }
-      });
-
-      // Disable buttons when the song ends
-      collector.on("end", () => {
-        try {
-          const disabledRow = ActionRowBuilder.from(
-            playingMessage.components[0]
-          );
-          disabledRow.components.forEach((btn) => btn.setDisabled(true));
-          playingMessage.edit({ components: [disabledRow] }).catch(() => {});
-        } catch (e) {
-          // Message might have been deleted, ignore
-        }
-      });
-    }
-  } catch (error) {
-    logger.error(`Failed to play song: ${error.message}`);
-    queue.songs.shift();
-    playSong(queue);
-  }
-}
+// --- Exported Functions ---
 
 async function enqueue(interaction, query) {
   const voiceChannel = await validateInteraction(interaction);
   if (!voiceChannel) return;
 
-  // Check permissions (Controller's permissions are enough to check generally,
-  // but ideally we check the worker's permissions later. For now, assume if Jasper can see it, it's fine.)
   const permissions = voiceChannel.permissionsFor(interaction.client.user);
   if (
     !permissions ||
@@ -682,11 +296,9 @@ async function enqueue(interaction, query) {
       const worker = await assignWorker(interaction, voiceChannel);
       if (!worker) return;
 
-      // Flavor text handled by assignWorker
       queue = await createQueue(interaction, worker, track);
     }
 
-    // Clear idle timeout if song is added while in idle state
     if (queue.idleTimeout) {
       clearTimeout(queue.idleTimeout);
       queue.idleTimeout = null;
@@ -708,7 +320,6 @@ async function enqueue(interaction, query) {
 
     if (queue.songs.length === 1 && !queue.nowPlaying) {
       await playSong(queue);
-      // Don't send duplicate "Now playing" message here - playSong() already sends one with controls
       await interaction.editReply(
         `✅ **${queue.worker.name}** added to queue in **#${channelName}**: [${track.title}](${track.url})`
       );
@@ -747,7 +358,6 @@ async function enqueuePlaylist(interaction, url) {
     let entries = data.entries || (data._type === "playlist" ? [] : [data]);
 
     let truncated = false;
-    // Feature 2: Truncate autogenerated playlists (e.g. "Mix - ...")
     if (data.title && data.title.startsWith("Mix -") && entries.length > 50) {
       entries = entries.slice(0, 50);
       truncated = true;
@@ -765,7 +375,6 @@ async function enqueuePlaylist(interaction, url) {
       const worker = await assignWorker(interaction, voiceChannel);
       if (!worker) return;
 
-      // Flavor text handled by assignWorker
       queue = await createQueue(interaction, worker, null);
     }
 
@@ -776,7 +385,6 @@ async function enqueuePlaylist(interaction, url) {
       requestedBy: interaction.user.tag,
     }));
 
-    // Clear idle timeout if playlist is added while in idle state
     if (queue.idleTimeout) {
       clearTimeout(queue.idleTimeout);
       queue.idleTimeout = null;
@@ -793,8 +401,7 @@ async function enqueuePlaylist(interaction, url) {
 
     const truncatedMsg = truncated ? " (truncated to 50 for performance)" : "";
     await interaction.editReply(
-      `✅ **Added ${songsToAdd.length} songs** from playlist: **${
-        data.title || "YouTube Playlist"
+      `✅ **Added ${songsToAdd.length} songs** from playlist: **${data.title || "YouTube Playlist"
       }**${truncatedMsg}`
     );
   } catch (error) {
@@ -823,11 +430,9 @@ async function toggleAutoplay(interaction) {
 
   queue.autoplay = !queue.autoplay;
 
-  // Update the UI button if a playing message exists
   if (queue.playingMessage) {
     try {
       const newRow = ActionRowBuilder.from(queue.playingMessage.components[0]);
-      // Assuming autoplay button is the last one
       newRow.components.pop();
       newRow.addComponents(getAutoplayButton(queue.autoplay));
       await queue.playingMessage.edit({ components: [newRow] });
@@ -878,7 +483,7 @@ async function stop(interaction) {
   if (queue.connection) {
     queue.connection.destroy();
   }
-  queues.delete(queue.voiceChannelId);
+  deleteQueue(queue.voiceChannelId);
   workerPool.releaseWorker(queue.voiceChannelId);
   await interaction.reply(
     `⏹️ **${queue.worker.name}** stopped playback in **#${channelName}** and cleared the queue.`
@@ -937,18 +542,6 @@ async function resume(interaction) {
   );
 }
 
-function formatDuration(seconds) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  if (h > 0) {
-    return `${h}:${m.toString().padStart(2, "0")}:${s
-      .toString()
-      .padStart(2, "0")}`;
-  }
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
 async function showQueue(interaction) {
   const voiceChannel = await validateInteraction(interaction);
   if (!voiceChannel) return;
@@ -962,8 +555,7 @@ async function showQueue(interaction) {
 
   if (queue.nowPlaying) {
     lines.push(
-      `▶️ **Now:** [${queue.nowPlaying.title}](${
-        queue.nowPlaying.url
+      `▶️ **Now:** [${queue.nowPlaying.title}](${queue.nowPlaying.url
       }) — \`${formatDuration(queue.nowPlaying.durationInSec)}\``
     );
   }
@@ -1000,32 +592,7 @@ async function nowPlaying(interaction) {
   );
 }
 
-function clearAllQueues() {
-  logger.info(`[CatastrophicReset] Clearing ${queues.size} active queues`);
-
-  for (const [channelId, queue] of queues.entries()) {
-    // Clear idle timeout
-    if (queue.idleTimeout) {
-      clearTimeout(queue.idleTimeout);
-    }
-
-    // Clear voice status
-    setVoiceStatus(queue.worker.client, channelId, "");
-
-    // Destroy connection
-    if (queue.connection) {
-      queue.connection.destroy();
-    }
-
-    // Release worker
-    workerPool.releaseWorker(channelId);
-  }
-
-  queues.clear();
-  logger.info("[CatastrophicReset] All queues cleared");
-}
-
-module.exports = {
+export default {
   enqueue,
   enqueuePlaylist,
   toggleAutoplay,
@@ -1035,6 +602,6 @@ module.exports = {
   resume,
   showQueue,
   nowPlaying,
-  getQueues: () => queues, // Export queues for music-status command
+  getQueues: getAllQueues,
   clearAllQueues,
 };

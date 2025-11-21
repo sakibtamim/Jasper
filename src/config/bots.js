@@ -1,4 +1,5 @@
-require("dotenv").config();
+import dotenv from "dotenv";
+dotenv.config();
 
 const bots = [
     {
@@ -31,4 +32,4 @@ Object.keys(process.env).forEach((key) => {
     }
 });
 
-module.exports = bots;
+export default bots;

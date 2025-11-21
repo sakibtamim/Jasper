@@ -1,6 +1,10 @@
-const { spawnSync } = require('child_process');
-const path = require('path');
-const fs = require('fs');
+import { spawnSync } from 'child_process';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Tries to find the yt-dlp binary.
@@ -9,7 +13,7 @@ const fs = require('fs');
  * 
  * @returns {string|null} Absolute path to the binary if found, otherwise null.
  */
-function findYtDlpPath() {
+export function findYtDlpPath() {
     const isWin = process.platform === 'win32';
     const assetName = isWin ? 'yt-dlp.exe' : 'yt-dlp';
     const candidates = isWin ? ['yt-dlp.exe', 'yt-dlp'] : ['yt-dlp'];
@@ -43,6 +47,4 @@ function findYtDlpPath() {
 
     return null;
 }
-
-module.exports = { findYtDlpPath };
 

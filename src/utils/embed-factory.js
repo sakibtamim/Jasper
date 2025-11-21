@@ -1,13 +1,14 @@
-const { EmbedBuilder } = require("discord.js");
-const { botName, color, accentColor } = require("../../config/config");
+import { EmbedBuilder } from "discord.js";
+import config from "../../config/config.js";
+const { botName, color, accentColor } = config;
 
-function baseEmbed() {
+export function baseEmbed() {
   return new EmbedBuilder()
     .setColor(color)
     .setFooter({ text: botName });
 }
 
-function helpEmbed() {
+export function helpEmbed() {
   return baseEmbed()
     .setTitle("Jasper Help")
     .setDescription("Meow! I'm Jasper, your fluffy music companion. Here are my main commands:")
@@ -23,7 +24,7 @@ function helpEmbed() {
     .setColor(accentColor);
 }
 
-module.exports = {
+export default {
   baseEmbed,
   helpEmbed
 };

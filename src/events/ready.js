@@ -1,7 +1,7 @@
-const { Events, ActivityType } = require("discord.js");
-const logger = require("../core/logger");
+import { Events, ActivityType } from "discord.js";
+import logger from "../core/logger.js";
 
-module.exports = {
+export default {
   name: Events.ClientReady,
   once: true,
   execute(client) {

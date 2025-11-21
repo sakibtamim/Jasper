@@ -1,10 +1,15 @@
-require("dotenv").config();
+import dotenv from "dotenv";
+dotenv.config();
 
-const fs = require("node:fs");
-const path = require("node:path");
-const { Collection } = require("discord.js");
-const logger = require("./core/logger");
-const workerPool = require("./core/workerPool");
+import fs from "node:fs";
+import path from "node:path";
+import { Collection } from "discord.js";
+import logger from "./core/logger.js";
+import workerPool from "./core/worker-pool.js";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 (async () => {
   // 1. Create all bot clients
@@ -27,7 +32,8 @@ const workerPool = require("./core/workerPool");
 
   for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);
-    const command = require(filePath);
+    const commandModule = await import(filePath);
+    const command = commandModule.default;
     if ("data" in command && "execute" in command) {
       client.commands.set(command.data.name, command);
       logger.info(`Loaded command /${command.data.name}`);
@@ -42,7 +48,8 @@ const workerPool = require("./core/workerPool");
 
   for (const file of eventFiles) {
     const filePath = path.join(eventsPath, file);
-    const event = require(filePath);
+    const eventModule = await import(filePath);
+    const event = eventModule.default;
 
     // Register events for the controller
     if (event.once) {

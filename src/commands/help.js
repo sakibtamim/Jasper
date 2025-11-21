@@ -1,7 +1,7 @@
-const { SlashCommandBuilder } = require("discord.js");
-const { helpEmbed } = require("../utils/embedFactory");
+import { SlashCommandBuilder } from "discord.js";
+import { helpEmbed } from "../utils/embed-factory.js";
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName("help")
     .setDescription("Show information about Jasper's commands."),
