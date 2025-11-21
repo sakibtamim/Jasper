@@ -1,14 +1,7 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 
-export function getAutoplayButton(isEnabled) {
-    return new ButtonBuilder()
-        .setCustomId("toggle_autoplay")
-        .setLabel(`Autoplay: ${isEnabled ? "ON" : "OFF"}`)
-        .setStyle(isEnabled ? ButtonStyle.Success : ButtonStyle.Secondary);
-}
-
-export function createControlButtons(autoplayEnabled) {
-    return new ActionRowBuilder().addComponents(
+export function createControlButtons(autoplay: boolean = false): ActionRowBuilder<ButtonBuilder> {
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
             .setCustomId("pause_resume")
             .setLabel("⏸️ Pause")
@@ -21,6 +14,15 @@ export function createControlButtons(autoplayEnabled) {
             .setCustomId("stop")
             .setLabel("⏹️ Stop")
             .setStyle(ButtonStyle.Danger),
-        getAutoplayButton(autoplayEnabled)
+        getAutoplayButton(autoplay)
     );
+
+    return row;
+}
+
+export function getAutoplayButton(autoplay: boolean): ButtonBuilder {
+    return new ButtonBuilder()
+        .setCustomId("toggle_autoplay")
+        .setLabel(`Autoplay: ${autoplay ? "ON" : "OFF"}`)
+        .setStyle(autoplay ? ButtonStyle.Success : ButtonStyle.Secondary);
 }

@@ -1,12 +1,13 @@
+
 import {
   joinVoiceChannel,
   createAudioPlayer,
   AudioPlayerStatus,
   NoSubscriberBehavior,
 } from "@discordjs/voice";
-import { ActionRowBuilder } from "discord.js";
+import { ActionRowBuilder, ChatInputCommandInteraction, VoiceBasedChannel, GuildMember } from "discord.js";
 import logger from "./logger.js";
-import workerPool from "./worker-pool.js";
+import workerPool, { WorkerState } from "./worker-pool.js";
 
 import {
   validateInteraction,
@@ -22,6 +23,8 @@ import {
   getAllQueues,
   cleanupWorkerOldQueues,
   clearAllQueues,
+  Queue,
+  Song,
 } from "./audio/queue-manager.js";
 
 import {
@@ -36,10 +39,10 @@ import ytSearch from "yt-search";
 
 // --- Helpers ---
 
-async function assignWorker(interaction, voiceChannel) {
+async function assignWorker(interaction: ChatInputCommandInteraction, voiceChannel: VoiceBasedChannel): Promise<WorkerState | null> {
   // Allocate a worker
   const worker = workerPool.allocateWorker(
-    interaction.guild.id,
+    interaction.guild!.id,
     voiceChannel.id
   );
   if (!worker) {
@@ -52,7 +55,10 @@ async function assignWorker(interaction, voiceChannel) {
   // Check permissions
   try {
     const workerChannel = await worker.client.channels.fetch(voiceChannel.id);
-    const workerPermissions = workerChannel.permissionsFor(worker.client.user);
+    if (!workerChannel || !workerChannel.isVoiceBased()) {
+      throw new Error("Worker cannot find voice channel");
+    }
+    const workerPermissions = workerChannel.permissionsFor(worker.client.user!);
     if (
       !workerPermissions ||
       !workerPermissions.has("Connect") ||
@@ -64,7 +70,7 @@ async function assignWorker(interaction, voiceChannel) {
       workerPool.releaseWorker(voiceChannel.id);
       return null;
     }
-  } catch (err) {
+  } catch {
     await interaction.editReply(
       `🚫 **${worker.name}** cannot access this channel (Is it invited to the server?).`
     );
@@ -74,17 +80,19 @@ async function assignWorker(interaction, voiceChannel) {
 
   // Flavor text
   if (worker.role === "worker") {
-    await interaction.channel
-      .send(
-        `🐾 **Jasper** is busy, summoning **${worker.name}** to handle the beats!`
-      )
-      .catch(() => { });
+    if (interaction.channel && interaction.channel.isSendable()) {
+      await interaction.channel
+        .send(
+          `🐾 **Jasper** is busy, summoning **${worker.name}** to handle the beats!`
+        )
+        .catch(() => { });
+    }
   }
 
   return worker;
 }
 
-async function validateAndCleanupQueue(interaction, voiceChannelId) {
+async function validateAndCleanupQueue(interaction: ChatInputCommandInteraction, voiceChannelId: string): Promise<Queue | null> {
   const queue = getQueue(voiceChannelId);
 
   if (!queue) return null;
@@ -117,8 +125,13 @@ async function validateAndCleanupQueue(interaction, voiceChannelId) {
   return queue;
 }
 
-async function createQueue(interaction, worker, track) {
-  const voiceChannel = interaction.member.voice.channel;
+async function createQueue(interaction: ChatInputCommandInteraction, worker: WorkerState, _track: Song | null): Promise<Queue> {
+  const member = interaction.member;
+  if (!(member instanceof GuildMember)) {
+    throw new Error("This command can only be used in a guild.");
+  }
+
+  const voiceChannel = member.voice.channel;
   if (!voiceChannel) {
     throw new Error("You must be in a voice channel to use this command.");
   }
@@ -128,13 +141,16 @@ async function createQueue(interaction, worker, track) {
 
   // Fetch the channel using the worker's client to get the correct adapter creator
   const workerChannel = await worker.client.channels.fetch(voiceChannel.id);
+  if (!workerChannel || !workerChannel.isVoiceBased()) {
+    throw new Error("Worker cannot join non-voice channel");
+  }
 
   const connection = joinVoiceChannel({
     channelId: workerChannel.id,
     guildId: workerChannel.guild.id,
     adapterCreator: workerChannel.guild.voiceAdapterCreator,
     selfDeaf: true,
-    group: worker.client.user.id, // CRITICAL: Use unique group for each bot to allow multiple connections in one guild
+    group: worker.client.user!.id, // CRITICAL: Use unique group for each bot to allow multiple connections in one guild
   });
 
   const player = createAudioPlayer({
@@ -143,7 +159,7 @@ async function createQueue(interaction, worker, track) {
     },
   });
 
-  const queue = {
+  const queue: Queue = {
     voiceChannelId: voiceChannel.id,
     guildId: voiceChannel.guild.id,
     textChannel: interaction.channel,
@@ -185,30 +201,32 @@ async function createQueue(interaction, worker, track) {
       workerPool.releaseWorker(queue.voiceChannelId);
 
       // Send enhanced queue finished message
-      if (queue.textChannel) {
+      if (queue.textChannel && queue.textChannel.isSendable()) {
         try {
           const channel = await queue.worker.client.channels.fetch(
             queue.voiceChannelId
           );
-          const channelName = channel ? channel.name : "the voice channel";
+          const channelName = channel && 'name' in channel ? (channel as { name: string }).name : "the voice channel";
           queue.textChannel
             .send(
               `🎶 **${queue.worker.name}** has finished the queue in **${channelName}**! Staying connected for 5 more minutes.`
             )
-            .catch((err) =>
-              logger.warn(`Failed to send finished message: ${err.message}`)
+            .catch((err: unknown) =>
+              logger.warn(`Failed to send finished message: ${err instanceof Error ? err.message : String(err)} `)
             );
-        } catch (err) {
+        } catch (err: unknown) {
           logger.warn(
-            `Failed to fetch channel for finished message: ${err.message}`
+            `Failed to fetch channel for finished message: ${err instanceof Error ? err.message : String(err)} `
           );
-          queue.textChannel
-            .send(
-              `🎶 **${queue.worker.name}** has finished the queue! Staying connected for 5 more minutes.`
-            )
-            .catch((err) =>
-              logger.warn(`Failed to send finished message: ${err.message}`)
-            );
+          if (queue.textChannel.isSendable()) {
+            queue.textChannel
+              .send(
+                `🎶 **${queue.worker.name}** has finished the queue! Staying connected for 5 more minutes.`
+              )
+              .catch((err: unknown) =>
+                logger.warn(`Failed to send finished message: ${err instanceof Error ? err.message : String(err)} `)
+              );
+          }
         }
       }
 
@@ -228,7 +246,7 @@ async function createQueue(interaction, worker, track) {
   });
 
   player.on("error", (error) => {
-    logger.error(`Audio player error: ${error.message}`);
+    logger.error(`Audio player error: ${error.message} `);
     queue.songs.shift();
     if (queue.songs.length > 0) {
       playSong(queue);
@@ -239,7 +257,7 @@ async function createQueue(interaction, worker, track) {
   return queue;
 }
 
-async function resolveTrack(query) {
+async function resolveTrack(query: string): Promise<Song> {
   // Feature 1: Direct URL support
   if (isUrl(query)) {
     try {
@@ -248,9 +266,11 @@ async function resolveTrack(query) {
         title: videoData.title,
         url: videoData.webpage_url || videoData.url,
         durationInSec: videoData.duration,
+        requestedBy: "Unknown", // Will be overwritten
       };
-    } catch (error) {
-      throw new Error(`Failed to resolve URL: ${error.message}`);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to resolve URL: ${msg} `);
     }
   }
 
@@ -261,6 +281,7 @@ async function resolveTrack(query) {
       title: video.title,
       url: video.url,
       durationInSec: video.seconds,
+      requestedBy: "Unknown", // Will be overwritten
     };
   }
   throw new Error("No results found on YouTube.");
@@ -268,11 +289,11 @@ async function resolveTrack(query) {
 
 // --- Exported Functions ---
 
-async function enqueue(interaction, query) {
+async function enqueue(interaction: ChatInputCommandInteraction, query: string): Promise<void> {
   const voiceChannel = await validateInteraction(interaction);
   if (!voiceChannel) return;
 
-  const permissions = voiceChannel.permissionsFor(interaction.client.user);
+  const permissions = voiceChannel.permissionsFor(interaction.client.user!);
   if (
     !permissions ||
     !permissions.has("Connect") ||
@@ -328,17 +349,18 @@ async function enqueue(interaction, query) {
         `✅ **${queue.worker.name}** queued in **#${channelName}**: [${track.title}](${track.url})`
       );
     }
-  } catch (error) {
-    logger.error(error);
-    await interaction.editReply(`❌ Error: ${error.message}`);
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    logger.error(`Enqueue error: ${msg} `);
+    await interaction.editReply(`❌ Error: ${msg} `);
   }
 }
 
-async function enqueuePlaylist(interaction, url) {
+async function enqueuePlaylist(interaction: ChatInputCommandInteraction, url: string): Promise<void> {
   const voiceChannel = await validateInteraction(interaction);
   if (!voiceChannel) return;
 
-  const permissions = voiceChannel.permissionsFor(interaction.client.user);
+  const permissions = voiceChannel.permissionsFor(interaction.client.user!);
   if (
     !permissions ||
     !permissions.has("Connect") ||
@@ -378,7 +400,7 @@ async function enqueuePlaylist(interaction, url) {
       queue = await createQueue(interaction, worker, null);
     }
 
-    const songsToAdd = entries.map((entry) => ({
+    const songsToAdd: Song[] = entries.map((entry) => ({
       title: entry.title || "Unknown Title",
       url: entry.url || `https://www.youtube.com/watch?v=${entry.id}`,
       durationInSec: entry.duration || 0,
@@ -404,14 +426,17 @@ async function enqueuePlaylist(interaction, url) {
       `✅ **Added ${songsToAdd.length} songs** from playlist: **${data.title || "YouTube Playlist"
       }**${truncatedMsg}`
     );
-  } catch (error) {
-    logger.error(`Playlist error: ${error.message}`);
-    await interaction.editReply(`❌ Failed to load playlist: ${error.message}`);
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    logger.error(`Playlist error: ${msg}`);
+    await interaction.editReply(`❌ Failed to load playlist: ${msg}`);
   }
 }
 
-async function toggleAutoplay(interaction) {
-  const voiceChannel = interaction.member.voice.channel;
+async function toggleAutoplay(
+  interaction: ChatInputCommandInteraction
+): Promise<void> {
+  const voiceChannel = (interaction.member as GuildMember).voice.channel;
   if (!voiceChannel) {
     await interaction.reply({
       content: "You must be in a voice channel.",
@@ -432,12 +457,23 @@ async function toggleAutoplay(interaction) {
 
   if (queue.playingMessage) {
     try {
-      const newRow = ActionRowBuilder.from(queue.playingMessage.components[0]);
-      newRow.components.pop();
-      newRow.addComponents(getAutoplayButton(queue.autoplay));
-      await queue.playingMessage.edit({ components: [newRow] });
-    } catch (error) {
-      logger.error(`Failed to update autoplay button: ${error.message}`);
+      const components = queue.playingMessage.components;
+      if (components && components.length > 0) {
+        const oldRow = components[0];
+        // @ts-expect-error - Discord.js component types are too broad, this cast is necessary
+        const newRow = ActionRowBuilder.from(oldRow.toJSON());
+
+        const componentsList = newRow.components;
+        if (componentsList.length > 0) {
+          componentsList.pop();
+          newRow.addComponents(getAutoplayButton(queue.autoplay));
+          // @ts-expect-error - ActionRowBuilder type compatibility issue with Discord.js API
+          await queue.playingMessage.edit({ components: [newRow] });
+        }
+      }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error(`Failed to update autoplay button: ${msg}`);
     }
   }
 
@@ -446,7 +482,7 @@ async function toggleAutoplay(interaction) {
   );
 }
 
-async function skip(interaction) {
+async function skip(interaction: ChatInputCommandInteraction): Promise<void> {
   const voiceChannel = await validateInteraction(interaction);
   if (!voiceChannel) return;
   const queue = getQueue(voiceChannel.id);
@@ -461,7 +497,7 @@ async function skip(interaction) {
   await interaction.reply("⏭️ Skipped current track.");
 }
 
-async function stop(interaction) {
+async function stop(interaction: ChatInputCommandInteraction): Promise<void> {
   const voiceChannel = await validateInteraction(interaction);
   if (!voiceChannel) return;
   const queue = getQueue(voiceChannel.id);
@@ -490,7 +526,7 @@ async function stop(interaction) {
   );
 }
 
-async function pause(interaction) {
+async function pause(interaction: ChatInputCommandInteraction): Promise<void> {
   const voiceChannel = await validateInteraction(interaction);
   if (!voiceChannel) return;
   const queue = getQueue(voiceChannel.id);
@@ -516,7 +552,7 @@ async function pause(interaction) {
   );
 }
 
-async function resume(interaction) {
+async function resume(interaction: ChatInputCommandInteraction): Promise<void> {
   const voiceChannel = await validateInteraction(interaction);
   if (!voiceChannel) return;
   const queue = getQueue(voiceChannel.id);
@@ -542,7 +578,7 @@ async function resume(interaction) {
   );
 }
 
-async function showQueue(interaction) {
+async function showQueue(interaction: ChatInputCommandInteraction): Promise<void> {
   const voiceChannel = await validateInteraction(interaction);
   if (!voiceChannel) return;
   const queue = getQueue(voiceChannel.id);
@@ -551,7 +587,7 @@ async function showQueue(interaction) {
     return;
   }
 
-  const lines = [];
+  const lines: string[] = [];
 
   if (queue.nowPlaying) {
     lines.push(
@@ -579,7 +615,7 @@ async function showQueue(interaction) {
   await interaction.reply({ content: lines.join("\n") });
 }
 
-async function nowPlaying(interaction) {
+async function nowPlaying(interaction: ChatInputCommandInteraction): Promise<void> {
   const voiceChannel = await validateInteraction(interaction);
   if (!voiceChannel) return;
   const queue = getQueue(voiceChannel.id);

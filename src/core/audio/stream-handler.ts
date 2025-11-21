@@ -1,9 +1,9 @@
-import { spawn } from "child_process";
+import { spawn, ChildProcess } from "child_process";
 import { findYtDlpPath } from "../../utils/yt-dlp-helper.js";
 import logger from "../logger.js";
 
 // Helper: Get the path to the local yt-dlp.exe
-export function getYtDlpPath() {
+export function getYtDlpPath(): string {
     const path = findYtDlpPath();
     if (path) return path;
 
@@ -13,11 +13,26 @@ export function getYtDlpPath() {
     );
 }
 
-export function isUrl(text) {
+export function isUrl(text: string): boolean {
     return text.includes("youtube.com") || text.includes("youtu.be");
 }
 
-export function fetchVideoData(url) {
+export interface VideoData {
+    title: string;
+    url: string;
+    webpage_url?: string;
+    duration: number;
+    [key: string]: any;
+}
+
+export interface PlaylistData {
+    title: string;
+    entries?: VideoData[];
+    _type?: string;
+    [key: string]: any;
+}
+
+export function fetchVideoData(url: string): Promise<VideoData> {
     return new Promise((resolve, reject) => {
         const ytDlpPath = getYtDlpPath();
         // -J: Dump JSON metadata
@@ -45,7 +60,7 @@ export function fetchVideoData(url) {
     });
 }
 
-export function fetchPlaylistData(url) {
+export function fetchPlaylistData(url: string): Promise<PlaylistData> {
     return new Promise((resolve, reject) => {
         const ytDlpPath = getYtDlpPath();
         const args = ["--flat-playlist", "-J", url];
@@ -72,7 +87,7 @@ export function fetchPlaylistData(url) {
     });
 }
 
-export function createStreamProcess(url) {
+export function createStreamProcess(url: string): ChildProcess {
     const ytDlpPath = getYtDlpPath();
     const args = ["-f", "bestaudio", "-o", "-", "-q", url];
     const process = spawn(ytDlpPath, args);

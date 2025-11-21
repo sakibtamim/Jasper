@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.js";
 import music from "../core/music-player.js";
 
 export default {
@@ -11,7 +11,7 @@ export default {
         .setDescription("The YouTube playlist URL")
         .setRequired(true)
     ),
-  async execute(interaction) {
+  async execute(interaction: ChatInputCommandInteraction) {
     const url = interaction.options.getString("url", true);
     await music.enqueuePlaylist(interaction, url);
   }

@@ -1,14 +1,15 @@
 import { EmbedBuilder } from "discord.js";
-import config from "../../config/config.js";
+import config from "../config/config.js";
+
 const { botName, color, accentColor } = config;
 
-export function baseEmbed() {
+export function baseEmbed(): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(color)
     .setFooter({ text: botName });
 }
 
-export function helpEmbed() {
+export function helpEmbed(): EmbedBuilder {
   return baseEmbed()
     .setTitle("Jasper Help")
     .setDescription("Meow! I'm Jasper, your fluffy music companion. Here are my main commands:")

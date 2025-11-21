@@ -1,11 +1,11 @@
-import { SlashCommandBuilder } from "discord.js";
+import { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.js";
 import { helpEmbed } from "../utils/embed-factory.js";
 
 export default {
   data: new SlashCommandBuilder()
     .setName("help")
-    .setDescription("Show information about Jasper's commands."),
-  async execute(interaction) {
+    .setDescription("Show all available commands"),
+  async execute(interaction: ChatInputCommandInteraction) {
     await interaction.reply({ embeds: [helpEmbed()] });
   }
 };

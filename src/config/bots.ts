@@ -1,10 +1,16 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-const bots = [
+export interface BotConfig {
+    name: string;
+    token: string;
+    role: "controller" | "worker";
+}
+
+const bots: BotConfig[] = [
     {
         name: "Jasper",
-        token: process.env.DISCORD_TOKEN,
+        token: process.env.DISCORD_TOKEN || "",
         role: "controller",
     },
 ];
@@ -16,6 +22,8 @@ const bots = [
 Object.keys(process.env).forEach((key) => {
     if (key.endsWith("_TOKEN") && key !== "DISCORD_TOKEN") {
         const token = process.env[key];
+        if (!token) return;
+
         // Extract name: MISTY_TOKEN -> Misty, MY_BOT_TOKEN -> My Bot
         const name = key
             .replace("_TOKEN", "")

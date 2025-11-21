@@ -1,10 +1,10 @@
-import { Events } from "discord.js";
+import { Events, Interaction, CacheType } from "discord.js";
 import logger from "../core/logger.js";
 
 export default {
   name: Events.InteractionCreate,
   once: false,
-  async execute(interaction) {
+  async execute(interaction: Interaction<CacheType>) {
     // 1. Handle Autocomplete Requests
     if (interaction.isAutocomplete()) {
       const command = interaction.client.commands.get(interaction.commandName);
@@ -16,10 +16,12 @@ export default {
         return;
       }
 
-      try {
-        await command.autocomplete(interaction);
-      } catch (error) {
-        console.error(error);
+      if (command.autocomplete) {
+        try {
+          await command.autocomplete(interaction);
+        } catch (error) {
+          console.error(error);
+        }
       }
       return;
     }
@@ -32,10 +34,10 @@ export default {
 
     try {
       await command.execute(interaction);
-    } catch (error) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? (error.stack || error.message) : String(error);
       logger.error(
-        `Error executing command ${interaction.commandName}: ${error.stack || error.message
-        }`
+        `Error executing command ${interaction.commandName}: ${msg}`
       );
       if (interaction.deferred || interaction.replied) {
         await interaction.followUp({

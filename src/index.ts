@@ -3,13 +3,15 @@ dotenv.config();
 
 import fs from "node:fs";
 import path from "node:path";
-import { Collection } from "discord.js";
+import { Collection, Client } from "discord.js";
 import logger from "./core/logger.js";
 import workerPool from "./core/worker-pool.js";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+
 
 (async () => {
   // 1. Create all bot clients
@@ -28,7 +30,8 @@ const __dirname = path.dirname(__filename);
 
   // Load commands
   const commandsPath = path.join(__dirname, "commands");
-  const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(".js"));
+  // Support both .js (production) and .ts (development)
+  const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(".js") || file.endsWith(".ts"));
 
   for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);
@@ -44,7 +47,7 @@ const __dirname = path.dirname(__filename);
 
   // Load events
   const eventsPath = path.join(__dirname, "events");
-  const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith(".js"));
+  const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith(".js") || file.endsWith(".ts"));
 
   for (const file of eventFiles) {
     const filePath = path.join(eventsPath, file);

@@ -1,12 +1,14 @@
 import { createAudioResource, StreamType, AudioPlayerStatus } from "@discordjs/voice";
-import { ActionRowBuilder, ButtonStyle, ComponentType } from "discord.js";
+import { ActionRowBuilder, ButtonStyle, ComponentType, ButtonBuilder, Message } from "discord.js";
+import { APIActionRowComponent, APIButtonComponent } from "discord-api-types/v10";
 import ytSearch from "yt-search";
 import logger from "../logger.js";
 import workerPool from "../worker-pool.js";
 import { setVoiceStatus, getChannelName } from "../utils/voice-utils.js";
 import { createStreamProcess } from "./stream-handler.js";
 import { createControlButtons, getAutoplayButton } from "../ui/player-controls.js";
-import { deleteQueue } from "./queue-manager.js";
+import { deleteQueue, Queue, Song } from "./queue-manager.js";
+import { GuildMember } from "discord.js";
 
 // Constants for Autoplay
 const AUTOPLAY_SEARCH_QUERIES = [
@@ -33,18 +35,18 @@ const AUTOPLAY_FILTER_KEYWORDS = [
 
 const AUTOPLAY_POOL_SIZE = 10;
 
-function getRandomMusicQuery() {
+function getRandomMusicQuery(): string {
     return AUTOPLAY_SEARCH_QUERIES[
         Math.floor(Math.random() * AUTOPLAY_SEARCH_QUERIES.length)
     ];
 }
 
-export async function handleAutoplay(queue, lastSong) {
+export async function handleAutoplay(queue: Queue, lastSong: Song): Promise<void> {
     try {
-        if (queue.textChannel) {
+        if (queue.textChannel && 'send' in queue.textChannel) {
             queue.textChannel
                 .send("🔄 **Autoplay:** Finding a new song...")
-                .catch((error) => logger.warn(`Failed to send autoplay message: ${error.message}`));
+                .catch((error: unknown) => logger.warn(`Failed to send autoplay message: ${error instanceof Error ? error.message : String(error)}`));
         }
 
         // Search for varied music instead of the same song
@@ -52,13 +54,13 @@ export async function handleAutoplay(queue, lastSong) {
         const searchResult = await ytSearch(searchQuery);
 
         if (!searchResult || !searchResult.videos.length) {
-            if (queue.textChannel)
+            if (queue.textChannel && 'send' in queue.textChannel) {
                 queue.textChannel.send("Could not find a song to autoplay.");
-            return;
+            } return;
         }
 
         // Filter out playlists and only get individual videos
-        const individualVideos = searchResult.videos.filter((video) => {
+        const individualVideos = searchResult.videos.filter((video: ytSearch.VideoSearchResult) => {
             const title = video.title.toLowerCase();
             // Exclude playlists, mixes, and compilations
             const isExcluded = AUTOPLAY_FILTER_KEYWORDS.some((keyword) =>
@@ -68,9 +70,9 @@ export async function handleAutoplay(queue, lastSong) {
         });
 
         if (!individualVideos.length) {
-            if (queue.textChannel)
+            if (queue.textChannel && 'send' in queue.textChannel) {
                 queue.textChannel.send("Could not find a suitable song to autoplay.");
-            return;
+            } return;
         }
 
         // Pick a random video from the filtered results
@@ -84,7 +86,7 @@ export async function handleAutoplay(queue, lastSong) {
             nextVideo = individualVideos[alternateIndex];
         }
 
-        const track = {
+        const track: Song = {
             title: nextVideo.title,
             url: nextVideo.url,
             durationInSec: nextVideo.seconds,
@@ -93,14 +95,15 @@ export async function handleAutoplay(queue, lastSong) {
 
         queue.songs.push(track);
         playSong(queue);
-    } catch (error) {
-        logger.error(`Autoplay error: ${error.message}`);
-        if (queue.textChannel)
-            queue.textChannel.send("❌ Failed to autoplay next song.");
+    } catch (error: unknown) {
+        logger.error(`Autoplay error: ${error instanceof Error ? error.message : String(error)}`);
+        if (queue.textChannel && 'send' in queue.textChannel) {
+            queue.textChannel.send("❌ An error occurred while trying to play the song.");
+        }
     }
 }
 
-export async function playSong(queue) {
+export async function playSong(queue: Queue): Promise<void> {
     const song = queue.songs[0];
     if (!song) return;
 
@@ -109,7 +112,7 @@ export async function playSong(queue) {
 
         const ytDlpProcess = createStreamProcess(song.url);
 
-        const resource = createAudioResource(ytDlpProcess.stdout, {
+        const resource = createAudioResource(ytDlpProcess.stdout!, {
             inputType: StreamType.Arbitrary,
             inlineVolume: false,
         });
@@ -130,8 +133,8 @@ export async function playSong(queue) {
         // -------------------------------------------------------
         const row = createControlButtons(queue.autoplay);
 
-        let playingMessage;
-        if (queue.textChannel) {
+        let playingMessage: Message | undefined;
+        if (queue.textChannel && 'send' in queue.textChannel) {
             const channelName = await getChannelName(
                 queue.worker.client,
                 queue.voiceChannelId
@@ -141,7 +144,7 @@ export async function playSong(queue) {
                     content: `▶️ **${queue.worker.name}** is now playing in **#${channelName}**: [${song.title}](${song.url})`,
                     components: [row],
                 })
-                .catch((error) => logger.warn(`Failed to send playing message: ${error.message}`));
+                .catch((error: unknown) => logger.warn(`Failed to send playing message: ${error instanceof Error ? error.message : String(error)}`)) as Message | undefined;
             if (playingMessage) {
                 queue.playingMessage = playingMessage;
             }
@@ -155,10 +158,16 @@ export async function playSong(queue) {
             });
 
             collector.on("collect", async (i) => {
+                if (!(i.member instanceof GuildMember)) {
+                    await i.reply({ content: "This command can only be used in a guild.", ephemeral: true });
+                    return;
+                }
+
                 // Security: Ensure clicker is in the same voice channel
+                const memberVoiceChannelId = i.member.voice.channelId;
                 if (
-                    !i.member.voice.channelId ||
-                    i.member.voice.channelId !== queue.voiceChannelId
+                    !memberVoiceChannelId ||
+                    memberVoiceChannelId !== queue.voiceChannelId
                 ) {
                     return i.reply({
                         content: "You need to be in the voice channel to control music!",
@@ -172,10 +181,10 @@ export async function playSong(queue) {
                         setVoiceStatus(
                             queue.worker.client,
                             queue.voiceChannelId,
-                            `[Playing] ${queue.nowPlaying.title}`
+                            `[Playing] ${queue.nowPlaying!.title}`
                         );
                         // Update button to show "Pause" again
-                        const newRow = ActionRowBuilder.from(playingMessage.components[0]);
+                        const newRow = ActionRowBuilder.from<ButtonBuilder>(playingMessage!.components[0] as APIActionRowComponent<APIButtonComponent>);
                         newRow.components[0]
                             .setLabel("⏸️ Pause")
                             .setStyle(ButtonStyle.Secondary);
@@ -185,10 +194,10 @@ export async function playSong(queue) {
                         setVoiceStatus(
                             queue.worker.client,
                             queue.voiceChannelId,
-                            `[PAUSED] ${queue.nowPlaying.title}`
+                            `[PAUSED] ${queue.nowPlaying!.title}`
                         );
                         // Update button to show "Resume"
-                        const newRow = ActionRowBuilder.from(playingMessage.components[0]);
+                        const newRow = ActionRowBuilder.from<ButtonBuilder>(playingMessage!.components[0] as APIActionRowComponent<APIButtonComponent>);
                         newRow.components[0]
                             .setLabel("▶️ Resume")
                             .setStyle(ButtonStyle.Success);
@@ -210,7 +219,7 @@ export async function playSong(queue) {
                     collector.stop();
                 } else if (i.customId === "toggle_autoplay") {
                     queue.autoplay = !queue.autoplay;
-                    const newRow = ActionRowBuilder.from(playingMessage.components[0]);
+                    const newRow = ActionRowBuilder.from<ButtonBuilder>(playingMessage!.components[0] as APIActionRowComponent<APIButtonComponent>);
                     // Replace the last component (autoplay button) with the updated one
                     newRow.components.pop();
                     newRow.addComponents(getAutoplayButton(queue.autoplay));
@@ -221,17 +230,15 @@ export async function playSong(queue) {
             // Disable buttons when the song ends
             collector.on("end", () => {
                 try {
-                    const disabledRow = ActionRowBuilder.from(
-                        playingMessage.components[0]
-                    );
+                    const disabledRow = ActionRowBuilder.from<ButtonBuilder>(playingMessage!.components[0] as APIActionRowComponent<APIButtonComponent>);
                     disabledRow.components.forEach((btn) => btn.setDisabled(true));
-                    playingMessage.edit({ components: [disabledRow] }).catch((error) => logger.warn(`Failed to disable buttons: ${error.message}`));
+                    playingMessage!.edit({ components: [disabledRow] }).catch((error: unknown) => logger.warn(`Failed to disable buttons: ${error instanceof Error ? error.message : String(error)}`));
                 } catch (e) {
                     // Message might have been deleted, ignore
                 }
             });
         }
-    } catch (error) {
+    } catch (error: any) {
         logger.error(`Failed to play song: ${error.message}`);
         queue.songs.shift();
         playSong(queue);

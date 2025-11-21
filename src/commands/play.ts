@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { SlashCommandBuilder, ChatInputCommandInteraction, AutocompleteInteraction } from "discord.js";
 import music from "../core/music-player.js";
 import ytSearch from "yt-search";
 
@@ -15,7 +15,7 @@ export default {
           .setAutocomplete(true) // <--- Enables the suggestions
     ),
 
-  async autocomplete(interaction) {
+  async autocomplete(interaction: AutocompleteInteraction) {
     const focusedValue = interaction.options.getFocused();
 
     // Don't search if the input is empty
@@ -34,12 +34,12 @@ export default {
 
       await interaction.respond(choices);
     } catch (error) {
-      // If search fails, return empty to prevent crash
+      console.error(`Autocomplete failed for query "${focusedValue}":`, error);
       await interaction.respond([]);
     }
   },
 
-  async execute(interaction) {
+  async execute(interaction: ChatInputCommandInteraction) {
     const query = interaction.options.getString("query", true);
     await music.enqueue(interaction, query);
   },

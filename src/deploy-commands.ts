@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import fs from "node:fs";
 import path from "node:path";
-import { REST, Routes } from "discord.js";
+import { REST, Routes, RESTPostAPIChatInputApplicationCommandsJSONBody } from "discord.js";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -15,9 +15,10 @@ if (!CLIENT_ID || !GUILD_ID || !DISCORD_TOKEN) {
   process.exit(1);
 }
 
-const commands = [];
+const commands: RESTPostAPIChatInputApplicationCommandsJSONBody[] = [];
 const commandsPath = path.join(__dirname, "commands");
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(".js"));
+// Support both .js (production) and .ts (development)
+const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(".js") || file.endsWith(".ts"));
 
 for (const file of commandFiles) {
   const filePath = path.join(commandsPath, file);
@@ -38,7 +39,7 @@ const rest = new REST({ version: "10" }).setToken(DISCORD_TOKEN);
     const data = await rest.put(
       Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
       { body: commands }
-    );
+    ) as unknown[];
     console.log(`Successfully reloaded ${data.length} application (/) commands.`);
   } catch (error) {
     console.error(error);

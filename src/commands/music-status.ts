@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import { SlashCommandBuilder, EmbedBuilder, ChatInputCommandInteraction } from "discord.js";
 import workerPool from "../core/worker-pool.js";
 import musicPlayer from "../core/music-player.js";
 
@@ -7,16 +7,16 @@ export default {
         .setName("music-status")
         .setDescription("Shows which HCoF cats are currently playing music and where."),
 
-    async execute(interaction) {
+    async execute(interaction: ChatInputCommandInteraction) {
         const workers = workerPool.getWorkers();
         const controller = workerPool.getController();
         const queues = musicPlayer.getQueues();
 
-        const activeLines = [];
-        const idleLines = [];
+        const activeLines: string[] = [];
+        const idleLines: string[] = [];
 
         // Helper: get track info from queue
-        const getTrackInfo = (voiceChannelId) => {
+        const getTrackInfo = (voiceChannelId: string) => {
             const queue = queues.get(voiceChannelId);
             if (!queue || !queue.nowPlaying) return "—";
             return queue.nowPlaying.title || "Unknown Track";
@@ -24,7 +24,7 @@ export default {
 
         // Controller status
         if (controller) {
-            if (controller.busy) {
+            if (controller.busy && controller.voiceChannelId) {
                 const track = getTrackInfo(controller.voiceChannelId);
                 activeLines.push(
                     `**${controller.name}** → <#${controller.voiceChannelId}>\n🎵 *${track}*`
@@ -36,7 +36,7 @@ export default {
 
         // Worker statuses
         for (const worker of workers) {
-            if (worker.busy) {
+            if (worker.busy && worker.voiceChannelId) {
                 const track = getTrackInfo(worker.voiceChannelId);
                 activeLines.push(
                     `**${worker.name}** → <#${worker.voiceChannelId}>\n🎵 *${track}*`

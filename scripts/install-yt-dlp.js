@@ -2,10 +2,8 @@
 import https from 'https';
 import fs from 'fs';
 import path from 'path';
-import os from 'os';
 import { spawnSync } from 'child_process';
 import { fileURLToPath } from 'url';
-import { findYtDlpPath } from '../src/utils/yt-dlp-helper.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,6 +12,37 @@ const __dirname = path.dirname(__filename);
 if (process.env.YT_DLP_SKIP_POSTINSTALL) {
   console.log('YT_DLP_SKIP_POSTINSTALL set: skipping yt-dlp download');
   process.exit(0);
+}
+
+// Inlined logic from src/utils/yt-dlp-helper.ts to avoid build dependency
+function findYtDlpPath() {
+  const isWin = process.platform === 'win32';
+  const candidates = isWin ? ['yt-dlp.exe', 'yt-dlp'] : ['yt-dlp'];
+
+  // 1. Try to find system-installed yt-dlp
+  try {
+    const whichCmd = isWin ? 'where' : 'which';
+    for (const bin of candidates) {
+      const res = spawnSync(whichCmd, [bin], { encoding: 'utf8' });
+      if (res.status === 0 && res.stdout) {
+        const p = res.stdout.split(/\r?\n/)[0].trim();
+        if (p) return p;
+      }
+    }
+  } catch {
+    // Ignore system check failure
+  }
+
+  // 2. Check for local static binary in the project root
+  const root = path.resolve(__dirname, '..');
+  for (const bin of candidates) {
+    const localPath = path.join(root, bin);
+    if (fs.existsSync(localPath)) {
+      return localPath;
+    }
+  }
+
+  return null;
 }
 
 // Where to write the binary: project root (one level up from scripts folder)
@@ -26,70 +55,51 @@ const outPath = path.join(root, assetName);
 const tmpPath = outPath + '.download';
 
 function followRedirect(url, opts, max = 10) {
+  if (max <= 0) {
+    throw new Error('Too many redirects');
+  }
   return new Promise((resolve, reject) => {
-    if (max <= 0) return reject(new Error('Too many redirects'));
-    const req = https.get(url, opts, (res) => {
-      const status = res.statusCode;
-      if (status >= 300 && status < 400 && res.headers.location) {
-        // Follow the redirect
-        resolve(followRedirect(res.headers.location, opts, max - 1));
-      } else if (status >= 200 && status < 300) {
-        resolve(res);
-      } else {
-        reject(new Error(`Request failed with status ${status}`));
+    https.get(url, opts, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        return resolve(followRedirect(res.headers.location, opts, max - 1));
       }
+      resolve(res);
+    }).on('error', reject);
+  });
+}
+
+async function downloadFile(url, dest) {
+  const res = await followRedirect(url, {});
+  if (res.statusCode !== 200) {
+    throw new Error(`Download failed with status ${res.statusCode}`);
+  }
+  const file = fs.createWriteStream(dest);
+  res.pipe(file);
+  return new Promise((resolve, reject) => {
+    file.on('finish', () => file.close(resolve));
+    file.on('error', (err) => {
+      fs.unlink(dest, () => reject(err));
     });
-    req.on('error', reject);
   });
 }
 
 (async () => {
-  console.log(`Postinstall: Fetching yt-dlp for platform: ${process.platform}`);
-  const existingPath = findYtDlpPath();
-  if (existingPath) {
-    console.log(`yt-dlp found at ${existingPath} — skipping download`);
-    process.exit(0);
+  const existing = findYtDlpPath();
+  if (existing) {
+    console.log(`yt-dlp already available at: ${existing}`);
+    return;
   }
+
+  console.log(`Downloading yt-dlp from: ${downloadUrl}`);
   try {
-    const res = await followRedirect(downloadUrl, { headers: { 'User-Agent': 'node.js' } });
-
-    await new Promise((resolve, reject) => {
-      const file = fs.createWriteStream(tmpPath, { mode: 0o755 });
-      res.pipe(file);
-      res.on('error', (err) => {
-        file.close();
-        fs.unlink(tmpPath, () => { });
-        reject(err);
-      });
-      file.on('finish', () => {
-        file.close((err) => (err ? reject(err) : resolve()));
-      });
-      file.on('error', (err) => {
-        file.close();
-        fs.unlink(tmpPath, () => { });
-        reject(err);
-      });
-    });
-
-    // Move tmp file to final destination
-    try {
-      if (fs.existsSync(outPath)) fs.unlinkSync(outPath);
-      fs.renameSync(tmpPath, outPath);
-
-      if (!isWin) {
-        // Ensure executable permission
-        fs.chmodSync(outPath, 0o755);
-      }
-
-      console.log(`yt-dlp downloaded to ${outPath}`);
-    } catch (err) {
-      console.warn('Failed to finalize yt-dlp binary installation:', err.message);
-      // Keep the tmp file around to inspect if necessary
+    await downloadFile(downloadUrl, tmpPath);
+    fs.renameSync(tmpPath, outPath);
+    if (!isWin) {
+      fs.chmodSync(outPath, 0o755);
     }
+    console.log(`yt-dlp installed successfully to: ${outPath}`);
   } catch (err) {
-    console.warn('yt-dlp installation failed:', err.message);
-    console.warn('If you rely on yt-dlp, please install it manually or ensure it is available in your PATH.');
-    // Don't fail the postinstall - avoid breaking npm install on systems without network access
-    process.exit(0);
+    console.error('Failed to download yt-dlp:', err.message);
+    console.error('You may need to manually download it from https://github.com/yt-dlp/yt-dlp/releases');
   }
 })();

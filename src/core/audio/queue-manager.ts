@@ -1,26 +1,75 @@
 import logger from "../logger.js";
 import { setVoiceStatus } from "../utils/voice-utils.js";
 import workerPool from "../worker-pool.js";
+import { VoiceConnection, AudioPlayer } from "@discordjs/voice";
+import { TextBasedChannel, Message } from "discord.js";
+import { WorkerState } from "../worker-pool.js";
 
-const queues = new Map(); // Key: voiceChannelId
+export interface Song {
+    title: string;
+    url: string;
+    durationInSec: number;
+    requestedBy: string;
+}
 
-export function getQueue(voiceChannelId) {
+export interface Queue {
+    voiceChannelId: string;
+    guildId: string;
+    textChannel: TextBasedChannel | null;
+    connection: VoiceConnection;
+    player: AudioPlayer;
+    songs: Song[];
+    nowPlaying: Song | null;
+    autoplay: boolean;
+    worker: WorkerState;
+    idleTimeout: NodeJS.Timeout | null;
+    stopping: boolean;
+    playingMessage?: Message;
+}
+
+// Map<VoiceChannelId, QueueObject>
+const queues = new Map<string, Queue>();
+
+/**
+ * Get the queue for a specific voice channel
+ * @param {string} voiceChannelId
+ * @returns {Queue|undefined}
+ */
+export function getQueue(voiceChannelId: string): Queue | undefined {
     return queues.get(voiceChannelId);
 }
 
-export function getAllQueues() {
+/**
+ * Get all active queues
+ * @returns {Map<string, Queue>}
+ */
+export function getAllQueues(): Map<string, Queue> {
     return queues;
 }
 
-export function setQueue(voiceChannelId, queue) {
+/**
+ * Set the queue for a specific voice channel
+ * @param {string} voiceChannelId
+ * @param {Queue} queue
+ */
+export function setQueue(voiceChannelId: string, queue: Queue): void {
     queues.set(voiceChannelId, queue);
 }
 
-export function deleteQueue(voiceChannelId) {
+/**
+ * Delete the queue for a specific voice channel
+ * @param {string} voiceChannelId
+ */
+export function deleteQueue(voiceChannelId: string): void {
     queues.delete(voiceChannelId);
 }
 
-export function cleanupWorkerOldQueues(worker) {
+/**
+ * Cleanup any old queues associated with a worker
+ * This is important if a worker was forcefully reassigned or crashed
+ * @param {WorkerState} worker
+ */
+export function cleanupWorkerOldQueues(worker: WorkerState): void {
     // Find any queues that belong to this worker
     for (const [channelId, queue] of queues.entries()) {
         if (queue.worker.name === worker.name) {

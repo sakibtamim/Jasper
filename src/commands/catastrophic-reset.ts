@@ -1,4 +1,4 @@
-import { SlashCommandBuilder } from "discord.js";
+import { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.js";
 import musicPlayer from "../core/music-player.js";
 import workerPool from "../core/worker-pool.js";
 import logger from "../core/logger.js";
@@ -8,7 +8,7 @@ export default {
         .setName("catastrophic-reset")
         .setDescription("🚨 Emergency: Clear all queues and reset all bots to idle"),
 
-    async execute(interaction) {
+    async execute(interaction: ChatInputCommandInteraction) {
         logger.info(`[CatastrophicReset] Initiated by ${interaction.user.tag}`);
 
         // Clear all queues and connections

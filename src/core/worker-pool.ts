@@ -1,52 +1,47 @@
-import { Client, GatewayIntentBits } from "discord.js";
+import { Client, GatewayIntentBits, ActivityType } from "discord.js";
 import logger from "./logger.js";
-import botConfigs from "../config/bots.js";
+import bots from "../config/bots.js";
 
 // Registry to hold all worker states
-const workers = [];
+const workers: WorkerState[] = [];
 
-/**
- * @typedef {Object} WorkerState
- * @property {string} name
- * @property {Client} client
- * @property {'controller'|'worker'} role
- * @property {boolean} busy
- * @property {string|null} guildId
- * @property {string|null} voiceChannelId
- */
+export interface WorkerState {
+    name: string;
+    client: Client;
+    role: 'controller' | 'worker';
+    token: string;
+    busy: boolean;
+    guildId: string | null;
+    voiceChannelId: string | null;
+}
 
 /**
  * Create all bot clients defined in config but do not login yet
  * @returns {WorkerState[]}
  */
-function createBots() {
-    for (const config of botConfigs) {
-        if (!config.token) {
-            logger.warn(`Skipping bot ${config.name} due to missing token.`);
-            continue;
-        }
+function createBots(): WorkerState[] {
+    if (workers.length > 0) return workers;
 
+    for (const botConfig of bots) {
         const client = new Client({
-            intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
+            intents: [
+                GatewayIntentBits.Guilds,
+                GatewayIntentBits.GuildVoiceStates,
+            ],
         });
 
-        const workerState = {
-            name: config.name,
+        workers.push({
+            name: botConfig.name,
             client: client,
-            role: config.role,
-            token: config.token, // Store token for easier login
+            role: botConfig.role,
+            token: botConfig.token,
             busy: false,
             guildId: null,
             voiceChannelId: null,
-        };
-
-        // Attach error handler to prevent crash
-        client.on("error", (err) => {
-            logger.error(`[${config.name}] Client error: ${err.message}`);
         });
-
-        workers.push(workerState);
     }
+
+    logger.info(`Initialized ${workers.length} bots.`);
     return workers;
 }
 
@@ -54,36 +49,31 @@ function createBots() {
  * Login all bots
  * @returns {Promise<void>}
  */
-async function loginBots() {
-    // 1. Login Controller (Jasper) first
-    const controller = workers.find((w) => w.role === "controller");
-    if (controller) {
-        try {
-            await controller.client.login(controller.token);
-            logger.info(`[${controller.name}] Logged in as ${controller.role} (Leader)`);
-        } catch (error) {
-            logger.error(`[${controller.name}] Failed to login controller: ${error.message}`);
-        }
-    }
-
-    // 2. Login the rest of the workers
-    const others = workers.filter((w) => w.role !== "controller");
-    const promises = others.map(async (worker) => {
+async function loginBots(): Promise<void> {
+    const loginPromises = workers.map(async (worker) => {
         try {
             await worker.client.login(worker.token);
-            logger.info(`[${worker.name}] Logged in as ${worker.role}`);
-        } catch (error) {
-            logger.error(`[${worker.name}] Failed to login: ${error.message}`);
+            logger.info(`[${worker.name}] Logged in as ${worker.role}${worker.role === 'controller' ? ' (Leader)' : ''}`);
+
+            if (worker.role === 'worker') {
+                worker.client.user?.setPresence({
+                    activities: [{ name: "Waiting for tasks...", type: ActivityType.Custom }],
+                    status: "idle",
+                });
+            }
+        } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : String(error);
+            logger.error(`Failed to login ${worker.name}: ${msg}`);
         }
     });
-    await Promise.all(promises);
+    await Promise.all(loginPromises);
 }
 
 /**
  * Get the controller worker (Jasper)
  * @returns {WorkerState|undefined}
  */
-function getController() {
+function getController(): WorkerState | undefined {
     return workers.find((w) => w.role === "controller");
 }
 
@@ -93,7 +83,7 @@ function getController() {
  * @param {string} voiceChannelId
  * @returns {WorkerState|null}
  */
-function findWorkerByVoiceChannel(guildId, voiceChannelId) {
+function findWorkerByVoiceChannel(guildId: string, voiceChannelId: string): WorkerState | null {
     return (
         workers.find(
             (w) => w.guildId === guildId && w.voiceChannelId === voiceChannelId
@@ -111,7 +101,7 @@ function findWorkerByVoiceChannel(guildId, voiceChannelId) {
  * @param {string} voiceChannelId
  * @returns {WorkerState|null}
  */
-function allocateWorker(guildId, voiceChannelId) {
+function allocateWorker(guildId: string, voiceChannelId: string): WorkerState | null {
     // 1. Check if someone is already there
     const existing = findWorkerByVoiceChannel(guildId, voiceChannelId);
     if (existing) return existing;
@@ -141,7 +131,7 @@ function allocateWorker(guildId, voiceChannelId) {
  * @param {string} guildId
  * @param {string} voiceChannelId
  */
-function setWorkerBusy(worker, guildId, voiceChannelId) {
+function setWorkerBusy(worker: WorkerState, guildId: string, voiceChannelId: string): void {
     worker.busy = true;
     worker.guildId = guildId;
     worker.voiceChannelId = voiceChannelId;
@@ -154,7 +144,7 @@ function setWorkerBusy(worker, guildId, voiceChannelId) {
  * Release a worker (mark as idle)
  * @param {string} voiceChannelId
  */
-function releaseWorker(voiceChannelId) {
+function releaseWorker(voiceChannelId: string): void {
     const worker = workers.find((w) => w.voiceChannelId === voiceChannelId);
     if (worker) {
         logger.info(
@@ -169,7 +159,7 @@ function releaseWorker(voiceChannelId) {
 /**
  * Release all workers to idle state
  */
-function releaseAllWorkers() {
+function releaseAllWorkers(): void {
     for (const worker of workers) {
         worker.busy = false;
         worker.guildId = null;
@@ -186,6 +176,6 @@ export default {
     findWorkerByVoiceChannel,
     setWorkerBusy,
     releaseWorker,
-    getWorkers: () => [...workers], // Return a copy for inspection
+    getWorkers: (): WorkerState[] => [...workers], // Return a copy for inspection
     releaseAllWorkers,
 };
