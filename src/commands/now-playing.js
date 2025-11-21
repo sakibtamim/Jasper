@@ -1,7 +1,7 @@
-const { SlashCommandBuilder } = require("discord.js");
-const music = require("../core/musicPlayer");
+import { SlashCommandBuilder } from "discord.js";
+import music from "../core/musicPlayer.js";
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName("nowplaying")
     .setDescription("Show the song currently playing."),

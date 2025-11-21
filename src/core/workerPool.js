@@ -1,6 +1,6 @@
-const { Client, GatewayIntentBits } = require("discord.js");
-const logger = require("./logger");
-const botConfigs = require("../config/bots");
+import { Client, GatewayIntentBits } from "discord.js";
+import logger from "./logger.js";
+import botConfigs from "../config/bots.js";
 
 // Registry to hold all worker states
 const workers = [];
@@ -178,7 +178,7 @@ function releaseAllWorkers() {
     logger.info("[WorkerPool] All workers released to idle state");
 }
 
-module.exports = {
+export default {
     createBots,
     loginBots,
     getController,

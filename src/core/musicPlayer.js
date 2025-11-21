@@ -1,27 +1,27 @@
-const { spawn, spawnSync } = require("child_process");
-const path = require("path");
-const fs = require("fs");
-const {
+import { spawn, spawnSync } from "child_process";
+import path from "path";
+import fs from "fs";
+import {
   joinVoiceChannel,
   createAudioPlayer,
   createAudioResource,
   AudioPlayerStatus,
   NoSubscriberBehavior,
   StreamType,
-} = require("@discordjs/voice");
-const {
+} from "@discordjs/voice";
+import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
   ComponentType,
-} = require("discord.js");
-const ytSearch = require("yt-search");
-const logger = require("./logger");
+} from "discord.js";
+import ytSearch from "yt-search";
+import logger from "./logger.js";
 
 const queues = new Map(); // Key: voiceChannelId
-const workerPool = require("./workerPool");
+import workerPool from "./workerPool.js";
 
-const { findYtDlpPath } = require("../utils/ytDlpHelper");
+import { findYtDlpPath } from "../utils/ytDlpHelper.js";
 
 // --- Helpers ---
 
@@ -79,7 +79,7 @@ async function assignWorker(interaction, voiceChannel) {
       .send(
         `🐾 **Jasper** is busy, summoning **${worker.name}** to handle the beats!`
       )
-      .catch(() => {});
+      .catch(() => { });
   }
 
   return worker;
@@ -350,7 +350,7 @@ async function handleAutoplay(queue, lastSong) {
     if (queue.textChannel) {
       queue.textChannel
         .send("🔄 **Autoplay:** Finding a new song...")
-        .catch(() => {});
+        .catch(() => { });
     }
 
     // Search for varied music instead of the same song
@@ -555,7 +555,7 @@ async function playSong(queue) {
           content: `▶️ **${queue.worker.name}** is now playing in **#${channelName}**: [${song.title}](${song.url})`,
           components: [row],
         })
-        .catch(() => {});
+        .catch(() => { });
       if (playingMessage) {
         queue.playingMessage = playingMessage;
       }
@@ -639,7 +639,7 @@ async function playSong(queue) {
             playingMessage.components[0]
           );
           disabledRow.components.forEach((btn) => btn.setDisabled(true));
-          playingMessage.edit({ components: [disabledRow] }).catch(() => {});
+          playingMessage.edit({ components: [disabledRow] }).catch(() => { });
         } catch (e) {
           // Message might have been deleted, ignore
         }
@@ -793,8 +793,7 @@ async function enqueuePlaylist(interaction, url) {
 
     const truncatedMsg = truncated ? " (truncated to 50 for performance)" : "";
     await interaction.editReply(
-      `✅ **Added ${songsToAdd.length} songs** from playlist: **${
-        data.title || "YouTube Playlist"
+      `✅ **Added ${songsToAdd.length} songs** from playlist: **${data.title || "YouTube Playlist"
       }**${truncatedMsg}`
     );
   } catch (error) {
@@ -962,8 +961,7 @@ async function showQueue(interaction) {
 
   if (queue.nowPlaying) {
     lines.push(
-      `▶️ **Now:** [${queue.nowPlaying.title}](${
-        queue.nowPlaying.url
+      `▶️ **Now:** [${queue.nowPlaying.title}](${queue.nowPlaying.url
       }) — \`${formatDuration(queue.nowPlaying.durationInSec)}\``
     );
   }
@@ -1025,7 +1023,7 @@ function clearAllQueues() {
   logger.info("[CatastrophicReset] All queues cleared");
 }
 
-module.exports = {
+export default {
   enqueue,
   enqueuePlaylist,
   toggleAutoplay,

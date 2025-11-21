@@ -1,8 +1,8 @@
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
-const workerPool = require("../core/workerPool");
-const musicPlayer = require("../core/musicPlayer");
+import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
+import workerPool from "../core/workerPool.js";
+import musicPlayer from "../core/musicPlayer.js";
 
-module.exports = {
+export default {
     data: new SlashCommandBuilder()
         .setName("music-status")
         .setDescription("Shows which HCoF cats are currently playing music and where."),
@@ -27,7 +27,7 @@ module.exports = {
             if (controller.busy) {
                 const track = getTrackInfo(controller.voiceChannelId);
                 activeLines.push(
-                    `**${controller.name}** → <#${controller.voiceChannelId}>\n🎵 *${track}*`
+                    `** ${controller.name}** → <#${controller.voiceChannelId}>\n🎵 *${track}*`
                 );
             } else {
                 idleLines.push(`**${controller.name}**`);

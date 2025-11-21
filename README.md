@@ -8,8 +8,11 @@ It uses **yt-dlp** (an external command-line tool) to stream high-quality audio,
   - **Stable Streaming:** Uses `yt-dlp` to bypass 403 Forbidden errors and "Decipher" issues.
   - **Slash Commands:** Modern, easy-to-use interface.
   - **Reliable Search:** Uses `yt-search` for accurate video results.
+  - **Direct URL Support:** Plays YouTube links directly, skipping search.
   - **Queue System:** View, skip, stop, and manage music queues per server.
-  - **Now Playing:** Shows rich embeds with video thumbnails and duration.
+  - **Autoplay:** Automatically finds and plays related songs when the queue ends.
+  - **Voice Status Updates:** Updates the voice channel status to show the currently playing song.
+  - **Now Playing:** Shows rich embeds with video thumbnails, duration, and interactive controls.
   - **Multi-Client Support:** "One Mind, Many Bodies" architecture allows multiple bots (Jasper + Workers) to play music simultaneously in different channels of the same server.
 
 ## Multi-Client Architecture (Heavenly Council of Fur)

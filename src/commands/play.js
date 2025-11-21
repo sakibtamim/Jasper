@@ -1,8 +1,8 @@
-const { SlashCommandBuilder } = require("discord.js");
-const music = require("../core/musicPlayer");
-const ytSearch = require("yt-search");
+import { SlashCommandBuilder } from "discord.js";
+import music from "../core/musicPlayer.js";
+import ytSearch from "yt-search";
 
-module.exports = {
+export default {
   data: new SlashCommandBuilder()
     .setName("play")
     .setDescription("Play a song from YouTube or search by keywords.")

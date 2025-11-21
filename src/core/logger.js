@@ -4,4 +4,4 @@ const chalkLike = {
   error: (msg) => console.error(`[ERROR] ${new Date().toISOString()} - ${msg}`)
 };
 
-module.exports = chalkLike;
+export default chalkLike;

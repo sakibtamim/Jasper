@@ -1,9 +1,9 @@
-const { SlashCommandBuilder } = require("discord.js");
-const musicPlayer = require("../core/musicPlayer");
-const workerPool = require("../core/workerPool");
-const logger = require("../core/logger");
+import { SlashCommandBuilder } from "discord.js";
+import musicPlayer from "../core/musicPlayer.js";
+import workerPool from "../core/workerPool.js";
+import logger from "../core/logger.js";
 
-module.exports = {
+export default {
     data: new SlashCommandBuilder()
         .setName("catastrophic-reset")
         .setDescription("🚨 Emergency: Clear all queues and reset all bots to idle"),

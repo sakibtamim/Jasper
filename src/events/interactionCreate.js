@@ -1,7 +1,7 @@
-const { Events } = require("discord.js");
-const logger = require("../core/logger");
+import { Events } from "discord.js";
+import logger from "../core/logger.js";
 
-module.exports = {
+export default {
   name: Events.InteractionCreate,
   once: false,
   async execute(interaction) {
@@ -34,8 +34,7 @@ module.exports = {
       await command.execute(interaction);
     } catch (error) {
       logger.error(
-        `Error executing command ${interaction.commandName}: ${
-          error.stack || error.message
+        `Error executing command ${interaction.commandName}: ${error.stack || error.message
         }`
       );
       if (interaction.deferred || interaction.replied) {
