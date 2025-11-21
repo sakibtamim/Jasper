@@ -174,6 +174,6 @@ module.exports = {
     findWorkerByVoiceChannel,
     setWorkerBusy,
     releaseWorker,
-    workers, // Exporting for debug/inspection if needed
+    getWorkers: () => [...workers], // Return a copy for inspection
 };
 

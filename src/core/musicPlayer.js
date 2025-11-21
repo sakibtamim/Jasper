@@ -165,9 +165,17 @@ async function createQueue(interaction, worker, track) {
     } else {
       queue.nowPlaying = null;
       setVoiceStatus(queue.worker.client, queue.voiceChannelId, "");
-      // Don't destroy immediately? Or do?
-      // For now, let's keep it open until stop or timeout?
-      // Original code didn't destroy on idle, just cleared status.
+
+      // Clean up the connection and release the worker as the queue is finished.
+      if (queue.connection) {
+        queue.connection.destroy();
+      }
+      queues.delete(queue.voiceChannelId);
+      workerPool.releaseWorker(queue.voiceChannelId);
+
+      if (queue.textChannel) {
+        queue.textChannel.send("🎶 Queue finished!").catch((err) => logger.warn(`Failed to send finished message: ${err.message}`));
+      }
     }
   });
 
