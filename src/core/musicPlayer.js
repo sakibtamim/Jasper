@@ -699,6 +699,7 @@ async function enqueue(interaction, query) {
       ...track,
       requestedBy: interaction.user.tag,
     });
+    queue.stopping = false;
 
     const channelName = await getChannelName(
       queue.worker.client,
@@ -851,7 +852,7 @@ async function skip(interaction) {
     });
     return;
   }
-  queue.player.stop(true);
+  queue.player.stop();
   await interaction.reply("⏭️ Skipped current track.");
 }
 
@@ -873,7 +874,7 @@ async function stop(interaction) {
   queue.songs = [];
   queue.stopping = true;
   setVoiceStatus(queue.worker.client, queue.voiceChannelId, "");
-  queue.player.stop(true);
+  queue.player.stop();
   if (queue.connection) {
     queue.connection.destroy();
   }
