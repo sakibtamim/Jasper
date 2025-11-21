@@ -148,6 +148,7 @@ async function createQueue(interaction, worker, track) {
     nowPlaying: null,
     autoplay: false,
     worker: worker, // Store the assigned worker
+    idleTimeout: null, // Track idle disconnect timeout
   };
 
   connection.subscribe(player);
@@ -164,18 +165,39 @@ async function createQueue(interaction, worker, track) {
       await handleAutoplay(queue, lastSong);
     } else {
       queue.nowPlaying = null;
-      setVoiceStatus(queue.worker.client, queue.voiceChannelId, "");
 
-      // Clean up the connection and release the worker as the queue is finished.
-      if (queue.connection) {
-        queue.connection.destroy();
-      }
-      queues.delete(queue.voiceChannelId);
+      // Set idle status to show bot is ready for new requests
+      setVoiceStatus(queue.worker.client, queue.voiceChannelId, "[IDLE] Ready to Meow");
+
+      // Release worker immediately for reuse, but keep connection alive for 5 minutes
       workerPool.releaseWorker(queue.voiceChannelId);
 
+      // Send enhanced queue finished message
       if (queue.textChannel) {
-        queue.textChannel.send("🎶 Queue finished!").catch((err) => logger.warn(`Failed to send finished message: ${err.message}`));
+        try {
+          const channel = await queue.worker.client.channels.fetch(queue.voiceChannelId);
+          const channelName = channel ? channel.name : 'the voice channel';
+          queue.textChannel
+            .send(`🎶 **${queue.worker.name}** has finished the queue in **${channelName}**! Staying connected for 5 more minutes.`)
+            .catch((err) => logger.warn(`Failed to send finished message: ${err.message}`));
+        } catch (err) {
+          logger.warn(`Failed to fetch channel for finished message: ${err.message}`);
+          queue.textChannel
+            .send(`🎶 **${queue.worker.name}** has finished the queue! Staying connected for 5 more minutes.`)
+            .catch((err) => logger.warn(`Failed to send finished message: ${err.message}`));
+        }
       }
+
+      // Set 5-minute idle timeout before disconnecting
+      queue.idleTimeout = setTimeout(() => {
+        logger.info(`Disconnecting from ${queue.voiceChannelId} after 5 minutes of idle time`);
+        // Clear voice status before disconnecting
+        setVoiceStatus(queue.worker.client, queue.voiceChannelId, "");
+        if (queue.connection) {
+          queue.connection.destroy();
+        }
+        queues.delete(queue.voiceChannelId);
+      }, 5 * 60 * 1000); // 5 minutes
     }
   });
 
@@ -561,6 +583,13 @@ async function enqueue(interaction, query) {
       queue = await createQueue(interaction, worker, track);
     }
 
+    // Clear idle timeout if song is added while in idle state
+    if (queue.idleTimeout) {
+      clearTimeout(queue.idleTimeout);
+      queue.idleTimeout = null;
+      logger.info(`Cleared idle timeout for ${queue.voiceChannelId} - new song added`);
+    }
+
     queue.songs.push({
       ...track,
       requestedBy: interaction.user.tag,
@@ -568,8 +597,9 @@ async function enqueue(interaction, query) {
 
     if (queue.songs.length === 1 && !queue.nowPlaying) {
       await playSong(queue);
+      // Don't send duplicate "Now playing" message here - playSong() already sends one with controls
       await interaction.editReply(
-        `▶️ **Now playing:** [${track.title}](${track.url})`
+        `✅ **Added to queue:** [${track.title}](${track.url})`
       );
     } else {
       await interaction.editReply(
@@ -634,6 +664,13 @@ async function enqueuePlaylist(interaction, url) {
       durationInSec: entry.duration || 0,
       requestedBy: interaction.user.tag,
     }));
+
+    // Clear idle timeout if playlist is added while in idle state
+    if (queue.idleTimeout) {
+      clearTimeout(queue.idleTimeout);
+      queue.idleTimeout = null;
+      logger.info(`Cleared idle timeout for ${queue.voiceChannelId} - playlist added`);
+    }
 
     queue.songs.push(...songsToAdd);
 
