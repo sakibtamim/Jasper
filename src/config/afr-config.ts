@@ -167,6 +167,6 @@ export function getEntryMessage(catName: string): string {
     const randomIndex = Math.floor(Math.random() * pool.length);
     const message = pool[randomIndex];
 
-    // Interpolate {name} placeholder for generic messages only
-    return pool === GENERIC_MESSAGES ? message.replace("{name}", catName) : message;
+    // Interpolate {name} placeholder (safe to run on all messages)
+    return message.replace("{name}", catName);
 }

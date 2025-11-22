@@ -299,6 +299,27 @@ async function reacquireIdleWorker(interaction: ChatInputCommandInteraction, que
   return true;
 }
 
+async function ensureQueue(
+  interaction: ChatInputCommandInteraction,
+  voiceChannel: VoiceBasedChannel,
+  track: Song | null
+): Promise<Queue | null> {
+  let queue = await validateAndCleanupQueue(interaction, voiceChannel.id);
+
+  if (!queue) {
+    const worker = await assignWorker(interaction, voiceChannel, true); // NEW connection
+    if (!worker) return null;
+
+    queue = await createQueue(interaction, worker, track);
+  } else {
+    // Queue exists. If it was idle, the worker was marked as free.
+    // We need to mark it as busy again before adding a new song.
+    const success = await reacquireIdleWorker(interaction, queue);
+    if (!success) return null;
+  }
+  return queue;
+}
+
 // --- Exported Functions ---
 
 async function enqueue(interaction: ChatInputCommandInteraction, query: string): Promise<void> {
@@ -323,19 +344,8 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string):
 
   try {
     const track = await resolveTrack(query);
-    let queue = await validateAndCleanupQueue(interaction, voiceChannel.id);
-
-    if (!queue) {
-      const worker = await assignWorker(interaction, voiceChannel, true); // NEW connection
-      if (!worker) return;
-
-      queue = await createQueue(interaction, worker, track);
-    } else {
-      // Queue exists. If it was idle, the worker was marked as free.
-      // We need to mark it as busy again before adding a new song.
-      const success = await reacquireIdleWorker(interaction, queue);
-      if (!success) return;
-    }
+    const queue = await ensureQueue(interaction, voiceChannel, track);
+    if (!queue) return;
 
     if (queue.idleTimeout) {
       clearTimeout(queue.idleTimeout);
@@ -409,18 +419,8 @@ async function enqueuePlaylist(interaction: ChatInputCommandInteraction, url: st
       throw new Error("Could not find any songs in this playlist.");
     }
 
-    let queue = getQueue(voiceChannel.id);
-    if (!queue) {
-      const worker = await assignWorker(interaction, voiceChannel, true); // NEW connection
-      if (!worker) return;
-
-      queue = await createQueue(interaction, worker, null);
-    } else {
-      // Queue exists. If it was idle, the worker was marked as free.
-      // We need to mark it as busy again before adding a new song.
-      const success = await reacquireIdleWorker(interaction, queue);
-      if (!success) return;
-    }
+    const queue = await ensureQueue(interaction, voiceChannel, null);
+    if (!queue) return;
 
     const songsToAdd: Song[] = entries.map((entry) => ({
       title: entry.title || "Unknown Title",
