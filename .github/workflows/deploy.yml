@@ -25,6 +25,12 @@ jobs:
       - name: Build project
         run: npm run build
 
+      - name: Generate checksums
+        run: |
+          find dist -type f -exec sha256sum {} \; | sort > dist-checksums.txt
+          sha256sum package.json package-lock.json ecosystem.config.js >> dist-checksums.txt
+          cat dist-checksums.txt
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -35,6 +41,7 @@ jobs:
             package.json
             package-lock.json
             ecosystem.config.js
+            dist-checksums.txt
 
   deploy:
     needs: build
@@ -46,35 +53,52 @@ jobs:
         with:
           name: bot-build
 
+      - name: Verify checksums
+        run: |
+          echo "Verifying artifact integrity..."
+          sha256sum -c dist-checksums.txt
+
       - name: Clean target directory
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT || 22 }}
           script: |
-            rm -rf ${{ secrets.SSH_TARGET }}/dist
-            rm -rf ${{ secrets.SSH_TARGET }}/scripts
+            rm -rf ${{ secrets.TARGET }}/dist
+            rm -rf ${{ secrets.TARGET }}/scripts
 
       - name: Copy files to server
-        uses: appleboy/scp-action@v0.1.7
+        uses: appleboy/scp-action@v1
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
-          target: ${{ secrets.SSH_TARGET }}
-          source: "dist,scripts,package.json,package-lock.json,ecosystem.config.js"
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT || 22 }}
+          target: ${{ secrets.TARGET }}
+          source: "dist,scripts,package.json,package-lock.json,ecosystem.config.js,dist-checksums.txt"
+
+      - name: Verify deployment integrity
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT || 22 }}
+          script: |
+            cd ${{ secrets.TARGET }}
+            echo "Verifying deployed files..."
+            sha256sum -c dist-checksums.txt
 
       - name: Install dependencies and restart
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT || 22 }}
           script: |
-            cd ${{ secrets.SSH_TARGET }}
+            cd ${{ secrets.TARGET }}
             npm ci --production
             pm2 startOrRestart ecosystem.config.js
