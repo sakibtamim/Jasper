@@ -41,6 +41,17 @@ export default {
 
   async execute(interaction: ChatInputCommandInteraction) {
     const query = interaction.options.getString("query", true);
+
+    // Fix for Issue #10: Detect playlist URLs and reject them
+    // This prevents the bot from hanging when trying to process a whole playlist
+    if (/[?&]list=([^#\&\?]+)/.test(query)) {
+      await interaction.reply({
+        content: "🚫 **Playlist links are not supported in /play.**\nPlease use `/playlist` for playlists!",
+        ephemeral: true,
+      });
+      return;
+    }
+
     await music.enqueue(interaction, query);
   },
 };
