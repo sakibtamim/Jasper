@@ -47,7 +47,9 @@ export default {
     // This prevents the bot from hanging by only playing the specific video
     if (query.includes("list=") && (query.includes("youtube.com") || query.includes("youtu.be"))) {
       try {
-        const urlObj = new URL(query);
+        // Ensure protocol exists for URL parsing
+        const urlToParse = query.startsWith("http") ? query : `https://${query}`;
+        const urlObj = new URL(urlToParse);
         urlObj.searchParams.delete("list");
         urlObj.searchParams.delete("index");
         urlObj.searchParams.delete("start_radio");
