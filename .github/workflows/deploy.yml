@@ -20,6 +20,8 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
+        env:
+          YT_DLP_SKIP_POSTINSTALL: 1
         run: npm ci
 
       - name: Build project
@@ -66,6 +68,9 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
+            set -e
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             cd ${{ secrets.SSH_TARGET }}
             pm2 stop jasper-bot || true
             rm -rf dist scripts package.json package-lock.json ecosystem.config.js dist-checksums.txt
@@ -88,6 +93,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
+            set -e
             cd ${{ secrets.SSH_TARGET }}
             echo "Verifying deployed files..."
             sha256sum -c dist-checksums.txt
@@ -100,6 +106,9 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
+            set -e
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             cd ${{ secrets.SSH_TARGET }}
             npm ci --production
             pm2 startOrRestart ecosystem.config.js
