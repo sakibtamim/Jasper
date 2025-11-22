@@ -11,7 +11,8 @@
     "lint": "eslint src/**/*.ts",
     "deploy:commands": "tsx src/deploy-commands.ts",
     "prepare": "node ./scripts/prepare.js",
-    "postinstall": "node ./scripts/install-yt-dlp.js"
+    "postinstall": "node ./scripts/install-yt-dlp.js",
+    "deploy": "git checkout master && git pull && git checkout deploy && git pull && git merge --ff-only master && git push && git checkout master"
   },
   "keywords": [
     "discord",
