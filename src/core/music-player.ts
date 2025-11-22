@@ -35,11 +35,12 @@ import {
 
 import { playSong, handleAutoplay } from "./audio/playback-engine.js";
 import { getAutoplayButton } from "./ui/player-controls.js";
+import { getEntryMessage } from "../config/afr-config.js";
 import ytSearch from "yt-search";
 
 // --- Helpers ---
 
-async function assignWorker(interaction: ChatInputCommandInteraction, voiceChannel: VoiceBasedChannel): Promise<WorkerState | null> {
+async function assignWorker(interaction: ChatInputCommandInteraction, voiceChannel: VoiceBasedChannel, isNewConnection: boolean): Promise<WorkerState | null> {
   // Allocate a worker
   const worker = workerPool.allocateWorker(
     interaction.guild!.id,
@@ -78,15 +79,12 @@ async function assignWorker(interaction: ChatInputCommandInteraction, voiceChann
     return null;
   }
 
-  // Flavor text
-  if (worker.role === "worker") {
-    if (interaction.channel && interaction.channel.isSendable()) {
-      await interaction.channel
-        .send(
-          `🐾 **Jasper** is busy, summoning **${worker.name}** to handle the beats!`
-        )
-        .catch(() => { });
-    }
+  // Show entry message only for NEW worker connections, not reused ones
+  if (isNewConnection && interaction.channel && interaction.channel.isSendable()) {
+    const entryMessage = getEntryMessage(worker.name);
+    await interaction.channel
+      .send(entryMessage)
+      .catch((error) => logger.warn(`[AFR] Failed to send entry message: ${error instanceof Error ? error.message : String(error)}`));
   }
 
   return worker;
@@ -287,6 +285,41 @@ async function resolveTrack(query: string): Promise<Song> {
   throw new Error("No results found on YouTube.");
 }
 
+async function reacquireIdleWorker(interaction: ChatInputCommandInteraction, queue: Queue): Promise<boolean> {
+  if (queue.idleTimeout) {
+    // First, check if the worker was stolen for another task.
+    if (queue.worker.busy) {
+      logger.error(`[Worker Conflict] Worker ${queue.worker.name} for channel ${queue.voiceChannelId} was reassigned while idle.`);
+      await interaction.editReply('🚫 **Bot Conflict!** The bot for this channel was assigned another task while idle. Please use `/stop` and try again.');
+      return false;
+    }
+    // Re-acquire the worker for this queue by marking it as busy.
+    workerPool.setWorkerBusy(queue.worker, queue.guildId, queue.voiceChannelId);
+  }
+  return true;
+}
+
+async function ensureQueue(
+  interaction: ChatInputCommandInteraction,
+  voiceChannel: VoiceBasedChannel,
+  track: Song | null
+): Promise<Queue | null> {
+  let queue = await validateAndCleanupQueue(interaction, voiceChannel.id);
+
+  if (!queue) {
+    const worker = await assignWorker(interaction, voiceChannel, true); // NEW connection
+    if (!worker) return null;
+
+    queue = await createQueue(interaction, worker, track);
+  } else {
+    // Queue exists. If it was idle, the worker was marked as free.
+    // We need to mark it as busy again before adding a new song.
+    const success = await reacquireIdleWorker(interaction, queue);
+    if (!success) return null;
+  }
+  return queue;
+}
+
 // --- Exported Functions ---
 
 async function enqueue(interaction: ChatInputCommandInteraction, query: string): Promise<void> {
@@ -311,14 +344,8 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string):
 
   try {
     const track = await resolveTrack(query);
-    let queue = await validateAndCleanupQueue(interaction, voiceChannel.id);
-
-    if (!queue) {
-      const worker = await assignWorker(interaction, voiceChannel);
-      if (!worker) return;
-
-      queue = await createQueue(interaction, worker, track);
-    }
+    const queue = await ensureQueue(interaction, voiceChannel, track);
+    if (!queue) return;
 
     if (queue.idleTimeout) {
       clearTimeout(queue.idleTimeout);
@@ -392,13 +419,8 @@ async function enqueuePlaylist(interaction: ChatInputCommandInteraction, url: st
       throw new Error("Could not find any songs in this playlist.");
     }
 
-    let queue = getQueue(voiceChannel.id);
-    if (!queue) {
-      const worker = await assignWorker(interaction, voiceChannel);
-      if (!worker) return;
-
-      queue = await createQueue(interaction, worker, null);
-    }
+    const queue = await ensureQueue(interaction, voiceChannel, null);
+    if (!queue) return;
 
     const songsToAdd: Song[] = entries.map((entry) => ({
       title: entry.title || "Unknown Title",

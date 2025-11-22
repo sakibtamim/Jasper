@@ -1,6 +1,7 @@
 import { Client, GatewayIntentBits, ActivityType } from "discord.js";
 import logger from "./logger.js";
 import bots from "../config/bots.js";
+import { JASPER_WEIGHT } from "../config/afr-config.js";
 
 // Registry to hold all worker states
 const workers: WorkerState[] = [];
@@ -92,37 +93,100 @@ function findWorkerByVoiceChannel(guildId: string, voiceChannelId: string): Work
 }
 
 /**
- * Allocate a worker for a voice channel.
+ * Select a feline using AFR (Automatic Feline Rotation) logic.
+ * 
+ * AFR Selection Rules:
+ * 1. If Jasper is eligible:
+ *    - With JASPER_WEIGHT probability: select Jasper
+ *    - Otherwise: randomly select from eligible non-Jasper workers
+ * 2. If Jasper is not eligible:
+ *    - Randomly select from eligible workers
+ * 
+ * @param {WorkerState[]} eligibleWorkers - List of workers that are not busy
+ * @returns {WorkerState} - The selected worker
+ */
+function selectFelineWithAFR(eligibleWorkers: WorkerState[]): WorkerState {
+    // Single-pass partition: separate Jasper from other workers
+    let jasper: WorkerState | undefined;
+    const nonJasperWorkers: WorkerState[] = [];
+
+    for (const worker of eligibleWorkers) {
+        if (worker.role === "controller") {
+            jasper = worker;
+        } else {
+            nonJasperWorkers.push(worker);
+        }
+    }
+
+    if (!jasper) {
+        // Jasper not available, randomly select from eligible workers
+        const randomIndex = Math.floor(Math.random() * eligibleWorkers.length);
+        const selected = eligibleWorkers[randomIndex];
+        logger.info(
+            `[AFR] Jasper not eligible. Randomly selected ${selected.name} from ${eligibleWorkers.length} eligible workers.`
+        );
+        return selected;
+    }
+
+    // Jasper is eligible
+    const roll = Math.random();
+
+    if (roll < JASPER_WEIGHT) {
+        // Select Jasper
+        logger.info(
+            `[AFR] Jasper selected (roll: ${roll.toFixed(3)}, weight: ${JASPER_WEIGHT})`
+        );
+        return jasper;
+    }
+
+    // roll >= JASPER_WEIGHT, try to select a non-Jasper worker
+    if (nonJasperWorkers.length === 0) {
+        // No other workers available, fallback to Jasper
+        logger.info(
+            `[AFR] No other workers available, selecting Jasper as fallback (roll: ${roll.toFixed(3)}, weight: ${JASPER_WEIGHT})`
+        );
+        return jasper;
+    }
+
+    const randomIndex = Math.floor(Math.random() * nonJasperWorkers.length);
+    const selected = nonJasperWorkers[randomIndex];
+    logger.info(
+        `[AFR] Non-Jasper worker selected: ${selected.name} (roll: ${roll.toFixed(3)}, weight: ${JASPER_WEIGHT})`
+    );
+    return selected;
+}
+
+/**
+ * Allocate a worker for a voice channel using AFR.
  * Priority:
- * 1. Worker already in that channel.
- * 2. Idle worker bot.
- * 3. Idle controller bot (if enabled/allowed).
+ * 1. Worker already in that channel (reuse existing connection).
+ * 2. AFR selection from eligible (idle) workers.
  * @param {string} guildId
  * @param {string} voiceChannelId
  * @returns {WorkerState|null}
  */
 function allocateWorker(guildId: string, voiceChannelId: string): WorkerState | null {
-    // 1. Check if someone is already there
+    // 1. Check if someone is already in the channel (reuse connection)
     const existing = findWorkerByVoiceChannel(guildId, voiceChannelId);
-    if (existing) return existing;
-
-    // 2. Check if Controller (Jasper) is free (Prioritize Leader)
-    const controller = getController();
-    if (controller && !controller.busy) {
-        return controller;
+    if (existing) {
+        logger.info(
+            `[WorkerPool] Reusing ${existing.name} already in channel ${voiceChannelId}`
+        );
+        return existing;
     }
 
-    // 3. Find an idle worker
-    const idleWorker = workers.find(
-        (w) => w.role === "worker" && !w.busy
-    );
+    // 2. Get all eligible (non-busy) workers
+    const eligibleWorkers = workers.filter((w) => !w.busy);
 
-    if (idleWorker) {
-        return idleWorker;
+    if (eligibleWorkers.length === 0) {
+        // Everyone is busy
+        logger.warn("[WorkerPool] All workers are busy, cannot allocate");
+        return null;
     }
 
-    // 4. Everyone is busy
-    return null;
+    // 3. Use AFR to select a worker
+    const selected = selectFelineWithAFR(eligibleWorkers);
+    return selected;
 }
 
 /**

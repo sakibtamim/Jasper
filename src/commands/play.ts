@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, AutocompleteInteraction } from "discord.js";
 import music from "../core/music-player.js";
 import ytSearch from "yt-search";
+import logger from "../core/logger.js";
 
 export default {
   data: new SlashCommandBuilder()
@@ -56,7 +57,8 @@ export default {
         query = urlObj.toString();
 
         playlistWarning = "⚠️ **I'm only playing the first song.**\nIf you want to queue the whole playlist, please use `/playlist`!";
-      } catch (e) {
+      } catch (error) {
+        logger.warn(`Failed to parse/clean URL in /play command: ${error}`);
         // If URL parsing fails, proceed with original query
       }
     }

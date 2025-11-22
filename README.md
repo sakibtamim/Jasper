@@ -14,6 +14,7 @@ It uses **yt-dlp** (an external command-line tool) to stream high-quality audio,
   - **Voice Status Updates:** Updates the voice channel status to show the currently playing song.
   - **Now Playing:** Shows rich embeds with video thumbnails, duration, and interactive controls.
   - **Multi-Client Support:** "One Mind, Many Bodies" architecture allows multiple bots (Jasper + Workers) to play music simultaneously in different channels of the same server.
+  - **Automatic Feline Rotation (AFR):** 🆕 Smart, probabilistic bot selection with configurable Jasper presence and unique entry messages for each cat!
 
 ## Multi-Client Architecture (Heavenly Council of Fur)
 
@@ -23,9 +24,10 @@ Jasper supports a unique **Controller + Worker** architecture.
 
 **How it works:**
 1. You send a command to Jasper: `/play song`.
-2. If Jasper is free, he joins your channel and plays.
-3. If Jasper is busy in another channel, he summons a free **Worker Bot** (e.g., Misty) to your channel to play the music.
-4. This allows multiple voice channels to have music simultaneously, all controlled via Jasper!
+2. With **Automatic Feline Rotation (AFR)**, Jasper has a 50% chance of joining your channel himself.
+3. The other 50% of the time, he'll summon a random **Worker Bot** (e.g., Misty or Tuki) to handle the music.
+4. Each cat announces their arrival with unique, randomized messages! 🐾
+5. This allows multiple voice channels to have music simultaneously, all controlled via Jasper!
 
 ### Configuration
 To enable this, add tokens for your worker bots in the `.env` file:
@@ -44,6 +46,43 @@ JAFREEN_TOKEN=...
 Ensure ALL worker bots are invited to your server and have the following permissions in the voice channels:
 - `Connect`
 - `Speak`
+
+## Automatic Feline Rotation (AFR)
+
+🆕 **AFR** is a smart bot selection system that adds variety and personality to your music experience!
+
+### What is AFR?
+
+Instead of always using Jasper or following a fixed order, AFR probabilistically selects which cat joins your voice channel:
+- **50% chance:** Jasper himself joins (default behavior)
+- **50% chance:** A random worker bot (Misty, Tuki, etc.) is selected
+- **Unique Entry Messages:** Each cat announces their arrival with personalized, randomized messages
+
+### Configuration
+
+You can customize Jasper's appearance probability by adding to your `.env` file:
+
+```env
+# AFR Configuration (optional)
+AFR_JASPER_WEIGHT=0.5  # Default: 0.5 (50% chance)
+```
+
+**Weight Options:**
+- `0.5` (default) - Balanced 50/50 split between Jasper and workers
+- `1.0` - Jasper always joins when available (classic behavior)
+- `0.0` - Workers always selected, Jasper never joins
+- `0.75` - Jasper has 75% chance, workers 25%
+
+### Entry Messages
+
+Each cat has their own personality:
+- **Jasper:** "🐾 **Jasper** has arrived, ready to drop some purrfect beats!"
+- **Misty:** "🌫️ **Misty** emerges from the fog to bless your ears!"
+- **Tuki:** "🔮 **Tuki** arrives with mystical melodies!"
+- **Jafreen:** "🎭 **Jafreen** takes the stage!"
+- **Other Workers:** Generic messages with their names
+
+> **Note:** Entry messages only appear when a bot first joins, not when reusing an existing connection.
 
 ## Tech Stack
 
