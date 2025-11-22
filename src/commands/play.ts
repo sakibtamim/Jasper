@@ -41,6 +41,7 @@ export default {
 
   async execute(interaction: ChatInputCommandInteraction) {
     let query = interaction.options.getString("query", true);
+    let playlistWarning = null;
 
     // Fix for Issue #10: Detect playlist URLs and strip the playlist parameter
     // This prevents the bot from hanging by only playing the specific video
@@ -52,15 +53,19 @@ export default {
         urlObj.searchParams.delete("start_radio");
         query = urlObj.toString();
 
-        await interaction.reply({
-          content: "⚠️ **I'm only playing the first song.**\nIf you want to queue the whole playlist, please use `/playlist`!",
-          ephemeral: true,
-        });
+        playlistWarning = "⚠️ **I'm only playing the first song.**\nIf you want to queue the whole playlist, please use `/playlist`!";
       } catch (e) {
         // If URL parsing fails, proceed with original query
       }
     }
 
     await music.enqueue(interaction, query);
+
+    if (playlistWarning) {
+      await interaction.followUp({
+        content: playlistWarning,
+        ephemeral: true,
+      });
+    }
   },
 };
