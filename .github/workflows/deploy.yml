@@ -61,44 +61,44 @@ jobs:
       - name: Clean target directory
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
-          port: ${{ secrets.PORT || 22 }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
           script: |
-            rm -rf ${{ secrets.TARGET }}/dist
-            rm -rf ${{ secrets.TARGET }}/scripts
+            rm -rf ${{ secrets.SSH_TARGET }}/dist
+            rm -rf ${{ secrets.SSH_TARGET }}/scripts
 
       - name: Copy files to server
         uses: appleboy/scp-action@v1
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
-          port: ${{ secrets.PORT || 22 }}
-          target: ${{ secrets.TARGET }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          target: ${{ secrets.SSH_TARGET }}
           source: "dist,scripts,package.json,package-lock.json,ecosystem.config.js,dist-checksums.txt"
 
       - name: Verify deployment integrity
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
-          port: ${{ secrets.PORT || 22 }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
           script: |
-            cd ${{ secrets.TARGET }}
+            cd ${{ secrets.SSH_TARGET }}
             echo "Verifying deployed files..."
             sha256sum -c dist-checksums.txt
 
       - name: Install dependencies and restart
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
-          port: ${{ secrets.PORT || 22 }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
           script: |
-            cd ${{ secrets.TARGET }}
+            cd ${{ secrets.SSH_TARGET }}
             npm ci --production
             pm2 startOrRestart ecosystem.config.js
