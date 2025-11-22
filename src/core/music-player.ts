@@ -35,11 +35,12 @@ import {
 
 import { playSong, handleAutoplay } from "./audio/playback-engine.js";
 import { getAutoplayButton } from "./ui/player-controls.js";
+import { getEntryMessage } from "../config/afr-config.js";
 import ytSearch from "yt-search";
 
 // --- Helpers ---
 
-async function assignWorker(interaction: ChatInputCommandInteraction, voiceChannel: VoiceBasedChannel): Promise<WorkerState | null> {
+async function assignWorker(interaction: ChatInputCommandInteraction, voiceChannel: VoiceBasedChannel, isNewConnection: boolean): Promise<WorkerState | null> {
   // Allocate a worker
   const worker = workerPool.allocateWorker(
     interaction.guild!.id,
@@ -78,15 +79,12 @@ async function assignWorker(interaction: ChatInputCommandInteraction, voiceChann
     return null;
   }
 
-  // Show entry message for all workers joining a new channel
-  if (interaction.channel && interaction.channel.isSendable()) {
-    // Import AFR config to get entry message
-    const { getEntryMessage } = await import("../config/afr-config.js");
+  // Show entry message only for NEW worker connections, not reused ones
+  if (isNewConnection && interaction.channel && interaction.channel.isSendable()) {
     const entryMessage = getEntryMessage(worker.name);
-
     await interaction.channel
       .send(entryMessage)
-      .catch(() => { });
+      .catch((error) => logger.warn(`[AFR] Failed to send entry message: ${error instanceof Error ? error.message : String(error)}`));
   }
 
   return worker;
@@ -314,10 +312,13 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string):
     let queue = await validateAndCleanupQueue(interaction, voiceChannel.id);
 
     if (!queue) {
-      const worker = await assignWorker(interaction, voiceChannel);
+      const worker = await assignWorker(interaction, voiceChannel, true); // NEW connection
       if (!worker) return;
 
       queue = await createQueue(interaction, worker, track);
+    } else {
+      // Queue exists, this is a REUSED connection - still need a worker reference for logging
+      // but don't show entry message again
     }
 
     if (queue.idleTimeout) {
@@ -394,7 +395,7 @@ async function enqueuePlaylist(interaction: ChatInputCommandInteraction, url: st
 
     let queue = getQueue(voiceChannel.id);
     if (!queue) {
-      const worker = await assignWorker(interaction, voiceChannel);
+      const worker = await assignWorker(interaction, voiceChannel, true); // NEW connection
       if (!worker) return;
 
       queue = await createQueue(interaction, worker, null);

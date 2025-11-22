@@ -22,14 +22,13 @@ dotenv.config();
  * 
  * Configurable via AFR_JASPER_WEIGHT environment variable.
  */
-export const JASPER_WEIGHT = parseFloat(
-    process.env.AFR_JASPER_WEIGHT || "0.5"
-);
+const rawJasperWeight = process.env.AFR_JASPER_WEIGHT || "0.5";
+export const JASPER_WEIGHT = parseFloat(rawJasperWeight);
 
 // Validate weight is in valid range [0, 1]
 if (JASPER_WEIGHT < 0 || JASPER_WEIGHT > 1 || isNaN(JASPER_WEIGHT)) {
     throw new Error(
-        `AFR_JASPER_WEIGHT must be between 0 and 1, got: ${process.env.AFR_JASPER_WEIGHT}`
+        `AFR_JASPER_WEIGHT must be between 0 and 1, but received invalid value: "${rawJasperWeight}"`
     );
 }
 
@@ -125,6 +124,6 @@ export function getEntryMessage(catName: string): string {
     const randomIndex = Math.floor(Math.random() * pool.length);
     const message = pool[randomIndex];
 
-    // Interpolate {name} placeholder for generic messages
-    return message.replace("{name}", catName);
+    // Interpolate {name} placeholder for generic messages only
+    return pool === GENERIC_MESSAGES ? message.replace("{name}", catName) : message;
 }

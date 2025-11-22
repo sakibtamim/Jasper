@@ -106,16 +106,26 @@ function findWorkerByVoiceChannel(guildId: string, voiceChannelId: string): Work
  * @returns {WorkerState} - The selected worker
  */
 function selectFelineWithAFR(eligibleWorkers: WorkerState[]): WorkerState {
-    const jasperIndex = eligibleWorkers.findIndex((w) => w.name === "Jasper");
-    const jasperIsEligible = jasperIndex !== -1;
+    // Single-pass partition: separate Jasper from other workers
+    let jasper: WorkerState | undefined;
+    const nonJasperWorkers: WorkerState[] = [];
 
-    if (!jasperIsEligible) {
+    for (const worker of eligibleWorkers) {
+        if (worker.name === "Jasper") {
+            jasper = worker;
+        } else {
+            nonJasperWorkers.push(worker);
+        }
+    }
+
+    if (!jasper) {
         // Jasper not available, randomly select from eligible workers
         const randomIndex = Math.floor(Math.random() * eligibleWorkers.length);
+        const selected = eligibleWorkers[randomIndex];
         logger.info(
-            `[AFR] Jasper not eligible. Randomly selected ${eligibleWorkers[randomIndex].name} from ${eligibleWorkers.length} eligible workers.`
+            `[AFR] Jasper not eligible. Randomly selected ${selected.name} from ${eligibleWorkers.length} eligible workers.`
         );
-        return eligibleWorkers[randomIndex];
+        return selected;
     }
 
     // Jasper is eligible
@@ -126,25 +136,24 @@ function selectFelineWithAFR(eligibleWorkers: WorkerState[]): WorkerState {
         logger.info(
             `[AFR] Jasper selected (roll: ${roll.toFixed(3)}, weight: ${JASPER_WEIGHT})`
         );
-        return eligibleWorkers[jasperIndex];
+        return jasper;
     }
 
-    // Select random non-Jasper worker
-    const nonJasperWorkers = eligibleWorkers.filter((w) => w.name !== "Jasper");
-
+    // roll >= JASPER_WEIGHT, try to select a non-Jasper worker
     if (nonJasperWorkers.length === 0) {
         // No other workers available, fallback to Jasper
         logger.info(
             `[AFR] No other workers available, selecting Jasper as fallback (roll: ${roll.toFixed(3)}, weight: ${JASPER_WEIGHT})`
         );
-        return eligibleWorkers[jasperIndex];
+        return jasper;
     }
 
     const randomIndex = Math.floor(Math.random() * nonJasperWorkers.length);
+    const selected = nonJasperWorkers[randomIndex];
     logger.info(
-        `[AFR] Non-Jasper worker selected: ${nonJasperWorkers[randomIndex].name} (roll: ${roll.toFixed(3)}, weight: ${JASPER_WEIGHT})`
+        `[AFR] Non-Jasper worker selected: ${selected.name} (roll: ${roll.toFixed(3)}, weight: ${JASPER_WEIGHT})`
     );
-    return nonJasperWorkers[randomIndex];
+    return selected;
 }
 
 /**
