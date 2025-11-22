@@ -90,15 +90,29 @@ Defines the bot configuration for the Worker Pool:
   - Workers handle playback duties, allowing multiple simultaneous voice channels.
 - **Type Safety**: Uses `BotConfig` interface for type-safe bot configuration.
 
+#### 2a. AFR Configuration (`src/config/afr-config.ts`)
+Defines the Automatic Feline Rotation (AFR) system:
+- **Jasper Weight**: Configurable probability for Jasper selection (default 0.5, via `AFR_JASPER_WEIGHT` env var).
+  - `0.5` = 50% chance Jasper is selected when available (default behavior)
+  - `1.0` = Always select Jasper when available (legacy behavior)
+  - `0.0` = Never select Jasper over other workers
+- **Entry Messages**: Centralized text pools for cat announcements:
+  - Jasper-specific messages (5 variants)
+  - HCoF member messages (Misty, Tuki, Jafreen - 3 variants each)
+  - Generic fallback messages for other workers (4 variants)
+- Each cat randomly selects one message from their pool when connecting.
+
 #### 3. Worker Pool (`src/core/worker-pool.ts`)
 Manages multiple bot instances to enable concurrent playback:
 - **Bot Creation**: Creates discord.js Client instances for all configured bots.
 - **Login Management**: Logs in the controller first, then all workers in parallel.
-- **Worker Allocation**: Assigns workers to voice channels using a priority system:
+- **Worker Allocation (AFR)**: Assigns workers to voice channels using AFR (Automatic Feline Rotation):
   1. Reuse worker already in the target channel.
-  2. Prioritize idle Controller (Jasper).
-  3. Use any idle worker bot.
-  4. Return null if all workers are busy.
+  2. Apply AFR selection from eligible (idle) workers:
+     - If Jasper is eligible: `JASPER_WEIGHT` probability to select Jasper, otherwise random non-Jasper worker
+     - If Jasper not eligible: Random selection from available workers
+  3. Return null if all workers are busy.
+- **AFR Logging**: Detailed logs show selection decisions, random rolls, and weight values for debugging.
 - **State Tracking**: Maintains each worker's busy status, assigned guild, and voice channel.
 - **Cleanup**: Releases workers when playback ends.
 - **Type Safety**: Uses `WorkerState` interface for type-safe worker management.

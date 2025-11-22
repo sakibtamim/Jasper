@@ -78,15 +78,15 @@ async function assignWorker(interaction: ChatInputCommandInteraction, voiceChann
     return null;
   }
 
-  // Flavor text
-  if (worker.role === "worker") {
-    if (interaction.channel && interaction.channel.isSendable()) {
-      await interaction.channel
-        .send(
-          `🐾 **Jasper** is busy, summoning **${worker.name}** to handle the beats!`
-        )
-        .catch(() => { });
-    }
+  // Show entry message for all workers joining a new channel
+  if (interaction.channel && interaction.channel.isSendable()) {
+    // Import AFR config to get entry message
+    const { getEntryMessage } = await import("../config/afr-config.js");
+    const entryMessage = getEntryMessage(worker.name);
+
+    await interaction.channel
+      .send(entryMessage)
+      .catch(() => { });
   }
 
   return worker;
