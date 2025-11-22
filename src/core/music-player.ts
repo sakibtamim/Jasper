@@ -285,6 +285,20 @@ async function resolveTrack(query: string): Promise<Song> {
   throw new Error("No results found on YouTube.");
 }
 
+async function reacquireIdleWorker(interaction: ChatInputCommandInteraction, queue: Queue): Promise<boolean> {
+  if (queue.idleTimeout) {
+    // First, check if the worker was stolen for another task.
+    if (queue.worker.busy) {
+      logger.error(`[Worker Conflict] Worker ${queue.worker.name} for channel ${queue.voiceChannelId} was reassigned while idle.`);
+      await interaction.editReply('🚫 **Bot Conflict!** The bot for this channel was assigned another task while idle. Please use `/stop` and try again.');
+      return false;
+    }
+    // Re-acquire the worker for this queue by marking it as busy.
+    workerPool.setWorkerBusy(queue.worker, queue.guildId, queue.voiceChannelId);
+  }
+  return true;
+}
+
 // --- Exported Functions ---
 
 async function enqueue(interaction: ChatInputCommandInteraction, query: string): Promise<void> {
@@ -319,16 +333,8 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string):
     } else {
       // Queue exists. If it was idle, the worker was marked as free.
       // We need to mark it as busy again before adding a new song.
-      if (queue.idleTimeout) {
-        // First, check if the worker was stolen for another task.
-        if (queue.worker.busy) {
-          logger.error(`[Worker Conflict] Worker ${queue.worker.name} for channel ${voiceChannel.id} was reassigned while idle.`);
-          await interaction.editReply('🚫 **Bot Conflict!** The bot for this channel was assigned another task while idle. Please use `/stop` and try again.');
-          return;
-        }
-        // Re-acquire the worker for this queue by marking it as busy.
-        workerPool.setWorkerBusy(queue.worker, queue.guildId, queue.voiceChannelId);
-      }
+      const success = await reacquireIdleWorker(interaction, queue);
+      if (!success) return;
     }
 
     if (queue.idleTimeout) {
@@ -412,16 +418,8 @@ async function enqueuePlaylist(interaction: ChatInputCommandInteraction, url: st
     } else {
       // Queue exists. If it was idle, the worker was marked as free.
       // We need to mark it as busy again before adding a new song.
-      if (queue.idleTimeout) {
-        // First, check if the worker was stolen for another task.
-        if (queue.worker.busy) {
-          logger.error(`[Worker Conflict] Worker ${queue.worker.name} for channel ${voiceChannel.id} was reassigned while idle.`);
-          await interaction.editReply('🚫 **Bot Conflict!** The bot for this channel was assigned another task while idle. Please use `/stop` and try again.');
-          return;
-        }
-        // Re-acquire the worker for this queue by marking it as busy.
-        workerPool.setWorkerBusy(queue.worker, queue.guildId, queue.voiceChannelId);
-      }
+      const success = await reacquireIdleWorker(interaction, queue);
+      if (!success) return;
     }
 
     const songsToAdd: Song[] = entries.map((entry) => ({
