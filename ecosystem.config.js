@@ -1,4 +1,4 @@
-module.exports = {
+export default {
     apps: [{
         name: "jasper-bot",
         script: "./dist/index.js",

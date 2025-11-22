@@ -48,11 +48,12 @@ This file configures PM2 to manage the bot process.
 
 The deployment is handled automatically by GitHub Actions when you push to the `deploy` branch.
 
-1.  **Build**: The workflow installs dependencies and compiles the TypeScript code.
-2.  **Upload**: The compiled `dist` folder, `scripts`, and configuration files are uploaded as an artifact.
+1.  **Build**: The workflow installs dependencies, compiles the TypeScript code, and generates SHA256 checksums for the artifacts.
+2.  **Upload**: The compiled `dist` folder, `scripts`, configuration files, and checksums are uploaded as an artifact.
 3.  **Deploy**:
-    -   The artifact is downloaded.
+    -   The artifact is downloaded and its integrity is verified using the checksums.
     -   Files are copied to the server via SCP, overwriting the `dist` and `scripts` directories.
+    -   The integrity of the copied files on the server is verified again.
     -   `npm ci --production` is run on the server to install production dependencies.
     -   `pm2 startOrRestart ecosystem.config.js` is executed to start or reload the bot.
 
