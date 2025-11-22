@@ -56,7 +56,7 @@ export default {
         query = urlObj.toString();
 
         playlistWarning = "⚠️ **I'm only playing the first song.**\nIf you want to queue the whole playlist, please use `/playlist`!";
-      } catch (e) {
+      } catch {
         // If URL parsing fails, proceed with original query
       }
     }
