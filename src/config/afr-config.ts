@@ -51,11 +51,12 @@ type EntryMessagePool = {
  * Jasper's entry messages (main controller bot)
  */
 const JASPER_MESSAGES = [
-    "🐾 **Jasper** has arrived, ready to drop some purrfect beats!",
-    "😺 **Jasper** gracefully enters the stage!",
-    "🎵 The legendary **Jasper** appears to bless your ears!",
-    "🐈‍⬛ **Jasper**, the big black Persian, is here to make it meow-gical!",
-    "✨ **Jasper** emerges from the shadows, ready to rock!",
+    "🎧 **Jasper** links into the grid — primary swarm node online.",
+    "🐈‍⬛ **Jasper** — the big black Persian elder — has arrived. Stay respectful.",
+    "🖤 The void floof **Jasper** slides in, promising stable, no-drama beats.",
+    "🏛️ **Jasper**, older than Misty herself, takes quiet control of the soundstage.",
+    "🔥 **Jasper** approves this channel and will now provide industrial-strength music.",
+    "🌌 **Jasper** materializes from the shadows, syncing the entire feline swarm.",
 ];
 
 /**
@@ -63,30 +64,72 @@ const JASPER_MESSAGES = [
  */
 const HCOF_MESSAGES: EntryMessagePool = {
     Misty: [
-        "🌫️ **Misty** emerges from the fog to bless your ears!",
-        "☁️ **Misty** drifts in on a cloud of pure vibes!",
-        "🌬️ The ethereal **Misty** has arrived!",
+        "🌫️ **Misty** emerges from the fog to bless your ears.",
+        "☁️ The Grandmistress **Misty** drifts in with serene authority.",
+        "🌬️ **Misty**, Keeper of Wisdom, quiets the room with her presence.",
+        "👑 **Misty** descends from the Heavenly Council — listen closely.",
     ],
+
     Tuki: [
-        "🔮 **Tuki** arrives with mystical melodies!",
-        "✨ **Tuki** materializes to share the magic!",
-        "🌟 The enigmatic **Tuki** graces your presence!",
+        "🕊️ **Tuki** arrives — calm, steady, and impossibly patient.",
+        "🌟 **Tuki** materializes, bringing peace and perfect rhythm.",
+        "🔮 The great white giant **Tuki** blesses this voice channel.",
+        "❄️ **Tuki** enters with a soft nod of approval.",
     ],
+
+    Jafraan: [
+        "🔥 **Jafraan** charges in — fearless as ever.",
+        "⚔️ **Jafraan**, the Brave, returns for one more battle tune.",
+        "💥 The spirit of **Jafraan** dives onto the stage!",
+        "🩶 **Jafraan** soars in — small body, enormous courage.",
+    ],
+
+    Kalojam: [
+        "🍯 **Kalojam** rolls in causing tiny, adorable chaos.",
+        "😼 Mischief levels rising — **Kalojam** has connected.",
+        "⚡ **Kalojam** zips onto the stage, pure energy incarnate.",
+        "🌀 The tiny tornado **Kalojam** appears!",
+    ],
+
+    Chomchom: [
+        "🍮 **Chomchom** waddles in, unbothered and undefeated.",
+        "😼 **Chomchom** has joined — vibes guaranteed.",
+        "🎧 **Chomchom** plugs into the system with maximum confidence.",
+        "💫 Survivor spirit detected — **Chomchom** is here.",
+    ],
+
     Jafreen: [
-        "🎭 **Jafreen** takes the stage!",
-        "🎪 **Jafreen** brings the show to you!",
-        "🌈 The vibrant **Jafreen** is ready to perform!",
+        "🌈 **Jafreen** arrives — chosen by Misty, trusted by all.",
+        "🎀 **Jafreen** steps in with quiet grace and bright colors.",
+        "🐾 **Jafreen** takes her place, gentle but steadfast.",
+        "💖 **Jafreen** enters — proof that family is chosen.",
+    ],
+
+    Chini: [
+        "🌸 **Chini** hops in — renewal and softness embodied.",
+        "🌀 **Chini** twirls in with the energy of new beginnings.",
+        "🐈‍⬛ **Chini** joins — tail of fate, heart of warmth.",
+        "✨ **Chini** appears, echoing past and future together.",
+    ],
+
+    Bundle: [
+        "🌱 **Bundle** compiles the connection… success! (with love)",
+        "💚 The tiny spark **Bundle** arrives — fragile, but mighty.",
+        "🍼 **Bundle** squeaks into the voice channel.",
+        "💻 **Bundle.js** boots up — purrformance optimized.",
     ],
 };
+
 
 /**
  * Generic fallback messages for unknown/unnamed cats
  */
 const GENERIC_MESSAGES = [
-    "🎵 **{name}** is here to make some noise!",
-    "🎶 **{name}** has joined the party!",
-    "🐾 **{name}** arrives ready to jam!",
-    "✨ **{name}** is here to bring the beats!",
+    "🎵 **{name}** boots up as an auxiliary node in the Feline Swarm.",
+    "🎶 **{name}** has joined the rotation. Please pet responsibly.",
+    "🐾 Worker cat **{name}** connects — Jasper signed off on this.",
+    "✨ **{name}** sneaks in to handle soundtrack duties.",
+    "😺 **{name}** patched into voice. If anything breaks, blame the humans, not the cat.",
 ];
 
 // ============================================================================
