@@ -10,7 +10,7 @@
     "build": "tsc",
     "lint": "eslint src/**/*.ts",
     "deploy:commands": "tsx src/deploy-commands.ts",
-    "prepare": "npm run build",
+    "prepare": "node ./scripts/prepare.js",
     "postinstall": "node ./scripts/install-yt-dlp.js"
   },
   "keywords": [

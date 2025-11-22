@@ -72,7 +72,7 @@ jobs:
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             cd ${{ secrets.SSH_TARGET }}
-            pm2 stop jasper-bot || true
+            pm2 stop jasper-bot 2>/dev/null || true
             rm -rf dist scripts package.json package-lock.json ecosystem.config.js dist-checksums.txt
 
       - name: Copy files to server
@@ -110,5 +110,5 @@ jobs:
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             cd ${{ secrets.SSH_TARGET }}
-            npm ci --production
+            npm ci --omit=dev
             pm2 startOrRestart ecosystem.config.js
