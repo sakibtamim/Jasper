@@ -40,7 +40,34 @@ export default {
   },
 
   async execute(interaction: ChatInputCommandInteraction) {
-    const query = interaction.options.getString("query", true);
+    let query = interaction.options.getString("query", true);
+    let playlistWarning = null;
+
+    // Fix for Issue #10: Detect playlist URLs and strip the playlist parameter
+    // This prevents the bot from hanging by only playing the specific video
+    if (query.includes("list=") && (query.includes("youtube.com") || query.includes("youtu.be"))) {
+      try {
+        // Ensure protocol exists for URL parsing
+        const urlToParse = query.startsWith("http") ? query : `https://${query}`;
+        const urlObj = new URL(urlToParse);
+        urlObj.searchParams.delete("list");
+        urlObj.searchParams.delete("index");
+        urlObj.searchParams.delete("start_radio");
+        query = urlObj.toString();
+
+        playlistWarning = "⚠️ **I'm only playing the first song.**\nIf you want to queue the whole playlist, please use `/playlist`!";
+      } catch (e) {
+        // If URL parsing fails, proceed with original query
+      }
+    }
+
     await music.enqueue(interaction, query);
+
+    if (playlistWarning) {
+      await interaction.followUp({
+        content: playlistWarning,
+        ephemeral: true,
+      });
+    }
   },
 };
