@@ -165,6 +165,11 @@ npm start
 - **Lint**: `npm run lint` - Runs ESLint with TypeScript rules
 - **Deploy Commands**: `npm run deploy:commands` - Registers slash commands with Discord
 
+## Deployment
+
+The bot is deployed using GitHub Actions and PM2.
+For detailed instructions on how to deploy, server requirements, and configuration, please refer to the [Deployment Guide](DEPLOY.md).
+
 ## Maintenance
 
 **If music stops working:**
