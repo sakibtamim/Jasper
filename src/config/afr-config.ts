@@ -51,12 +51,12 @@ type EntryMessagePool = {
  * Jasper's entry messages (main controller bot)
  */
 const JASPER_MESSAGES = [
-    "🎧 **Jasper** links into the grid — primary swarm node online.",
-    "🐈‍⬛ **Jasper** — the big black Persian elder — has arrived. Stay respectful.",
-    "🖤 The void floof **Jasper** slides in, promising stable, no-drama beats.",
-    "🏛️ **Jasper**, older than Misty herself, takes quiet control of the soundstage.",
-    "🔥 **Jasper** approves this channel and will now provide industrial-strength music.",
-    "🌌 **Jasper** materializes from the shadows, syncing the entire feline swarm.",
+    "🎧 **{name}** links into the grid — primary swarm node online.",
+    "🐈‍⬛ **{name}** — the big black Persian elder — has arrived. Stay respectful.",
+    "🖤 The void floof **{name}** slides in, promising stable, no-drama beats.",
+    "🏛️ **{name}**, older than Misty herself, takes quiet control of the soundstage.",
+    "🔥 **{name}** approves this channel and will now provide industrial-strength music.",
+    "🌌 **{name}** materializes from the shadows, syncing the entire feline swarm.",
 ];
 
 /**
@@ -64,59 +64,59 @@ const JASPER_MESSAGES = [
  */
 const HCOF_MESSAGES: EntryMessagePool = {
     Misty: [
-        "🌫️ **Misty** emerges from the fog to bless your ears.",
-        "☁️ The Grandmistress **Misty** drifts in with serene authority.",
-        "🌬️ **Misty**, Keeper of Wisdom, quiets the room with her presence.",
-        "👑 **Misty** descends from the Heavenly Council — listen closely.",
+        "🌫️ **{name}** emerges from the fog to bless your ears.",
+        "☁️ The Grandmistress **{name}** drifts in with serene authority.",
+        "🌬️ **{name}**, Keeper of Wisdom, quiets the room with her presence.",
+        "👑 **{name}** descends from the Heavenly Council — listen closely.",
     ],
 
     Tuki: [
-        "🕊️ **Tuki** arrives — calm, steady, and impossibly patient.",
-        "🌟 **Tuki** materializes, bringing peace and perfect rhythm.",
-        "🔮 The great white giant **Tuki** blesses this voice channel.",
-        "❄️ **Tuki** enters with a soft nod of approval.",
+        "🕊️ **{name}** arrives — calm, steady, and impossibly patient.",
+        "🌟 **{name}** materializes, bringing peace and perfect rhythm.",
+        "🔮 The great white giant **{name}** blesses this voice channel.",
+        "❄️ **{name}** enters with a soft nod of approval.",
     ],
 
     Jafraan: [
-        "🔥 **Jafraan** charges in — fearless as ever.",
-        "⚔️ **Jafraan**, the Brave, returns for one more battle tune.",
-        "💥 The spirit of **Jafraan** dives onto the stage!",
-        "🩶 **Jafraan** soars in — small body, enormous courage.",
+        "🔥 **{name}** charges in — fearless as ever.",
+        "⚔️ **{name}**, the Brave, returns for one more battle tune.",
+        "💥 The spirit of **{name}** dives onto the stage!",
+        "🩶 **{name}** soars in — small body, enormous courage.",
     ],
 
     Kalojam: [
-        "🍯 **Kalojam** rolls in causing tiny, adorable chaos.",
-        "😼 Mischief levels rising — **Kalojam** has connected.",
-        "⚡ **Kalojam** zips onto the stage, pure energy incarnate.",
-        "🌀 The tiny tornado **Kalojam** appears!",
+        "🍯 **{name}** rolls in causing tiny, adorable chaos.",
+        "😼 Mischief levels rising — **{name}** has connected.",
+        "⚡ **{name}** zips onto the stage, pure energy incarnate.",
+        "🌀 The tiny tornado **{name}** appears!",
     ],
 
     Chomchom: [
-        "🍮 **Chomchom** waddles in, unbothered and undefeated.",
-        "😼 **Chomchom** has joined — vibes guaranteed.",
-        "🎧 **Chomchom** plugs into the system with maximum confidence.",
-        "💫 Survivor spirit detected — **Chomchom** is here.",
+        "🍮 **{name}** waddles in, unbothered and undefeated.",
+        "😼 **{name}** has joined — vibes guaranteed.",
+        "🎧 **{name}** plugs into the system with maximum confidence.",
+        "💫 Survivor spirit detected — **{name}** is here.",
     ],
 
     Jafreen: [
-        "🌈 **Jafreen** arrives — chosen by Misty, trusted by all.",
-        "🎀 **Jafreen** steps in with quiet grace and bright colors.",
-        "🐾 **Jafreen** takes her place, gentle but steadfast.",
-        "💖 **Jafreen** enters — proof that family is chosen.",
+        "🌈 **{name}** arrives — chosen by Misty, trusted by all.",
+        "🎀 **{name}** steps in with quiet grace and bright colors.",
+        "🐾 **{name}** takes her place, gentle but steadfast.",
+        "💖 **{name}** enters — proof that family is chosen.",
     ],
 
     Chini: [
-        "🌸 **Chini** hops in — renewal and softness embodied.",
-        "🌀 **Chini** twirls in with the energy of new beginnings.",
-        "🐈‍⬛ **Chini** joins — tail of fate, heart of warmth.",
-        "✨ **Chini** appears, echoing past and future together.",
+        "🌸 **{name}** hops in — renewal and softness embodied.",
+        "🌀 **{name}** twirls in with the energy of new beginnings.",
+        "🐈‍⬛ **{name}** joins — tail of fate, heart of warmth.",
+        "✨ **{name}** appears, echoing past and future together.",
     ],
 
     Bundle: [
-        "🌱 **Bundle** compiles the connection… success! (with love)",
-        "💚 The tiny spark **Bundle** arrives — fragile, but mighty.",
-        "🍼 **Bundle** squeaks into the voice channel.",
-        "💻 **Bundle.js** boots up — purrformance optimized.",
+        "🌱 **{name}** compiles the connection… success! (with love)",
+        "💚 The tiny spark **{name}** arrives — fragile, but mighty.",
+        "🍼 **{name}** squeaks into the voice channel.",
+        "💻 **{name}.js** boots up — purrformance optimized.",
     ],
 };
 
@@ -168,5 +168,6 @@ export function getEntryMessage(catName: string): string {
     const message = pool[randomIndex];
 
     // Interpolate {name} placeholder (safe to run on all messages)
+    // We use {name} in all messages now to allow for dynamic renaming if needed
     return message.replace("{name}", catName);
 }
