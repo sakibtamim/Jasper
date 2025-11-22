@@ -7,12 +7,13 @@ This guide explains how to deploy the Jasper music bot using GitHub Actions and 
 The target server must have the following installed:
 
 1.  **Node.js**: Version 18 or higher (matching the project's requirement).
+    - **Important**: If using `nvm` to manage Node.js, ensure it's properly configured in your shell's `.bashrc` or `.bash_profile`.
 2.  **PM2**: Process manager for Node.js. Install globally:
     ```bash
     npm install -g pm2
     ```
 3.  **FFmpeg**: Required for music playback.
-4.  **Python**: Required for `yt-dlp`.
+4.  **yt-dlp**: Will be automatically downloaded during deployment.
 
 ## Server Setup
 
@@ -34,9 +35,9 @@ Configure the following secrets in your GitHub repository settings (Settings > S
 
 ## Configuration Files
 
-### ecosystem.config.js
+### ecosystem.config.cjs
 
-This file configures PM2 to manage the bot process.
+This file configures PM2 to manage the bot process. It uses the `.cjs` extension because the project uses ES modules (`"type": "module"` in package.json), but PM2 requires CommonJS format.
 
 -   **Name**: `jasper-bot`
 -   **Script**: `./dist/index.js` (The compiled entry point)
@@ -48,14 +49,25 @@ This file configures PM2 to manage the bot process.
 
 The deployment is handled automatically by GitHub Actions when you push to the `deploy` branch.
 
-1.  **Build**: The workflow installs dependencies, compiles the TypeScript code, and generates SHA256 checksums for the artifacts.
+1.  **Build**: 
+    -   The workflow installs dependencies (with `YT_DLP_SKIP_POSTINSTALL=1` to skip yt-dlp download during build)
+    -   Compiles the TypeScript code
+    -   Generates SHA256 checksums for the artifacts
 2.  **Upload**: The compiled `dist` folder, `scripts`, configuration files, and checksums are uploaded as an artifact.
 3.  **Deploy**:
     -   The artifact is downloaded and its integrity is verified using the checksums.
-    -   Files are copied to the server via SCP, overwriting the `dist` and `scripts` directories.
+    -   The existing bot process is stopped via PM2 (if running).
+    -   Old files are cleaned from the deployment directory.
+    -   Files are copied to the server via SCP.
     -   The integrity of the copied files on the server is verified again.
-    -   `npm ci --production` is run on the server to install production dependencies.
-    -   `pm2 startOrRestart ecosystem.config.js` is executed to start or reload the bot.
+    -   `npm ci --omit=dev` is run on the server to install production dependencies (yt-dlp is downloaded here).
+    -   `pm2 startOrRestart ecosystem.config.cjs` is executed to start or reload the bot.
+
+### Important Notes
+
+-   **nvm Support**: The deployment scripts automatically source nvm if it's installed, ensuring node/npm/pm2 are available.
+-   **yt-dlp**: Skipped during CI build but downloaded on the server during production install.
+-   **Checksums**: SHA256 verification ensures deployment integrity at multiple stages.
 
 ## Manual Commands (Troubleshooting)
 

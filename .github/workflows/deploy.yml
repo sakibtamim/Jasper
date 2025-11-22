@@ -30,7 +30,7 @@ jobs:
       - name: Generate checksums
         run: |
           find dist -type f -exec sha256sum {} \; | sort > dist-checksums.txt
-          sha256sum package.json package-lock.json ecosystem.config.js >> dist-checksums.txt
+          sha256sum package.json package-lock.json ecosystem.config.cjs >> dist-checksums.txt
           cat dist-checksums.txt
 
       - name: Upload artifact
@@ -42,7 +42,7 @@ jobs:
             scripts
             package.json
             package-lock.json
-            ecosystem.config.js
+            ecosystem.config.cjs
             dist-checksums.txt
 
   deploy:
@@ -72,8 +72,8 @@ jobs:
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             cd ${{ secrets.SSH_TARGET }}
-            pm2 stop jasper-bot 2>/dev/null || true
-            rm -rf dist scripts package.json package-lock.json ecosystem.config.js dist-checksums.txt
+            pm2 stop jasper-bot || true
+            rm -rf dist scripts package.json package-lock.json ecosystem.config.cjs dist-checksums.txt
 
       - name: Copy files to server
         uses: appleboy/scp-action@v1
@@ -83,7 +83,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
           target: ${{ secrets.SSH_TARGET }}
-          source: "dist,scripts,package.json,package-lock.json,ecosystem.config.js,dist-checksums.txt"
+          source: "dist,scripts,package.json,package-lock.json,ecosystem.config.cjs,dist-checksums.txt"
 
       - name: Verify deployment integrity
         uses: appleboy/ssh-action@v1
@@ -111,4 +111,4 @@ jobs:
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             cd ${{ secrets.SSH_TARGET }}
             npm ci --omit=dev
-            pm2 startOrRestart ecosystem.config.js
+            pm2 startOrRestart ecosystem.config.cjs
