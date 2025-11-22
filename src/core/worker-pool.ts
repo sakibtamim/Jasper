@@ -111,7 +111,7 @@ function selectFelineWithAFR(eligibleWorkers: WorkerState[]): WorkerState {
     const nonJasperWorkers: WorkerState[] = [];
 
     for (const worker of eligibleWorkers) {
-        if (worker.name === "Jasper") {
+        if (worker.role === "controller") {
             jasper = worker;
         } else {
             nonJasperWorkers.push(worker);

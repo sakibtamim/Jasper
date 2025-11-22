@@ -317,8 +317,18 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string):
 
       queue = await createQueue(interaction, worker, track);
     } else {
-      // Queue exists, this is a REUSED connection - still need a worker reference for logging
-      // but don't show entry message again
+      // Queue exists. If it was idle, the worker was marked as free.
+      // We need to mark it as busy again before adding a new song.
+      if (queue.idleTimeout) {
+        // First, check if the worker was stolen for another task.
+        if (queue.worker.busy) {
+          logger.error(`[Worker Conflict] Worker ${queue.worker.name} for channel ${voiceChannel.id} was reassigned while idle.`);
+          await interaction.editReply('🚫 **Bot Conflict!** The bot for this channel was assigned another task while idle. Please use `/stop` and try again.');
+          return;
+        }
+        // Re-acquire the worker for this queue by marking it as busy.
+        workerPool.setWorkerBusy(queue.worker, queue.guildId, queue.voiceChannelId);
+      }
     }
 
     if (queue.idleTimeout) {
@@ -399,6 +409,19 @@ async function enqueuePlaylist(interaction: ChatInputCommandInteraction, url: st
       if (!worker) return;
 
       queue = await createQueue(interaction, worker, null);
+    } else {
+      // Queue exists. If it was idle, the worker was marked as free.
+      // We need to mark it as busy again before adding a new song.
+      if (queue.idleTimeout) {
+        // First, check if the worker was stolen for another task.
+        if (queue.worker.busy) {
+          logger.error(`[Worker Conflict] Worker ${queue.worker.name} for channel ${voiceChannel.id} was reassigned while idle.`);
+          await interaction.editReply('🚫 **Bot Conflict!** The bot for this channel was assigned another task while idle. Please use `/stop` and try again.');
+          return;
+        }
+        // Re-acquire the worker for this queue by marking it as busy.
+        workerPool.setWorkerBusy(queue.worker, queue.guildId, queue.voiceChannelId);
+      }
     }
 
     const songsToAdd: Song[] = entries.map((entry) => ({
