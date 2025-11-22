@@ -16,7 +16,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Install dependencies
@@ -58,7 +58,7 @@ jobs:
           echo "Verifying artifact integrity..."
           sha256sum -c dist-checksums.txt
 
-      - name: Clean target directory
+      - name: Stop PM2 and clean target directory
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -66,8 +66,9 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
-            rm -rf ${{ secrets.SSH_TARGET }}/dist
-            rm -rf ${{ secrets.SSH_TARGET }}/scripts
+            cd ${{ secrets.SSH_TARGET }}
+            pm2 stop jasper-bot || true
+            rm -rf dist scripts package.json package-lock.json ecosystem.config.js dist-checksums.txt
 
       - name: Copy files to server
         uses: appleboy/scp-action@v1
