@@ -40,16 +40,25 @@ export default {
   },
 
   async execute(interaction: ChatInputCommandInteraction) {
-    const query = interaction.options.getString("query", true);
+    let query = interaction.options.getString("query", true);
 
-    // Fix for Issue #10: Detect playlist URLs and reject them
-    // This prevents the bot from hanging when trying to process a whole playlist
-    if (/[?&]list=([^#\&\?]+)/.test(query)) {
-      await interaction.reply({
-        content: "🚫 **Playlist links are not supported in /play.**\nPlease use `/playlist` for playlists!",
-        ephemeral: true,
-      });
-      return;
+    // Fix for Issue #10: Detect playlist URLs and strip the playlist parameter
+    // This prevents the bot from hanging by only playing the specific video
+    if (query.includes("list=") && (query.includes("youtube.com") || query.includes("youtu.be"))) {
+      try {
+        const urlObj = new URL(query);
+        urlObj.searchParams.delete("list");
+        urlObj.searchParams.delete("index");
+        urlObj.searchParams.delete("start_radio");
+        query = urlObj.toString();
+
+        await interaction.reply({
+          content: "⚠️ **I'm only playing the first song.**\nIf you want to queue the whole playlist, please use `/playlist`!",
+          ephemeral: true,
+        });
+      } catch (e) {
+        // If URL parsing fails, proceed with original query
+      }
     }
 
     await music.enqueue(interaction, query);
