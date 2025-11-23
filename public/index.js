@@ -59,6 +59,17 @@ async function fetchData() {
     }
 }
 
+// Helper: Escape HTML to prevent XSS
+function escapeHtml(unsafe) {
+    if (typeof unsafe !== 'string') return unsafe;
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 // Render Workers
 function renderWorkers() {
     const container = document.getElementById('workers-grid');
@@ -92,8 +103,8 @@ function renderWorkers() {
             <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border-l-4 ${borderColor} transition-all hover-card">
                 <div class="flex justify-between items-start mb-4">
                     <div>
-                        <h3 class="text-xl font-bold text-gray-900 dark:text-white">${worker.name}</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 capitalize">${worker.role}</p>
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white">${escapeHtml(worker.name)}</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 capitalize">${escapeHtml(worker.role)}</p>
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="w-3 h-3 rounded-full ${statusDot} shadow-sm"></span>
@@ -104,18 +115,18 @@ function renderWorkers() {
                 <div class="space-y-2">
                     <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                         <i data-lucide="activity" class="w-4 h-4 text-gray-400"></i>
-                        <span>${worker.activity}</span>
+                        <span>${escapeHtml(worker.activity)}</span>
                     </div>
                     ${worker.guildId ? `
                     <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                         <i data-lucide="server" class="w-4 h-4 text-gray-400"></i>
-                        <span>Guild: ${worker.guildId}</span>
+                        <span>Guild: ${escapeHtml(worker.guildId)}</span>
                     </div>
                     ` : ''}
                     ${worker.voiceChannelId ? `
                     <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                         <i data-lucide="mic" class="w-4 h-4 text-gray-400"></i>
-                        <span>Channel: ${worker.voiceChannelId}</span>
+                        <span>Channel: ${escapeHtml(worker.voiceChannelId)}</span>
                     </div>
                     ` : ''}
                 </div>
@@ -148,8 +159,8 @@ function renderQueues() {
                         <i data-lucide="music" class="w-6 h-6 text-brand-secondary"></i>
                     </div>
                     <div>
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Channel: ${queue.voiceChannelId}</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Managed by <span class="text-brand-primary font-medium">${queue.workerName}</span></p>
+                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Channel: ${escapeHtml(queue.voiceChannelId)}</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Managed by <span class="text-brand-primary font-medium">${escapeHtml(queue.workerName)}</span></p>
                     </div>
                 </div>
                 <div class="flex items-center gap-3">
@@ -170,8 +181,8 @@ function renderQueues() {
                     </div>
                     <div class="flex-1 min-w-0">
                         <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Now Playing</p>
-                        <a href="${queue.nowPlaying.url}" target="_blank" class="text-base font-semibold text-gray-900 dark:text-white hover:text-brand-primary truncate block transition-colors">
-                            ${queue.nowPlaying.title}
+                        <a href="${escapeHtml(queue.nowPlaying.url)}" target="_blank" class="text-base font-semibold text-gray-900 dark:text-white hover:text-brand-primary truncate block transition-colors">
+                            ${escapeHtml(queue.nowPlaying.title)}
                         </a>
                         <div class="flex items-center gap-4 mt-2 text-sm text-gray-500 dark:text-gray-400">
                             <span class="flex items-center gap-1">
@@ -180,7 +191,7 @@ function renderQueues() {
                             </span>
                             <span class="flex items-center gap-1">
                                 <i data-lucide="user" class="w-3 h-3"></i>
-                                ${queue.nowPlaying.requestedBy}
+                                ${escapeHtml(queue.nowPlaying.requestedBy)}
                             </span>
                         </div>
                     </div>
@@ -216,7 +227,7 @@ function renderLogs() {
         else if (log.includes('[WARN]')) colorClass = 'text-yellow-400';
         else if (log.includes('[DEBUG]')) colorClass = 'text-blue-400';
 
-        return `<div class="${colorClass}">${log}</div>`;
+        return `<div class="${colorClass}">${escapeHtml(log)}</div>`;
     }).join('');
 }
 
