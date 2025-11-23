@@ -146,8 +146,8 @@ class FileCacheStorage implements ICacheStorage {
 
             if (ageHours > CACHE_AUDIO_TTL_HOURS) {
                 // Expired, delete files
-                await fs.unlink(audioPath).catch(() => { });
-                await fs.unlink(metaPath).catch(() => { });
+                await fs.unlink(audioPath).catch((err) => logger.warn(`[Cache] Failed to delete expired audio ${audioPath}: ${err.message}`));
+                await fs.unlink(metaPath).catch((err) => logger.warn(`[Cache] Failed to delete expired meta ${metaPath}: ${err.message}`));
                 return null;
             }
 
@@ -155,7 +155,8 @@ class FileCacheStorage implements ICacheStorage {
             logger.info(`[Cache] Audio cache hit for video: ${videoId}`);
             const { createReadStream } = await import('fs');
             return createReadStream(audioPath);
-        } catch {
+        } catch (error) {
+            logger.warn(`[Cache] Failed to read cached audio ${videoId}: ${error instanceof Error ? error.message : String(error)}`);
             return null;
         }
     }
@@ -173,6 +174,11 @@ class FileCacheStorage implements ICacheStorage {
         const ytDlpPath = getYtDlpPath();
         const args = ['-f', 'bestaudio', '-o', '-', '-q', url];
         const ytDlpProcess = spawn(ytDlpPath, args);
+
+        ytDlpProcess.stderr!.on('data', (data) => {
+            const msg = data.toString().trim();
+            if (msg) logger.warn(`[Cache] yt-dlp stderr: ${msg}`);
+        });
 
         // Create write stream to cache file
         const fileStream = createWriteStream(audioPath);
@@ -259,14 +265,14 @@ class FileCacheStorage implements ICacheStorage {
                         const stats = await fs.stat(audioPath);
                         freedBytes += stats.size;
 
-                        await fs.unlink(audioPath).catch(() => { });
-                        await fs.unlink(metaPath).catch(() => { });
+                        await fs.unlink(audioPath).catch((err) => logger.warn(`[Cache] Failed to delete expired audio ${audioPath}: ${err.message}`));
+                        await fs.unlink(metaPath).catch((err) => logger.warn(`[Cache] Failed to delete expired meta ${metaPath}: ${err.message}`));
                         deletedFiles++;
                     }
                 } catch {
                     // Corrupted metadata or missing audio file, delete both
-                    await fs.unlink(audioPath).catch(() => { });
-                    await fs.unlink(metaPath).catch(() => { });
+                    await fs.unlink(audioPath).catch((err) => logger.warn(`[Cache] Failed to delete corrupted audio ${audioPath}: ${err.message}`));
+                    await fs.unlink(metaPath).catch((err) => logger.warn(`[Cache] Failed to delete corrupted meta ${metaPath}: ${err.message}`));
                 }
             }
 
