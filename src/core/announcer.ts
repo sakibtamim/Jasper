@@ -12,7 +12,27 @@ export async function sendAnnouncement(message: string): Promise<void> {
     if (!announceChannelId) return;
 
     const controller = workerPool.getController();
-    if (controller && controller.client.isReady()) {
+    if (!controller) return;
+
+    // Wait for client to be ready if needed
+    if (!controller.client.isReady()) {
+        logger.info("[Announcer] Waiting for controller to be ready...");
+        await new Promise<void>((resolve) => {
+            const onReady = () => {
+                resolve();
+                controller.client.removeListener('ready', onReady);
+            };
+            controller.client.once('ready', onReady);
+
+            // Fallback timeout in case ready event never fires (e.g. disconnected)
+            setTimeout(() => {
+                controller.client.removeListener('ready', onReady);
+                resolve(); // Resolve anyway to attempt send (which will likely fail but won't hang)
+            }, 10000);
+        });
+    }
+
+    if (controller.client.isReady()) {
         try {
             const channel = await controller.client.channels.fetch(announceChannelId);
             if (channel && channel.isTextBased() && !channel.isDMBased()) {
@@ -23,5 +43,7 @@ export async function sendAnnouncement(message: string): Promise<void> {
             const msg = err instanceof Error ? err.message : String(err);
             logger.warn(`[Announcer] Failed to send announcement: ${msg}`);
         }
+    } else {
+        logger.warn("[Announcer] Controller not ready after waiting, skipping announcement.");
     }
 }
