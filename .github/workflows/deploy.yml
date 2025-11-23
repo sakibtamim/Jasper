@@ -30,6 +30,7 @@ jobs:
       - name: Generate checksums
         run: |
           find dist -type f -exec sha256sum {} \; | sort > dist-checksums.txt
+          find public -type f -exec sha256sum {} \; | sort >> dist-checksums.txt
           sha256sum package.json package-lock.json ecosystem.config.cjs >> dist-checksums.txt
           cat dist-checksums.txt
 
