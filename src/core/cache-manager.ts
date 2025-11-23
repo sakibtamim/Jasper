@@ -177,15 +177,15 @@ class FileCacheStorage implements ICacheStorage {
         // Create write stream to cache file
         const fileStream = createWriteStream(audioPath);
 
-        // Buffer chunks in memory for immediate streaming
-        const chunks: Buffer[] = [];
+        // Track size for logging without buffering entire file in memory
+        let totalBytes = 0;
 
         ytDlpProcess.stdout!.on('data', (chunk: Buffer) => {
             // Write to cache file (async)
             fileStream.write(chunk);
 
             // Buffer for immediate playback
-            chunks.push(chunk);
+            totalBytes += chunk.length;
             passThrough.write(chunk);
         });
 
@@ -200,13 +200,21 @@ class FileCacheStorage implements ICacheStorage {
                 timestamp: Date.now(),
             };
             await fs.writeFile(metaPath, JSON.stringify(meta, null, 2), 'utf-8');
-            logger.info(`[Cache] Cached audio for video: ${videoId} (${(Buffer.concat(chunks).length / 1024 / 1024).toFixed(2)}MB)`);
+            logger.info(`[Cache] Cached audio for video: ${videoId} (${(totalBytes / 1024 / 1024).toFixed(2)}MB)`);
         });
 
-        ytDlpProcess.on('error', (err) => {
+        ytDlpProcess.on('error', async (err) => {
             logger.error(`[Cache] yt-dlp error during caching: ${err.message}`);
             passThrough.destroy(err);
             fileStream.destroy();
+
+            // Cleanup partial file
+            try {
+                await fs.unlink(audioPath);
+                logger.info(`[Cache] Cleaned up partial file: ${audioPath}`);
+            } catch (cleanupErr) {
+                logger.warn(`[Cache] Failed to cleanup partial file ${audioPath}: ${cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr)}`);
+            }
         });
 
         // Return stream immediately (async write happens in background)
