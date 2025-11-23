@@ -39,6 +39,7 @@ jobs:
           name: bot-build
           path: |
             dist
+            public
             scripts
             package.json
             package-lock.json
@@ -74,7 +75,7 @@ jobs:
             cd ${{ secrets.SSH_TARGET }}
             pm2 stop jasper-bot || true
             # Remove old deployment files but preserve .env and cache directories
-            rm -rf dist scripts package.json package-lock.json ecosystem.config.cjs dist-checksums.txt
+            rm -rf dist public scripts package.json package-lock.json ecosystem.config.cjs dist-checksums.txt
 
       - name: Copy files to server
         uses: appleboy/scp-action@v1
@@ -84,7 +85,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
           target: ${{ secrets.SSH_TARGET }}
-          source: "dist,scripts,package.json,package-lock.json,ecosystem.config.cjs,dist-checksums.txt"
+          source: "dist,public,scripts,package.json,package-lock.json,ecosystem.config.cjs,dist-checksums.txt"
 
       - name: Verify deployment integrity
         uses: appleboy/ssh-action@v1
