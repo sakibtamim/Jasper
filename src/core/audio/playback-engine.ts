@@ -9,6 +9,8 @@ import { createStreamProcess } from "./stream-handler.js";
 import { createControlButtons, getAutoplayButton } from "../ui/player-controls.js";
 import { deleteQueue, Queue, Song } from "./queue-manager.js";
 import { GuildMember } from "discord.js";
+import { isCacheEnabled, getCacheStorage } from "../cache-manager.js";
+import { Readable } from "stream";
 
 // Constants for Autoplay
 const AUTOPLAY_SEARCH_QUERIES = [
@@ -39,6 +41,29 @@ function getRandomMusicQuery(): string {
     return AUTOPLAY_SEARCH_QUERIES[
         Math.floor(Math.random() * AUTOPLAY_SEARCH_QUERIES.length)
     ];
+}
+
+/**
+ * Extract video ID from YouTube URL
+ */
+function extractVideoId(url: string): string {
+    try {
+        const urlObj = new URL(url);
+        // Handle youtu.be/VIDEO_ID format
+        if (urlObj.hostname === 'youtu.be') {
+            return urlObj.pathname.slice(1);
+        }
+        // Handle youtube.com/watch?v=VIDEO_ID format
+        const videoId = urlObj.searchParams.get('v');
+        if (videoId) {
+            return videoId;
+        }
+        // Fallback: use hash of URL if format is unknown
+        return Buffer.from(url).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 20);
+    } catch {
+        // If URL parsing fails, use hash
+        return Buffer.from(url).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 20);
+    }
 }
 
 export async function handleAutoplay(queue: Queue, lastSong: Song): Promise<void> {
@@ -110,9 +135,34 @@ export async function playSong(queue: Queue): Promise<void> {
     try {
         logger.info(`Attempting to stream with yt-dlp: ${song.title}`);
 
-        const ytDlpProcess = createStreamProcess(song.url);
+        let audioSource: Readable;
 
-        const resource = createAudioResource(ytDlpProcess.stdout!, {
+        // Check audio cache if enabled
+        if (isCacheEnabled()) {
+            const storage = getCacheStorage();
+            if (storage) {
+                const videoId = extractVideoId(song.url);
+                const cachedStream = await storage.getCachedAudioStream(videoId);
+
+                if (cachedStream) {
+                    // Cache hit: stream from disk
+                    audioSource = cachedStream;
+                    logger.info(`[Cache] Streaming from cache for: ${song.title}`);
+                } else {
+                    // Cache miss: stream from memory while writing to disk (async)
+                    audioSource = await storage.cacheAudioStream(song.url, videoId, [song.title]);
+                    logger.info(`[Cache] Downloading and caching: ${song.title}`);
+                }
+            } else {
+                // Cache storage not available, fallback to direct stream
+                audioSource = createStreamProcess(song.url).stdout!;
+            }
+        } else {
+            // Caching disabled: stream directly from yt-dlp
+            audioSource = createStreamProcess(song.url).stdout!;
+        }
+
+        const resource = createAudioResource(audioSource, {
             inputType: StreamType.Arbitrary,
             inlineVolume: false,
         });
