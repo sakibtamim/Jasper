@@ -35,9 +35,12 @@ const __dirname = path.dirname(__filename);
 
   for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);
+    logger.debug(`Loading command file: ${file}`);
     const commandModule = await import(filePath);
     const command = commandModule.default;
     if ("data" in command && "execute" in command) {
+      const cmdName = command.data.name || (typeof command.data.toJSON === 'function' ? 'has toJSON' : 'no name');
+      logger.debug(`Command from ${file} has data.name=${cmdName}, execute=${typeof command.execute}, autocomplete=${typeof command.autocomplete}`);
       client.commands.set(command.data.name, command);
       logger.info(`Loaded command /${command.data.name}`);
     } else {

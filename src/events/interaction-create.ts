@@ -29,8 +29,13 @@ export default {
     // 2. Handle Standard Slash Commands
     if (!interaction.isChatInputCommand()) return;
 
+    logger.debug(`Received command: ${interaction.commandName}`);
     const command = interaction.client.commands.get(interaction.commandName);
-    if (!command) return;
+    if (!command) {
+      logger.error(`No command matching ${interaction.commandName} was found.`);
+      return;
+    }
+    logger.debug(`Found command ${interaction.commandName}, executing...`);
 
     try {
       await command.execute(interaction);
