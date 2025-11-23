@@ -216,7 +216,7 @@ function renderQueues() {
                         <i data-lucide="list-music" class="w-5 h-5"></i>
                     </div>
                     <div>
-                        <h3 class="font-bold text-gray-900 dark:text-white">${escapeHtml(queue.guildId)}</h3>
+                        <h3 class="font-bold text-gray-900 dark:text-white">${escapeHtml(queue.guildName || queue.guildId)}</h3>
                         <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                             <span>${escapeHtml(queue.voiceChannelId)}</span>
                             <span>•</span>

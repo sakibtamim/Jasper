@@ -29,8 +29,9 @@ server.get('/api/status', async (_request, _reply) => {
         let channelName = null;
         let nowPlaying = null;
 
+        let guild = null;
         if (w.guildId) {
-            const guild = w.client.guilds.cache.get(w.guildId);
+            guild = w.client.guilds.cache.get(w.guildId);
             if (guild) {
                 guildName = guild.name;
                 guildIconUrl = guild.iconURL();
@@ -46,18 +47,15 @@ server.get('/api/status', async (_request, _reply) => {
             const queue = queues.get(w.voiceChannelId);
             if (queue && queue.nowPlaying) {
                 let requester = null;
-                if (queue.nowPlaying.requesterId && w.guildId) {
-                    const guild = w.client.guilds.cache.get(w.guildId);
-                    if (guild) {
-                        const member = guild.members.cache.get(queue.nowPlaying.requesterId);
-                        if (member) {
-                            requester = {
-                                id: member.id,
-                                username: member.user.username,
-                                displayName: member.displayName,
-                                avatarUrl: member.displayAvatarURL()
-                            };
-                        }
+                if (queue.nowPlaying.requesterId && guild) {
+                    const member = guild.members.cache.get(queue.nowPlaying.requesterId);
+                    if (member) {
+                        requester = {
+                            id: member.id,
+                            username: member.user.username,
+                            displayName: member.displayName,
+                            avatarUrl: member.displayAvatarURL()
+                        };
                     }
                 }
 
@@ -90,19 +88,30 @@ server.get('/api/status', async (_request, _reply) => {
 // 2. Active Queues
 server.get('/api/queues', async (_request, _reply) => {
     const queues = musicPlayer.getQueues();
-    const queueData = Array.from(queues.values()).map(q => ({
-        guildId: q.guildId,
-        voiceChannelId: q.voiceChannelId,
-        workerName: q.worker.name,
-        nowPlaying: q.nowPlaying ? {
-            title: q.nowPlaying.title,
-            url: q.nowPlaying.url,
-            duration: q.nowPlaying.durationInSec,
-            requestedBy: q.nowPlaying.requestedBy
-        } : null,
-        queueLength: q.songs.length,
-        autoplay: q.autoplay
-    }));
+    const queueData = Array.from(queues.values()).map(q => {
+        let guildName = q.guildId; // Default to ID if name not found
+        if (q.worker && q.worker.client) {
+            const guild = q.worker.client.guilds.cache.get(q.guildId);
+            if (guild) {
+                guildName = guild.name;
+            }
+        }
+
+        return {
+            guildId: q.guildId,
+            guildName,
+            voiceChannelId: q.voiceChannelId,
+            workerName: q.worker.name,
+            nowPlaying: q.nowPlaying ? {
+                title: q.nowPlaying.title,
+                url: q.nowPlaying.url,
+                duration: q.nowPlaying.durationInSec,
+                requestedBy: q.nowPlaying.requestedBy
+            } : null,
+            queueLength: q.songs.length,
+            autoplay: q.autoplay
+        };
+    });
     return { queues: queueData };
 });
 
