@@ -277,6 +277,7 @@ async function resolveTrack(query: string): Promise<Song> {
         url: videoData.webpage_url || videoData.url,
         durationInSec: videoData.duration,
         requestedBy: "Unknown", // Will be overwritten
+        thumbnail: videoData.thumbnail,
       };
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -292,6 +293,7 @@ async function resolveTrack(query: string): Promise<Song> {
       url: video.url,
       durationInSec: video.seconds,
       requestedBy: "Unknown", // Will be overwritten
+      thumbnail: video.thumbnail,
     };
 
     // Cache the search result
@@ -380,6 +382,7 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string):
     queue.songs.push({
       ...track,
       requestedBy: interaction.user.tag,
+      requesterId: interaction.user.id,
     });
     queue.stopping = false;
 
@@ -451,6 +454,7 @@ async function enqueuePlaylist(interaction: ChatInputCommandInteraction, url: st
       url: entry.url || `https://www.youtube.com/watch?v=${entry.id}`,
       durationInSec: entry.duration || 0,
       requestedBy: interaction.user.tag,
+      requesterId: interaction.user.id,
     }));
 
     if (queue.idleTimeout) {

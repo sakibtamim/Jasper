@@ -22,6 +22,7 @@ export interface VideoData {
     url: string;
     webpage_url?: string;
     duration: number;
+    thumbnail?: string;
     [key: string]: any;
 }
 
