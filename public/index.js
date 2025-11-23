@@ -66,37 +66,55 @@ function renderWorkers() {
 
     container.innerHTML = workers.map(worker => {
         const isOnline = worker.status !== 'offline';
-        const statusColor = isOnline ? (worker.busy ? 'text-yellow-500' : 'text-green-500') : 'text-gray-400';
-        const statusText = isOnline ? (worker.busy ? 'Busy' : 'Idle') : 'Offline';
-        const borderColor = isOnline ? (worker.busy ? 'border-yellow-500' : 'border-green-500') : 'border-gray-200 dark:border-gray-700';
+        const isBusy = worker.busy;
+
+        // Status Colors
+        let statusColor = 'text-gray-400';
+        let statusDot = 'bg-gray-400';
+        let borderColor = 'border-gray-200 dark:border-gray-700';
+        let statusText = 'Offline';
+
+        if (isOnline) {
+            if (isBusy) {
+                statusColor = 'text-brand-secondary'; // Cyan for busy
+                statusDot = 'bg-brand-secondary';
+                borderColor = 'border-brand-secondary';
+                statusText = 'Busy';
+            } else {
+                statusColor = 'text-brand-primary'; // Pink for idle/ready
+                statusDot = 'bg-brand-primary';
+                borderColor = 'border-brand-primary';
+                statusText = 'Idle';
+            }
+        }
 
         return `
-            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border-l-4 ${borderColor} transition-all hover:scale-[1.02]">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border-l-4 ${borderColor} transition-all hover-card">
                 <div class="flex justify-between items-start mb-4">
                     <div>
                         <h3 class="text-xl font-bold text-gray-900 dark:text-white">${worker.name}</h3>
                         <p class="text-sm text-gray-500 dark:text-gray-400 capitalize">${worker.role}</p>
                     </div>
                     <div class="flex items-center gap-2">
-                        <span class="w-3 h-3 rounded-full ${isOnline ? (worker.busy ? 'bg-yellow-500' : 'bg-green-500') : 'bg-gray-400'}"></span>
+                        <span class="w-3 h-3 rounded-full ${statusDot} shadow-sm"></span>
                         <span class="text-sm font-medium ${statusColor}">${statusText}</span>
                     </div>
                 </div>
                 
                 <div class="space-y-2">
                     <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                        <i data-lucide="activity" class="w-4 h-4"></i>
+                        <i data-lucide="activity" class="w-4 h-4 text-gray-400"></i>
                         <span>${worker.activity}</span>
                     </div>
                     ${worker.guildId ? `
                     <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                        <i data-lucide="server" class="w-4 h-4"></i>
+                        <i data-lucide="server" class="w-4 h-4 text-gray-400"></i>
                         <span>Guild: ${worker.guildId}</span>
                     </div>
                     ` : ''}
                     ${worker.voiceChannelId ? `
                     <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                        <i data-lucide="mic" class="w-4 h-4"></i>
+                        <i data-lucide="mic" class="w-4 h-4 text-gray-400"></i>
                         <span>Channel: ${worker.voiceChannelId}</span>
                     </div>
                     ` : ''}
@@ -123,22 +141,22 @@ function renderQueues() {
     }
 
     container.innerHTML = queues.map(queue => `
-        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 hover-card">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                 <div class="flex items-center gap-3">
-                    <div class="bg-pink-100 dark:bg-pink-900/30 p-2 rounded-lg">
-                        <i data-lucide="music" class="w-6 h-6 text-pink-500"></i>
+                    <div class="bg-gray-100 dark:bg-gray-700 p-2 rounded-lg">
+                        <i data-lucide="music" class="w-6 h-6 text-brand-secondary"></i>
                     </div>
                     <div>
                         <h3 class="text-lg font-bold text-gray-900 dark:text-white">Channel: ${queue.voiceChannelId}</h3>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Managed by ${queue.workerName}</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">Managed by <span class="text-brand-primary font-medium">${queue.workerName}</span></p>
                     </div>
                 </div>
                 <div class="flex items-center gap-3">
                     <span class="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                         ${queue.queueLength} songs
                     </span>
-                    <span class="px-3 py-1 rounded-full text-xs font-medium ${queue.autoplay ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'}">
+                    <span class="px-3 py-1 rounded-full text-xs font-medium ${queue.autoplay ? 'bg-brand-secondary/10 text-brand-secondary' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'}">
                         Autoplay: ${queue.autoplay ? 'ON' : 'OFF'}
                     </span>
                 </div>
@@ -148,11 +166,11 @@ function renderQueues() {
             <div class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border border-gray-200 dark:border-gray-600">
                 <div class="flex items-start gap-3">
                     <div class="mt-1">
-                        <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                        <div class="w-2 h-2 rounded-full bg-brand-primary animate-pulse"></div>
                     </div>
                     <div class="flex-1 min-w-0">
                         <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Now Playing</p>
-                        <a href="${queue.nowPlaying.url}" target="_blank" class="text-base font-semibold text-gray-900 dark:text-white hover:text-indigo-500 truncate block">
+                        <a href="${queue.nowPlaying.url}" target="_blank" class="text-base font-semibold text-gray-900 dark:text-white hover:text-brand-primary truncate block transition-colors">
                             ${queue.nowPlaying.title}
                         </a>
                         <div class="flex items-center gap-4 mt-2 text-sm text-gray-500 dark:text-gray-400">
