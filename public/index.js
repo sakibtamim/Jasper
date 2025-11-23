@@ -269,7 +269,13 @@ function renderQueues() {
 
         return `
                     <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2.5 border border-gray-100 dark:border-gray-700/50 hover:border-brand-secondary/30 transition-colors">
-                        <div class="flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-3">
+                            <div class="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700 shrink-0">
+                                ${song.thumbnail ?
+                `<img src="${escapeHtml(song.thumbnail)}" class="w-full h-full object-cover">` :
+                `<div class="flex items-center justify-center w-full h-full"><i data-lucide="music" class="w-6 h-6 text-gray-400"></i></div>`
+            }
+                            </div>
                             <div class="flex-1 min-w-0">
                                 <a href="${escapeHtml(song.url)}" target="_blank" class="text-xs font-medium text-gray-900 dark:text-white hover:text-brand-secondary transition-colors truncate block">
                                     ${index + 1}. ${escapeHtml(song.title)}

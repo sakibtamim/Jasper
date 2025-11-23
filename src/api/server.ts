@@ -112,7 +112,8 @@ server.get('/api/queues', async (_request, _reply) => {
                 title: song.title,
                 url: song.url,
                 duration: song.durationInSec,
-                requestedBy: song.requestedBy
+                requestedBy: song.requestedBy,
+                thumbnail: song.thumbnail
             })),
             queueLength: q.songs.length,
             autoplay: q.autoplay
