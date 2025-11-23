@@ -6,6 +6,7 @@ import path from "node:path";
 import { Collection, Client } from "discord.js";
 import logger from "./core/logger.js";
 import workerPool from "./core/worker-pool.js";
+import { initializeCache, startCacheCleanup } from "./core/cache-manager.js";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -68,5 +69,12 @@ const __dirname = path.dirname(__filename);
 
   // 4. Login all bots
   await workerPool.loginBots();
+
+  // 5. Initialize cache system (if enabled)
+  if (process.env.CACHE_ENABLED === 'true') {
+    await initializeCache();
+    startCacheCleanup();
+    logger.info('[Cache] Caching system initialized');
+  }
 
 })();
