@@ -35,7 +35,7 @@ export default {
 
       await interaction.respond(choices);
     } catch (error) {
-      console.error(`Autocomplete failed for query "${focusedValue}":`, error);
+      logger.error(`[commands] Autocomplete failed for query "${focusedValue}": ${error instanceof Error ? error.message : String(error)}`, { suppressOnWebUI: true });
       await interaction.respond([]);
     }
   },

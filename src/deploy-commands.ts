@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { REST, Routes, RESTPostAPIChatInputApplicationCommandsJSONBody } from "discord.js";
 import { fileURLToPath } from "url";
+import logger from "./core/logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,7 +12,7 @@ const __dirname = path.dirname(__filename);
 const { CLIENT_ID, GUILD_ID, DISCORD_TOKEN } = process.env;
 
 if (!CLIENT_ID || !GUILD_ID || !DISCORD_TOKEN) {
-  console.error("Missing CLIENT_ID, GUILD_ID, or DISCORD_TOKEN in environment.");
+  logger.error("[commands] Missing CLIENT_ID, GUILD_ID, or DISCORD_TOKEN in environment.");
   process.exit(1);
 }
 
@@ -27,7 +28,7 @@ for (const file of commandFiles) {
   if ("data" in command && "execute" in command) {
     commands.push(command.data.toJSON());
   } else {
-    console.warn(`[WARN] The command at ${filePath} is missing a required "data" or "execute" property.`);
+    logger.warn(`[commands] The command at ${filePath} is missing a required "data" or "execute" property.`);
   }
 }
 
@@ -35,13 +36,13 @@ const rest = new REST({ version: "10" }).setToken(DISCORD_TOKEN);
 
 (async () => {
   try {
-    console.log(`Started refreshing ${commands.length} application (/) commands.`);
+    logger.info(`[commands] Started refreshing ${commands.length} application (/) commands.`);
     const data = await rest.put(
       Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
       { body: commands }
     ) as unknown[];
-    console.log(`Successfully reloaded ${data.length} application (/) commands.`);
+    logger.info(`[commands] Successfully reloaded ${data.length} application (/) commands.`);
   } catch (error) {
-    console.error(error);
+    logger.error(`[commands] ${error instanceof Error ? error.message : String(error)}`);
   }
 })();
