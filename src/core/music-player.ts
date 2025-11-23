@@ -37,6 +37,7 @@ import { playSong, handleAutoplay } from "./audio/playback-engine.js";
 import { getAutoplayButton } from "./ui/player-controls.js";
 import { getEntryMessage } from "../config/afr-config.js";
 import ytSearch from "yt-search";
+import { isCacheEnabled, getCacheStorage } from "./cache-manager.js";
 
 // --- Helpers ---
 
@@ -256,6 +257,17 @@ async function createQueue(interaction: ChatInputCommandInteraction, worker: Wor
 }
 
 async function resolveTrack(query: string): Promise<Song> {
+  // Check search cache first
+  if (isCacheEnabled() && !isUrl(query)) {
+    const storage = getCacheStorage();
+    if (storage) {
+      const cached = await storage.getCachedSearchResult(query);
+      if (cached) {
+        return cached;
+      }
+    }
+  }
+
   // Feature 1: Direct URL support
   if (isUrl(query)) {
     try {
@@ -275,12 +287,22 @@ async function resolveTrack(query: string): Promise<Song> {
   const searchResult = await ytSearch(query);
   if (searchResult && searchResult.videos.length > 0) {
     const video = searchResult.videos[0];
-    return {
+    const track: Song = {
       title: video.title,
       url: video.url,
       durationInSec: video.seconds,
       requestedBy: "Unknown", // Will be overwritten
     };
+
+    // Cache the search result
+    if (isCacheEnabled()) {
+      const storage = getCacheStorage();
+      if (storage) {
+        await storage.setCachedSearchResult(query, track);
+      }
+    }
+
+    return track;
   }
   throw new Error("No results found on YouTube.");
 }
