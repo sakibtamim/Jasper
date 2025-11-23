@@ -28,33 +28,53 @@ const API_BASE = '/api';
 // State
 let workers = [];
 let queues = [];
+let queuesPagination = { currentPage: 1, totalPages: 1, totalQueues: 0, limit: 10 };
 let cacheStats = {};
 let logs = [];
+
+// Get responsive limit: 10 for mobile (1 column), 20 for desktop (2 columns)
+function getQueueLimit() {
+    return window.matchMedia('(min-width: 1024px)').matches ? 20 : 10;
+}
 
 // Fetch Data
 async function fetchData() {
     try {
+        // Update limit based on viewport
+        queuesPagination.limit = getQueueLimit();
+
         const [workersRes, queuesRes, cacheRes, logsRes] = await Promise.all([
             fetch(`${API_BASE}/status`),
-            fetch(`${API_BASE}/queues`),
+            fetch(`${API_BASE}/queues?page=${queuesPagination.currentPage}&limit=${queuesPagination.limit}`),
             fetch(`${API_BASE}/cache`),
             fetch(`${API_BASE}/logs`)
         ]);
 
-        const workersData = await workersRes.json();
-        const queuesData = await queuesRes.json();
-        const cacheData = await cacheRes.json();
-        const logsData = await logsRes.json();
+        if (workersRes.ok) {
+            const data = await workersRes.json();
+            workers = data.workers || [];
+            renderWorkers();
+        }
 
-        workers = workersData.workers;
-        queues = queuesData.queues;
-        cacheStats = cacheData.stats;
-        logs = logsData.logs;
+        if (queuesRes.ok) {
+            const data = await queuesRes.json();
+            queues = data.queues || [];
+            queuesPagination = { ...data.pagination, limit: queuesPagination.limit };
+            renderQueues();
+            renderQueuesPagination();
+        }
 
-        renderWorkers();
-        renderQueues();
-        renderCacheStats();
-        renderLogs();
+        if (cacheRes.ok) {
+            const data = await cacheRes.json();
+            cacheStats = data.stats || {};
+            renderCacheStats();
+        }
+
+        if (logsRes.ok) {
+            const data = await logsRes.json();
+            logs = data.logs || [];
+            renderLogs();
+        }
     } catch (error) {
         console.error('Failed to fetch data:', error);
     }
@@ -348,6 +368,75 @@ function formatDuration(seconds) {
     const sec = Math.floor(seconds % 60);
     return `${min}:${sec.toString().padStart(2, '0')}`;
 }
+
+// Render Queues Pagination Controls
+function renderQueuesPagination() {
+    const container = document.getElementById('queues-pagination');
+    if (!container) return;
+
+    if (queuesPagination.totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+
+    const { currentPage, totalPages, totalQueues, hasPreviousPage, hasNextPage } = queuesPagination;
+
+    container.innerHTML = `
+        <button 
+            id="queues-prev-btn"
+            ${!hasPreviousPage ? 'disabled' : ''}
+            class="px-4 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+        </button>
+        
+        <div class="text-sm text-gray-600 dark:text-gray-400">
+            Page <span class="font-bold text-gray-900 dark:text-white">${currentPage}</span> of <span class="font-bold">${totalPages}</span>
+            <span class="text-xs ml-2">(${totalQueues} total queues)</span>
+        </div>
+        
+        <button 
+            id="queues-next-btn"
+            ${!hasNextPage ? 'disabled' : ''}
+            class="px-4 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+        </button>
+    `;
+
+    lucide.createIcons();
+
+    // Add event listeners
+    const prevBtn = document.getElementById('queues-prev-btn');
+    const nextBtn = document.getElementById('queues-next-btn');
+
+    if (prevBtn && hasPreviousPage) {
+        prevBtn.addEventListener('click', () => {
+            queuesPagination.currentPage--;
+            fetchData();
+        });
+    }
+
+    if (nextBtn && hasNextPage) {
+        nextBtn.addEventListener('click', () => {
+            queuesPagination.currentPage++;
+            fetchData();
+        });
+    }
+}
+
+// Handle viewport changes for responsive pagination
+let resizeTimer;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+        const newLimit = getQueueLimit();
+        if (newLimit !== queuesPagination.limit) {
+            queuesPagination.currentPage = 1; // Reset to page 1 when limit changes
+            fetchData();
+        }
+    }, 250); // Debounce resize events
+});
 
 // Initial Fetch and Polling
 fetchData();

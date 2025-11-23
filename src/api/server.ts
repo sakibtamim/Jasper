@@ -85,10 +85,14 @@ server.get('/api/status', async (_request, _reply) => {
     return { workers };
 });
 
-// 2. Active Queues
-server.get('/api/queues', async (_request, _reply) => {
+// 2. Active Queues (with pagination)
+server.get('/api/queues', async (request, _reply) => {
+    const { page = '1', limit = '10' } = request.query as { page?: string; limit?: string };
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 10)); // Max 50 per page
+
     const queues = musicPlayer.getQueues();
-    const queueData = Array.from(queues.values()).map(q => {
+    const allQueueData = Array.from(queues.values()).map(q => {
         let guildName = q.guildId; // Default to ID if name not found
         if (q.worker && q.worker.client) {
             const guild = q.worker.client.guilds.cache.get(q.guildId);
@@ -119,7 +123,25 @@ server.get('/api/queues', async (_request, _reply) => {
             autoplay: q.autoplay
         };
     });
-    return { queues: queueData };
+
+    // Pagination
+    const totalQueues = allQueueData.length;
+    const totalPages = Math.ceil(totalQueues / limitNum);
+    const startIndex = (pageNum - 1) * limitNum;
+    const endIndex = startIndex + limitNum;
+    const paginatedQueues = allQueueData.slice(startIndex, endIndex);
+
+    return {
+        queues: paginatedQueues,
+        pagination: {
+            currentPage: pageNum,
+            totalPages,
+            totalQueues,
+            limit: limitNum,
+            hasNextPage: pageNum < totalPages,
+            hasPreviousPage: pageNum > 1
+        }
+    };
 });
 
 // 3. Cache Stats

@@ -79,15 +79,16 @@
         <!-- Active Queues Section -->
         <section id="queues" class="mb-16 scroll-mt-24">
             <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-8 flex items-center gap-3">
-                <i data-lucide="music" class="w-8 h-8 text-brand-secondary"></i>
+                <i data-lucide="list-music" class="w-8 h-8 text-brand-secondary"></i>
                 Active Queues
             </h2>
-            <div id="queues-container" class="space-y-4">
-                <!-- Queue items will be injected here -->
-                <div
-                    class="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 text-center text-gray-500">
-                    No active queues right now.
-                </div>
+            <!-- 2-column grid on desktop (lg), 1 column on mobile -->
+            <div id="queues-container" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <!-- Queue cards will be injected here -->
+            </div>
+            <!-- Pagination Controls -->
+            <div id="queues-pagination" class="flex items-center justify-center gap-4">
+                <!-- Pagination buttons will be injected here -->
             </div>
         </section>
 
