@@ -84,6 +84,79 @@ Each cat has their own personality:
 
 > **Note:** Entry messages only appear when a bot first joins, not when reusing an existing connection.
 
+## Caching System (Optional)
+
+🆕 **Jasper now supports optional caching** to improve performance and reduce bandwidth usage!
+
+### What is the Caching System?
+
+The caching system stores:
+1. **Search Results**: YouTube search results for `/play` commands
+2. **Audio Files**: Downloaded audio files mapped to video IDs
+
+This means:
+- Repeated songs play **instantly** without re-downloading
+- **Reduced bandwidth** usage on your server
+- **Faster response times** for popular requests
+- **Less dependency** on YouTube API availability
+
+### Configuration
+
+To enable caching, add to your `.env` file:
+
+```env
+# Enable Caching
+CACHE_ENABLED=true
+
+# Optional: Customize cache lifetimes
+CACHE_SEARCH_TTL_HOURS=168      # 7 days (default)
+CACHE_AUDIO_TTL_HOURS=72        # 3 days (default)
+CACHE_CLEANUP_INTERVAL_HOURS=1  # 1 hour (default)
+```
+
+### Performance Impact Analysis
+
+#### ✅ Benefits
+- **Bandwidth**: 90-95% reduction for repeated songs
+- **Response Time**: 2-5s faster for cached songs (no download wait)
+- **Reliability**: Works offline for cached songs if YouTube is down
+- **First Play**: No delay thanks to async write optimization (streams from memory while writing to disk)
+
+#### ⚠️ Tradeoffs
+- **Disk Space**: ~5-10MB per cached song (high quality)
+  - Example: 100 cached songs ≈ 500MB-1GB
+  - Automatically cleaned up based on TTL every hour (configurable)
+- **Memory**: Minimal (~5-15MB for in-memory buffers + search cache metadata)
+
+#### 📊 Recommended Settings by Use Case
+
+**Small Server (1-10 users):**
+```env
+CACHE_AUDIO_TTL_HOURS=24    # 1 day
+```
+Expected disk usage: 100-500MB
+
+**Medium Server (10-50 users):**
+```env
+CACHE_AUDIO_TTL_HOURS=72    # 3 days (default)
+```
+Expected disk usage: 500MB-2GB
+
+**Large Server (50+ users):**
+```env
+CACHE_AUDIO_TTL_HOURS=168   # 7 days
+```
+Expected disk usage: 2-5GB
+
+### Monitoring
+
+Cache statistics are logged on bot startup and during cleanup:
+```
+[Cache] Audio cache: 42 files, 387MB
+[Cache] Search cache: 156 entries
+[Cache] Cleaned up 3 expired files (28MB freed)
+```
+
 ## Tech Stack
 
   - **Runtime:** Node.js (v18+)

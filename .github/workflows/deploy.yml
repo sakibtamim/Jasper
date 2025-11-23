@@ -73,6 +73,7 @@ jobs:
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             cd ${{ secrets.SSH_TARGET }}
             pm2 stop jasper-bot || true
+            # Remove old deployment files but preserve .env and cache directories
             rm -rf dist scripts package.json package-lock.json ecosystem.config.cjs dist-checksums.txt
 
       - name: Copy files to server
