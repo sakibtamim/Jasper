@@ -35,7 +35,7 @@ export async function sendAnnouncement(message: string): Promise<void> {
     if (controller.client.isReady()) {
         try {
             const channel = await controller.client.channels.fetch(announceChannelId);
-            if (channel && channel.isTextBased() && !channel.isDMBased()) {
+            if (channel && channel.isSendable() && !channel.isDMBased()) {
                 await channel.send(message);
                 logger.info(`[Announcer] Sent announcement to ${announceChannelId}`);
             }
