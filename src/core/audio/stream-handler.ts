@@ -36,7 +36,12 @@ export function fetchVideoData(url: string): Promise<VideoData> {
     return new Promise((resolve, reject) => {
         const ytDlpPath = getYtDlpPath();
         // -J: Dump JSON metadata
-        const args = ["-J", url];
+        const args = [
+            "--js-runtimes", "node",
+            "--extractor-args", "youtube:player_client=default",
+            "-J",
+            url
+        ];
 
         const process = spawn(ytDlpPath, args);
         let data = "";
@@ -63,7 +68,13 @@ export function fetchVideoData(url: string): Promise<VideoData> {
 export function fetchPlaylistData(url: string): Promise<PlaylistData> {
     return new Promise((resolve, reject) => {
         const ytDlpPath = getYtDlpPath();
-        const args = ["--flat-playlist", "-J", url];
+        const args = [
+            "--js-runtimes", "node",
+            "--extractor-args", "youtube:player_client=default",
+            "--flat-playlist",
+            "-J",
+            url
+        ];
 
         const process = spawn(ytDlpPath, args);
         let data = "";
@@ -89,7 +100,14 @@ export function fetchPlaylistData(url: string): Promise<PlaylistData> {
 
 export function createStreamProcess(url: string): ChildProcess {
     const ytDlpPath = getYtDlpPath();
-    const args = ["-f", "bestaudio", "-o", "-", "-q", url];
+    const args = [
+        "--js-runtimes", "node",
+        "--extractor-args", "youtube:player_client=default",
+        "-f", "bestaudio",
+        "-o", "-",
+        "-q",
+        url
+    ];
     const process = spawn(ytDlpPath, args);
 
     process.on("error", (err) => {

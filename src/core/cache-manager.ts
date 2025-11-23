@@ -183,7 +183,14 @@ class FileCacheStorage implements ICacheStorage {
 
         // Spawn yt-dlp process
         const ytDlpPath = getYtDlpPath();
-        const args = ['-f', 'bestaudio', '-o', '-', '-q', url];
+        const args = [
+            '--js-runtimes', 'node',
+            '--extractor-args', 'youtube:player_client=default',
+            '-f', 'bestaudio',
+            '-o', '-',
+            '-q',
+            url
+        ];
         const ytDlpProcess = spawn(ytDlpPath, args);
 
         ytDlpProcess.stderr!.on('data', (data) => {
