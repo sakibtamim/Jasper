@@ -77,4 +77,40 @@ const __dirname = path.dirname(__filename);
     logger.info('[Cache] Caching system initialized');
   }
 
+  // 6. Startup Announcement
+  const announceChannelId = process.env.ANNOUNCE_CHANNEL_ID;
+  if (announceChannelId) {
+    const controller = workerPool.getController();
+    if (controller && controller.client.isReady()) {
+      try {
+        const channel = await controller.client.channels.fetch(announceChannelId);
+        if (channel && channel.isSendable()) {
+          await channel.send("✅ **Jasper System Online**\nReady to serve the Heavenly Council of Fur.");
+          logger.info(`[Startup] Sent online announcement to ${announceChannelId}`);
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.warn(`[Startup] Failed to send announcement: ${msg}`);
+      }
+    }
+  }
+
 })();
+
+// --- Graceful Exit & Error Handling ---
+
+import { handleGracefulExit } from "./core/graceful-exit.js";
+
+process.on("SIGINT", () => handleGracefulExit("SIGINT"));
+process.on("SIGTERM", () => handleGracefulExit("SIGTERM"));
+
+process.on("uncaughtException", (error) => {
+  logger.error(`Uncaught Exception: ${error instanceof Error ? error.stack : String(error)}`);
+  handleGracefulExit("uncaughtException", error instanceof Error ? error : new Error(String(error)));
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
+  // We don't exit on unhandledRejection to keep the bot running, 
+  // but we log it. If it's critical, uncaughtException might eventually trigger.
+});
