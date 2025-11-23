@@ -108,6 +108,12 @@ server.get('/api/queues', async (_request, _reply) => {
                 duration: q.nowPlaying.durationInSec,
                 requestedBy: q.nowPlaying.requestedBy
             } : null,
+            songs: q.songs.map(song => ({
+                title: song.title,
+                url: song.url,
+                duration: song.durationInSec,
+                requestedBy: song.requestedBy
+            })),
             queueLength: q.songs.length,
             autoplay: q.autoplay
         };
@@ -135,7 +141,7 @@ export async function startServer() {
     try {
         const port = parseInt(process.env.PORT, 10);
         await server.listen({ port, host: '0.0.0.0' });
-        logger.info(`Web UI server running at http://localhost:${port}`);
+        logger.info(`[webui] Web UI server running at http://localhost:${port}`);
     } catch (err) {
         server.log.error(err);
         process.exit(1);

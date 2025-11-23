@@ -85,7 +85,7 @@ async function assignWorker(interaction: ChatInputCommandInteraction, voiceChann
     const entryMessage = getEntryMessage(worker.name);
     await interaction.channel
       .send(entryMessage)
-      .catch((error: unknown) => logger.warn(`[AFR] Failed to send entry message: ${error instanceof Error ? error.message : String(error)}`));
+      .catch((error: unknown) => logger.warn(`[afr] Failed to send entry message: ${error instanceof Error ? error.message : String(error)}`));
   }
 
   return worker;

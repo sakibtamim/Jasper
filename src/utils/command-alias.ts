@@ -4,7 +4,7 @@ import logger from "../core/logger.js";
 
 export function createAlias(name: string, description: string, originalCommand: Command): Command {
     const origName = 'name' in originalCommand.data ? originalCommand.data.name : 'unknown';
-    logger.info(`Creating alias: ${name} -> ${origName}`);
+    logger.info(`[commands] Creating alias: ${name} -> ${origName}`);
     const alias = {
         data: {
             name,
@@ -19,6 +19,6 @@ export function createAlias(name: string, description: string, originalCommand: 
         execute: originalCommand.execute,
         autocomplete: originalCommand.autocomplete,
     };
-    logger.info(`Alias ${name} created successfully with data.name=${alias.data.name}`);
+    logger.info(`[commands] Alias ${name} created successfully with data.name=${alias.data.name}`);
     return alias;
 }

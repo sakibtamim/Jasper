@@ -78,7 +78,7 @@ class FileCacheStorage implements ICacheStorage {
             const parsed = JSON.parse(data);
             this.searchCache = new Map(Object.entries(parsed));
             this.searchCacheLoaded = true;
-            logger.info(`[Cache] Loaded ${this.searchCache.size} search results from disk`);
+            logger.info(`[cache] Loaded ${this.searchCache.size} search results from disk`);
         } catch (error) {
             // File doesn't exist or is corrupted, start fresh
             this.searchCache = new Map();
@@ -96,7 +96,7 @@ class FileCacheStorage implements ICacheStorage {
             // Async write - don't block
             await fs.writeFile(SEARCH_CACHE_FILE, data, 'utf-8');
         } catch (error) {
-            logger.error(`[Cache] Failed to save search cache: ${error instanceof Error ? error.message : String(error)}`);
+            logger.error(`[cache] Failed to save search cache: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 
@@ -114,7 +114,7 @@ class FileCacheStorage implements ICacheStorage {
             return null;
         }
 
-        logger.info(`[Cache] Search hit for: ${query}`);
+        logger.info(`[cache] Search hit for: ${query}`);
         return {
             ...cached.song,
             requestedBy: cached.song.requestedBy || "Unknown",
@@ -140,7 +140,7 @@ class FileCacheStorage implements ICacheStorage {
 
         // Async write - don't block the response
         this.saveSearchCache();
-        logger.info(`[Cache] Cached search result for: ${query}`);
+        logger.info(`[cache] Cached search result for: ${query}`);
     }
 
     async getCachedAudioStream(videoId: string): Promise<Readable | null> {
@@ -159,22 +159,22 @@ class FileCacheStorage implements ICacheStorage {
 
             if (ageHours > CACHE_AUDIO_TTL_HOURS) {
                 // Expired, delete files
-                await fs.unlink(audioPath).catch((err) => logger.warn(`[Cache] Failed to delete expired audio ${audioPath}: ${err.message}`));
-                await fs.unlink(metaPath).catch((err) => logger.warn(`[Cache] Failed to delete expired meta ${metaPath}: ${err.message}`));
+                await fs.unlink(audioPath).catch((err) => logger.warn(`[cache] Failed to delete expired audio ${audioPath}: ${err.message}`));
+                await fs.unlink(metaPath).catch((err) => logger.warn(`[cache] Failed to delete expired meta ${metaPath}: ${err.message}`));
                 return null;
             }
 
             // Return read stream
-            logger.info(`[Cache] Audio cache hit for video: ${videoId}`);
+            logger.info(`[cache] Audio cache hit for video: ${videoId}`);
             return createReadStream(audioPath);
         } catch (error) {
-            logger.warn(`[Cache] Failed to read cached audio ${videoId}: ${error instanceof Error ? error.message : String(error)}`);
+            logger.warn(`[cache] Failed to read cached audio ${videoId}: ${error instanceof Error ? error.message : String(error)}`);
             return null;
         }
     }
 
     async cacheAudioStream(url: string, videoId: string, searchTerms: string[]): Promise<Readable> {
-        logger.info(`[Cache] Audio cache miss, downloading: ${url}`);
+        logger.info(`[cache] Audio cache miss, downloading: ${url}`);
 
         const audioPath = path.join(CACHE_AUDIO_DIR, `${videoId}.webm`);
         const metaPath = path.join(CACHE_AUDIO_DIR, `${videoId}.meta.json`);
@@ -195,7 +195,7 @@ class FileCacheStorage implements ICacheStorage {
 
         ytDlpProcess.stderr!.on('data', (data) => {
             const msg = data.toString().trim();
-            if (msg) logger.warn(`[Cache] yt-dlp stderr: ${msg}`);
+            if (msg) logger.warn(`[cache] yt-dlp stderr: ${msg}`);
         });
 
         // Create write stream to cache file
@@ -223,16 +223,16 @@ class FileCacheStorage implements ICacheStorage {
         ytDlpProcess.on('close', async (code) => {
             if (code !== 0 && !hasError) {
                 // Non-zero exit code indicates failure
-                logger.error(`[Cache] yt-dlp exited with code ${code} for: ${url}`);
+                logger.error(`[cache] yt-dlp exited with code ${code} for: ${url}`);
                 hasError = true;
 
                 // Cleanup partial files
                 try {
                     await fs.unlink(audioPath).catch(() => { });
                     await fs.unlink(metaPath).catch(() => { });
-                    logger.info(`[Cache] Cleaned up partial files for failed download: ${videoId}`);
+                    logger.info(`[cache] Cleaned up partial files for failed download: ${videoId}`);
                 } catch (cleanupErr) {
-                    logger.warn(`[Cache] Failed to cleanup partial files ${videoId}: ${cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr)}`);
+                    logger.warn(`[cache] Failed to cleanup partial files ${videoId}: ${cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr)}`);
                 }
             } else if (code === 0 && !hasError) {
                 // Success: save metadata
@@ -243,9 +243,9 @@ class FileCacheStorage implements ICacheStorage {
                 };
                 try {
                     await fs.writeFile(metaPath, JSON.stringify(meta, null, 2), 'utf-8');
-                    logger.info(`[Cache] Cached audio for video: ${videoId} (${(totalBytes / 1024 / 1024).toFixed(2)}MB)`);
+                    logger.info(`[cache] Cached audio for video: ${videoId} (${(totalBytes / 1024 / 1024).toFixed(2)}MB)`);
                 } catch (metaErr) {
-                    logger.error(`[Cache] Failed to write metadata for ${videoId}: ${metaErr instanceof Error ? metaErr.message : String(metaErr)}`);
+                    logger.error(`[cache] Failed to write metadata for ${videoId}: ${metaErr instanceof Error ? metaErr.message : String(metaErr)}`);
                     // Cleanup audio file if metadata write fails
                     await fs.unlink(audioPath).catch(() => { });
                 }
@@ -253,7 +253,7 @@ class FileCacheStorage implements ICacheStorage {
         });
 
         ytDlpProcess.on('error', async (err) => {
-            logger.error(`[Cache] yt-dlp error during caching: ${err.message}`);
+            logger.error(`[cache] yt-dlp error during caching: ${err.message}`);
             hasError = true;
             passThrough.destroy(err);
             fileStream.destroy();
@@ -267,7 +267,7 @@ class FileCacheStorage implements ICacheStorage {
     }
 
     async cleanupExpiredCache(): Promise<void> {
-        logger.info('[Cache] Running cleanup...');
+        logger.info('[cache] Running cleanup...');
 
         let deletedFiles = 0;
         let freedBytes = 0;
@@ -284,7 +284,7 @@ class FileCacheStorage implements ICacheStorage {
             }
             if (this.searchCache.size < initialSize) {
                 await this.saveSearchCache();
-                logger.info(`[Cache] Removed ${initialSize - this.searchCache.size} expired search results`);
+                logger.info(`[cache] Removed ${initialSize - this.searchCache.size} expired search results`);
             }
 
             // Cleanup expired audio files
@@ -304,22 +304,22 @@ class FileCacheStorage implements ICacheStorage {
                         const stats = await fs.stat(audioPath);
                         freedBytes += stats.size;
 
-                        await fs.unlink(audioPath).catch((err) => logger.warn(`[Cache] Failed to delete expired audio ${audioPath}: ${err.message}`));
-                        await fs.unlink(metaPath).catch((err) => logger.warn(`[Cache] Failed to delete expired meta ${metaPath}: ${err.message}`));
+                        await fs.unlink(audioPath).catch((err) => logger.warn(`[cache] Failed to delete expired audio ${audioPath}: ${err.message}`));
+                        await fs.unlink(metaPath).catch((err) => logger.warn(`[cache] Failed to delete expired meta ${metaPath}: ${err.message}`));
                         deletedFiles++;
                     }
                 } catch {
                     // Corrupted metadata or missing audio file, delete both
-                    await fs.unlink(audioPath).catch((err) => logger.warn(`[Cache] Failed to delete corrupted audio ${audioPath}: ${err.message}`));
-                    await fs.unlink(metaPath).catch((err) => logger.warn(`[Cache] Failed to delete corrupted meta ${metaPath}: ${err.message}`));
+                    await fs.unlink(audioPath).catch((err) => logger.warn(`[cache] Failed to delete corrupted audio ${audioPath}: ${err.message}`));
+                    await fs.unlink(metaPath).catch((err) => logger.warn(`[cache] Failed to delete corrupted meta ${metaPath}: ${err.message}`));
                 }
             }
 
             if (deletedFiles > 0) {
-                logger.info(`[Cache] Cleaned up ${deletedFiles} expired files (${(freedBytes / 1024 / 1024).toFixed(2)}MB freed)`);
+                logger.info(`[cache] Cleaned up ${deletedFiles} expired files (${(freedBytes / 1024 / 1024).toFixed(2)}MB freed)`);
             }
         } catch (error) {
-            logger.error(`[Cache] Cleanup error: ${error instanceof Error ? error.message : String(error)}`);
+            logger.error(`[cache] Cleanup error: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 
@@ -360,7 +360,7 @@ let cleanupInterval: NodeJS.Timeout | null = null;
  */
 export async function initializeCache(): Promise<void> {
     if (!CACHE_ENABLED) {
-        logger.info('[Cache] Caching is disabled');
+        logger.info('[cache] Caching is disabled');
         return;
     }
 
@@ -371,9 +371,9 @@ export async function initializeCache(): Promise<void> {
         storageInstance = new FileCacheStorage();
 
         const stats = await storageInstance.getCacheStats();
-        logger.info(`[Cache] Initialized - Search: ${stats.searchCacheSize} entries, Audio: ${stats.audioCacheFiles} files (${stats.audioCacheSizeMB}MB)`);
+        logger.info(`[cache] Initialized - Search: ${stats.searchCacheSize} entries, Audio: ${stats.audioCacheFiles} files (${stats.audioCacheSizeMB}MB)`);
     } catch (error) {
-        logger.error(`[Cache] Initialization failed: ${error instanceof Error ? error.message : String(error)}`);
+        logger.error(`[cache] Initialization failed: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
 
@@ -390,7 +390,7 @@ export function startCacheCleanup(): void {
         }
     }, intervalMs);
 
-    logger.info(`[Cache] Cleanup task scheduled every ${CACHE_CLEANUP_INTERVAL_HOURS} hour(s)`);
+    logger.info(`[cache] Cleanup task scheduled every ${CACHE_CLEANUP_INTERVAL_HOURS} hour(s)`);
 }
 
 /**

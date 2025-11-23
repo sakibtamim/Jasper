@@ -21,12 +21,12 @@ process.on("SIGTERM", () => handleGracefulExit("SIGTERM"));
 
 // Global error handlers
 process.on("uncaughtException", (error) => {
-  logger.error(`Uncaught Exception: ${error instanceof Error ? error.stack : String(error)}`);
+  logger.error(`[core] Uncaught Exception: ${error instanceof Error ? error.stack : String(error)}`);
   handleGracefulExit("uncaughtException", error instanceof Error ? error : new Error(String(error)));
 });
 
 process.on("unhandledRejection", (reason, promise) => {
-  logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
+  logger.error(`[core] Unhandled Rejection at: ${promise}, reason: ${reason}`);
   // We don't exit on unhandledRejection to keep the bot running, 
   // but we log it. If it's critical, uncaughtException might eventually trigger.
 });
@@ -38,7 +38,7 @@ process.on("unhandledRejection", (reason, promise) => {
   // 2. Get Controller (Jasper)
   const controllerWorker = workerPool.getController();
   if (!controllerWorker) {
-    logger.error("No controller bot found! Check configuration.");
+    logger.error("[core] No controller bot found! Check configuration.");
     process.exit(1);
   }
   const client = controllerWorker.client;
@@ -57,9 +57,9 @@ process.on("unhandledRejection", (reason, promise) => {
     const command = commandModule.default;
     if ("data" in command && "execute" in command) {
       client.commands.set(command.data.name, command);
-      logger.info(`Loaded command /${command.data.name}`);
+      logger.info(`[core] Loaded command /${command.data.name}`);
     } else {
-      logger.warn(`The command at ${filePath} is missing a required "data" or "execute" property.`);
+      logger.warn(`[core] The command at ${filePath} is missing a required "data" or "execute" property.`);
     }
   }
 
@@ -76,7 +76,7 @@ process.on("unhandledRejection", (reason, promise) => {
       } else {
         client.on(event.name, (...args) => event.execute(...args, client));
       }
-      logger.info(`Registered event listener for ${event.name}`);
+      logger.info(`[core] Registered event listener for ${event.name}`);
     }
   }
 

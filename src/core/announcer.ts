@@ -16,7 +16,7 @@ export async function sendAnnouncement(message: string): Promise<void> {
 
     // Wait for client to be ready if needed
     if (!controller.client.isReady()) {
-        logger.info("[Announcer] Waiting for controller to be ready...");
+        logger.info("[announcer] Waiting for controller to be ready...");
         await new Promise<void>((resolve) => {
             const onReady = () => {
                 resolve();
@@ -37,13 +37,13 @@ export async function sendAnnouncement(message: string): Promise<void> {
             const channel = await controller.client.channels.fetch(announceChannelId);
             if (channel && channel.isTextBased() && !channel.isDMBased()) {
                 await channel.send(message);
-                logger.info(`[Announcer] Sent announcement to ${announceChannelId}`);
+                logger.info(`[announcer] Sent announcement to ${announceChannelId}`);
             }
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
-            logger.warn(`[Announcer] Failed to send announcement: ${msg}`);
+            logger.warn(`[announcer] Failed to send announcement: ${msg}`);
         }
     } else {
-        logger.warn("[Announcer] Controller not ready after waiting, skipping announcement.");
+        logger.warn("[announcer] Controller not ready after waiting, skipping announcement.");
     }
 }

@@ -133,7 +133,7 @@ export async function handleAutoplay(queue: Queue, lastSong: Song): Promise<void
         queue.songs.push(track);
         playSong(queue);
     } catch (error: unknown) {
-        logger.error(`Autoplay error: ${error instanceof Error ? error.message : String(error)}`);
+        logger.error(`[playback] Autoplay error: ${error instanceof Error ? error.message : String(error)}`);
         if (queue.textChannel && 'send' in queue.textChannel) {
             queue.textChannel.send("❌ An error occurred while trying to play the song.");
         }
@@ -145,7 +145,7 @@ export async function playSong(queue: Queue): Promise<void> {
     if (!song) return;
 
     try {
-        logger.info(`Attempting to stream with yt-dlp: ${song.title}`);
+        logger.info(`[playback] Attempting to stream with yt-dlp: ${song.title}`);
 
         let audioSource: Readable;
 
@@ -160,11 +160,11 @@ export async function playSong(queue: Queue): Promise<void> {
                     // Cache hit: stream from disk
                     audioSource = cachedStream;
                     song.fromCache = true;
-                    logger.info(`[Cache] Streaming from cache for: ${song.title}`);
+                    logger.info(`[cache] Streaming from cache for: ${song.title}`);
                 } else {
                     // Cache miss: stream from memory while writing to disk (async)
                     audioSource = await storage.cacheAudioStream(song.url, videoId, [song.title]);
-                    logger.info(`[Cache] Downloading and caching: ${song.title}`);
+                    logger.info(`[cache] Downloading and caching: ${song.title}`);
                 }
             } else {
                 // Cache storage not available, fallback to direct stream
@@ -191,7 +191,7 @@ export async function playSong(queue: Queue): Promise<void> {
         queue.player.play(resource);
         queue.nowPlaying = song;
 
-        logger.info(`Now playing in ${queue.guildId}: ${song.title}`);
+        logger.info(`[playback] Now playing in ${queue.guildId}: ${song.title}`);
 
         setVoiceStatus(
             queue.worker.client,
@@ -311,7 +311,7 @@ export async function playSong(queue: Queue): Promise<void> {
             });
         }
     } catch (error: any) {
-        logger.error(`Failed to play song: ${error.message}`);
+        logger.error(`[playback] Failed to play song: ${error.message}`);
         queue.songs.shift();
         playSong(queue);
     }
