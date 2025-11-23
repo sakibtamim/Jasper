@@ -1,16 +1,11 @@
-import { ChatInputCommandInteraction, AutocompleteInteraction, SlashCommandBuilder } from "discord.js";
+import { SlashCommandBuilder, RESTPostAPIChatInputApplicationCommandsJSONBody } from "discord.js";
+import { Command } from "../types/command.js";
 
-interface Command {
-    data: SlashCommandBuilder | { toJSON: () => any };
-    execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
-    autocomplete?: (interaction: AutocompleteInteraction) => Promise<void>;
-}
-
-export function createAlias(name: string, description: string, originalCommand: Command) {
+export function createAlias(name: string, description: string, originalCommand: Command): Command {
     return {
         data: {
-            toJSON: () => {
-                const json = originalCommand.data.toJSON();
+            toJSON: (): RESTPostAPIChatInputApplicationCommandsJSONBody => {
+                const json = originalCommand.data.toJSON() as RESTPostAPIChatInputApplicationCommandsJSONBody;
                 json.name = name;
                 json.description = description;
                 return json;
