@@ -252,29 +252,25 @@ function renderQueues() {
             </div>
             ` : ''}
 
+
             ${queue.songs && queue.songs.length > 0 ? `
             <div class="space-y-2">
                 <div class="text-xs text-gray-500 uppercase tracking-wider font-bold">Up Next (${queue.songs.length} songs)</div>
-                ${queue.songs.map((song, index) => {
-        // Calculate ETA based on cumulative duration
-        let eta = 0;
-        if (queue.nowPlaying && index === 0) {
-            eta = queue.nowPlaying.duration;
-        } else {
-            for (let i = 0; i < index; i++) {
-                eta += queue.songs[i].duration || 0;
-            }
-            if (queue.nowPlaying) eta += queue.nowPlaying.duration;
-        }
+                ${(() => {
+                // Use cumulative ETA calculation for O(n) performance instead of O(n²)
+                let cumulativeEta = queue.nowPlaying ? queue.nowPlaying.duration : 0;
+                return queue.songs.map((song, index) => {
+                    const songEta = cumulativeEta;
+                    cumulativeEta += song.duration || 0;
 
-        return `
+                    return `
                     <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2.5 border border-gray-100 dark:border-gray-700/50 hover:border-brand-secondary/30 transition-colors">
                         <div class="flex items-center gap-3">
                             <div class="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700 shrink-0">
                                 ${song.thumbnail ?
-                `<img src="${escapeHtml(song.thumbnail)}" class="w-full h-full object-cover">` :
-                `<div class="flex items-center justify-center w-full h-full"><i data-lucide="music" class="w-6 h-6 text-gray-400"></i></div>`
-            }
+                            `<img src="${escapeHtml(song.thumbnail)}" class="w-full h-full object-cover">` :
+                            `<div class="flex items-center justify-center w-full h-full"><i data-lucide="music" class="w-6 h-6 text-gray-400"></i></div>`
+                        }
                             </div>
                             <div class="flex-1 min-w-0">
                                 <a href="${escapeHtml(song.url)}" target="_blank" class="text-xs font-medium text-gray-900 dark:text-white hover:text-brand-secondary transition-colors truncate block">
@@ -287,12 +283,13 @@ function renderQueues() {
                                 </div>
                             </div>
                             <div class="text-[10px] text-gray-400 dark:text-gray-500 font-medium shrink-0">
-                                ETA ${formatDuration(eta)}
+                                ETA ${formatDuration(songEta)}
                             </div>
                         </div>
                     </div>
                     `;
-    }).join('')}
+                }).join('');
+            })()}
             </div>
             ` : ''}
         </div>
