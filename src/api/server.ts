@@ -22,22 +22,58 @@ server.register(fastifyStatic, {
 
 // 1. Worker Status
 server.get('/api/status', async (_request, _reply) => {
-    const workers = workerPool.getWorkers().map(w => ({
-        name: w.name,
-        role: w.role,
-        busy: w.busy,
-        guildId: w.guildId,
-        voiceChannelId: w.voiceChannelId,
-        status: w.client.user?.presence.status || 'offline',
-        activity: w.client.user?.presence.activities[0]?.name || 'None'
-    }));
+    const queues = musicPlayer.getQueues();
+    const workers = workerPool.getWorkers().map(w => {
+        let guildName = null;
+        let guildIconUrl = null;
+        let channelName = null;
+        let nowPlaying = null;
+
+        if (w.guildId) {
+            const guild = w.client.guilds.cache.get(w.guildId);
+            if (guild) {
+                guildName = guild.name;
+                guildIconUrl = guild.iconURL();
+            }
+        }
+
+        if (w.voiceChannelId) {
+            const channel = w.client.channels.cache.get(w.voiceChannelId);
+            if (channel && 'name' in channel) {
+                channelName = (channel as any).name;
+            }
+
+            const queue = queues.get(w.voiceChannelId);
+            if (queue && queue.nowPlaying) {
+                nowPlaying = {
+                    title: queue.nowPlaying.title,
+                    thumbnail: queue.nowPlaying.thumbnail
+                };
+            }
+        }
+
+        return {
+            name: w.name,
+            role: w.role,
+            busy: w.busy,
+            guildId: w.guildId,
+            voiceChannelId: w.voiceChannelId,
+            status: w.client.user?.presence.status || 'offline',
+            activity: w.client.user?.presence.activities[0]?.name || 'None',
+            avatarUrl: w.client.user?.displayAvatarURL(),
+            guildName,
+            guildIconUrl,
+            channelName,
+            nowPlaying
+        };
+    });
     return { workers };
 });
 
 // 2. Active Queues
 server.get('/api/queues', async (_request, _reply) => {
     const queues = musicPlayer.getQueues();
-    const queueData = Object.values(queues).map(q => ({
+    const queueData = Array.from(queues.values()).map(q => ({
         guildId: q.guildId,
         voiceChannelId: q.voiceChannelId,
         workerName: q.worker.name,

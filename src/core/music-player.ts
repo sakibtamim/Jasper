@@ -277,6 +277,7 @@ async function resolveTrack(query: string): Promise<Song> {
         url: videoData.webpage_url || videoData.url,
         durationInSec: videoData.duration,
         requestedBy: "Unknown", // Will be overwritten
+        thumbnail: videoData.thumbnail,
       };
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -292,6 +293,7 @@ async function resolveTrack(query: string): Promise<Song> {
       url: video.url,
       durationInSec: video.seconds,
       requestedBy: "Unknown", // Will be overwritten
+      thumbnail: video.thumbnail,
     };
 
     // Cache the search result

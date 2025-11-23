@@ -10,6 +10,7 @@ export interface Song {
     url: string;
     durationInSec: number;
     requestedBy: string;
+    thumbnail?: string;
     fromCache?: boolean;
 }
 
