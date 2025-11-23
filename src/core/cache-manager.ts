@@ -153,7 +153,8 @@ class FileCacheStorage implements ICacheStorage {
 
             // Return read stream
             logger.info(`[Cache] Audio cache hit for video: ${videoId}`);
-            return Readable.toWeb(await fs.readFile(audioPath)) as unknown as Readable;
+            const { createReadStream } = await import('fs');
+            return createReadStream(audioPath);
         } catch {
             return null;
         }
