@@ -20,13 +20,13 @@ export async function sendAnnouncement(message: string): Promise<void> {
         await new Promise<void>((resolve) => {
             const onReady = () => {
                 resolve();
-                controller.client.removeListener('ready', onReady);
+                controller.client.removeListener('clientReady', onReady);
             };
-            controller.client.once('ready', onReady);
+            controller.client.once('clientReady', onReady);
 
             // Fallback timeout in case ready event never fires (e.g. disconnected)
             setTimeout(() => {
-                controller.client.removeListener('ready', onReady);
+                controller.client.removeListener('clientReady', onReady);
                 resolve(); // Resolve anyway to attempt send (which will likely fail but won't hang)
             }, 10000);
         });
@@ -35,7 +35,7 @@ export async function sendAnnouncement(message: string): Promise<void> {
     if (controller.client.isReady()) {
         try {
             const channel = await controller.client.channels.fetch(announceChannelId);
-            if (channel && channel.isSendable() && !channel.isDMBased()) {
+            if (channel && channel.isTextBased() && !channel.isDMBased()) {
                 await channel.send(message);
                 logger.info(`[Announcer] Sent announcement to ${announceChannelId}`);
             }
