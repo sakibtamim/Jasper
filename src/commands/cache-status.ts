@@ -1,5 +1,11 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
-import { isCacheEnabled, getCacheStorage } from "../core/cache-manager.js";
+import {
+    isCacheEnabled,
+    getCacheStorage,
+    CACHE_SEARCH_TTL_HOURS,
+    CACHE_AUDIO_TTL_HOURS,
+    CACHE_CLEANUP_INTERVAL_HOURS
+} from "../core/cache-manager.js";
 import logger from "../core/logger.js";
 import config from "../config/config.js";
 
@@ -54,9 +60,9 @@ export default {
                     {
                         name: "⚙️ Configuration",
                         value: [
-                            `• Search TTL: **${process.env.CACHE_SEARCH_TTL_HOURS || 168}h**`,
-                            `• Audio TTL: **${process.env.CACHE_AUDIO_TTL_HOURS || 72}h**`,
-                            `• Cleanup: Every **${process.env.CACHE_CLEANUP_INTERVAL_HOURS || 1}h**`
+                            `• Search TTL: **${CACHE_SEARCH_TTL_HOURS}h**`,
+                            `• Audio TTL: **${CACHE_AUDIO_TTL_HOURS}h**`,
+                            `• Cleanup: Every **${CACHE_CLEANUP_INTERVAL_HOURS}h**`
                         ].join("\n"),
                         inline: false
                     }
