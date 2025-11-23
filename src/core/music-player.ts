@@ -81,11 +81,11 @@ async function assignWorker(interaction: ChatInputCommandInteraction, voiceChann
   }
 
   // Show entry message only for NEW worker connections, not reused ones
-  if (isNewConnection && interaction.channel && interaction.channel.isSendable()) {
+  if (isNewConnection && interaction.channel && interaction.channel.isTextBased() && !interaction.channel.isDMBased()) {
     const entryMessage = getEntryMessage(worker.name);
     await interaction.channel
       .send(entryMessage)
-      .catch((error) => logger.warn(`[AFR] Failed to send entry message: ${error instanceof Error ? error.message : String(error)}`));
+      .catch((error: unknown) => logger.warn(`[AFR] Failed to send entry message: ${error instanceof Error ? error.message : String(error)}`));
   }
 
   return worker;
@@ -200,7 +200,7 @@ async function createQueue(interaction: ChatInputCommandInteraction, worker: Wor
       workerPool.releaseWorker(queue.voiceChannelId);
 
       // Send enhanced queue finished message
-      if (queue.textChannel && queue.textChannel.isSendable()) {
+      if (queue.textChannel && queue.textChannel.isTextBased() && !queue.textChannel.isDMBased()) {
         try {
           const channel = await queue.worker.client.channels.fetch(
             queue.voiceChannelId
@@ -217,7 +217,7 @@ async function createQueue(interaction: ChatInputCommandInteraction, worker: Wor
           logger.warn(
             `Failed to fetch channel for finished message: ${err instanceof Error ? err.message : String(err)} `
           );
-          if (queue.textChannel.isSendable()) {
+          if (queue.textChannel.isTextBased() && !queue.textChannel.isDMBased()) {
             queue.textChannel
               .send(
                 `🎶 **${queue.worker.name}** has finished the queue! Staying connected for 5 more minutes.`
