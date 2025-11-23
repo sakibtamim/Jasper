@@ -277,11 +277,16 @@ function renderQueues() {
             <div class="space-y-2">
                 <div class="text-xs text-gray-500 uppercase tracking-wider font-bold">Up Next (${queue.songs.length} songs)</div>
                 ${(() => {
-                // Use cumulative ETA calculation for O(n) performance instead of O(n²)
-                // Note: ETA uses full duration of currently playing song, not remaining time
-                // For accurate ETAs, playback position would need to be tracked and sent from backend
+                // Show only first 10 songs initially, max 20 with "Show More"
+                const maxInitialSongs = 10;
+                const maxExpandedSongs = 20;
+                const songsToShow = queue.songs.slice(0, maxInitialSongs);
+                const hasMore = queue.songs.length > maxInitialSongs;
+                const queueId = queue.guildId + queue.voiceChannelId; // Unique ID for this queue
+
+                // Use cumulative ETA calculation for O(n) performance
                 let cumulativeEta = queue.nowPlaying ? queue.nowPlaying.duration : 0;
-                return queue.songs.map((song, index) => {
+                const songsHtml = songsToShow.map((song, index) => {
                     const songEta = cumulativeEta;
                     cumulativeEta += song.duration || 0;
 
@@ -301,7 +306,7 @@ function renderQueues() {
                                 <div class="flex items-center gap-2 mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
                                     <span>${formatDuration(song.duration)}</span>
                                     <span>•</span>
-                                    <span>${escapeHtml(song.requestedBy)}</span>
+                                    <span>Requested by ${escapeHtml(song.requestedBy)}</span>
                                 </div>
                             </div>
                             <div class="text-[10px] text-gray-400 dark:text-gray-500 font-medium shrink-0">
@@ -311,6 +316,16 @@ function renderQueues() {
                     </div>
                     `;
                 }).join('');
+
+                const showMoreBtn = hasMore ? `
+                    <button 
+                        onclick="alert('Show More functionality - TODO: Implement client-side expansion')"
+                        class="w-full mt-2 px-3 py-2 text-xs font-medium text-brand-secondary hover:text-brand-primary border border-brand-secondary/30 hover:border-brand-primary rounded-lg transition-colors"
+                    >
+                        Show ${Math.min(maxExpandedSongs - maxInitialSongs, queue.songs.length - maxInitialSongs)} More Songs
+                    </button>` : '';
+
+                return songsHtml + showMoreBtn;
             })()}
             </div>
             ` : ''}
