@@ -61,6 +61,7 @@ The deployment is handled automatically by GitHub Actions when you push to the `
     -   Files are copied to the server via SCP.
     -   The integrity of the copied files on the server is verified again.
     -   `npm ci --omit=dev` is run on the server to install production dependencies (yt-dlp is downloaded here).
+    -   `npm run deploy:commands:prod` is run to register slash commands with Discord.
     -   `pm2 startOrRestart ecosystem.config.cjs` is executed to start or reload the bot.
 
 ### Important Notes

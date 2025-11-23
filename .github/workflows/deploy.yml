@@ -111,4 +111,5 @@ jobs:
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             cd ${{ secrets.SSH_TARGET }}
             npm ci --omit=dev
+            npm run deploy:commands:prod
             pm2 startOrRestart ecosystem.config.cjs
