@@ -155,11 +155,19 @@ export async function playSong(queue: Queue): Promise<void> {
                 }
             } else {
                 // Cache storage not available, fallback to direct stream
-                audioSource = createStreamProcess(song.url).stdout!;
+                const process = createStreamProcess(song.url);
+                if (!process.stdout) {
+                    throw new Error('Failed to create yt-dlp process stdout');
+                }
+                audioSource = process.stdout;
             }
         } else {
             // Caching disabled: stream directly from yt-dlp
-            audioSource = createStreamProcess(song.url).stdout!;
+            const process = createStreamProcess(song.url);
+            if (!process.stdout) {
+                throw new Error('Failed to create yt-dlp process stdout');
+            }
+            audioSource = process.stdout;
         }
 
         const resource = createAudioResource(audioSource, {
