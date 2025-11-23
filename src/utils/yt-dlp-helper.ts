@@ -47,3 +47,18 @@ export function findYtDlpPath(): string | null {
     return null;
 }
 
+/**
+ * Get base yt-dlp arguments for all invocations.
+ * Reads from environment variables with sensible defaults.
+ */
+export function getBaseYtDlpArgs(): string[] {
+    const jsRuntime = process.env.YT_DLP_JS_RUNTIME || 'node';
+    const playerClient = process.env.YT_DLP_PLAYER_CLIENT || 'default';
+
+    return [
+        '--js-runtimes', jsRuntime,
+        '--extractor-args', `youtube:player_client=${playerClient}`,
+    ];
+}
+
+

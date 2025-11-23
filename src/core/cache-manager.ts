@@ -6,6 +6,7 @@ import { spawn } from 'child_process';
 import logger from './logger.js';
 import { Song } from './audio/queue-manager.js';
 import { getYtDlpPath } from './audio/stream-handler.js';
+import { getBaseYtDlpArgs } from '../utils/yt-dlp-helper.js';
 
 
 
@@ -184,8 +185,7 @@ class FileCacheStorage implements ICacheStorage {
         // Spawn yt-dlp process
         const ytDlpPath = getYtDlpPath();
         const args = [
-            '--js-runtimes', 'node',
-            '--extractor-args', 'youtube:player_client=default',
+            ...getBaseYtDlpArgs(),
             '-f', 'bestaudio',
             '-o', '-',
             '-q',
