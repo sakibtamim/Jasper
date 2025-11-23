@@ -66,8 +66,12 @@ server.get('/api/logs', async (_request, _reply) => {
 });
 
 export async function startServer() {
+    if (!process.env.PORT) {
+        return;
+    }
+
     try {
-        const port = parseInt(process.env.PORT || '3000', 10);
+        const port = parseInt(process.env.PORT, 10);
         await server.listen({ port, host: '0.0.0.0' });
         logger.info(`Web UI server running at http://localhost:${port}`);
     } catch (err) {
