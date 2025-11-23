@@ -56,9 +56,15 @@ async function loginBots(): Promise<void> {
             await worker.client.login(worker.token);
             logger.info(`[${worker.name}] Logged in as ${worker.role}${worker.role === 'controller' ? ' (Leader)' : ''}`);
 
+            // Set initial presence for all bots
             if (worker.role === 'worker') {
                 worker.client.user?.setPresence({
                     activities: [{ name: "Waiting for tasks...", type: ActivityType.Custom }],
+                    status: "idle",
+                });
+            } else if (worker.role === 'controller') {
+                worker.client.user?.setPresence({
+                    activities: [{ name: "Managing the Heavenly Council", type: ActivityType.Custom }],
                     status: "idle",
                 });
             }
@@ -202,6 +208,20 @@ function setWorkerBusy(worker: WorkerState, guildId: string, voiceChannelId: str
     logger.info(
         `[WorkerPool] ${worker.name} assigned to guild ${guildId} channel ${voiceChannelId}`
     );
+
+    // Update worker presence to reflect busy status
+    if (worker.role === 'worker') {
+        worker.client.user?.setPresence({
+            activities: [{ name: "Playing music...", type: ActivityType.Custom }],
+            status: "online",
+        });
+    } else if (worker.role === 'controller') {
+        // Jasper gets a special status when busy
+        worker.client.user?.setPresence({
+            activities: [{ name: "Conducting the orchestra", type: ActivityType.Custom }],
+            status: "online",
+        });
+    }
 }
 
 /**
@@ -217,6 +237,20 @@ function releaseWorker(voiceChannelId: string): void {
         worker.busy = false;
         worker.guildId = null;
         worker.voiceChannelId = null;
+
+        // Reset worker presence to idle status
+        if (worker.role === 'worker') {
+            worker.client.user?.setPresence({
+                activities: [{ name: "Waiting for tasks...", type: ActivityType.Custom }],
+                status: "idle",
+            });
+        } else if (worker.role === 'controller') {
+            // Reset Jasper's presence when idle
+            worker.client.user?.setPresence({
+                activities: [{ name: "Managing the Heavenly Council", type: ActivityType.Custom }],
+                status: "idle",
+            });
+        }
     }
 }
 
@@ -228,6 +262,19 @@ function releaseAllWorkers(): void {
         worker.busy = false;
         worker.guildId = null;
         worker.voiceChannelId = null;
+
+        // Reset each worker's presence to idle status
+        if (worker.role === 'worker') {
+            worker.client.user?.setPresence({
+                activities: [{ name: "Waiting for tasks...", type: ActivityType.Custom }],
+                status: "idle",
+            });
+        } else if (worker.role === 'controller') {
+            worker.client.user?.setPresence({
+                activities: [{ name: "Managing the Heavenly Council", type: ActivityType.Custom }],
+                status: "idle",
+            });
+        }
     }
     logger.info("[WorkerPool] All workers released to idle state");
 }
