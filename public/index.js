@@ -1,24 +1,65 @@
-// Initialize Lucide icons
-lucide.createIcons();
+// Tailwind Configuration (FlexTime Style)
+tailwind.config = {
+    darkMode: 'class',
+    theme: {
+        extend: {
+            colors: {
+                brand: {
+                    primary: '#ff6ad5',
+                    secondary: '#00e5ff',
+                    dark: '#0f172a',
+                    surface: '#1e293b',
+                    // Add standard gray palette mapping if needed, but Tailwind default is fine
+                }
+            },
+            fontFamily: {
+                sans: ['Inter', 'sans-serif'],
+            },
+        }
+    }
+};
 
-// Theme Toggle Logic
-const themeToggleBtn = document.getElementById('theme-toggle');
-const htmlElement = document.documentElement;
-
-// Check local storage or system preference
-const savedTheme = localStorage.getItem('theme');
-if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-    htmlElement.classList.add('dark');
+// Theme Initialization (FlexTime Logic)
+if (
+    localStorage.getItem('theme') === 'dark' ||
+    (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)
+) {
+    document.documentElement.classList.add('dark');
 } else {
-    htmlElement.classList.remove('dark');
+    document.documentElement.classList.remove('dark');
 }
 
-themeToggleBtn.addEventListener('click', () => {
-    htmlElement.classList.toggle('dark');
-    if (htmlElement.classList.contains('dark')) {
-        localStorage.setItem('theme', 'dark');
-    } else {
-        localStorage.setItem('theme', 'light');
+// Initialize Lucide icons
+if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+}
+
+// Theme Toggle Logic
+document.addEventListener('DOMContentLoaded', () => {
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const darkIcon = document.getElementById('theme-toggle-dark-icon');
+    const lightIcon = document.getElementById('theme-toggle-light-icon');
+
+    const syncIcons = () => {
+        if (document.documentElement.classList.contains('dark')) {
+            darkIcon.classList.remove('hidden');
+            lightIcon.classList.add('hidden');
+        } else {
+            lightIcon.classList.remove('hidden');
+            darkIcon.classList.add('hidden');
+        }
+    };
+
+    // Initial sync
+    syncIcons();
+
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            const isDark = document.documentElement.classList.contains('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            syncIcons();
+        });
     }
 });
 
@@ -31,9 +72,9 @@ let queues = [];
 let queuesPagination = { currentPage: 1, totalPages: 1, totalQueues: 0, limit: 10 };
 let cacheStats = {};
 let logs = [];
-let expandedQueues = new Set(); // Track which queues are expanded
+let expandedQueues = new Set();
 
-// Get responsive limit: 10 for mobile (1 column), 20 for desktop (2 columns)
+// Get responsive limit
 function getQueueLimit() {
     return window.matchMedia('(min-width: 1024px)').matches ? 20 : 10;
 }
@@ -41,7 +82,6 @@ function getQueueLimit() {
 // Fetch Data
 async function fetchData() {
     try {
-        // Update limit based on viewport
         queuesPagination.limit = getQueueLimit();
 
         const [workersRes, queuesRes, cacheRes, logsRes] = await Promise.all([
@@ -81,7 +121,7 @@ async function fetchData() {
     }
 }
 
-// Helper: Escape HTML to prevent XSS
+// Helper: Escape HTML
 function escapeHtml(unsafe) {
     if (typeof unsafe !== 'string') return unsafe;
     return unsafe
@@ -101,7 +141,6 @@ function renderWorkers() {
         const isOnline = worker.status !== 'offline';
         const isBusy = worker.busy;
 
-        // Status Colors
         let statusColor = 'text-gray-400';
         let statusDot = 'bg-gray-400';
         let borderColor = 'border-gray-200 dark:border-gray-700';
@@ -109,12 +148,12 @@ function renderWorkers() {
 
         if (isOnline) {
             if (isBusy) {
-                statusColor = 'text-brand-secondary'; // Cyan for busy
+                statusColor = 'text-brand-secondary';
                 statusDot = 'bg-brand-secondary';
                 borderColor = 'border-brand-secondary';
                 statusText = 'Busy';
             } else {
-                statusColor = 'text-brand-primary'; // Pink for idle/ready
+                statusColor = 'text-brand-primary';
                 statusDot = 'bg-brand-primary';
                 borderColor = 'border-brand-primary';
                 statusText = 'Idle';
@@ -122,14 +161,8 @@ function renderWorkers() {
         }
 
         return `
-            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border-l-4 ${borderColor} transition-all hover-card relative overflow-hidden group">
-                <!-- Background Decoration -->
-                <div class="absolute top-0 right-0 p-4 opacity-5 pointer-events-none group-hover:opacity-10 transition-opacity">
-                    <i data-lucide="music" class="w-24 h-24"></i>
-                </div>
-
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border-l-4 ${borderColor} transition-all hover:scale-[1.02] relative overflow-hidden group dark:border-t-0 dark:border-r-0 dark:border-b-0">
                 <div class="flex items-start gap-4 mb-4 relative z-10">
-                    <!-- Avatar -->
                     <div class="relative">
                         <img src="${escapeHtml(worker.avatarUrl || 'assets/images/jasper-logo.png')}" alt="${escapeHtml(worker.name)}" 
                              class="w-16 h-16 rounded-full border-2 ${borderColor} shadow-md object-cover bg-gray-100 dark:bg-gray-700">
@@ -150,14 +183,12 @@ function renderWorkers() {
                 </div>
                 
                 <div class="space-y-3 relative z-10">
-                    <!-- Activity -->
                     <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
                         <i data-lucide="activity" class="w-4 h-4 text-brand-primary shrink-0"></i>
                         <span class="truncate">${escapeHtml(worker.activity || 'None')}</span>
                     </div>
 
                     ${worker.guildId ? `
-                    <!-- Guild Info -->
                     <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                         ${worker.guildIconUrl ?
                     `<img src="${escapeHtml(worker.guildIconUrl)}" class="w-4 h-4 rounded-full object-cover">` :
@@ -168,7 +199,6 @@ function renderWorkers() {
                     ` : ''}
 
                     ${worker.voiceChannelId ? `
-                    <!-- Channel Info -->
                     <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                         <i data-lucide="mic" class="w-4 h-4 text-gray-400 shrink-0"></i>
                         <span class="truncate">${escapeHtml(worker.channelName || worker.voiceChannelId)}</span>
@@ -176,7 +206,6 @@ function renderWorkers() {
                     ` : ''}
 
                     ${worker.nowPlaying ? `
-                    <!-- Now Playing -->
                     <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
                         <div class="flex items-center justify-between text-xs text-gray-500 mb-2">
                             <span class="text-brand-secondary font-bold uppercase tracking-wider">Now Playing</span>
@@ -186,7 +215,6 @@ function renderWorkers() {
                                     <img src="${escapeHtml(worker.nowPlaying.requester.avatarUrl || 'https://cdn.discordapp.com/embed/avatars/0.png')}" 
                                          class="w-4 h-4 rounded-full border border-gray-200 dark:border-gray-600"
                                          alt="${escapeHtml(worker.nowPlaying.requester.username)}">
-                                    <span class="font-medium text-gray-700 dark:text-gray-300 truncate max-w-[120px]">${escapeHtml(worker.nowPlaying.requester.displayName)}</span>
                                 </div>
                             ` : ''}
                         </div>
@@ -196,7 +224,6 @@ function renderWorkers() {
                     `<img src="${escapeHtml(worker.nowPlaying.thumbnail)}" class="w-full h-full object-cover">` :
                     `<div class="flex items-center justify-center w-full h-full"><i data-lucide="music" class="w-6 h-6 text-gray-400"></i></div>`
                 }
-                                <div class="absolute inset-0 bg-black/10"></div>
                             </div>
                             <div class="min-w-0">
                                 <p class="text-sm font-medium text-gray-900 dark:text-white truncate" title="${escapeHtml(worker.nowPlaying.title)}">
@@ -273,7 +300,6 @@ function renderQueues() {
             </div>
             ` : ''}
 
-
             ${queue.songs && queue.songs.length > 0 ? `
             <div class="space-y-2">
                 <div class="text-xs text-gray-500 uppercase tracking-wider font-bold">Up Next (${queue.songs.length} songs)</div>
@@ -286,14 +312,13 @@ function renderQueues() {
                 const hasMore = queue.songs.length > maxInitialSongs;
                 const canExpand = queue.songs.length > maxExpandedSongs;
 
-                // Use cumulative ETA calculation for O(n) performance
                 let cumulativeEta = queue.nowPlaying ? queue.nowPlaying.duration : 0;
                 const songsHtml = songsToShow.map((song, index) => {
                     const songEta = cumulativeEta;
                     cumulativeEta += song.duration || 0;
 
                     return `
-                    <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2.5 border border-gray-100 dark:border-gray-700/50 hover:border-brand-secondary/30 transition-colors">
+                    <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-2.5 border border-gray-100 dark:border-gray-600 hover:border-brand-secondary/30 transition-colors">
                         <div class="flex items-center gap-3">
                             <div class="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700 shrink-0">
                                 ${song.thumbnail ?
@@ -322,7 +347,6 @@ function renderQueues() {
                 let button = '';
                 if (hasMore) {
                     if (isExpanded) {
-                        // Show "Show Less" button when expanded
                         button = `
                             <button 
                                 onclick="toggleQueueExpansion('${queueId}')"
@@ -332,7 +356,6 @@ function renderQueues() {
                                 Show Less
                             </button>`;
                     } else {
-                        // Show "Show More" button when collapsed
                         const remainingSongs = queue.songs.length - maxInitialSongs;
                         const songsToAdd = Math.min(maxExpandedSongs - maxInitialSongs, remainingSongs);
                         button = `
@@ -375,11 +398,11 @@ function renderLogs() {
 
     container.innerHTML = logs.map(log => {
         // Determine color based on level
-        let levelColor = 'text-gray-400';
-        if (log.level === 'error') levelColor = 'text-red-400';
-        else if (log.level === 'warn') levelColor = 'text-yellow-400';
-        else if (log.level === 'debug') levelColor = 'text-blue-400';
-        else if (log.level === 'info') levelColor = 'text-green-400';
+        let levelColor = 'text-gray-500 dark:text-gray-400';
+        if (log.level === 'error') levelColor = 'text-red-600 dark:text-red-400';
+        else if (log.level === 'warn') levelColor = 'text-yellow-600 dark:text-yellow-400';
+        else if (log.level === 'debug') levelColor = 'text-blue-600 dark:text-blue-400';
+        else if (log.level === 'info') levelColor = 'text-green-600 dark:text-green-400';
 
         // Format Timestamp
         const date = new Date(log.timestamp);
@@ -387,11 +410,11 @@ function renderLogs() {
         const fullDate = date.toLocaleString();
 
         return `
-            <div class="log-entry flex items-start gap-3 hover:bg-white/5 p-1 rounded transition-colors">
+            <div class="log-entry flex items-start gap-3 hover:bg-gray-200 dark:hover:bg-white/5 p-1 rounded transition-colors">
                 <span class="log-level font-bold w-16 uppercase text-xs tracking-wider ${levelColor}">[${escapeHtml(log.level)}]</span>
                 <span class="log-timestamp text-gray-500 text-xs" title="${fullDate}">${timeStr}</span>
-                ${log.module ? `<span class="log-module text-purple-400 font-medium">[${escapeHtml(log.module)}]</span>` : ''}
-                <span class="log-message text-gray-300 flex-1 break-all">${escapeHtml(log.message)}</span>
+                ${log.module ? `<span class="log-module text-purple-600 dark:text-purple-400 font-medium">[${escapeHtml(log.module)}]</span>` : ''}
+                <span class="log-message text-gray-700 dark:text-gray-300 flex-1 break-all">${escapeHtml(log.message)}</span>
             </div>
         `;
     }).join('');
@@ -404,7 +427,7 @@ function toggleQueueExpansion(queueId) {
     } else {
         expandedQueues.add(queueId);
     }
-    renderQueues(); // Re-render to show/hide songs
+    renderQueues();
 }
 
 // Helper: Format Duration
@@ -452,7 +475,6 @@ function renderQueuesPagination() {
 
     lucide.createIcons();
 
-    // Add event listeners
     const prevBtn = document.getElementById('queues-prev-btn');
     const nextBtn = document.getElementById('queues-next-btn');
 
@@ -471,17 +493,17 @@ function renderQueuesPagination() {
     }
 }
 
-// Handle viewport changes for responsive pagination
+// Handle viewport changes
 let resizeTimer;
 window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
         const newLimit = getQueueLimit();
         if (newLimit !== queuesPagination.limit) {
-            queuesPagination.currentPage = 1; // Reset to page 1 when limit changes
+            queuesPagination.currentPage = 1;
             fetchData();
         }
-    }, 250); // Debounce resize events
+    }, 250);
 });
 
 // Initial Fetch and Polling
