@@ -31,6 +31,7 @@ let queues = [];
 let queuesPagination = { currentPage: 1, totalPages: 1, totalQueues: 0, limit: 10 };
 let cacheStats = {};
 let logs = [];
+let expandedQueues = new Set(); // Track which queues are expanded
 
 // Get responsive limit: 10 for mobile (1 column), 20 for desktop (2 columns)
 function getQueueLimit() {
@@ -277,12 +278,13 @@ function renderQueues() {
             <div class="space-y-2">
                 <div class="text-xs text-gray-500 uppercase tracking-wider font-bold">Up Next (${queue.songs.length} songs)</div>
                 ${(() => {
-                // Show only first 10 songs initially, max 20 with "Show More"
                 const maxInitialSongs = 10;
                 const maxExpandedSongs = 20;
-                const songsToShow = queue.songs.slice(0, maxInitialSongs);
+                const queueId = `${queue.guildId}-${queue.voiceChannelId}`;
+                const isExpanded = expandedQueues.has(queueId);
+                const songsToShow = isExpanded ? queue.songs.slice(0, maxExpandedSongs) : queue.songs.slice(0, maxInitialSongs);
                 const hasMore = queue.songs.length > maxInitialSongs;
-                const queueId = queue.guildId + queue.voiceChannelId; // Unique ID for this queue
+                const canExpand = queue.songs.length > maxExpandedSongs;
 
                 // Use cumulative ETA calculation for O(n) performance
                 let cumulativeEta = queue.nowPlaying ? queue.nowPlaying.duration : 0;
@@ -306,7 +308,7 @@ function renderQueues() {
                                 <div class="flex items-center gap-2 mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
                                     <span>${formatDuration(song.duration)}</span>
                                     <span>•</span>
-                                    <span>Requested by ${escapeHtml(song.requestedBy)}</span>
+                                    <span>${escapeHtml(song.requestedBy)}</span>
                                 </div>
                             </div>
                             <div class="text-[10px] text-gray-400 dark:text-gray-500 font-medium shrink-0">
@@ -317,15 +319,34 @@ function renderQueues() {
                     `;
                 }).join('');
 
-                const showMoreBtn = hasMore ? `
-                    <button 
-                        onclick="alert('Show More functionality - TODO: Implement client-side expansion')"
-                        class="w-full mt-2 px-3 py-2 text-xs font-medium text-brand-secondary hover:text-brand-primary border border-brand-secondary/30 hover:border-brand-primary rounded-lg transition-colors"
-                    >
-                        Show ${Math.min(maxExpandedSongs - maxInitialSongs, queue.songs.length - maxInitialSongs)} More Songs
-                    </button>` : '';
+                let button = '';
+                if (hasMore) {
+                    if (isExpanded) {
+                        // Show "Show Less" button when expanded
+                        button = `
+                            <button 
+                                onclick="toggleQueueExpansion('${queueId}')"
+                                class="w-full mt-2 px-3 py-2 text-xs font-medium text-brand-secondary hover:text-brand-primary border border-brand-secondary/30 hover:border-brand-primary rounded-lg transition-colors flex items-center justify-center gap-2"
+                            >
+                                <i data-lucide="chevron-up" class="w-4 h-4"></i>
+                                Show Less
+                            </button>`;
+                    } else {
+                        // Show "Show More" button when collapsed
+                        const remainingSongs = queue.songs.length - maxInitialSongs;
+                        const songsToAdd = Math.min(maxExpandedSongs - maxInitialSongs, remainingSongs);
+                        button = `
+                            <button 
+                                onclick="toggleQueueExpansion('${queueId}')"
+                                class="w-full mt-2 px-3 py-2 text-xs font-medium text-brand-secondary hover:text-brand-primary border border-brand-secondary/30 hover:border-brand-primary rounded-lg transition-colors flex items-center justify-center gap-2"
+                            >
+                                <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                                Show ${songsToAdd} More ${songsToAdd === 1 ? 'Song' : 'Songs'}${canExpand ? ` (${queue.songs.length - maxExpandedSongs} more not shown)` : ''}
+                            </button>`;
+                    }
+                }
 
-                return songsHtml + showMoreBtn;
+                return songsHtml + button;
             })()}
             </div>
             ` : ''}
@@ -374,6 +395,16 @@ function renderLogs() {
             </div>
         `;
     }).join('');
+}
+
+// Toggle queue expansion
+function toggleQueueExpansion(queueId) {
+    if (expandedQueues.has(queueId)) {
+        expandedQueues.delete(queueId);
+    } else {
+        expandedQueues.add(queueId);
+    }
+    renderQueues(); // Re-render to show/hide songs
 }
 
 // Helper: Format Duration
