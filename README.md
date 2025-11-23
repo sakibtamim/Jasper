@@ -100,6 +100,14 @@ This means:
 - **Faster response times** for popular requests
 - **Less dependency** on YouTube API availability
 
+### ⚡ Visual Feedback
+
+When a song is played from the cache, you'll see **double lightning bolts** (⚡⚡) in the response:
+- **Added to queue:** `⚡⚡ ✅ **Jasper** added to queue...`
+- **Now Playing:** `⚡⚡ ▶️ **Jasper** is now playing...`
+
+This gives you immediate confirmation that the system is working and saving bandwidth!
+
 ### Configuration
 
 To enable caching, add to your `.env` file:
