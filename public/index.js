@@ -109,7 +109,7 @@ function renderWorkers() {
                 <div class="flex items-start gap-4 mb-4 relative z-10">
                     <!-- Avatar -->
                     <div class="relative">
-                        <img src="${worker.avatarUrl || 'assets/images/jasper-logo.png'}" alt="${escapeHtml(worker.name)}" 
+                        <img src="${escapeHtml(worker.avatarUrl || 'assets/images/jasper-logo.png')}" alt="${escapeHtml(worker.name)}" 
                              class="w-16 h-16 rounded-full border-2 ${borderColor} shadow-md object-cover bg-gray-100 dark:bg-gray-700">
                         <div class="absolute bottom-0 right-0 w-4 h-4 rounded-full ${statusDot} border-2 border-white dark:border-gray-800"></div>
                     </div>
@@ -138,7 +138,7 @@ function renderWorkers() {
                     <!-- Guild Info -->
                     <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                         ${worker.guildIconUrl ?
-                    `<img src="${worker.guildIconUrl}" class="w-4 h-4 rounded-full object-cover">` :
+                    `<img src="${escapeHtml(worker.guildIconUrl)}" class="w-4 h-4 rounded-full object-cover">` :
                     `<i data-lucide="server" class="w-4 h-4 text-gray-400 shrink-0"></i>`
                 }
                         <span class="truncate font-medium">${escapeHtml(worker.guildName || worker.guildId)}</span>
@@ -161,7 +161,7 @@ function renderWorkers() {
                             ${worker.nowPlaying.requester ? `
                                 <div class="flex items-center gap-1.5" title="Requested by ${escapeHtml(worker.nowPlaying.requester.username)}">
                                     <span class="text-[10px] uppercase tracking-wider opacity-70">Req by</span>
-                                    <img src="${worker.nowPlaying.requester.avatarUrl || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
+                                    <img src="${escapeHtml(worker.nowPlaying.requester.avatarUrl || 'https://cdn.discordapp.com/embed/avatars/0.png')}" 
                                          class="w-4 h-4 rounded-full border border-gray-200 dark:border-gray-600"
                                          alt="${escapeHtml(worker.nowPlaying.requester.username)}">
                                     <span class="font-medium text-gray-700 dark:text-gray-300 truncate max-w-[80px]">${escapeHtml(worker.nowPlaying.requester.displayName)}</span>
@@ -171,7 +171,7 @@ function renderWorkers() {
                         <div class="flex items-center gap-3">
                             <div class="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700 shrink-0">
                                 ${worker.nowPlaying.thumbnail ?
-                    `<img src="${worker.nowPlaying.thumbnail}" class="w-full h-full object-cover">` :
+                    `<img src="${escapeHtml(worker.nowPlaying.thumbnail)}" class="w-full h-full object-cover">` :
                     `<div class="flex items-center justify-center w-full h-full"><i data-lucide="music" class="w-6 h-6 text-gray-400"></i></div>`
                 }
                                 <div class="absolute inset-0 bg-black/10"></div>
@@ -235,7 +235,7 @@ function renderQueues() {
                 <div class="text-xs text-gray-500 uppercase tracking-wider font-bold mb-2">Now Playing</div>
                 <div class="flex items-start gap-3">
                     <div class="flex-1 min-w-0">
-                        <a href="${queue.nowPlaying.url}" target="_blank" class="text-sm font-medium text-gray-900 dark:text-white hover:text-brand-primary transition-colors truncate block">
+                        <a href="${escapeHtml(queue.nowPlaying.url)}" target="_blank" class="text-sm font-medium text-gray-900 dark:text-white hover:text-brand-primary transition-colors truncate block">
                             ${escapeHtml(queue.nowPlaying.title)}
                         </a>
                         <div class="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
