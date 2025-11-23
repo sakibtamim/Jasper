@@ -49,21 +49,33 @@ function getRandomMusicQuery(): string {
 function extractVideoId(url: string): string {
     try {
         const urlObj = new URL(url);
+
         // Handle youtu.be/VIDEO_ID format
         if (urlObj.hostname === 'youtu.be') {
             return urlObj.pathname.slice(1);
         }
-        // Handle youtube.com/watch?v=VIDEO_ID format
+
+        // Handle youtube.com/shorts/VIDEO_ID
+        if (urlObj.pathname.startsWith('/shorts/')) {
+            return urlObj.pathname.split('/')[2];
+        }
+
+        // Handle youtube.com/embed/VIDEO_ID
+        if (urlObj.pathname.startsWith('/embed/')) {
+            return urlObj.pathname.split('/')[2];
+        }
+
+        // Handle youtube.com/watch?v=VIDEO_ID (and m.youtube.com)
         const videoId = urlObj.searchParams.get('v');
         if (videoId) {
             return videoId;
         }
-        // Fallback: use hash of URL if format is unknown
-        return Buffer.from(url).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 20);
     } catch {
-        // If URL parsing fails, use hash
-        return Buffer.from(url).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 20);
+        // Ignore parsing errors, fall through to hash
     }
+
+    // Fallback: use hash of URL if format is unknown
+    return Buffer.from(url).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 20);
 }
 
 export async function handleAutoplay(queue: Queue, lastSong: Song): Promise<void> {

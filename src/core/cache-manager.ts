@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { Readable, PassThrough } from 'stream';
-import { createWriteStream } from 'fs';
+import { createWriteStream, createReadStream } from 'fs';
 import { spawn } from 'child_process';
 import logger from './logger.js';
 import { Song } from './audio/queue-manager.js';
@@ -153,7 +153,6 @@ class FileCacheStorage implements ICacheStorage {
 
             // Return read stream
             logger.info(`[Cache] Audio cache hit for video: ${videoId}`);
-            const { createReadStream } = await import('fs');
             return createReadStream(audioPath);
         } catch (error) {
             logger.warn(`[Cache] Failed to read cached audio ${videoId}: ${error instanceof Error ? error.message : String(error)}`);
@@ -314,6 +313,7 @@ class FileCacheStorage implements ICacheStorage {
 
 // Singleton instance
 let storageInstance: ICacheStorage | null = null;
+let cleanupInterval: NodeJS.Timeout | null = null;
 
 /**
  * Initialize cache directories and storage instance
@@ -341,16 +341,26 @@ export async function initializeCache(): Promise<void> {
  * Start background cleanup task
  */
 export function startCacheCleanup(): void {
-    if (!CACHE_ENABLED) return;
+    if (!CACHE_ENABLED || cleanupInterval) return;
 
     const intervalMs = CACHE_CLEANUP_INTERVAL_HOURS * 60 * 60 * 1000;
-    setInterval(async () => {
+    cleanupInterval = setInterval(async () => {
         if (storageInstance) {
             await storageInstance.cleanupExpiredCache();
         }
     }, intervalMs);
 
     logger.info(`[Cache] Cleanup task scheduled every ${CACHE_CLEANUP_INTERVAL_HOURS} hour(s)`);
+}
+
+/**
+ * Stop background cleanup task
+ */
+export function stopCacheCleanup(): void {
+    if (cleanupInterval) {
+        clearInterval(cleanupInterval);
+        cleanupInterval = null;
+    }
 }
 
 /**
