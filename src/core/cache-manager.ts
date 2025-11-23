@@ -6,10 +6,9 @@ import { spawn } from 'child_process';
 import logger from './logger.js';
 import { Song } from './audio/queue-manager.js';
 import { getYtDlpPath } from './audio/stream-handler.js';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+
+
 
 // Cache configuration from environment
 const CACHE_ENABLED = process.env.CACHE_ENABLED === 'true';
@@ -18,7 +17,8 @@ const CACHE_AUDIO_TTL_HOURS = parseInt(process.env.CACHE_AUDIO_TTL_HOURS || '72'
 const CACHE_CLEANUP_INTERVAL_HOURS = parseInt(process.env.CACHE_CLEANUP_INTERVAL_HOURS || '1', 10);
 
 // Cache directories
-const CACHE_ROOT = path.resolve(__dirname, '../../cache');
+// Cache directories
+const CACHE_ROOT = path.join(process.cwd(), 'cache');
 const CACHE_SEARCH_DIR = path.join(CACHE_ROOT, 'search');
 const CACHE_AUDIO_DIR = path.join(CACHE_ROOT, 'audio');
 const SEARCH_CACHE_FILE = path.join(CACHE_SEARCH_DIR, 'cache.json');
