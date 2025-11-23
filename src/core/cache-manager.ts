@@ -11,10 +11,10 @@ import { getYtDlpPath } from './audio/stream-handler.js';
 
 
 // Cache configuration from environment
-const CACHE_ENABLED = process.env.CACHE_ENABLED === 'true';
-const CACHE_SEARCH_TTL_HOURS = parseInt(process.env.CACHE_SEARCH_TTL_HOURS || '168', 10); // 7 days
-const CACHE_AUDIO_TTL_HOURS = parseInt(process.env.CACHE_AUDIO_TTL_HOURS || '72', 10); // 3 days
-const CACHE_CLEANUP_INTERVAL_HOURS = parseInt(process.env.CACHE_CLEANUP_INTERVAL_HOURS || '1', 10);
+export const CACHE_ENABLED = process.env.CACHE_ENABLED === 'true';
+export const CACHE_SEARCH_TTL_HOURS = parseInt(process.env.CACHE_SEARCH_TTL_HOURS || '168', 10); // 7 days
+export const CACHE_AUDIO_TTL_HOURS = parseInt(process.env.CACHE_AUDIO_TTL_HOURS || '72', 10); // 3 days
+export const CACHE_CLEANUP_INTERVAL_HOURS = parseInt(process.env.CACHE_CLEANUP_INTERVAL_HOURS || '1', 10);
 
 // Cache directories
 // Cache directories

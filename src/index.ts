@@ -3,16 +3,32 @@ dotenv.config();
 
 import fs from "node:fs";
 import path from "node:path";
-import { Collection, Client } from "discord.js";
+import { fileURLToPath } from "url";
+import { Collection } from "discord.js";
 import logger from "./core/logger.js";
 import workerPool from "./core/worker-pool.js";
 import { initializeCache, startCacheCleanup } from "./core/cache-manager.js";
-import { fileURLToPath } from "url";
+import { handleGracefulExit } from "./core/graceful-exit.js";
+import { sendAnnouncement } from "./core/announcer.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Register process signal handlers immediately
+process.on("SIGINT", () => handleGracefulExit("SIGINT"));
+process.on("SIGTERM", () => handleGracefulExit("SIGTERM"));
 
+// Global error handlers
+process.on("uncaughtException", (error) => {
+  logger.error(`Uncaught Exception: ${error instanceof Error ? error.stack : String(error)}`);
+  handleGracefulExit("uncaughtException", error instanceof Error ? error : new Error(String(error)));
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
+  // We don't exit on unhandledRejection to keep the bot running, 
+  // but we log it. If it's critical, uncaughtException might eventually trigger.
+});
 
 (async () => {
   // 1. Create all bot clients
@@ -36,12 +52,9 @@ const __dirname = path.dirname(__filename);
 
   for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);
-    logger.debug(`Loading command file: ${file}`);
     const commandModule = await import(filePath);
     const command = commandModule.default;
     if ("data" in command && "execute" in command) {
-      const cmdName = command.data.name || (typeof command.data.toJSON === 'function' ? 'has toJSON' : 'no name');
-      logger.debug(`Command from ${file} has data.name=${cmdName}, execute=${typeof command.execute}, autocomplete=${typeof command.autocomplete}`);
       client.commands.set(command.data.name, command);
       logger.info(`Loaded command /${command.data.name}`);
     } else {
@@ -51,30 +64,29 @@ const __dirname = path.dirname(__filename);
 
   // Load events
   const eventsPath = path.join(__dirname, "events");
-  const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith(".js") || file.endsWith(".ts"));
-
-  for (const file of eventFiles) {
-    const filePath = path.join(eventsPath, file);
-    const eventModule = await import(filePath);
-    const event = eventModule.default;
-
-    // Register events for the controller
-    if (event.once) {
-      client.once(event.name, (...args) => event.execute(...args, client));
-    } else {
-      client.on(event.name, (...args) => event.execute(...args, client));
+  if (fs.existsSync(eventsPath)) {
+    const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith(".js") || file.endsWith(".ts"));
+    for (const file of eventFiles) {
+      const filePath = path.join(eventsPath, file);
+      const eventModule = await import(filePath);
+      const event = eventModule.default;
+      if (event.once) {
+        client.once(event.name, (...args) => event.execute(...args, client));
+      } else {
+        client.on(event.name, (...args) => event.execute(...args, client));
+      }
+      logger.info(`Registered event listener for ${event.name}`);
     }
-    logger.info(`Registered event listener for ${event.name}`);
   }
 
   // 4. Login all bots
   await workerPool.loginBots();
 
   // 5. Initialize cache system (if enabled)
-  if (process.env.CACHE_ENABLED === 'true') {
-    await initializeCache();
-    startCacheCleanup();
-    logger.info('[Cache] Caching system initialized');
-  }
+  await initializeCache();
+  startCacheCleanup();
+
+  // 6. Startup Announcement
+  await sendAnnouncement("✅ **Jasper System Online**\nReady to serve the Heavenly Council of Fur.");
 
 })();
