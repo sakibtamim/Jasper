@@ -10,6 +10,7 @@ export interface Song {
     url: string;
     durationInSec: number;
     requestedBy: string;
+    fromCache?: boolean;
 }
 
 export interface Queue {

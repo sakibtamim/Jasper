@@ -388,14 +388,16 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string):
       queue.voiceChannelId
     );
 
+    const prefix = track.fromCache ? "⚡⚡ " : "";
+
     if (queue.songs.length === 1 && !queue.nowPlaying) {
       await playSong(queue);
       await interaction.editReply(
-        `✅ **${queue.worker.name}** added to queue in **#${channelName}**: [${track.title}](${track.url})`
+        `${prefix}✅ **${queue.worker.name}** added to queue in **#${channelName}**: [${track.title}](${track.url})`
       );
     } else {
       await interaction.editReply(
-        `✅ **${queue.worker.name}** queued in **#${channelName}**: [${track.title}](${track.url})`
+        `${prefix}✅ **${queue.worker.name}** queued in **#${channelName}**: [${track.title}](${track.url})`
       );
     }
   } catch (error: unknown) {

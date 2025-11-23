@@ -24,7 +24,7 @@ const CACHE_AUDIO_DIR = path.join(CACHE_ROOT, 'audio');
 const SEARCH_CACHE_FILE = path.join(CACHE_SEARCH_DIR, 'cache.json');
 
 interface CachedSearchResult {
-    song: Song;
+    song: Omit<Song, 'requestedBy'> & { requestedBy?: string };
     timestamp: number;
 }
 
@@ -114,14 +114,26 @@ class FileCacheStorage implements ICacheStorage {
         }
 
         logger.info(`[Cache] Search hit for: ${query}`);
-        return cached.song;
+        return {
+            ...cached.song,
+            requestedBy: cached.song.requestedBy || "Unknown",
+            fromCache: true
+        };
     }
 
     async setCachedSearchResult(query: string, song: Song): Promise<void> {
         await this.loadSearchCache();
 
+        // Create a copy and remove requestedBy if it is "Unknown" to save space/cleanup JSON
+        const songToCache = { ...song };
+        if (songToCache.requestedBy === "Unknown") {
+            delete (songToCache as any).requestedBy;
+        }
+        // Don't cache the fromCache flag itself
+        delete songToCache.fromCache;
+
         this.searchCache.set(query, {
-            song,
+            song: songToCache,
             timestamp: Date.now(),
         });
 
