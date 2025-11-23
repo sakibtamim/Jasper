@@ -168,6 +168,28 @@ Cache statistics are logged on bot startup and during cleanup:
 [Cache] Cleaned up 3 expired files (28MB freed)
 ```
 
+## Web Dashboard (Opt-in)
+
+🆕 **Jasper now includes a real-time Web UI** for monitoring the bot's status!
+
+### Features
+- **Heavenly Council:** View status of all worker bots (Idle/Busy/Offline).
+- **Active Queues:** See what's playing in every channel.
+- **Cache Stats:** Monitor storage usage and cache hits.
+- **Activity Logs:** Real-time stream of bot activities.
+
+### Enabling the Dashboard
+The Web UI is **opt-in**. To enable it, you must set the `PORT` environment variable in your `.env` file:
+
+```env
+# Web Server Port (Required to enable Web UI)
+PORT=3000
+```
+
+Once enabled, start the bot and visit:
+👉 **http://localhost:3000** (or your server's IP)
+
+
 ## Tech Stack
 
   - **Runtime:** Node.js (v18+)
