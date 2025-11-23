@@ -11,3 +11,9 @@ dist/
 
 # Cache directories (not committed to version control)
 cache/
+
+# Ignore example artifacts used for AI context and training
+example-codes/
+
+# System Files
+.DS_Store

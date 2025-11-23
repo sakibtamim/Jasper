@@ -388,3 +388,16 @@ export function getCacheStorage(): ICacheStorage | null {
 export function isCacheEnabled(): boolean {
     return CACHE_ENABLED && storageInstance !== null;
 }
+/**
+ * Get cache statistics
+ */
+export async function getCacheStats(): Promise<CacheStats> {
+    if (!storageInstance) {
+        return {
+            searchCacheSize: 0,
+            audioCacheFiles: 0,
+            audioCacheSizeMB: 0
+        };
+    }
+    return storageInstance.getCacheStats();
+}

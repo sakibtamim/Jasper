@@ -1,0 +1,68 @@
+/* Custom Font Import */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+:root {
+    /* Jasper Brand Colors */
+    --brand-primary: #ff6ad5; /* Neon Pink */
+    --brand-secondary: #00e5ff; /* Cyan */
+    --brand-dark: #0f172a; /* Dark Slate */
+    --brand-surface: #1e293b; /* Slate 800 */
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    padding-top: 5rem; /* Offset for sticky header */
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #1f2937;
+}
+::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+}
+
+/* Brand Utilities */
+.text-brand-primary { color: var(--brand-primary); }
+.text-brand-secondary { color: var(--brand-secondary); }
+.bg-brand-primary { background-color: var(--brand-primary); }
+.bg-brand-secondary { background-color: var(--brand-secondary); }
+.border-brand-primary { border-color: var(--brand-primary); }
+.border-brand-secondary { border-color: var(--brand-secondary); }
+
+/* Glow Effects */
+.glow-primary {
+    box-shadow: 0 0 15px rgba(255, 106, 213, 0.3);
+}
+.glow-secondary {
+    box-shadow: 0 0 15px rgba(0, 229, 255, 0.3);
+}
+
+/* Card Hover Effects */
+.hover-card {
+    transition: all 0.3s ease;
+}
+.hover-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 0 15px rgba(255, 106, 213, 0.1);
+    border-color: var(--brand-primary);
+}
+
+/* Logs Container */
+.logs-container {
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+}
+
+/* Dark Mode Overrides */
+html.dark body {
+    background-color: #0b1120; /* Darker than slate-900 */
+    color: #e2e8f0;
+}

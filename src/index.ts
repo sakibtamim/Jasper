@@ -10,6 +10,7 @@ import workerPool from "./core/worker-pool.js";
 import { initializeCache, startCacheCleanup } from "./core/cache-manager.js";
 import { handleGracefulExit } from "./core/graceful-exit.js";
 import { sendAnnouncement } from "./core/announcer.js";
+import { startServer } from "./api/server.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -88,5 +89,8 @@ process.on("unhandledRejection", (reason, promise) => {
 
   // 6. Startup Announcement
   await sendAnnouncement("✅ **Jasper System Online**\nReady to serve the Heavenly Council of Fur.");
+
+  // 7. Start Web UI Server
+  await startServer();
 
 })();
