@@ -118,6 +118,13 @@ const HCOF_MESSAGES: EntryMessagePool = {
         "🍼 **{name}** squeaks into the voice channel.",
         "💻 **{name}.js** boots up — purrformance optimized.",
     ],
+
+    Shiro: [
+        "🍚 **{name}** strolls in — confident, calm, and mildly hungry.",
+        "😼 **{name}** appears with effortless swagger and zero urgency.",
+        "🛌 **{name}** drifts in like a nap that learned to walk.",
+        "✨ **{name}** materializes — lazy elegance, flawless vibes.",
+    ],
 };
 
 
