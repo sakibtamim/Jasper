@@ -258,13 +258,8 @@ class FileCacheStorage implements ICacheStorage {
             passThrough.destroy(err);
             fileStream.destroy();
 
-            // Cleanup partial file
-            try {
-                await fs.unlink(audioPath);
-                logger.info(`[Cache] Cleaned up partial file: ${audioPath}`);
-            } catch (cleanupErr) {
-                logger.warn(`[Cache] Failed to cleanup partial file ${audioPath}: ${cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr)}`);
-            }
+            // Cleanup partial file to prevent orphans
+            await fs.unlink(audioPath).catch(() => { });
         });
 
         // Return stream immediately (async write happens in background)
