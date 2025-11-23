@@ -159,6 +159,7 @@ export async function playSong(queue: Queue): Promise<void> {
                 if (cachedStream) {
                     // Cache hit: stream from disk
                     audioSource = cachedStream;
+                    song.fromCache = true;
                     logger.info(`[Cache] Streaming from cache for: ${song.title}`);
                 } else {
                     // Cache miss: stream from memory while writing to disk (async)
@@ -209,9 +210,10 @@ export async function playSong(queue: Queue): Promise<void> {
                 queue.worker.client,
                 queue.voiceChannelId
             );
+            const prefix = song.fromCache ? "⚡⚡ " : "";
             playingMessage = await queue.textChannel
                 .send({
-                    content: `▶️ **${queue.worker.name}** is now playing in **#${channelName}**: [${song.title}](${song.url})`,
+                    content: `${prefix}▶️ **${queue.worker.name}** is now playing in **#${channelName}**: [${song.title}](${song.url})`,
                     components: [row],
                 })
                 .catch((error: unknown) => logger.warn(`Failed to send playing message: ${error instanceof Error ? error.message : String(error)}`)) as Message | undefined;
