@@ -9,7 +9,6 @@ tailwind.config = {
                     secondary: '#00e5ff',
                     dark: '#0f172a',
                     surface: '#1e293b',
-                    // Add standard gray palette mapping if needed, but Tailwind default is fine
                 }
             },
             fontFamily: {
@@ -18,6 +17,8 @@ tailwind.config = {
         }
     }
 };
+
+
 
 // Theme Initialization (FlexTime Logic)
 if (
