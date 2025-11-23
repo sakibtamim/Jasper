@@ -16,9 +16,9 @@ if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-s
 themeToggleBtn.addEventListener('click', () => {
     htmlElement.classList.toggle('dark');
     if (htmlElement.classList.contains('dark')) {
-        localStorage.theme = 'dark';
+        localStorage.setItem('theme', 'dark');
     } else {
-        localStorage.theme = 'light';
+        localStorage.setItem('theme', 'light');
     }
 });
 
