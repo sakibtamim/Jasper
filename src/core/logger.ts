@@ -5,11 +5,15 @@ export interface LogEntry {
   message: string;
 }
 
+export interface LogOptions {
+  suppressOnWebUI?: boolean;
+}
+
 const logBuffer: LogEntry[] = [];
 const MAX_LOGS = 50;
 
-function addLog(level: string, msg: string) {
-  // Parse module from message if present (e.g. "[WorkerPool] ...")
+function addLog(level: string, msg: string, options: LogOptions = {}) {
+  // Parse module from message if present (e.g. "[workerpool] ...")
   const moduleMatch = msg.match(/^\[([a-zA-Z0-9_-]+)\]\s*(.*)/);
   let module: string | undefined;
   let message = msg;
@@ -30,17 +34,20 @@ function addLog(level: string, msg: string) {
   const consoleMsg = `[${level.toUpperCase()}] ${entry.timestamp} - ${msg}`;
   console.log(consoleMsg);
 
-  logBuffer.unshift(entry);
-  if (logBuffer.length > MAX_LOGS) {
-    logBuffer.pop();
+  // Only add to buffer if not suppressed from WebUI
+  if (!options.suppressOnWebUI) {
+    logBuffer.unshift(entry);
+    if (logBuffer.length > MAX_LOGS) {
+      logBuffer.pop();
+    }
   }
 }
 
 const chalkLike = {
-  debug: (msg: string): void => addLog('debug', msg),
-  info: (msg: string): void => addLog('info', msg),
-  warn: (msg: string): void => addLog('warn', msg),
-  error: (msg: string): void => addLog('error', msg)
+  debug: (msg: string, options?: LogOptions): void => addLog('debug', msg, options),
+  info: (msg: string, options?: LogOptions): void => addLog('info', msg, options),
+  warn: (msg: string, options?: LogOptions): void => addLog('warn', msg, options),
+  error: (msg: string, options?: LogOptions): void => addLog('error', msg, options)
 };
 
 export function getRecentLogs(): LogEntry[] {

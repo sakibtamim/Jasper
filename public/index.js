@@ -6,7 +6,8 @@ const themeToggleBtn = document.getElementById('theme-toggle');
 const htmlElement = document.documentElement;
 
 // Check local storage or system preference
-if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+const savedTheme = localStorage.getItem('theme');
+if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
     htmlElement.classList.add('dark');
 } else {
     htmlElement.classList.remove('dark');
@@ -131,7 +132,7 @@ function renderWorkers() {
                     <!-- Activity -->
                     <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
                         <i data-lucide="activity" class="w-4 h-4 text-brand-primary shrink-0"></i>
-                        <span class="truncate">${escapeHtml(worker.activity)}</span>
+                        <span class="truncate">${escapeHtml(worker.activity || 'None')}</span>
                     </div>
 
                     ${worker.guildId ? `
@@ -164,7 +165,7 @@ function renderWorkers() {
                                     <img src="${escapeHtml(worker.nowPlaying.requester.avatarUrl || 'https://cdn.discordapp.com/embed/avatars/0.png')}" 
                                          class="w-4 h-4 rounded-full border border-gray-200 dark:border-gray-600"
                                          alt="${escapeHtml(worker.nowPlaying.requester.username)}">
-                                    <span class="font-medium text-gray-700 dark:text-gray-300 truncate max-w-[80px]">${escapeHtml(worker.nowPlaying.requester.displayName)}</span>
+                                    <span class="font-medium text-gray-700 dark:text-gray-300 truncate max-w-[120px]">${escapeHtml(worker.nowPlaying.requester.displayName)}</span>
                                 </div>
                             ` : ''}
                         </div>
@@ -231,8 +232,11 @@ function renderQueues() {
             </div>
 
             ${queue.nowPlaying ? `
-            <div class="bg-gray-50 dark:bg-black/20 rounded-lg p-3 border border-gray-100 dark:border-gray-700">
-                <div class="text-xs text-gray-500 uppercase tracking-wider font-bold mb-2">Now Playing</div>
+            <div class="bg-brand-primary/10 rounded-lg p-3 border-l-4 border-brand-primary mb-3">
+                <div class="text-xs text-brand-primary uppercase tracking-wider font-bold mb-2 flex items-center gap-2">
+                    <i data-lucide="play-circle" class="w-4 h-4"></i>
+                    Now Playing
+                </div>
                 <div class="flex items-start gap-3">
                     <div class="flex-1 min-w-0">
                         <a href="${escapeHtml(queue.nowPlaying.url)}" target="_blank" class="text-sm font-medium text-gray-900 dark:text-white hover:text-brand-primary transition-colors truncate block">
@@ -245,6 +249,49 @@ function renderQueues() {
                         </div>
                     </div>
                 </div>
+            </div>
+            ` : ''}
+
+
+            ${queue.songs && queue.songs.length > 0 ? `
+            <div class="space-y-2">
+                <div class="text-xs text-gray-500 uppercase tracking-wider font-bold">Up Next (${queue.songs.length} songs)</div>
+                ${(() => {
+                // Use cumulative ETA calculation for O(n) performance instead of O(n²)
+                // Note: ETA uses full duration of currently playing song, not remaining time
+                // For accurate ETAs, playback position would need to be tracked and sent from backend
+                let cumulativeEta = queue.nowPlaying ? queue.nowPlaying.duration : 0;
+                return queue.songs.map((song, index) => {
+                    const songEta = cumulativeEta;
+                    cumulativeEta += song.duration || 0;
+
+                    return `
+                    <div class="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2.5 border border-gray-100 dark:border-gray-700/50 hover:border-brand-secondary/30 transition-colors">
+                        <div class="flex items-center gap-3">
+                            <div class="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700 shrink-0">
+                                ${song.thumbnail ?
+                            `<img src="${escapeHtml(song.thumbnail)}" class="w-full h-full object-cover">` :
+                            `<div class="flex items-center justify-center w-full h-full"><i data-lucide="music" class="w-6 h-6 text-gray-400"></i></div>`
+                        }
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <a href="${escapeHtml(song.url)}" target="_blank" class="text-xs font-medium text-gray-900 dark:text-white hover:text-brand-secondary transition-colors truncate block">
+                                    ${index + 1}. ${escapeHtml(song.title)}
+                                </a>
+                                <div class="flex items-center gap-2 mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
+                                    <span>${formatDuration(song.duration)}</span>
+                                    <span>•</span>
+                                    <span>${escapeHtml(song.requestedBy)}</span>
+                                </div>
+                            </div>
+                            <div class="text-[10px] text-gray-400 dark:text-gray-500 font-medium shrink-0">
+                                ETA ${formatDuration(songEta)}
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                }).join('');
+            })()}
             </div>
             ` : ''}
         </div>

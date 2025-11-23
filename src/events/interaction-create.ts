@@ -10,8 +10,8 @@ export default {
       const command = interaction.client.commands.get(interaction.commandName);
 
       if (!command) {
-        console.error(
-          `No command matching ${interaction.commandName} was found.`
+        logger.error(
+          `[events] No command matching ${interaction.commandName} was found.`, { suppressOnWebUI: true }
         );
         return;
       }
@@ -20,7 +20,7 @@ export default {
         try {
           await command.autocomplete(interaction);
         } catch (error) {
-          console.error(error);
+          logger.error(`[events] Autocomplete error: ${error instanceof Error ? error.message : String(error)}`, { suppressOnWebUI: true });
         }
       }
       return;
@@ -29,20 +29,20 @@ export default {
     // 2. Handle Standard Slash Commands
     if (!interaction.isChatInputCommand()) return;
 
-    logger.debug(`Received command: ${interaction.commandName}`);
+    logger.debug(`[events] Received command: ${interaction.commandName}`);
     const command = interaction.client.commands.get(interaction.commandName);
     if (!command) {
-      logger.error(`No command matching ${interaction.commandName} was found.`);
+      logger.error(`[events] No command matching ${interaction.commandName} was found.`);
       return;
     }
-    logger.debug(`Found command ${interaction.commandName}, executing...`);
+    logger.debug(`[events] Found command ${interaction.commandName}, executing...`);
 
     try {
       await command.execute(interaction);
     } catch (error: unknown) {
       const msg = error instanceof Error ? (error.stack || error.message) : String(error);
       logger.error(
-        `Error executing command ${interaction.commandName}: ${msg}`
+        `[events] Error executing command ${interaction.commandName}: ${msg}`
       );
       if (interaction.deferred || interaction.replied) {
         await interaction.followUp({

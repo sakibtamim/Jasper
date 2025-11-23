@@ -77,7 +77,7 @@ export function cleanupWorkerOldQueues(worker: WorkerState): void {
     for (const [channelId, queue] of queues.entries()) {
         if (queue.worker.name === worker.name) {
             logger.info(
-                `[Cleanup] Found old queue for ${worker.name} in channel ${channelId}, cleaning up before reassignment`
+                `[cleanup] Found old queue for ${worker.name} in channel ${channelId}, cleaning up before reassignment`
             );
 
             // Clear idle timeout
@@ -100,7 +100,7 @@ export function cleanupWorkerOldQueues(worker: WorkerState): void {
 }
 
 export function clearAllQueues() {
-    logger.info(`[CatastrophicReset] Clearing ${queues.size} active queues`);
+    logger.info(`[catastrophicreset] Clearing ${queues.size} active queues`);
 
     for (const [channelId, queue] of queues.entries()) {
         // Clear idle timeout
@@ -121,5 +121,5 @@ export function clearAllQueues() {
     }
 
     queues.clear();
-    logger.info("[CatastrophicReset] All queues cleared");
+    logger.info("[catastrophicreset] All queues cleared");
 }

@@ -74,7 +74,7 @@ export default {
 
         } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : String(error);
-            logger.error(`[CacheStatus] Error fetching stats: ${msg}`);
+            logger.error(`[cachestatus] Error fetching stats: ${msg}`);
             await interaction.editReply({
                 content: `❌ **Failed to retrieve cache stats:** ${msg}`
             });

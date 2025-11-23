@@ -42,7 +42,7 @@ function createBots(): WorkerState[] {
         });
     }
 
-    logger.info(`Initialized ${workers.length} bots.`);
+    logger.info(`[workerpool] Initialized ${workers.length} bots.`);
     return workers;
 }
 
@@ -70,7 +70,7 @@ async function loginBots(): Promise<void> {
             }
         } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : String(error);
-            logger.error(`Failed to login ${worker.name}: ${msg}`);
+            logger.error(`[workerpool] Failed to login ${worker.name}: ${msg}`);
         }
     });
     await Promise.all(loginPromises);
@@ -129,7 +129,7 @@ function selectFelineWithAFR(eligibleWorkers: WorkerState[]): WorkerState {
         const randomIndex = Math.floor(Math.random() * eligibleWorkers.length);
         const selected = eligibleWorkers[randomIndex];
         logger.info(
-            `[AFR] Jasper not eligible. Randomly selected ${selected.name} from ${eligibleWorkers.length} eligible workers.`
+            `[afr] Jasper not eligible. Randomly selected ${selected.name} from ${eligibleWorkers.length} eligible workers.`
         );
         return selected;
     }
@@ -140,7 +140,7 @@ function selectFelineWithAFR(eligibleWorkers: WorkerState[]): WorkerState {
     if (roll < JASPER_WEIGHT) {
         // Select Jasper
         logger.info(
-            `[AFR] Jasper selected (roll: ${roll.toFixed(3)}, weight: ${JASPER_WEIGHT})`
+            `[afr] Jasper selected (roll: ${roll.toFixed(3)}, weight: ${JASPER_WEIGHT})`
         );
         return jasper;
     }
@@ -149,7 +149,7 @@ function selectFelineWithAFR(eligibleWorkers: WorkerState[]): WorkerState {
     if (nonJasperWorkers.length === 0) {
         // No other workers available, fallback to Jasper
         logger.info(
-            `[AFR] No other workers available, selecting Jasper as fallback (roll: ${roll.toFixed(3)}, weight: ${JASPER_WEIGHT})`
+            `[afr] No other workers available, selecting Jasper as fallback (roll: ${roll.toFixed(3)}, weight: ${JASPER_WEIGHT})`
         );
         return jasper;
     }
@@ -157,7 +157,7 @@ function selectFelineWithAFR(eligibleWorkers: WorkerState[]): WorkerState {
     const randomIndex = Math.floor(Math.random() * nonJasperWorkers.length);
     const selected = nonJasperWorkers[randomIndex];
     logger.info(
-        `[AFR] Non-Jasper worker selected: ${selected.name} (roll: ${roll.toFixed(3)}, weight: ${JASPER_WEIGHT})`
+        `[afr] Non-Jasper worker selected: ${selected.name} (roll: ${roll.toFixed(3)}, weight: ${JASPER_WEIGHT})`
     );
     return selected;
 }
@@ -176,7 +176,7 @@ function allocateWorker(guildId: string, voiceChannelId: string): WorkerState | 
     const existing = findWorkerByVoiceChannel(guildId, voiceChannelId);
     if (existing) {
         logger.info(
-            `[WorkerPool] Reusing ${existing.name} already in channel ${voiceChannelId}`
+            `[workerpool] Reusing ${existing.name} already in channel ${voiceChannelId}`
         );
         return existing;
     }
@@ -186,7 +186,7 @@ function allocateWorker(guildId: string, voiceChannelId: string): WorkerState | 
 
     if (eligibleWorkers.length === 0) {
         // Everyone is busy
-        logger.warn("[WorkerPool] All workers are busy, cannot allocate");
+        logger.warn("[workerpool] All workers are busy, cannot allocate");
         return null;
     }
 
@@ -206,7 +206,7 @@ function setWorkerBusy(worker: WorkerState, guildId: string, voiceChannelId: str
     worker.guildId = guildId;
     worker.voiceChannelId = voiceChannelId;
     logger.info(
-        `[WorkerPool] ${worker.name} assigned to guild ${guildId} channel ${voiceChannelId}`
+        `[workerpool] ${worker.name} assigned to guild ${guildId} channel ${voiceChannelId}`
     );
 
     // Update worker presence to reflect busy status
@@ -232,7 +232,7 @@ function releaseWorker(voiceChannelId: string): void {
     const worker = workers.find((w) => w.voiceChannelId === voiceChannelId);
     if (worker) {
         logger.info(
-            `[WorkerPool] ${worker.name} released from channel ${voiceChannelId}`
+            `[workerpool] ${worker.name} released from channel ${voiceChannelId}`
         );
         worker.busy = false;
         worker.guildId = null;
@@ -276,7 +276,7 @@ function releaseAllWorkers(): void {
             });
         }
     }
-    logger.info("[WorkerPool] All workers released to idle state");
+    logger.info("[workerpool] All workers released to idle state");
 }
 
 export default {

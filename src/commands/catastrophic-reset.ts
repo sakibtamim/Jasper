@@ -9,7 +9,7 @@ export default {
         .setDescription("🚨 Emergency: Clear all queues and reset all bots to idle"),
 
     async execute(interaction: ChatInputCommandInteraction) {
-        logger.info(`[CatastrophicReset] Initiated by ${interaction.user.tag}`);
+        logger.info(`[catastrophicreset] Initiated by ${interaction.user.tag}`);
 
         // Clear all queues and connections
         musicPlayer.clearAllQueues();
@@ -27,6 +27,6 @@ export default {
             ephemeral: false,
         });
 
-        logger.info("[CatastrophicReset] Reset complete");
+        logger.info("[catastrophicreset] Reset complete");
     },
 };

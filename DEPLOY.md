@@ -52,8 +52,11 @@ The deployment is handled automatically by GitHub Actions when you push to the `
 1.  **Build**: 
     -   The workflow installs dependencies (with `YT_DLP_SKIP_POSTINSTALL=1` to skip yt-dlp download during build)
     -   Compiles the TypeScript code
-    -   Generates SHA256 checksums for the artifacts
-2.  **Upload**: The compiled `dist` folder, `scripts`, configuration files, and checksums are uploaded as an artifact.
+    -   Generates SHA256 checksums for:
+        -   All files in `dist/` (compiled application code)
+        -   All files in `public/` (Web UI assets: HTML, CSS, JS, images, vendor files)
+        -   Top-level config files (`package.json`, `package-lock.json`, `ecosystem.config.cjs`)
+2.  **Upload**: The compiled `dist` folder, `public` folder (Web UI), `scripts`, configuration files, and checksums are uploaded as an artifact.
 3.  **Deploy**:
     -   The artifact is downloaded and its integrity is verified using the checksums.
     -   The existing bot process is stopped via PM2 (if running).

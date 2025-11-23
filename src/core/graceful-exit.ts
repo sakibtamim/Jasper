@@ -13,15 +13,15 @@ let isShuttingDown = false;
  */
 export async function handleGracefulExit(reason: string, error?: Error): Promise<void> {
     if (isShuttingDown) {
-        logger.warn(`[GracefulExit] Shutdown already in progress (Reason: ${reason})`);
+        logger.warn(`[gracefulexit] Shutdown already in progress (Reason: ${reason})`);
         return;
     }
 
     isShuttingDown = true;
-    logger.info(`[GracefulExit] Initiated (Reason: ${reason})`);
+    logger.info(`[gracefulexit] Initiated (Reason: ${reason})`);
 
     if (error) {
-        logger.error(`[GracefulExit] Error details: ${error.stack || error.message}`);
+        logger.error(`[gracefulexit] Error details: ${error.stack || error.message}`);
     }
 
     // 1. Announce shutdown if configured
@@ -32,7 +32,7 @@ export async function handleGracefulExit(reason: string, error?: Error): Promise
         musicPlayer.clearAllQueues();
     } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        logger.error(`[GracefulExit] Error clearing queues: ${msg}`);
+        logger.error(`[gracefulexit] Error clearing queues: ${msg}`);
     }
 
     // 3. Release all workers (resets state)
@@ -40,22 +40,22 @@ export async function handleGracefulExit(reason: string, error?: Error): Promise
         workerPool.releaseAllWorkers();
     } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
-        logger.error(`[GracefulExit] Error releasing workers: ${msg}`);
+        logger.error(`[gracefulexit] Error releasing workers: ${msg}`);
     }
 
     // 4. Destroy all discord clients
-    logger.info("[GracefulExit] Destroying bot clients...");
+    logger.info("[gracefulexit] Destroying bot clients...");
     const workers = workerPool.getWorkers();
     await Promise.all(workers.map(async (worker) => {
         try {
             await worker.client.destroy();
-            logger.info(`[GracefulExit] Destroyed client for ${worker.name}`);
+            logger.info(`[gracefulexit] Destroyed client for ${worker.name}`);
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : String(err);
-            logger.error(`[GracefulExit] Error destroying client for ${worker.name}: ${msg}`);
+            logger.error(`[gracefulexit] Error destroying client for ${worker.name}: ${msg}`);
         }
     }));
 
-    logger.info("[GracefulExit] Cleanup complete. Exiting process.");
+    logger.info("[gracefulexit] Cleanup complete. Exiting process.");
     process.exit(error ? 1 : 0);
 }
