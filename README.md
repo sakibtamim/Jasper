@@ -204,8 +204,10 @@ Once enabled, start the bot and visit:
 Before installing, ensure you have:
 
 1.  **Node.js** (v18 or higher) installed.
+    - **Note:** Node.js is also used by yt-dlp for JavaScript execution during YouTube extraction.
 2.  **FFmpeg** (The bot attempts to use a static binary, but having it installed globally is recommended).
 3.  **yt-dlp.exe** (Required for streaming).
+
 
 ## Installation
 

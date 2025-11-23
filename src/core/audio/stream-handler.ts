@@ -1,5 +1,5 @@
 import { spawn, ChildProcess } from "child_process";
-import { findYtDlpPath } from "../../utils/yt-dlp-helper.js";
+import { findYtDlpPath, getBaseYtDlpArgs } from "../../utils/yt-dlp-helper.js";
 import logger from "../logger.js";
 
 // Helper: Get the path to the local yt-dlp.exe
@@ -36,7 +36,11 @@ export function fetchVideoData(url: string): Promise<VideoData> {
     return new Promise((resolve, reject) => {
         const ytDlpPath = getYtDlpPath();
         // -J: Dump JSON metadata
-        const args = ["-J", url];
+        const args = [
+            ...getBaseYtDlpArgs(),
+            "-J",
+            url
+        ];
 
         const process = spawn(ytDlpPath, args);
         let data = "";
@@ -63,7 +67,12 @@ export function fetchVideoData(url: string): Promise<VideoData> {
 export function fetchPlaylistData(url: string): Promise<PlaylistData> {
     return new Promise((resolve, reject) => {
         const ytDlpPath = getYtDlpPath();
-        const args = ["--flat-playlist", "-J", url];
+        const args = [
+            ...getBaseYtDlpArgs(),
+            "--flat-playlist",
+            "-J",
+            url
+        ];
 
         const process = spawn(ytDlpPath, args);
         let data = "";
@@ -89,7 +98,13 @@ export function fetchPlaylistData(url: string): Promise<PlaylistData> {
 
 export function createStreamProcess(url: string): ChildProcess {
     const ytDlpPath = getYtDlpPath();
-    const args = ["-f", "bestaudio", "-o", "-", "-q", url];
+    const args = [
+        ...getBaseYtDlpArgs(),
+        "-f", "bestaudio",
+        "-o", "-",
+        "-q",
+        url
+    ];
     const process = spawn(ytDlpPath, args);
 
     process.on("error", (err) => {

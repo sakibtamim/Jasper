@@ -6,6 +6,7 @@ import { spawn } from 'child_process';
 import logger from './logger.js';
 import { Song } from './audio/queue-manager.js';
 import { getYtDlpPath } from './audio/stream-handler.js';
+import { getBaseYtDlpArgs } from '../utils/yt-dlp-helper.js';
 
 
 
@@ -183,7 +184,13 @@ class FileCacheStorage implements ICacheStorage {
 
         // Spawn yt-dlp process
         const ytDlpPath = getYtDlpPath();
-        const args = ['-f', 'bestaudio', '-o', '-', '-q', url];
+        const args = [
+            ...getBaseYtDlpArgs(),
+            '-f', 'bestaudio',
+            '-o', '-',
+            '-q',
+            url
+        ];
         const ytDlpProcess = spawn(ytDlpPath, args);
 
         ytDlpProcess.stderr!.on('data', (data) => {
@@ -196,6 +203,7 @@ class FileCacheStorage implements ICacheStorage {
 
         // Track size for logging without buffering entire file in memory
         let totalBytes = 0;
+        let hasError = false;
 
         ytDlpProcess.stdout!.on('data', (chunk: Buffer) => {
             // Write to cache file (async)
@@ -206,32 +214,52 @@ class FileCacheStorage implements ICacheStorage {
             passThrough.write(chunk);
         });
 
-        ytDlpProcess.stdout!.on('end', async () => {
+        ytDlpProcess.stdout!.on('end', () => {
             fileStream.end();
             passThrough.end();
+        });
 
-            // Save metadata (async)
-            const meta: AudioMetadata = {
-                videoId,
-                searchTerms,
-                timestamp: Date.now(),
-            };
-            await fs.writeFile(metaPath, JSON.stringify(meta, null, 2), 'utf-8');
-            logger.info(`[Cache] Cached audio for video: ${videoId} (${(totalBytes / 1024 / 1024).toFixed(2)}MB)`);
+        // Handle process exit to check for errors
+        ytDlpProcess.on('close', async (code) => {
+            if (code !== 0 && !hasError) {
+                // Non-zero exit code indicates failure
+                logger.error(`[Cache] yt-dlp exited with code ${code} for: ${url}`);
+                hasError = true;
+
+                // Cleanup partial files
+                try {
+                    await fs.unlink(audioPath).catch(() => { });
+                    await fs.unlink(metaPath).catch(() => { });
+                    logger.info(`[Cache] Cleaned up partial files for failed download: ${videoId}`);
+                } catch (cleanupErr) {
+                    logger.warn(`[Cache] Failed to cleanup partial files ${videoId}: ${cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr)}`);
+                }
+            } else if (code === 0 && !hasError) {
+                // Success: save metadata
+                const meta: AudioMetadata = {
+                    videoId,
+                    searchTerms,
+                    timestamp: Date.now(),
+                };
+                try {
+                    await fs.writeFile(metaPath, JSON.stringify(meta, null, 2), 'utf-8');
+                    logger.info(`[Cache] Cached audio for video: ${videoId} (${(totalBytes / 1024 / 1024).toFixed(2)}MB)`);
+                } catch (metaErr) {
+                    logger.error(`[Cache] Failed to write metadata for ${videoId}: ${metaErr instanceof Error ? metaErr.message : String(metaErr)}`);
+                    // Cleanup audio file if metadata write fails
+                    await fs.unlink(audioPath).catch(() => { });
+                }
+            }
         });
 
         ytDlpProcess.on('error', async (err) => {
             logger.error(`[Cache] yt-dlp error during caching: ${err.message}`);
+            hasError = true;
             passThrough.destroy(err);
             fileStream.destroy();
 
-            // Cleanup partial file
-            try {
-                await fs.unlink(audioPath);
-                logger.info(`[Cache] Cleaned up partial file: ${audioPath}`);
-            } catch (cleanupErr) {
-                logger.warn(`[Cache] Failed to cleanup partial file ${audioPath}: ${cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr)}`);
-            }
+            // Cleanup partial file to prevent orphans
+            await fs.unlink(audioPath).catch(() => { });
         });
 
         // Return stream immediately (async write happens in background)
