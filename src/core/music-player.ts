@@ -382,6 +382,7 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string):
     queue.songs.push({
       ...track,
       requestedBy: interaction.user.tag,
+      requesterId: interaction.user.id,
     });
     queue.stopping = false;
 
@@ -453,6 +454,7 @@ async function enqueuePlaylist(interaction: ChatInputCommandInteraction, url: st
       url: entry.url || `https://www.youtube.com/watch?v=${entry.id}`,
       durationInSec: entry.duration || 0,
       requestedBy: interaction.user.tag,
+      requesterId: interaction.user.id,
     }));
 
     if (queue.idleTimeout) {

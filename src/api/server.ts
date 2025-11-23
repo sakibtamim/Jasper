@@ -39,15 +39,32 @@ server.get('/api/status', async (_request, _reply) => {
 
         if (w.voiceChannelId) {
             const channel = w.client.channels.cache.get(w.voiceChannelId);
-            if (channel && 'name' in channel) {
-                channelName = (channel as any).name;
+            if (channel && channel.isVoiceBased()) {
+                channelName = channel.name;
             }
 
             const queue = queues.get(w.voiceChannelId);
             if (queue && queue.nowPlaying) {
+                let requester = null;
+                if (queue.nowPlaying.requesterId && w.guildId) {
+                    const guild = w.client.guilds.cache.get(w.guildId);
+                    if (guild) {
+                        const member = guild.members.cache.get(queue.nowPlaying.requesterId);
+                        if (member) {
+                            requester = {
+                                id: member.id,
+                                username: member.user.username,
+                                displayName: member.displayName,
+                                avatarUrl: member.displayAvatarURL()
+                            };
+                        }
+                    }
+                }
+
                 nowPlaying = {
                     title: queue.nowPlaying.title,
-                    thumbnail: queue.nowPlaying.thumbnail
+                    thumbnail: queue.nowPlaying.thumbnail,
+                    requester
                 };
             }
         }

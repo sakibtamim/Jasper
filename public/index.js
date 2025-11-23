@@ -156,6 +156,18 @@ function renderWorkers() {
                     ${worker.nowPlaying ? `
                     <!-- Now Playing -->
                     <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                        <div class="flex items-center justify-between text-xs text-gray-500 mb-2">
+                            <span class="text-brand-secondary font-bold uppercase tracking-wider">Now Playing</span>
+                            ${worker.nowPlaying.requester ? `
+                                <div class="flex items-center gap-1.5" title="Requested by ${escapeHtml(worker.nowPlaying.requester.username)}">
+                                    <span class="text-[10px] uppercase tracking-wider opacity-70">Req by</span>
+                                    <img src="${worker.nowPlaying.requester.avatarUrl || 'https://cdn.discordapp.com/embed/avatars/0.png'}" 
+                                         class="w-4 h-4 rounded-full border border-gray-200 dark:border-gray-600"
+                                         alt="${escapeHtml(worker.nowPlaying.requester.username)}">
+                                    <span class="font-medium text-gray-700 dark:text-gray-300 truncate max-w-[80px]">${escapeHtml(worker.nowPlaying.requester.displayName)}</span>
+                                </div>
+                            ` : ''}
+                        </div>
                         <div class="flex items-center gap-3">
                             <div class="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700 shrink-0">
                                 ${worker.nowPlaying.thumbnail ?
@@ -165,7 +177,6 @@ function renderWorkers() {
                                 <div class="absolute inset-0 bg-black/10"></div>
                             </div>
                             <div class="min-w-0">
-                                <p class="text-xs text-brand-secondary font-bold uppercase tracking-wider mb-0.5">Now Playing</p>
                                 <p class="text-sm font-medium text-gray-900 dark:text-white truncate" title="${escapeHtml(worker.nowPlaying.title)}">
                                     ${escapeHtml(worker.nowPlaying.title)}
                                 </p>
@@ -186,65 +197,58 @@ function renderQueues() {
     const container = document.getElementById('queues-container');
     if (!container) return;
 
-    if (queues.length === 0) {
+    if (!queues.length) {
         container.innerHTML = `
-            <div class="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 text-center text-gray-500">
-                No active queues right now.
+            <div class="col-span-full text-center py-12 text-gray-500 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700">
+                <i data-lucide="music-2" class="w-12 h-12 mx-auto mb-3 opacity-50"></i>
+                <p>No active queues found</p>
             </div>
-            `;
+        `;
+        lucide.createIcons();
         return;
     }
 
     container.innerHTML = queues.map(queue => `
-        <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 hover-card">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-                    <div class="flex items-center gap-3">
-                        <div class="bg-gray-100 dark:bg-gray-700 p-2 rounded-lg">
-                            <i data-lucide="music" class="w-6 h-6 text-brand-secondary"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-900 dark:text-white">Channel: ${escapeHtml(queue.voiceChannelId)}</h3>
-                            <p class="text-sm text-gray-500 dark:text-gray-400">Managed by <span class="text-brand-primary font-medium">${escapeHtml(queue.workerName)}</span></p>
-                        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-4 hover:border-brand-primary/30 transition-colors shadow-sm">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-brand-primary/10 flex items-center justify-center text-brand-primary">
+                        <i data-lucide="list-music" class="w-5 h-5"></i>
                     </div>
-                    <div class="flex items-center gap-3">
-                        <span class="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-                            ${queue.queueLength} songs
-                        </span>
-                        <span class="px-3 py-1 rounded-full text-xs font-medium ${queue.autoplay ? 'bg-brand-secondary/10 text-brand-secondary' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'}">
-                            Autoplay: ${queue.autoplay ? 'ON' : 'OFF'}
-                        </span>
+                    <div>
+                        <h3 class="font-bold text-gray-900 dark:text-white">${escapeHtml(queue.guildId)}</h3>
+                        <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                            <span>${escapeHtml(queue.voiceChannelId)}</span>
+                            <span>•</span>
+                            <span>${queue.queueLength} songs</span>
+                        </div>
                     </div>
                 </div>
+                <div class="text-right">
+                    <div class="text-xs text-gray-500 uppercase tracking-wider font-bold mb-1">Worker</div>
+                    <div class="text-sm text-brand-primary font-medium">${escapeHtml(queue.workerName)}</div>
+                </div>
+            </div>
 
             ${queue.nowPlaying ? `
-            <div class="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl border border-gray-200 dark:border-gray-600">
+            <div class="bg-gray-50 dark:bg-black/20 rounded-lg p-3 border border-gray-100 dark:border-gray-700">
+                <div class="text-xs text-gray-500 uppercase tracking-wider font-bold mb-2">Now Playing</div>
                 <div class="flex items-start gap-3">
-                    <div class="mt-1">
-                        <div class="w-2 h-2 rounded-full bg-brand-primary animate-pulse"></div>
-                    </div>
                     <div class="flex-1 min-w-0">
-                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Now Playing</p>
-                        <a href="${escapeHtml(queue.nowPlaying.url)}" target="_blank" class="text-base font-semibold text-gray-900 dark:text-white hover:text-brand-primary truncate block transition-colors">
+                        <a href="${queue.nowPlaying.url}" target="_blank" class="text-sm font-medium text-gray-900 dark:text-white hover:text-brand-primary transition-colors truncate block">
                             ${escapeHtml(queue.nowPlaying.title)}
                         </a>
-                        <div class="flex items-center gap-4 mt-2 text-sm text-gray-500 dark:text-gray-400">
-                            <span class="flex items-center gap-1">
-                                <i data-lucide="clock" class="w-3 h-3"></i>
-                                ${formatDuration(queue.nowPlaying.duration)}
-                            </span>
-                            <span class="flex items-center gap-1">
-                                <i data-lucide="user" class="w-3 h-3"></i>
-                                ${escapeHtml(queue.nowPlaying.requestedBy)}
-                            </span>
+                        <div class="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            <span>${formatDuration(queue.nowPlaying.duration)}</span>
+                            <span>•</span>
+                            <span>Requested by ${escapeHtml(queue.nowPlaying.requestedBy)}</span>
                         </div>
                     </div>
                 </div>
             </div>
-            ` : ''
-        }
+            ` : ''}
         </div>
-            `).join('');
+    `).join('');
 
     lucide.createIcons();
 }
@@ -261,8 +265,8 @@ function renderLogs() {
     const container = document.getElementById('logs-container');
     if (!container) return;
 
-    if (logs.length === 0) {
-        container.innerHTML = '<div class="text-gray-500 italic">No logs available.</div>';
+    if (!logs.length) {
+        container.innerHTML = '<div class="text-gray-500 italic text-sm">No logs available</div>';
         return;
     }
 
@@ -295,7 +299,7 @@ function formatDuration(seconds) {
     if (!seconds) return '00:00';
     const min = Math.floor(seconds / 60);
     const sec = Math.floor(seconds % 60);
-    return `${min}:${sec.toString().padStart(2, '0')} `;
+    return `${min}:${sec.toString().padStart(2, '0')}`;
 }
 
 // Initial Fetch and Polling
