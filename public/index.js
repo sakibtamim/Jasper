@@ -258,6 +258,8 @@ function renderQueues() {
                 <div class="text-xs text-gray-500 uppercase tracking-wider font-bold">Up Next (${queue.songs.length} songs)</div>
                 ${(() => {
                 // Use cumulative ETA calculation for O(n) performance instead of O(n²)
+                // Note: ETA uses full duration of currently playing song, not remaining time
+                // For accurate ETAs, playback position would need to be tracked and sent from backend
                 let cumulativeEta = queue.nowPlaying ? queue.nowPlaying.duration : 0;
                 return queue.songs.map((song, index) => {
                     const songEta = cumulativeEta;
