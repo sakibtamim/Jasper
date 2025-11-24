@@ -46,9 +46,10 @@ if (existsSync(migratePath)) {
         stdio: 'inherit',
         shell: true
     });
-    // Migration failures are non-fatal, just log and continue
+    // Migration failures should be fatal to prevent inconsistent state
     if (migrateResult.status !== 0) {
-        console.warn('Warning: Cache migration encountered issues but continuing...');
+        console.error('Error: Cache migration failed. Please check the logs above.');
+        process.exit(1);
     }
 }
 
