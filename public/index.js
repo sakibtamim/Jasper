@@ -319,7 +319,7 @@ function renderQueues() {
                             <div class="flex items-center gap-2">
                                 <span>${formatDuration(queue.nowPlaying.duration)}</span>
                                 <span>•</span>
-                                <span>${queue.nowPlaying.requestedBy === 'Radio' ? 'Enqueued by Radio 📻' : `Requested by ${escapeHtml(queue.nowPlaying.requestedBy)}`}</span>
+                                <span>${queue.nowPlaying.requestedBy === 'Radio' ? `Enqueued by Radio ${escapeHtml(queue.workerName)} 📻 🐱` : `Requested by ${escapeHtml(queue.nowPlaying.requestedBy)}`}</span>
                             </div>
                             <!-- Live Progress Timer (Optional, simpler to just show total for now or calculate if needed) -->
                         </div>
@@ -376,7 +376,7 @@ function renderQueues() {
                                 <div class="flex items-center gap-2 mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
                                     <span>${formatDuration(song.duration)}</span>
                                     <span>•</span>
-                                    <span>${song.requestedBy === 'Radio' ? 'Radio 📻' : escapeHtml(song.requestedBy)}</span>
+                                    <span>${song.requestedBy === 'Radio' ? `Radio ${escapeHtml(queue.workerName)} 📻 🐱` : escapeHtml(song.requestedBy)}</span>
                                 </div>
                             </div>
                             <div class="text-[10px] text-gray-400 dark:text-gray-500 font-medium shrink-0">
