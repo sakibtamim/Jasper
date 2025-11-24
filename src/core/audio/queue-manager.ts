@@ -28,6 +28,7 @@ export interface Queue {
     idleTimeout: NodeJS.Timeout | null;
     stopping: boolean;
     playingMessage?: Message;
+    isRadio?: boolean;
 }
 
 // Map<VoiceChannelId, QueueObject>

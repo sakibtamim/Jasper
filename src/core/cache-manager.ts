@@ -57,6 +57,9 @@ export interface ICacheStorage {
     // Cleanup and stats
     cleanupExpiredCache(): Promise<void>;
     getCacheStats(): Promise<CacheStats>;
+
+    // Radio feature
+    getRandomCachedSong(): Promise<Song | null>;
 }
 
 /**
@@ -348,6 +351,51 @@ class FileCacheStorage implements ICacheStorage {
             audioCacheFiles,
             audioCacheSizeMB: Math.round(audioCacheSizeMB * 100) / 100,
         };
+    }
+
+    async getRandomCachedSong(): Promise<Song | null> {
+        try {
+            const files = await fs.readdir(CACHE_AUDIO_DIR);
+            const metaFiles = files.filter(f => f.endsWith('.meta.json'));
+
+            if (metaFiles.length === 0) return null;
+
+            // Pick a random file
+            const randomFile = metaFiles[Math.floor(Math.random() * metaFiles.length)];
+            const metaPath = path.join(CACHE_AUDIO_DIR, randomFile);
+
+            try {
+                const metaData = await fs.readFile(metaPath, 'utf-8');
+                const meta: AudioMetadata = JSON.parse(metaData);
+
+                // Try to find in search cache first for full details
+                await this.loadSearchCache();
+                for (const cached of this.searchCache.values()) {
+                    if (cached.song.url.includes(meta.videoId)) {
+                        return {
+                            ...cached.song,
+                            fromCache: true,
+                            requestedBy: cached.song.requestedBy || "Unknown"
+                        };
+                    }
+                }
+
+                // Fallback if not in search cache
+                return {
+                    title: meta.searchTerms[0] || "Unknown Title",
+                    url: `https://www.youtube.com/watch?v=${meta.videoId}`,
+                    durationInSec: 0, // Unknown
+                    requestedBy: "Radio",
+                    fromCache: true
+                };
+            } catch (e) {
+                logger.warn(`[cache] Failed to read meta file ${randomFile}: ${e}`);
+                return null;
+            }
+        } catch (e) {
+            logger.warn(`[cache] Failed to scan audio directory: ${e}`);
+            return null;
+        }
     }
 }
 

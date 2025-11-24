@@ -33,7 +33,7 @@ import {
   isUrl,
 } from "./audio/stream-handler.js";
 
-import { playSong, handleAutoplay } from "./audio/playback-engine.js";
+import { playSong, handleAutoplay, handleRadio } from "./audio/playback-engine.js";
 import { getAutoplayButton } from "./ui/player-controls.js";
 import { getEntryMessage } from "../config/afr-config.js";
 import ytSearch from "yt-search";
@@ -170,6 +170,7 @@ async function createQueue(interaction: ChatInputCommandInteraction, worker: Wor
     worker: worker, // Store the assigned worker
     idleTimeout: null, // Track idle disconnect timeout
     stopping: false, // Flag to prevent autoplay/idle logic when stopping manually
+    isRadio: false,
   };
 
   connection.subscribe(player);
@@ -184,6 +185,8 @@ async function createQueue(interaction: ChatInputCommandInteraction, worker: Wor
 
     if (queue.songs.length > 0) {
       playSong(queue);
+    } else if (queue.isRadio) {
+      await handleRadio(queue);
     } else if (queue.autoplay && lastSong) {
       await handleAutoplay(queue, lastSong);
     } else {
@@ -564,6 +567,7 @@ async function stop(interaction: ChatInputCommandInteraction): Promise<void> {
   );
   queue.songs = [];
   queue.stopping = true;
+  queue.isRadio = false;
   setVoiceStatus(queue.worker.client, queue.voiceChannelId, "");
   queue.player.stop();
   if (queue.connection) {
@@ -678,6 +682,65 @@ async function nowPlaying(interaction: ChatInputCommandInteraction): Promise<voi
   );
 }
 
+async function startRadio(interaction: ChatInputCommandInteraction): Promise<void> {
+  const voiceChannel = await validateInteraction(interaction);
+  if (!voiceChannel) return;
+
+  const permissions = voiceChannel.permissionsFor(interaction.client.user!);
+  if (
+    !permissions ||
+    !permissions.has("Connect") ||
+    !permissions.has("Speak")
+  ) {
+    await interaction.reply({
+      content:
+        "I need the **Connect** and **Speak** permissions to play music!",
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.deferReply();
+
+  try {
+    // Ensure queue exists (or create new one)
+    let queue = await validateAndCleanupQueue(interaction, voiceChannel.id);
+
+    if (!queue) {
+      const worker = await assignWorker(interaction, voiceChannel, true);
+      if (!worker) return;
+      queue = await createQueue(interaction, worker, null);
+    } else {
+      // Re-acquire worker if idle
+      const success = await reacquireIdleWorker(interaction, queue);
+      if (!success) return;
+    }
+
+    if (!queue) return;
+
+    // Enable radio mode
+    queue.isRadio = true;
+    queue.stopping = false;
+
+    // If nothing is playing, start radio immediately
+    if (!queue.nowPlaying && queue.songs.length === 0) {
+      await handleRadio(queue);
+    } else {
+      const channelName = await getChannelName(
+        queue.worker.client,
+        queue.voiceChannelId
+      );
+      await interaction.editReply(
+        `📻 **Radio Mode Enabled** for **#${channelName}**! Random cached songs will play after the current queue.`
+      );
+    }
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    logger.error(`Radio error: ${msg}`);
+    await interaction.editReply(`❌ Error starting radio: ${msg}`);
+  }
+}
+
 export default {
   enqueue,
   enqueuePlaylist,
@@ -688,6 +751,7 @@ export default {
   resume,
   showQueue,
   nowPlaying,
+  startRadio,
   getQueues: getAllQueues,
   clearAllQueues,
 };
