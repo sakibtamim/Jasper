@@ -163,15 +163,116 @@ server.get('/api/stats', async (request, _reply) => {
     const { limit = '10' } = request.query as { limit?: string };
     const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 10));
 
-    const [topSongs, topUsers, globalStats] = await Promise.all([
+    const [topSongs, topUsers, topChannels, topBots, topCacheHits, globalStats] = await Promise.all([
         db.getTopSongs(limitNum),
         db.getTopUsers(limitNum),
+        db.getTopChannels(limitNum),
+        db.getTopBots(limitNum),
+        db.getTopCacheHits(limitNum),
         db.getGlobalStats()
     ]);
 
+    // Enhance topUsers with Discord data (usernames and avatars)
+    const workers = workerPool.getWorkers();
+    const enhancedUsers = await Promise.all(topUsers.map(async (user) => {
+        let username = user.userId;
+        let avatarUrl: string | null = null;
+
+        // Try to find the user across all workers
+        for (const worker of workers) {
+            try {
+                const discordUser = await worker.client.users.fetch(user.userId).catch(() => null);
+                if (discordUser) {
+                    username = discordUser.username;
+                    avatarUrl = discordUser.displayAvatarURL();
+                    break;
+                }
+            } catch {
+                // Continue to next worker
+            }
+        }
+
+        return {
+            ...user,
+            username,
+            avatarUrl
+        };
+    }));
+
+    // Enhance topChannels with Discord data (guild names, channel names, guild icons)
+    const enhancedChannels = await Promise.all(topChannels.map(async (channel) => {
+        let guildName = channel.guildId;
+        let channelName = channel.channelId;
+        let guildIconUrl: string | null = null;
+
+        // Try to find the channel across all workers
+        for (const worker of workers) {
+            try {
+                const guild = worker.client.guilds.cache.get(channel.guildId);
+                if (guild) {
+                    guildName = guild.name;
+                    guildIconUrl = guild.iconURL();
+
+                    const discordChannel = guild.channels.cache.get(channel.channelId);
+                    if (discordChannel) {
+                        channelName = discordChannel.name;
+                    }
+                    break;
+                }
+            } catch {
+                // Continue to next worker
+            }
+        }
+
+        return {
+            ...channel,
+            guildName,
+            channelName,
+            guildIconUrl
+        };
+    }));
+
+    // Enhance cache hits with Discord data (usernames/bot names and avatars)
+    const enhancedCacheHits = await Promise.all(topCacheHits.map(async (hit) => {
+        let displayName = hit.entityName;
+        let avatarUrl: string | null = null;
+
+        if (hit.entityType === 'user') {
+            // Try to fetch user data
+            for (const worker of workers) {
+                try {
+                    const discordUser = await worker.client.users.fetch(hit.entityId).catch(() => null);
+                    if (discordUser) {
+                        displayName = discordUser.username;
+                        avatarUrl = discordUser.displayAvatarURL();
+                        break;
+                    }
+                } catch {
+                    // Continue
+                }
+            }
+        } else {
+            // For bots, use worker data
+            const worker = workers.find(w => w.name === hit.entityId);
+            if (worker && worker.client.user) {
+                displayName = worker.client.user.username;
+                avatarUrl = worker.client.user.displayAvatarURL();
+            }
+        }
+
+        return {
+            ...hit,
+            displayName,
+            avatarUrl
+        };
+    }));
+
     return {
         topSongs,
-        topUsers,
+        topUsers: enhancedUsers,
+        topChannels: enhancedChannels,
+        topBots,
+        topCacheHits: enhancedCacheHits,
         globalStats
     };
 });
