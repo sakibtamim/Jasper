@@ -6,6 +6,7 @@ import logger, { getRecentLogs } from '../core/logger.js';
 import workerPool from '../core/worker-pool.js';
 import musicPlayer from '../core/music-player.js';
 import { getCacheStats } from '../core/cache-manager.js';
+import db from '../core/db/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -155,6 +156,24 @@ server.get('/api/cache', async (_request, _reply) => {
 server.get('/api/logs', async (_request, _reply) => {
     const logs = getRecentLogs();
     return { logs };
+});
+
+// 5. Statistics
+server.get('/api/stats', async (request, _reply) => {
+    const { limit = '10' } = request.query as { limit?: string };
+    const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 10));
+
+    const [topSongs, topUsers, globalStats] = await Promise.all([
+        db.getTopSongs(limitNum),
+        db.getTopUsers(limitNum),
+        db.getGlobalStats()
+    ]);
+
+    return {
+        topSongs,
+        topUsers,
+        globalStats
+    };
 });
 
 export async function startServer() {
