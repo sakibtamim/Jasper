@@ -33,6 +33,29 @@ export class SqliteAdapter implements DatabaseAdapter {
           duration INTEGER NOT NULL,
           played_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
+
+        CREATE TABLE IF NOT EXISTS search_cache (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          query TEXT NOT NULL UNIQUE,
+          song_title TEXT NOT NULL,
+          song_url TEXT NOT NULL,
+          duration INTEGER NOT NULL,
+          thumbnail TEXT,
+          cached_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          expires_at DATETIME NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS audio_metadata (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          video_id TEXT NOT NULL UNIQUE,
+          title TEXT NOT NULL,
+          url TEXT NOT NULL,
+          duration INTEGER NOT NULL,
+          thumbnail TEXT,
+          search_terms TEXT NOT NULL,
+          cached_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          expires_at DATETIME NOT NULL
+        );
       `);
 
       // Create indexes for performance
@@ -40,6 +63,10 @@ export class SqliteAdapter implements DatabaseAdapter {
         CREATE INDEX IF NOT EXISTS idx_plays_user_id ON plays(user_id);
         CREATE INDEX IF NOT EXISTS idx_plays_song_url ON plays(song_url);
         CREATE INDEX IF NOT EXISTS idx_plays_played_at ON plays(played_at);
+        CREATE INDEX IF NOT EXISTS idx_search_cache_query ON search_cache(query);
+        CREATE INDEX IF NOT EXISTS idx_search_cache_expires_at ON search_cache(expires_at);
+        CREATE INDEX IF NOT EXISTS idx_audio_metadata_video_id ON audio_metadata(video_id);
+        CREATE INDEX IF NOT EXISTS idx_audio_metadata_expires_at ON audio_metadata(expires_at);
       `);
 
       logger.info(`[db] SQLite database initialized at ${this.dbPath}`);
@@ -138,6 +165,134 @@ export class SqliteAdapter implements DatabaseAdapter {
     `);
 
     return stmt.get() as { totalPlays: number; totalDuration: number };
+  }
+
+  async getCachedSearchResult(query: string): Promise<import('./types.js').CachedSearchResult | null> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const stmt = this.db.prepare(`
+      SELECT query, song_title as songTitle, song_url as songUrl, duration, thumbnail, cached_at as cachedAt, expires_at as expiresAt
+      FROM search_cache
+      WHERE query = ? AND expires_at > datetime('now')
+    `);
+
+    const row = stmt.get(query) as { query: string; songTitle: string; songUrl: string; duration: number; thumbnail?: string; cachedAt: string; expiresAt: string } | undefined;
+    if (!row) return null;
+
+    return {
+      query: row.query,
+      songTitle: row.songTitle,
+      songUrl: row.songUrl,
+      duration: row.duration,
+      thumbnail: row.thumbnail,
+      cachedAt: new Date(row.cachedAt),
+      expiresAt: new Date(row.expiresAt),
+    };
+  }
+
+  async setCachedSearchResult(query: string, songTitle: string, songUrl: string, duration: number, thumbnail: string | undefined, ttlHours: number): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000).toISOString();
+
+    const stmt = this.db.prepare(`
+      INSERT OR REPLACE INTO search_cache (query, song_title, song_url, duration, thumbnail, expires_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    stmt.run(query, songTitle, songUrl, duration, thumbnail, expiresAt);
+  }
+
+  async getAudioMetadata(videoId: string): Promise<import('./types.js').AudioMetadata | null> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const stmt = this.db.prepare(`
+      SELECT video_id as videoId, title, url, duration, thumbnail, search_terms as searchTerms, cached_at as cachedAt, expires_at as expiresAt
+      FROM audio_metadata
+      WHERE video_id = ? AND expires_at > datetime('now')
+    `);
+
+    const row = stmt.get(videoId) as { videoId: string; title: string; url: string; duration: number; thumbnail?: string; searchTerms: string; cachedAt: string; expiresAt: string } | undefined;
+    if (!row) return null;
+
+    return {
+      videoId: row.videoId,
+      title: row.title,
+      url: row.url,
+      duration: row.duration,
+      thumbnail: row.thumbnail,
+      searchTerms: JSON.parse(row.searchTerms),
+      cachedAt: new Date(row.cachedAt),
+      expiresAt: new Date(row.expiresAt),
+    };
+  }
+
+  async setAudioMetadata(videoId: string, title: string, url: string, duration: number, thumbnail: string | undefined, searchTerms: string[], ttlHours: number): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000).toISOString();
+
+    const stmt = this.db.prepare(`
+      INSERT OR REPLACE INTO audio_metadata (video_id, title, url, duration, thumbnail, search_terms, expires_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    stmt.run(videoId, title, url, duration, thumbnail, JSON.stringify(searchTerms), expiresAt);
+  }
+
+  async getRandomCachedSong(): Promise<import('./types.js').AudioMetadata | null> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const stmt = this.db.prepare(`
+      SELECT video_id as videoId, title, url, duration, thumbnail, search_terms as searchTerms, cached_at as cachedAt, expires_at as expiresAt
+      FROM audio_metadata
+      WHERE expires_at > datetime('now')
+      ORDER BY RANDOM()
+      LIMIT 1
+    `);
+
+    const row = stmt.get() as { videoId: string; title: string; url: string; duration: number; thumbnail?: string; searchTerms: string; cachedAt: string; expiresAt: string } | undefined;
+    if (!row) return null;
+
+    return {
+      videoId: row.videoId,
+      title: row.title,
+      url: row.url,
+      duration: row.duration,
+      thumbnail: row.thumbnail,
+      searchTerms: JSON.parse(row.searchTerms),
+      cachedAt: new Date(row.cachedAt),
+      expiresAt: new Date(row.expiresAt),
+    };
+  }
+
+  async cleanupExpiredCache(): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const searchStmt = this.db.prepare(`DELETE FROM search_cache WHERE expires_at <= datetime('now')`);
+    const audioStmt = this.db.prepare(`DELETE FROM audio_metadata WHERE expires_at <= datetime('now')`);
+
+    const searchDeleted = searchStmt.run().changes;
+    const audioDeleted = audioStmt.run().changes;
+
+    if (searchDeleted > 0 || audioDeleted > 0) {
+      logger.info(`[db] Cleaned up ${searchDeleted} expired search cache entries and ${audioDeleted} expired audio metadata entries`);
+    }
+  }
+
+  async getCacheStats(): Promise<{ searchCacheSize: number; audioMetadataCount: number }> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const searchStmt = this.db.prepare(`SELECT COUNT(*) as count FROM search_cache WHERE expires_at > datetime('now')`);
+    const audioStmt = this.db.prepare(`SELECT COUNT(*) as count FROM audio_metadata WHERE expires_at > datetime('now')`);
+
+    const searchCount = (searchStmt.get() as { count: number }).count;
+    const audioCount = (audioStmt.get() as { count: number }).count;
+
+    return {
+      searchCacheSize: searchCount,
+      audioMetadataCount: audioCount,
+    };
   }
 
   async close(): Promise<void> {
