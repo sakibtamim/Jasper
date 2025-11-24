@@ -27,6 +27,8 @@ export class PostgresAdapter implements DatabaseAdapter {
           id SERIAL PRIMARY KEY,
           user_id TEXT NOT NULL,
           guild_id TEXT NOT NULL,
+          channel_id TEXT NOT NULL,
+          bot_name TEXT NOT NULL,
           song_title TEXT NOT NULL,
           song_url TEXT NOT NULL,
           duration INTEGER NOT NULL,
@@ -55,6 +57,14 @@ export class PostgresAdapter implements DatabaseAdapter {
           cached_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           expires_at TIMESTAMP WITH TIME ZONE NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS cache_hits (
+          id SERIAL PRIMARY KEY,
+          entity_id TEXT NOT NULL,
+          entity_name TEXT NOT NULL,
+          entity_type TEXT NOT NULL,
+          hit_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
       `);
 
             // Create indexes
@@ -62,10 +72,14 @@ export class PostgresAdapter implements DatabaseAdapter {
         CREATE INDEX IF NOT EXISTS idx_plays_user_id ON plays(user_id);
         CREATE INDEX IF NOT EXISTS idx_plays_song_url ON plays(song_url);
         CREATE INDEX IF NOT EXISTS idx_plays_played_at ON plays(played_at);
+        CREATE INDEX IF NOT EXISTS idx_plays_channel_id ON plays(channel_id);
+        CREATE INDEX IF NOT EXISTS idx_plays_bot_name ON plays(bot_name);
         CREATE INDEX IF NOT EXISTS idx_search_cache_query ON search_cache(query);
         CREATE INDEX IF NOT EXISTS idx_search_cache_expires_at ON search_cache(expires_at);
         CREATE INDEX IF NOT EXISTS idx_audio_metadata_video_id ON audio_metadata(video_id);
         CREATE INDEX IF NOT EXISTS idx_audio_metadata_expires_at ON audio_metadata(expires_at);
+        CREATE INDEX IF NOT EXISTS idx_cache_hits_entity_id ON cache_hits(entity_id);
+        CREATE INDEX IF NOT EXISTS idx_cache_hits_entity_type ON cache_hits(entity_type);
       `);
 
             logger.info('[db] Postgres database initialized');
@@ -79,11 +93,13 @@ export class PostgresAdapter implements DatabaseAdapter {
         if (!this.pool) throw new Error('Database not initialized');
 
         await this.pool.query(
-            `INSERT INTO plays (user_id, guild_id, song_title, song_url, duration, played_at)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
+            `INSERT INTO plays (user_id, guild_id, channel_id, bot_name, song_title, song_url, duration, played_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
             [
                 record.userId,
                 record.guildId,
+                record.channelId,
+                record.botName,
                 record.songTitle,
                 record.songUrl,
                 record.duration,
@@ -271,6 +287,72 @@ export class PostgresAdapter implements DatabaseAdapter {
             searchCacheSize: searchResult.rows[0].count,
             audioMetadataCount: audioResult.rows[0].count,
         };
+    }
+
+    async getTopChannels(limit: number = 10): Promise<import('./types.js').ChannelStats[]> {
+        if (!this.pool) throw new Error('Database not initialized');
+
+        const result = await this.pool.query(
+            `SELECT 
+                guild_id as "guildId",
+                '' as "guildName",
+                channel_id as "channelId",
+                '' as "channelName",
+                COUNT(*)::int as "playCount"
+            FROM plays
+            GROUP BY channel_id, guild_id
+            ORDER BY "playCount" DESC
+            LIMIT $1`,
+            [limit]
+        );
+
+        return result.rows as import('./types.js').ChannelStats[];
+    }
+
+    async getTopBots(limit: number = 10): Promise<import('./types.js').BotStats[]> {
+        if (!this.pool) throw new Error('Database not initialized');
+
+        const result = await this.pool.query(
+            `SELECT 
+                bot_name as "botName",
+                COUNT(*)::int as "playCount"
+            FROM plays
+            GROUP BY bot_name
+            ORDER BY "playCount" DESC
+            LIMIT $1`,
+            [limit]
+        );
+
+        return result.rows as import('./types.js').BotStats[];
+    }
+
+    async trackCacheHit(entityId: string, entityName: string, entityType: 'user' | 'bot'): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+
+        await this.pool.query(
+            `INSERT INTO cache_hits (entity_id, entity_name, entity_type)
+            VALUES ($1, $2, $3)`,
+            [entityId, entityName, entityType]
+        );
+    }
+
+    async getTopCacheHits(limit: number = 10): Promise<import('./types.js').CacheHitStats[]> {
+        if (!this.pool) throw new Error('Database not initialized');
+
+        const result = await this.pool.query(
+            `SELECT 
+                entity_id as "entityId",
+                entity_name as "entityName",
+                entity_type as "entityType",
+                COUNT(*)::int as "cacheHits"
+            FROM cache_hits
+            GROUP BY entity_id, entity_name, entity_type
+            ORDER BY "cacheHits" DESC
+            LIMIT $1`,
+            [limit]
+        );
+
+        return result.rows as import('./types.js').CacheHitStats[];
     }
 
     async close(): Promise<void> {
