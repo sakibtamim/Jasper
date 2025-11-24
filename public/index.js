@@ -201,9 +201,11 @@ function renderWorkers() {
                     `<i data-lucide="server" class="w-4 h-4 text-gray-400 shrink-0"></i>`
                 }
                         <span class="truncate font-medium">
-                            ${escapeHtml(worker.guildName || worker.guildId)} 
-                            <span class="text-gray-400 mx-1">•</span> 
-                            ${escapeHtml(worker.channelName || worker.voiceChannelId)}
+                            ${escapeHtml(worker.guildName || worker.guildId)}
+                            ${worker.voiceChannelId ? ` 
+                                <span class="text-gray-400 mx-1">•</span> 
+                                ${escapeHtml(worker.channelName || worker.voiceChannelId)}
+                            ` : ''}
                         </span>
                     </div>
                     ` : ''}
