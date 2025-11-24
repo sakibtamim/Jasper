@@ -11,6 +11,7 @@ import { deleteQueue, Queue, Song } from "./queue-manager.js";
 import { GuildMember } from "discord.js";
 import { isCacheEnabled, getCacheStorage } from "../cache-manager.js";
 import { Readable } from "stream";
+import db from "../db/index.js";
 
 // Constants for Autoplay
 const AUTOPLAY_SEARCH_QUERIES = [
@@ -191,6 +192,16 @@ export async function playSong(queue: Queue): Promise<void> {
         queue.player.play(resource);
         queue.nowPlaying = song;
         queue.nowPlaying.startTime = Date.now();
+
+        // Track play in DB
+        db.trackPlay({
+            userId: song.requesterId || 'unknown',
+            guildId: queue.guildId,
+            songTitle: song.title,
+            songUrl: song.url,
+            duration: song.durationInSec,
+            playedAt: new Date()
+        }).catch(err => logger.error(`[db] Failed to track play: ${err}`));
 
         logger.info(`[playback] Now playing in ${queue.guildId}: ${song.title}`);
 

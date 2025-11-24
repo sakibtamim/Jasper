@@ -15,6 +15,8 @@ It uses **yt-dlp** (an external command-line tool) to stream high-quality audio,
   - **Now Playing:** Shows rich embeds with video thumbnails, duration, and interactive controls.
   - **Multi-Client Support:** "One Mind, Many Bodies" architecture allows multiple bots (Jasper + Workers) to play music simultaneously in different channels of the same server.
   - **Automatic Feline Rotation (AFR):** 🆕 Smart, probabilistic bot selection with configurable Jasper presence and unique entry messages for each cat!
+  - **Database & Statistics:** 🆕 Tracks song plays, user activity, and global stats using SQLite (default) or PostgreSQL.
+  - **Web Dashboard:** Real-time monitoring of queues, workers, and statistics.
 
 ## Commands
 
@@ -188,6 +190,31 @@ Cache statistics are logged on bot startup and during cleanup:
 [Cache] Search cache: 156 entries
 [Cache] Cleaned up 3 expired files (28MB freed)
 ```
+
+## Database & Statistics
+
+🆕 **Jasper now tracks listening history and statistics!**
+
+### Supported Databases
+1.  **SQLite (Default):** Zero-configuration, stores data in `data/jasper.db`. Perfect for small servers and development.
+2.  **PostgreSQL:** Recommended for production and large servers.
+
+### Configuration
+To use PostgreSQL, add these to your `.env` file:
+
+```env
+# Database Configuration
+DB_TYPE=postgres
+DATABASE_URL=postgresql://user:password@localhost:5432/jasper_db
+```
+
+If `DB_TYPE` is not set or set to `sqlite`, it defaults to SQLite.
+
+### Viewing Statistics
+Statistics are displayed on the **Web Dashboard** (see below).
+- **Top Songs:** Most played tracks.
+- **Top Listeners:** Users with the most playtime.
+- **Global Stats:** Total plays and duration across the server.
 
 ## Web Dashboard (Opt-in)
 

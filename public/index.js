@@ -73,6 +73,7 @@ let queues = [];
 let queuesPagination = { currentPage: 1, totalPages: 1, totalQueues: 0, limit: 10 };
 let cacheStats = {};
 let logs = [];
+let stats = { topSongs: [], topUsers: [], globalStats: { totalPlays: 0, totalDuration: 0 } };
 let expandedQueues = new Set();
 
 // Get responsive limit
@@ -85,11 +86,12 @@ async function fetchData() {
     try {
         queuesPagination.limit = getQueueLimit();
 
-        const [workersRes, queuesRes, cacheRes, logsRes] = await Promise.all([
+        const [workersRes, queuesRes, cacheRes, logsRes, statsRes] = await Promise.all([
             fetch(`${API_BASE}/status`),
             fetch(`${API_BASE}/queues?page=${queuesPagination.currentPage}&limit=${queuesPagination.limit}`),
             fetch(`${API_BASE}/cache`),
-            fetch(`${API_BASE}/logs`)
+            fetch(`${API_BASE}/logs`),
+            fetch(`${API_BASE}/stats?limit=10`)
         ]);
 
         if (workersRes.ok) {
@@ -116,6 +118,11 @@ async function fetchData() {
             const data = await logsRes.json();
             logs = data.logs || [];
             renderLogs();
+        }
+
+        if (statsRes.ok) {
+            stats = await statsRes.json();
+            renderStats();
         }
     } catch (error) {
         console.error('Failed to fetch data:', error);
@@ -427,6 +434,70 @@ function renderCacheStats() {
     document.getElementById('stats-search').textContent = `${cacheStats.searchCacheSize || 0} entries`;
     document.getElementById('stats-files').textContent = `${cacheStats.audioCacheFiles || 0} files`;
     document.getElementById('stats-size').textContent = `${cacheStats.audioCacheSizeMB || 0} MB`;
+}
+
+// Render Stats
+function renderStats() {
+    // Global Stats
+    document.getElementById('stats-total-plays').textContent = stats.globalStats.totalPlays.toLocaleString();
+
+    // Format total duration
+    const totalSeconds = stats.globalStats.totalDuration;
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    document.getElementById('stats-total-duration').textContent = `${hours}h ${minutes}m`;
+
+    // Top Songs
+    const songsContainer = document.getElementById('stats-top-songs');
+    if (songsContainer) {
+        if (!stats.topSongs.length) {
+            songsContainer.innerHTML = '<div class="p-4 text-center text-gray-500 text-sm">No data yet</div>';
+        } else {
+            songsContainer.innerHTML = stats.topSongs.map((song, index) => `
+                <div class="p-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                    <div class="text-2xl font-bold text-gray-300 dark:text-gray-600 w-8 text-center">${index + 1}</div>
+                    <div class="flex-1 min-w-0">
+                        <a href="${escapeHtml(song.songUrl)}" target="_blank" class="font-medium text-gray-900 dark:text-white hover:text-brand-primary truncate block">
+                            ${escapeHtml(song.songTitle)}
+                        </a>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            ${formatDuration(song.totalDuration)} total played
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-bold text-brand-secondary">${song.playCount}</div>
+                        <div class="text-[10px] text-gray-400 uppercase tracking-wider">Plays</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    // Top Users
+    const usersContainer = document.getElementById('stats-top-users');
+    if (usersContainer) {
+        if (!stats.topUsers.length) {
+            usersContainer.innerHTML = '<div class="p-4 text-center text-gray-500 text-sm">No data yet</div>';
+        } else {
+            usersContainer.innerHTML = stats.topUsers.map((user, index) => `
+                <div class="p-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                    <div class="text-2xl font-bold text-gray-300 dark:text-gray-600 w-8 text-center">${index + 1}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-medium text-gray-900 dark:text-white truncate">
+                            ${escapeHtml(user.userId)}
+                        </div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            ${formatDuration(user.totalDuration)} total listening time
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-bold text-brand-primary">${user.playCount}</div>
+                        <div class="text-[10px] text-gray-400 uppercase tracking-wider">Plays</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
 }
 
 // Render Logs

@@ -52,6 +52,8 @@
                         class="px-4 py-2 rounded-full text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-brand-primary transition-colors">Workers</a>
                     <a href="#queues"
                         class="px-4 py-2 rounded-full text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-brand-secondary transition-colors">Queues</a>
+                    <a href="#stats"
+                        class="px-4 py-2 rounded-full text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-brand-primary transition-colors">Stats</a>
                     <a href="#cache"
                         class="px-4 py-2 rounded-full text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-brand-primary transition-colors">Cache</a>
                     <a href="#logs"
@@ -115,6 +117,66 @@
             </div>
         </section>
 
+        <!-- Statistics Section -->
+        <section id="stats" class="mb-16 scroll-mt-24">
+            <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-8 flex items-center gap-3">
+                <i data-lucide="bar-chart-2" class="w-8 h-8 text-brand-secondary"></i>
+                Statistics
+            </h2>
+
+            <!-- Global Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div
+                    class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border-l-4 border-brand-primary dark:border-t-0 dark:border-r-0 dark:border-b-0">
+                    <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium uppercase tracking-wider">Total
+                        Plays</h3>
+                    <p id="stats-total-plays" class="text-4xl font-bold text-gray-900 dark:text-white mt-2">0</p>
+                </div>
+                <div
+                    class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border-l-4 border-brand-secondary dark:border-t-0 dark:border-r-0 dark:border-b-0">
+                    <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium uppercase tracking-wider">Total
+                        Playtime</h3>
+                    <p id="stats-total-duration" class="text-4xl font-bold text-gray-900 dark:text-white mt-2">0h 0m</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Top Songs -->
+                <div
+                    class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                        <h3 class="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <i data-lucide="music" class="w-4 h-4 text-brand-primary"></i>
+                            Top Songs
+                        </h3>
+                    </div>
+                    <div id="stats-top-songs"
+                        class="divide-y divide-gray-100 dark:divide-gray-700 max-h-[400px] overflow-y-auto">
+                        <!-- Top songs injected here -->
+                        <div class="p-4 text-center text-gray-500 text-sm">Loading...</div>
+                    </div>
+                </div>
+
+                <!-- Top Users -->
+                <div
+                    class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                        <h3 class="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                            <i data-lucide="user" class="w-4 h-4 text-brand-secondary"></i>
+                            Top Listeners
+                        </h3>
+                    </div>
+                    <div id="stats-top-users"
+                        class="divide-y divide-gray-100 dark:divide-gray-700 max-h-[400px] overflow-y-auto">
+                        <!-- Top users injected here -->
+                        <div class="p-4 text-center text-gray-500 text-sm">Loading...</div>
+                    </div>
+                </div>
+            </div>
+
+            </div>
+        </section>
+
         <!-- Cache Stats Section -->
         <section id="cache" class="mb-16 scroll-mt-24">
             <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-8 flex items-center gap-3">
@@ -136,7 +198,8 @@
                 </div>
                 <div
                     class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border-l-4 border-purple-500 hover-card dark:border-t-0 dark:border-r-0 dark:border-b-0">
-                    <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium uppercase tracking-wider">Storage
+                    <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium uppercase tracking-wider">
+                        Storage
                         Used</h3>
                     <p id="stats-size" class="text-3xl font-bold text-gray-900 dark:text-white mt-2">0 MB</p>
                 </div>
