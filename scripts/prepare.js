@@ -36,6 +36,20 @@ const result = spawnSync('npm', ['run', 'build'], {
     cwd: root,
     stdio: 'inherit',
     shell: true
-});
+})
+
+// Run cache migration if needed (silent, only logs if migration actually happens)
+const migratePath = join(root, 'scripts', 'migrate-cache.js');
+if (existsSync(migratePath)) {
+    const migrateResult = spawnSync('node', [migratePath], {
+        cwd: root,
+        stdio: 'inherit',
+        shell: true
+    });
+    // Migration failures are non-fatal, just log and continue
+    if (migrateResult.status !== 0) {
+        console.warn('Warning: Cache migration encountered issues but continuing...');
+    }
+}
 
 process.exit(result.status || 0);
