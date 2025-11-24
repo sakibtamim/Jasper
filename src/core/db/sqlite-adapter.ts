@@ -367,7 +367,7 @@ export class SqliteAdapter implements DatabaseAdapter {
         entity_type as entityType,
         COUNT(*) as cacheHits
       FROM cache_hits
-      GROUP BY entity_id, entity_type
+      GROUP BY entity_id, entity_name, entity_type
       ORDER BY cacheHits DESC
       LIMIT ?
     `);
