@@ -2,6 +2,8 @@ export interface PlayRecord {
     id?: number; // Auto-increment
     userId: string;
     guildId: string;
+    channelId: string; // NEW
+    botName: string; // NEW
     songTitle: string;
     songUrl: string;
     duration: number;
@@ -44,6 +46,26 @@ export interface AudioMetadata {
     expiresAt: Date;
 }
 
+export interface ChannelStats {
+    guildId: string;
+    guildName: string;
+    channelId: string;
+    channelName: string;
+    playCount: number;
+}
+
+export interface BotStats {
+    botName: string;
+    playCount: number;
+}
+
+export interface CacheHitStats {
+    entityId: string; // userId or botName
+    entityName: string; // username or botName
+    cacheHits: number;
+    entityType: 'user' | 'bot';
+}
+
 export interface DatabaseAdapter {
     /**
      * Initialize the database connection and schema.
@@ -64,6 +86,16 @@ export interface DatabaseAdapter {
      * Get top users by play count.
      */
     getTopUsers(limit?: number): Promise<UserStats[]>;
+
+    /**
+     * Get top channels by play count.
+     */
+    getTopChannels(limit?: number): Promise<ChannelStats[]>;
+
+    /**
+     * Get top bots by play count.
+     */
+    getTopBots(limit?: number): Promise<BotStats[]>;
 
     /**
      * Get total stats (total plays, total duration).
@@ -105,6 +137,16 @@ export interface DatabaseAdapter {
      * Get cache statistics.
      */
     getCacheStats(): Promise<{ searchCacheSize: number; audioMetadataCount: number }>;
+
+    /**
+     * Track a cache hit.
+     */
+    trackCacheHit(entityId: string, entityName: string, entityType: 'user' | 'bot'): Promise<void>;
+
+    /**
+     * Get top entities by cache hits.
+     */
+    getTopCacheHits(limit?: number): Promise<CacheHitStats[]>;
 
     /**
      * Close the database connection.

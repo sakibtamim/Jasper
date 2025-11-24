@@ -28,6 +28,8 @@ export class SqliteAdapter implements DatabaseAdapter {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           user_id TEXT NOT NULL,
           guild_id TEXT NOT NULL,
+          channel_id TEXT NOT NULL,
+          bot_name TEXT NOT NULL,
           song_title TEXT NOT NULL,
           song_url TEXT NOT NULL,
           duration INTEGER NOT NULL,
@@ -56,6 +58,14 @@ export class SqliteAdapter implements DatabaseAdapter {
           cached_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           expires_at DATETIME NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS cache_hits (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          entity_id TEXT NOT NULL,
+          entity_name TEXT NOT NULL,
+          entity_type TEXT NOT NULL,
+          hit_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
       `);
 
       // Create indexes for performance
@@ -63,10 +73,14 @@ export class SqliteAdapter implements DatabaseAdapter {
         CREATE INDEX IF NOT EXISTS idx_plays_user_id ON plays(user_id);
         CREATE INDEX IF NOT EXISTS idx_plays_song_url ON plays(song_url);
         CREATE INDEX IF NOT EXISTS idx_plays_played_at ON plays(played_at);
+        CREATE INDEX IF NOT EXISTS idx_plays_channel_id ON plays(channel_id);
+        CREATE INDEX IF NOT EXISTS idx_plays_bot_name ON plays(bot_name);
         CREATE INDEX IF NOT EXISTS idx_search_cache_query ON search_cache(query);
         CREATE INDEX IF NOT EXISTS idx_search_cache_expires_at ON search_cache(expires_at);
         CREATE INDEX IF NOT EXISTS idx_audio_metadata_video_id ON audio_metadata(video_id);
         CREATE INDEX IF NOT EXISTS idx_audio_metadata_expires_at ON audio_metadata(expires_at);
+        CREATE INDEX IF NOT EXISTS idx_cache_hits_entity_id ON cache_hits(entity_id);
+        CREATE INDEX IF NOT EXISTS idx_cache_hits_entity_type ON cache_hits(entity_type);
       `);
 
       logger.info(`[db] SQLite database initialized at ${this.dbPath}`);
@@ -80,13 +94,15 @@ export class SqliteAdapter implements DatabaseAdapter {
     if (!this.db) throw new Error('Database not initialized');
 
     const stmt = this.db.prepare(`
-      INSERT INTO plays (user_id, guild_id, song_title, song_url, duration, played_at)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO plays (user_id, guild_id, channel_id, bot_name, song_title, song_url, duration, played_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
       record.userId,
       record.guildId,
+      record.channelId,
+      record.botName,
       record.songTitle,
       record.songUrl,
       record.duration,
@@ -293,6 +309,70 @@ export class SqliteAdapter implements DatabaseAdapter {
       searchCacheSize: searchCount,
       audioMetadataCount: audioCount,
     };
+  }
+
+  async getTopChannels(limit: number = 10): Promise<import('./types.js').ChannelStats[]> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const stmt = this.db.prepare(`
+      SELECT 
+        guild_id as guildId,
+        '' as guildName,
+        channel_id as channelId,
+        '' as channelName,
+        COUNT(*) as playCount
+      FROM plays
+      GROUP BY channel_id, guild_id
+      ORDER BY playCount DESC
+      LIMIT ?
+    `);
+
+    return stmt.all(limit) as import('./types.js').ChannelStats[];
+  }
+
+  async getTopBots(limit: number = 10): Promise<import('./types.js').BotStats[]> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const stmt = this.db.prepare(`
+      SELECT 
+        bot_name as botName,
+        COUNT(*) as playCount
+      FROM plays
+      GROUP BY bot_name
+      ORDER BY playCount DESC
+      LIMIT ?
+    `);
+
+    return stmt.all(limit) as import('./types.js').BotStats[];
+  }
+
+  async trackCacheHit(entityId: string, entityName: string, entityType: 'user' | 'bot'): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const stmt = this.db.prepare(`
+      INSERT INTO cache_hits (entity_id, entity_name, entity_type)
+      VALUES (?, ?, ?)
+    `);
+
+    stmt.run(entityId, entityName, entityType);
+  }
+
+  async getTopCacheHits(limit: number = 10): Promise<import('./types.js').CacheHitStats[]> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const stmt = this.db.prepare(`
+      SELECT 
+        entity_id as entityId,
+        entity_name as entityName,
+        entity_type as entityType,
+        COUNT(*) as cacheHits
+      FROM cache_hits
+      GROUP BY entity_id, entity_type
+      ORDER BY cacheHits DESC
+      LIMIT ?
+    `);
+
+    return stmt.all(limit) as import('./types.js').CacheHitStats[];
   }
 
   async close(): Promise<void> {
