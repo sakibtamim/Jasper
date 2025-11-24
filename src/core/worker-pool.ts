@@ -192,6 +192,10 @@ function allocateWorker(guildId: string, voiceChannelId: string): WorkerState | 
 
     // 3. Use AFR to select a worker
     const selected = selectFelineWithAFR(eligibleWorkers);
+
+    // CRITICAL: Mark as busy immediately to prevent race conditions
+    setWorkerBusy(selected, guildId, voiceChannelId);
+
     return selected;
 }
 
