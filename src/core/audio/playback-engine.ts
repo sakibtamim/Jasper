@@ -199,6 +199,8 @@ export async function playSong(queue: Queue): Promise<void> {
         db.trackPlay({
             userId: song.requesterId || 'unknown',
             guildId: queue.guildId,
+            channelId: queue.voiceChannelId,
+            botName: queue.worker.name,
             songTitle: song.title,
             songUrl: song.url,
             duration: song.durationInSec,
