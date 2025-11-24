@@ -13,6 +13,7 @@ export interface Song {
     requesterId?: string;
     thumbnail?: string;
     fromCache?: boolean;
+    startTime?: number;
 }
 
 export interface Queue {

@@ -190,6 +190,7 @@ export async function playSong(queue: Queue): Promise<void> {
 
         queue.player.play(resource);
         queue.nowPlaying = song;
+        queue.nowPlaying.startTime = Date.now();
 
         logger.info(`[playback] Now playing in ${queue.guildId}: ${song.title}`);
 

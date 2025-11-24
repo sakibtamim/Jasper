@@ -110,7 +110,8 @@ server.get('/api/queues', async (request, _reply) => {
                 title: q.nowPlaying.title,
                 url: q.nowPlaying.url,
                 duration: q.nowPlaying.durationInSec,
-                requestedBy: q.nowPlaying.requestedBy
+                requestedBy: q.nowPlaying.requestedBy,
+                startTime: q.nowPlaying.startTime
             } : null,
             songs: q.songs.map(song => ({
                 title: song.title,

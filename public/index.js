@@ -163,6 +163,11 @@ function renderWorkers() {
 
         return `
             <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border-l-4 ${borderColor} transition-all hover:scale-[1.02] relative overflow-hidden group dark:border-t-0 dark:border-r-0 dark:border-b-0">
+                <!-- Music Note BG -->
+                <div class="absolute top-2 right-2 text-6xl opacity-5 pointer-events-none select-none transform rotate-12">
+                    🎵
+                </div>
+
                 <div class="flex items-start gap-4 mb-4 relative z-10">
                     <div class="relative">
                         <img src="${escapeHtml(worker.avatarUrl || 'assets/images/jasper-logo.png')}" alt="${escapeHtml(worker.name)}" 
@@ -186,7 +191,7 @@ function renderWorkers() {
                 <div class="space-y-3 relative z-10">
                     <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
                         <i data-lucide="activity" class="w-4 h-4 text-brand-primary shrink-0"></i>
-                        <span class="truncate">${escapeHtml(worker.activity || 'None')}</span>
+                        <span class="truncate">${escapeHtml((worker.activity === 'Custom Status' ? 'Playing Music' : worker.activity) || 'None')}</span>
                     </div>
 
                     ${worker.guildId ? `
@@ -195,14 +200,13 @@ function renderWorkers() {
                     `<img src="${escapeHtml(worker.guildIconUrl)}" class="w-4 h-4 rounded-full object-cover">` :
                     `<i data-lucide="server" class="w-4 h-4 text-gray-400 shrink-0"></i>`
                 }
-                        <span class="truncate font-medium">${escapeHtml(worker.guildName || worker.guildId)}</span>
-                    </div>
-                    ` : ''}
-
-                    ${worker.voiceChannelId ? `
-                    <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                        <i data-lucide="mic" class="w-4 h-4 text-gray-400 shrink-0"></i>
-                        <span class="truncate">${escapeHtml(worker.channelName || worker.voiceChannelId)}</span>
+                        <span class="truncate font-medium">
+                            ${escapeHtml(worker.guildName || worker.guildId)}
+                            ${worker.voiceChannelId ? ` 
+                                <span class="text-gray-400 mx-1">•</span> 
+                                ${escapeHtml(worker.channelName || worker.voiceChannelId)}
+                            ` : ''}
+                        </span>
                     </div>
                     ` : ''}
 
@@ -213,6 +217,7 @@ function renderWorkers() {
                             ${worker.nowPlaying.requester ? `
                                 <div class="flex items-center gap-1.5" title="Requested by ${escapeHtml(worker.nowPlaying.requester.username)}">
                                     <span class="text-[10px] uppercase tracking-wider opacity-70">Req by</span>
+                                    <span class="text-[10px] font-medium truncate max-w-[80px]">${escapeHtml(worker.nowPlaying.requester.displayName || worker.nowPlaying.requester.username)}</span>
                                     <img src="${escapeHtml(worker.nowPlaying.requester.avatarUrl || 'https://cdn.discordapp.com/embed/avatars/0.png')}" 
                                          class="w-4 h-4 rounded-full border border-gray-200 dark:border-gray-600"
                                          alt="${escapeHtml(worker.nowPlaying.requester.username)}">
@@ -233,6 +238,14 @@ function renderWorkers() {
                             </div>
                         </div>
                     </div>
+                    ` : ''}
+
+                    ${isBusy && worker.guildId ? `
+                        <button onclick="document.getElementById('queue-${worker.guildId}-${worker.voiceChannelId}')?.scrollIntoView({behavior: 'smooth', block: 'center'})" 
+                                class="w-full mt-2 px-3 py-2 text-xs font-medium text-brand-primary hover:text-white border border-brand-primary hover:bg-brand-primary rounded-lg transition-colors flex items-center justify-center gap-2 group-hover:opacity-100 opacity-0 transition-opacity duration-200">
+                            <i data-lucide="list-music" class="w-3 h-3"></i>
+                            Jump to Queue
+                        </button>
                     ` : ''}
                 </div>
             </div>
@@ -259,7 +272,7 @@ function renderQueues() {
     }
 
     container.innerHTML = queues.map(queue => `
-        <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-4 hover:border-brand-primary/30 transition-colors shadow-sm">
+        <div id="queue-${queue.guildId}-${queue.voiceChannelId}" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-4 hover:border-brand-primary/30 transition-colors shadow-sm scroll-mt-24">
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-lg bg-brand-primary/10 flex items-center justify-center text-brand-primary">
@@ -291,10 +304,24 @@ function renderQueues() {
                         <a href="${escapeHtml(queue.nowPlaying.url)}" target="_blank" class="text-sm font-medium text-gray-900 dark:text-white hover:text-brand-primary transition-colors truncate block">
                             ${escapeHtml(queue.nowPlaying.title)}
                         </a>
-                        <div class="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            <span>${formatDuration(queue.nowPlaying.duration)}</span>
-                            <span>•</span>
-                            <span>Requested by ${escapeHtml(queue.nowPlaying.requestedBy)}</span>
+                        
+                        <!-- Progress Bar -->
+                        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-2 mb-1 overflow-hidden">
+                            <div class="bg-brand-primary h-1.5 rounded-full transition-all duration-1000" style="width: ${(() => {
+                if (!queue.nowPlaying.startTime || !queue.nowPlaying.duration) return '0%';
+                const elapsed = (Date.now() - queue.nowPlaying.startTime) / 1000;
+                const percent = Math.min(100, Math.max(0, (elapsed / queue.nowPlaying.duration) * 100));
+                return `${percent}%`;
+            })()}"></div>
+                        </div>
+
+                        <div class="flex items-center justify-between mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            <div class="flex items-center gap-2">
+                                <span>${formatDuration(queue.nowPlaying.duration)}</span>
+                                <span>•</span>
+                                <span>${queue.nowPlaying.requestedBy === 'Radio' ? `Enqueued by Radio ${escapeHtml(queue.workerName)} 📻 🐱` : `Requested by ${escapeHtml(queue.nowPlaying.requestedBy)}`}</span>
+                            </div>
+                            <!-- Live Progress Timer (Optional, simpler to just show total for now or calculate if needed) -->
                         </div>
                     </div>
                 </div>
@@ -303,19 +330,34 @@ function renderQueues() {
 
             ${queue.songs && queue.songs.length > 0 ? `
             <div class="space-y-2">
-                <div class="text-xs text-gray-500 uppercase tracking-wider font-bold">Up Next (${queue.songs.length} songs)</div>
+                <div class="text-xs text-gray-500 uppercase tracking-wider font-bold">Up Next (${queue.songs.length - (queue.nowPlaying && queue.songs[0]?.title === queue.nowPlaying.title ? 1 : 0)} songs)</div>
                 ${(() => {
                 const maxInitialSongs = 10;
                 const maxExpandedSongs = 20;
                 const queueId = `${queue.guildId}-${queue.voiceChannelId}`;
                 const isExpanded = expandedQueues.has(queueId);
-                const songsToShow = isExpanded ? queue.songs.slice(0, maxExpandedSongs) : queue.songs.slice(0, maxInitialSongs);
-                const hasMore = queue.songs.length > maxInitialSongs;
-                const canExpand = queue.songs.length > maxExpandedSongs;
 
-                let cumulativeEta = queue.nowPlaying ? queue.nowPlaying.duration : 0;
+                // Filter out currently playing song if it appears at the top of the queue
+                let filteredSongs = queue.songs;
+                if (queue.nowPlaying && filteredSongs.length > 0 && filteredSongs[0].title === queue.nowPlaying.title) {
+                    filteredSongs = filteredSongs.slice(1);
+                }
+
+                const songsToShow = isExpanded ? filteredSongs.slice(0, maxExpandedSongs) : filteredSongs.slice(0, maxInitialSongs);
+                const hasMore = filteredSongs.length > maxInitialSongs;
+                const canExpand = filteredSongs.length > maxExpandedSongs;
+
+                let cumulativeEta = 0; // Start from 0 for "Up Next"
+                // If we want accurate ETA relative to *now*, we'd add remaining time of current song.
+                // But "ETA in Xm" usually means "wait time from now".
+                if (queue.nowPlaying && queue.nowPlaying.duration) {
+                    const elapsed = queue.nowPlaying.startTime ? (Date.now() - queue.nowPlaying.startTime) / 1000 : 0;
+                    const remaining = Math.max(0, queue.nowPlaying.duration - elapsed);
+                    cumulativeEta = remaining;
+                }
+
                 const songsHtml = songsToShow.map((song, index) => {
-                    const songEta = cumulativeEta;
+                    const waitTime = cumulativeEta;
                     cumulativeEta += song.duration || 0;
 
                     return `
@@ -334,11 +376,11 @@ function renderQueues() {
                                 <div class="flex items-center gap-2 mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
                                     <span>${formatDuration(song.duration)}</span>
                                     <span>•</span>
-                                    <span>${escapeHtml(song.requestedBy)}</span>
+                                    <span>${song.requestedBy === 'Radio' ? `Radio ${escapeHtml(queue.workerName)} 📻 🐱` : escapeHtml(song.requestedBy)}</span>
                                 </div>
                             </div>
                             <div class="text-[10px] text-gray-400 dark:text-gray-500 font-medium shrink-0">
-                                ETA ${formatDuration(songEta)}
+                                ETA ${formatEta(waitTime)}
                             </div>
                         </div>
                     </div>
@@ -357,7 +399,7 @@ function renderQueues() {
                                 Show Less
                             </button>`;
                     } else {
-                        const remainingSongs = queue.songs.length - maxInitialSongs;
+                        const remainingSongs = filteredSongs.length - maxInitialSongs;
                         const songsToAdd = Math.min(maxExpandedSongs - maxInitialSongs, remainingSongs);
                         button = `
                             <button 
@@ -365,7 +407,7 @@ function renderQueues() {
                                 class="w-full mt-2 px-3 py-2 text-xs font-medium text-brand-secondary hover:text-brand-primary border border-brand-secondary/30 hover:border-brand-primary rounded-lg transition-colors flex items-center justify-center gap-2"
                             >
                                 <i data-lucide="chevron-down" class="w-4 h-4"></i>
-                                Show ${songsToAdd} More ${songsToAdd === 1 ? 'Song' : 'Songs'}${canExpand ? ` (${queue.songs.length - maxExpandedSongs} more not shown)` : ''}
+                                Show ${songsToAdd} More ${songsToAdd === 1 ? 'Song' : 'Songs'}${canExpand ? ` (${filteredSongs.length - maxExpandedSongs} more not shown)` : ''}
                             </button>`;
                     }
                 }
@@ -437,6 +479,18 @@ function formatDuration(seconds) {
     const min = Math.floor(seconds / 60);
     const sec = Math.floor(seconds % 60);
     return `${min}:${sec.toString().padStart(2, '0')}`;
+}
+
+// Helper: Format ETA
+function formatEta(seconds) {
+    if (!seconds || seconds < 60) return 'in <1m';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.round((seconds % 3600) / 60);
+
+    if (hours > 0) {
+        return `in ${hours}h${minutes}m`;
+    }
+    return `in ${minutes}m`;
 }
 
 // Render Queues Pagination Controls
