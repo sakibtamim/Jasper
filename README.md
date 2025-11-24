@@ -16,6 +16,27 @@ It uses **yt-dlp** (an external command-line tool) to stream high-quality audio,
   - **Multi-Client Support:** "One Mind, Many Bodies" architecture allows multiple bots (Jasper + Workers) to play music simultaneously in different channels of the same server.
   - **Automatic Feline Rotation (AFR):** 🆕 Smart, probabilistic bot selection with configurable Jasper presence and unique entry messages for each cat!
 
+## Commands
+
+| Command | Description |
+| :--- | :--- |
+| `/play <query>` | Play a song from YouTube or search by keywords. |
+| `/p <query>` | Alias for `/play`. |
+| `/playlist <url>` | Play a YouTube playlist. |
+| `/pl <url>` | Alias for `/playlist`. |
+| `/radio` | 🆕 Play random songs from the local cache. |
+| `/pause` | Pause the current song. |
+| `/resume` | Resume the paused song. |
+| `/skip` | Skip the current song. |
+| `/stop` | Stop playback and clear the queue. |
+| `/queue` | Show the current music queue. |
+| `/nowplaying` | Show the currently playing song. |
+| `/autoplay` | Toggle autoplay on/off. |
+| `/music-status` | Check the status of all music workers. |
+| `/cache-status` | View cache statistics and storage usage. |
+| `/catastrophic-reset` | Emergency command to reset all bots and queues. |
+| `/help` | Show this help message. |
+
 ## Multi-Client Architecture (Heavenly Council of Fur)
 
 Jasper supports a unique **Controller + Worker** architecture.

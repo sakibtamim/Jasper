@@ -210,10 +210,18 @@ export async function playSong(queue: Queue): Promise<void> {
                 queue.worker.client,
                 queue.voiceChannelId
             );
-            const prefix = song.fromCache ? "⚡⚡ " : "";
+
+            let content = "";
+            if (queue.isRadio) {
+                content = `📻 **Radio:** [${song.title}](${song.url}) in **#${channelName}**`;
+            } else {
+                const prefix = song.fromCache ? "⚡⚡ " : "";
+                content = `${prefix}▶️ **${queue.worker.name}** is now playing in **#${channelName}**: [${song.title}](${song.url})`;
+            }
+
             playingMessage = await queue.textChannel
                 .send({
-                    content: `${prefix}▶️ **${queue.worker.name}** is now playing in **#${channelName}**: [${song.title}](${song.url})`,
+                    content,
                     components: [row],
                 })
                 .catch((error: unknown) => logger.warn(`Failed to send playing message: ${error instanceof Error ? error.message : String(error)}`)) as Message | undefined;
@@ -314,5 +322,61 @@ export async function playSong(queue: Queue): Promise<void> {
         logger.error(`[playback] Failed to play song: ${error.message}`);
         queue.songs.shift();
         playSong(queue);
+    }
+}
+
+export async function handleRadio(queue: Queue): Promise<void> {
+    try {
+        if (queue.textChannel && 'send' in queue.textChannel) {
+            queue.textChannel
+                .send("📻 **Radio Mode:** Picking a random song from cache...")
+                .catch((error: unknown) => logger.warn(`Failed to send radio message: ${error instanceof Error ? error.message : String(error)}`));
+        }
+
+        if (!isCacheEnabled()) {
+            if (queue.textChannel && 'send' in queue.textChannel) {
+                queue.textChannel.send("❌ Cache is disabled. Cannot play radio.");
+            }
+            queue.isRadio = false;
+            return;
+        }
+
+        const storage = getCacheStorage();
+        if (!storage) {
+            if (queue.textChannel && 'send' in queue.textChannel) {
+                queue.textChannel.send("❌ Cache storage not available.");
+            }
+            queue.isRadio = false;
+            return;
+        }
+
+        const randomSong = await storage.getRandomCachedSong();
+        if (!randomSong) {
+            if (queue.textChannel && 'send' in queue.textChannel) {
+                queue.textChannel.send("❌ No songs in cache to play.");
+            }
+            queue.isRadio = false;
+            return;
+        }
+
+        // Ensure we don't play the same song if possible
+        let songToPlay = randomSong;
+        if (queue.nowPlaying && queue.nowPlaying.url === songToPlay.url) {
+            // Try one more time to get a different song
+            const retrySong = await storage.getRandomCachedSong();
+            if (retrySong && retrySong.url !== queue.nowPlaying.url) {
+                songToPlay = retrySong;
+            }
+        }
+        queue.songs.push(songToPlay);
+
+        playSong(queue);
+
+    } catch (error: unknown) {
+        logger.error(`[playback] Radio error: ${error instanceof Error ? error.message : String(error)}`);
+        if (queue.textChannel && 'send' in queue.textChannel) {
+            queue.textChannel.send("❌ An error occurred while trying to play radio.");
+        }
+        queue.isRadio = false;
     }
 }
