@@ -704,14 +704,21 @@ async function startRadio(interaction: ChatInputCommandInteraction): Promise<voi
 
   try {
     // Ensure queue exists (or create new one)
+    logger.info(`[radio] Starting radio for channel ${voiceChannel.id}`);
     let queue = await validateAndCleanupQueue(interaction, voiceChannel.id);
 
     if (!queue) {
+      logger.info(`[radio] No existing queue, assigning worker...`);
       const worker = await assignWorker(interaction, voiceChannel, true);
-      if (!worker) return;
+      if (!worker) {
+        logger.warn(`[radio] Failed to assign worker`);
+        return;
+      }
+      logger.info(`[radio] Assigned worker ${worker.name}`);
       queue = await createQueue(interaction, worker, null);
     } else {
       // Re-acquire worker if idle
+      logger.info(`[radio] Reusing existing queue/worker ${queue.worker.name}`);
       const success = await reacquireIdleWorker(interaction, queue);
       if (!success) return;
     }
@@ -724,6 +731,7 @@ async function startRadio(interaction: ChatInputCommandInteraction): Promise<voi
 
     // If nothing is playing, start radio immediately
     if (!queue.nowPlaying && queue.songs.length === 0) {
+      logger.info(`[radio] Queue empty, starting playback immediately`);
       await handleRadio(queue);
     } else {
       const channelName = await getChannelName(
