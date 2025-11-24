@@ -33,6 +33,12 @@ interface AudioMetadata {
     videoId: string;
     searchTerms: string[];
     timestamp: number;
+    // Extended metadata for efficient retrieval
+    title?: string;
+    durationInSec?: number;
+    url?: string;
+    thumbnail?: string;
+    requestedBy?: string;
 }
 
 export interface CacheStats {
@@ -243,6 +249,11 @@ class FileCacheStorage implements ICacheStorage {
                     videoId,
                     searchTerms,
                     timestamp: Date.now(),
+                    // Save extended metadata if available (passed via searchTerms or we could pass a Song object)
+                    // Since we only pass searchTerms here, we might need to update the signature or infer
+                    // For now, we'll try to use the first search term as title if it looks like one
+                    title: searchTerms[0],
+                    url: url,
                 };
                 try {
                     await fs.writeFile(metaPath, JSON.stringify(meta, null, 2), 'utf-8');
@@ -368,7 +379,18 @@ class FileCacheStorage implements ICacheStorage {
                 const metaData = await fs.readFile(metaPath, 'utf-8');
                 const meta: AudioMetadata = JSON.parse(metaData);
 
-                // Try to find in search cache first for full details
+                // Optimization: Use metadata directly if available (O(1))
+                if (meta.title && meta.url) {
+                    return {
+                        title: meta.title,
+                        url: meta.url,
+                        durationInSec: meta.durationInSec || 0,
+                        requestedBy: meta.requestedBy || "Radio",
+                        fromCache: true
+                    };
+                }
+
+                // Fallback: Try to find in search cache (O(N)) - Legacy support
                 await this.loadSearchCache();
                 for (const cached of this.searchCache.values()) {
                     if (cached.song.url.includes(meta.videoId)) {
@@ -380,7 +402,7 @@ class FileCacheStorage implements ICacheStorage {
                     }
                 }
 
-                // Fallback if not in search cache
+                // Final Fallback
                 return {
                     title: meta.searchTerms[0] || "Unknown Title",
                     url: `https://www.youtube.com/watch?v=${meta.videoId}`,

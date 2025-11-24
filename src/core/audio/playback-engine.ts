@@ -360,17 +360,15 @@ export async function handleRadio(queue: Queue): Promise<void> {
         }
 
         // Ensure we don't play the same song if possible
-        if (queue.nowPlaying && queue.nowPlaying.url === randomSong.url) {
-            // Try one more time
+        let songToPlay = randomSong;
+        if (queue.nowPlaying && queue.nowPlaying.url === songToPlay.url) {
+            // Try one more time to get a different song
             const retrySong = await storage.getRandomCachedSong();
-            if (retrySong) {
-                queue.songs.push(retrySong);
-            } else {
-                queue.songs.push(randomSong);
+            if (retrySong && retrySong.url !== queue.nowPlaying.url) {
+                songToPlay = retrySong;
             }
-        } else {
-            queue.songs.push(randomSong);
         }
+        queue.songs.push(songToPlay);
 
         playSong(queue);
 
