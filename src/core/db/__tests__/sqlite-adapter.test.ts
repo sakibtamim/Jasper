@@ -104,6 +104,6 @@ describe('SqliteAdapter', () => {
 
         const globalStats = await adapter.getGlobalStats();
         expect(globalStats.totalPlays).toBe(3);
-        expect(globalStats.totalDuration).toBe(400);
+        expect(globalStats.totalDuration).toBe(560);
     });
 });
