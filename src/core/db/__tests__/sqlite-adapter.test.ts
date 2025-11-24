@@ -31,6 +31,8 @@ describe('SqliteAdapter', () => {
         const playRecord = {
             userId: 'user123',
             guildId: 'guild123',
+            channelId: 'channel123',
+            botName: 'TestBot',
             songTitle: 'Test Song',
             songUrl: 'http://example.com/song',
             duration: 180,
@@ -58,26 +60,32 @@ describe('SqliteAdapter', () => {
         const record1 = {
             userId: 'user1',
             guildId: 'guild1',
+            channelId: 'channel1',
+            botName: 'TestBot',
             songTitle: 'Song A',
-            songUrl: 'http://example.com/a',
-            duration: 100,
-            playedAt: new Date(),
+            songUrl: 'https://example.com/a',
+            duration: 180,
+            playedAt: new Date('2024-01-01')
         };
         const record2 = {
             userId: 'user1',
             guildId: 'guild1',
+            channelId: 'channel1',
+            botName: 'TestBot',
             songTitle: 'Song A',
-            songUrl: 'http://example.com/a',
-            duration: 100,
-            playedAt: new Date(),
+            songUrl: 'https://example.com/a',
+            duration: 180,
+            playedAt: new Date('2024-01-01')
         };
         const record3 = {
             userId: 'user2',
             guildId: 'guild1',
+            channelId: 'channel1',
+            botName: 'TestBot',
             songTitle: 'Song B',
-            songUrl: 'http://example.com/b',
+            songUrl: 'https://example.com/b',
             duration: 200,
-            playedAt: new Date(),
+            playedAt: new Date('2024-01-02')
         };
 
         await adapter.trackPlay(record1);
