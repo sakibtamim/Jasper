@@ -20,5 +20,9 @@ try {
     throw err;
 }
 
+export function getDatabase(): DatabaseAdapter {
+    return db;
+}
+
 export default db;
 export * from './types.js';
