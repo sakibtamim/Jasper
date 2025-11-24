@@ -27,11 +27,14 @@ import {
   Song,
 } from "./audio/queue-manager.js";
 
+import { getCacheStorage } from './cache-manager.js';
+import { resolveTrack } from './audio/track-resolver.js';
+import { songAddedEmbed } from '../utils/embed-factory.js';
+import { getDevPrefix } from '../utils/dev-mode.js';
+
 import {
   fetchPlaylistData,
 } from "./audio/stream-handler.js";
-
-import { resolveTrack } from "./audio/track-resolver.js";
 
 import { playSong, handleAutoplay, handleRadio } from "./audio/playback-engine.js";
 import { getAutoplayButton } from "./ui/player-controls.js";
@@ -342,17 +345,22 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string):
       queue.voiceChannelId
     );
 
-    const prefix = track.fromCache ? "⚡⚡ " : "";
+    const prefix = track.fromCache ? '⚡⚡ ' : '';
+    const devPrefix = getDevPrefix();
+
+    const embed = songAddedEmbed(
+      track.title,
+      track.url,
+      track.thumbnail,
+      queue.worker.name,
+      `${prefix}${devPrefix}`
+    );
 
     if (queue.songs.length === 1 && !queue.nowPlaying) {
       await playSong(queue);
-      await interaction.editReply(
-        `${prefix}✅ **${queue.worker.name}** added to queue in **#${channelName}**: [${track.title}](${track.url})`
-      );
+      await interaction.editReply({ embeds: [embed] });
     } else {
-      await interaction.editReply(
-        `${prefix}✅ **${queue.worker.name}** queued in **#${channelName}**: [${track.title}](${track.url})`
-      );
+      await interaction.editReply({ embeds: [embed] });
     }
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);

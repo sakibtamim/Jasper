@@ -9,9 +9,11 @@ import { createStreamProcess } from "./stream-handler.js";
 import { createControlButtons, getAutoplayButton } from "../ui/player-controls.js";
 import { deleteQueue, Queue, Song } from "./queue-manager.js";
 import { GuildMember } from "discord.js";
-import { isCacheEnabled, getCacheStorage } from "../cache-manager.js";
 import { Readable } from "stream";
+import { isCacheEnabled, getCacheStorage } from "../cache-manager.js";
 import db from "../db/index.js";
+import { radioEmbed, nowPlayingEmbed } from "../../utils/embed-factory.js";
+import { getDevPrefix } from "../../utils/dev-mode.js";
 
 // Constants for Autoplay
 const AUTOPLAY_SEARCH_QUERIES = [
@@ -223,20 +225,39 @@ export async function playSong(queue: Queue): Promise<void> {
                 queue.voiceChannelId
             );
 
-            let content = "";
+            const devPrefix = getDevPrefix();
+
             if (queue.isRadio) {
-                content = `📻 **Radio:** [${song.title}](${song.url}) in **#${channelName}**`;
+                const embed = radioEmbed(
+                    song.title,
+                    song.url,
+                    song.thumbnail,
+                    queue.worker.name,
+                    devPrefix
+                );
+                playingMessage = await queue.textChannel
+                    .send({
+                        embeds: [embed],
+                        components: [row],
+                    })
+                    .catch((error: unknown) => logger.warn(`Failed to send playing message: ${error instanceof Error ? error.message : String(error)}`)) as Message | undefined;
             } else {
-                const prefix = song.fromCache ? "⚡⚡ " : "";
-                content = `${prefix}▶️ **${queue.worker.name}** is now playing in **#${channelName}**: [${song.title}](${song.url})`;
+                const prefix = song.fromCache ? '⚡⚡ ' : '';
+                const embed = nowPlayingEmbed(
+                    song.title,
+                    song.url,
+                    song.thumbnail,
+                    queue.worker.name,
+                    `${prefix}${devPrefix}`
+                );
+                playingMessage = await queue.textChannel
+                    .send({
+                        embeds: [embed],
+                        components: [row],
+                    })
+                    .catch((error: unknown) => logger.warn(`Failed to send playing message: ${error instanceof Error ? error.message : String(error)}`)) as Message | undefined;
             }
 
-            playingMessage = await queue.textChannel
-                .send({
-                    content,
-                    components: [row],
-                })
-                .catch((error: unknown) => logger.warn(`Failed to send playing message: ${error instanceof Error ? error.message : String(error)}`)) as Message | undefined;
             if (playingMessage) {
                 queue.playingMessage = playingMessage;
             }

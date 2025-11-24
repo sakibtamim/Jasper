@@ -25,7 +25,61 @@ export function helpEmbed(): EmbedBuilder {
     .setColor(accentColor);
 }
 
+/**
+ * Create a compact embed for when a song is added to queue
+ */
+export function songAddedEmbed(
+  title: string,
+  url: string,
+  thumbnail: string | undefined,
+  workerName: string,
+  devPrefix: string
+): EmbedBuilder {
+  return baseEmbed()
+    .setTitle(`${devPrefix}✅ Added to queue`)
+    .setDescription(`[${title}](${url})`)
+    .setThumbnail(thumbnail || null)
+    .setFooter({ text: `${botName} • ${workerName}` });
+}
+
+/**
+ * Create a compact embed for now playing
+ */
+export function nowPlayingEmbed(
+  title: string,
+  url: string,
+  thumbnail: string | undefined,
+  workerName: string,
+  devPrefix: string
+): EmbedBuilder {
+  return baseEmbed()
+    .setTitle(`${devPrefix}▶️ Now Playing`)
+    .setDescription(`[${title}](${url})`)
+    .setThumbnail(thumbnail || null)
+    .setFooter({ text: `${botName} • ${workerName}` });
+}
+
+/**
+ * Create a compact embed for radio mode
+ */
+export function radioEmbed(
+  title: string,
+  url: string,
+  thumbnail: string | undefined,
+  botName: string,
+  devPrefix: string
+): EmbedBuilder {
+  return baseEmbed()
+    .setTitle(`${devPrefix}📻 Radio Mode`)
+    .setDescription(`[${title}](${url})`)
+    .setThumbnail(thumbnail || null)
+    .setFooter({ text: `Enqueued by Radio ${botName} 📻` });
+}
+
 export default {
   baseEmbed,
-  helpEmbed
+  helpEmbed,
+  songAddedEmbed,
+  nowPlayingEmbed,
+  radioEmbed
 };
