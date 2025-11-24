@@ -27,7 +27,6 @@ import {
   Song,
 } from "./audio/queue-manager.js";
 
-import { getCacheStorage } from './cache-manager.js';
 import { resolveTrack } from './audio/track-resolver.js';
 import { songAddedEmbed } from '../utils/embed-factory.js';
 import { getDevPrefix } from '../utils/dev-mode.js';

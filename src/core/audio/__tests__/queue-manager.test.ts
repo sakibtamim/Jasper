@@ -1,8 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getQueue, setQueue, deleteQueue, getAllQueues, clearAllQueues, cleanupWorkerOldQueues, Queue } from '../queue-manager.js';
 import * as voiceUtils from '../../utils/voice-utils.js';
 import workerPool from '../../worker-pool.js';
-import logger from '../../logger.js';
 
 // Mocks
 vi.mock('../../utils/voice-utils.js', () => ({

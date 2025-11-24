@@ -11,6 +11,7 @@ export default [
         rules: {
             "@typescript-eslint/no-explicit-any": "warn",
             "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+            // Explicitly forbid console usage in favor of logger
             "no-console": "error"
         }
     },
