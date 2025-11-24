@@ -88,7 +88,7 @@ class FileCacheStorage implements ICacheStorage {
             this.searchCache = new Map(Object.entries(parsed));
             this.searchCacheLoaded = true;
             logger.info(`[cache] Loaded ${this.searchCache.size} search results from disk`);
-        } catch (error) {
+        } catch {
             // File doesn't exist or is corrupted, start fresh
             this.searchCache = new Map();
             this.searchCacheLoaded = true;
@@ -137,7 +137,7 @@ class FileCacheStorage implements ICacheStorage {
         // Create a copy and remove requestedBy if it is "Unknown" to save space/cleanup JSON
         const songToCache = { ...song };
         if (songToCache.requestedBy === "Unknown") {
-            delete (songToCache as any).requestedBy;
+            delete (songToCache as unknown as { requestedBy?: string }).requestedBy;
         }
         // Don't cache the fromCache flag itself
         delete songToCache.fromCache;
