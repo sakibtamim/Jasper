@@ -13,9 +13,12 @@ if (process.env.DB_TYPE === 'postgres') {
 }
 
 // Initialize DB
-db.init().catch(err => {
+try {
+    await db.init();
+} catch (err) {
     logger.error(`[db] Failed to initialize database: ${err}`);
-});
+    throw err;
+}
 
 export default db;
 export * from './types.js';
