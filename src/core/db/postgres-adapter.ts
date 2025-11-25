@@ -361,4 +361,20 @@ export class PostgresAdapter implements DatabaseAdapter {
             this.pool = null;
         }
     }
+
+    async upsertUser(user: import('./types.js').User): Promise<void> {
+        throw new Error('Method not implemented.');
+    }
+
+    async createSession(session: import('./types.js').Session): Promise<void> {
+        throw new Error('Method not implemented.');
+    }
+
+    async getSession(sessionId: string): Promise<import('./types.js').Session | null> {
+        throw new Error('Method not implemented.');
+    }
+
+    async deleteSession(sessionId: string): Promise<void> {
+        throw new Error('Method not implemented.');
+    }
 }
