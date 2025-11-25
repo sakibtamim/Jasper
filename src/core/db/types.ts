@@ -7,6 +7,7 @@ export interface PlayRecord {
     songTitle: string;
     songUrl: string;
     duration: number;
+    thumbnail?: string;
     playedAt: Date;
 }
 
@@ -23,6 +24,7 @@ export interface SongStats {
     playCount: number;
     totalDuration: number;
     lastPlayedAt: Date;
+    thumbnail?: string;
 }
 
 export interface CachedSearchResult {

@@ -291,8 +291,14 @@ server.get('/api/stats', async (request, _reply) => {
         };
     }));
 
+    // Enhance topSongs with default thumbnail
+    const enhancedTopSongs = topSongs.map(song => ({
+        ...song,
+        thumbnail: song.thumbnail || '/assets/images/jasper-logo.png'
+    }));
+
     return {
-        topSongs,
+        topSongs: enhancedTopSongs,
         topUsers: enhancedUsers,
         topChannels: enhancedChannels,
         topBots,

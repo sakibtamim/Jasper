@@ -204,6 +204,7 @@ export async function playSong(queue: Queue): Promise<void> {
             songTitle: song.title,
             songUrl: song.url,
             duration: song.durationInSec,
+            thumbnail: song.thumbnail,
             playedAt: new Date()
         }).catch(err => logger.error(`[db] Failed to track play: ${err}`));
 

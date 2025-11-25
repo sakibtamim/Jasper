@@ -33,6 +33,7 @@ export class SqliteAdapter implements DatabaseAdapter {
           song_title TEXT NOT NULL,
           song_url TEXT NOT NULL,
           duration INTEGER NOT NULL,
+          thumbnail TEXT,
           played_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -68,6 +69,14 @@ export class SqliteAdapter implements DatabaseAdapter {
         );
       `);
 
+      // Migration: Add thumbnail column if it doesn't exist
+      const tableInfo = this.db.pragma('table_info(plays)') as { name: string }[];
+      const hasThumbnail = tableInfo.some(col => col.name === 'thumbnail');
+      if (!hasThumbnail) {
+        this.db.exec('ALTER TABLE plays ADD COLUMN thumbnail TEXT');
+        logger.info('[db] Added thumbnail column to plays table');
+      }
+
       // Create indexes for performance
       this.db.exec(`
         CREATE INDEX IF NOT EXISTS idx_plays_user_id ON plays(user_id);
@@ -94,8 +103,8 @@ export class SqliteAdapter implements DatabaseAdapter {
     if (!this.db) throw new Error('Database not initialized');
 
     const stmt = this.db.prepare(`
-      INSERT INTO plays (user_id, guild_id, channel_id, bot_name, song_title, song_url, duration, played_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO plays (user_id, guild_id, channel_id, bot_name, song_title, song_url, duration, thumbnail, played_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -106,6 +115,7 @@ export class SqliteAdapter implements DatabaseAdapter {
       record.songTitle,
       record.songUrl,
       record.duration,
+      record.thumbnail || null,
       record.playedAt.toISOString()
     );
   }
@@ -119,7 +129,8 @@ export class SqliteAdapter implements DatabaseAdapter {
         song_url as songUrl,
         COUNT(*) as playCount,
         SUM(duration) as totalDuration,
-        MAX(played_at) as lastPlayedAt
+        MAX(played_at) as lastPlayedAt,
+        MAX(thumbnail) as thumbnail
       FROM plays
       GROUP BY song_url
       ORDER BY playCount DESC
@@ -132,6 +143,7 @@ export class SqliteAdapter implements DatabaseAdapter {
       playCount: number;
       totalDuration: number;
       lastPlayedAt: string;
+      thumbnail?: string;
     }
 
     const rows = stmt.all(limit) as SongStatsRow[];
