@@ -6,7 +6,9 @@ import logger, { getRecentLogs } from '../core/logger.js';
 import workerPool from '../core/worker-pool.js';
 import musicPlayer from '../core/music-player.js';
 import { getCacheStats } from '../core/cache-manager.js';
+import fastifyCookie from '@fastify/cookie';
 import db from '../core/db/index.js';
+import authRoutes from './auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,6 +19,38 @@ const server = fastify({ logger: false });
 server.register(fastifyStatic, {
     root: path.join(__dirname, '../../public'),
     prefix: '/', // optional: default '/'
+});
+
+// Register Cookie Plugin
+server.register(fastifyCookie, {
+    secret: process.env.COOKIE_SECRET || 'jasper-secret-key-change-me', // should be in .env
+    parseOptions: {}     // options for parsing cookies
+});
+
+// Register Auth Routes
+server.register(authRoutes);
+
+// Global Session Hook
+server.addHook('onRequest', async (request, _reply) => {
+    const sessionId = request.cookies.session_id;
+    if (sessionId) {
+        try {
+            const session = await db.getSession(sessionId);
+            if (session) {
+                // Fetch user details (could be cached)
+                // For now, we'll just attach the session and minimal user info if needed
+                // Ideally we should have a db.getUser(session.userId)
+                // But for now let's just attach the session
+                (request as any).user = { id: session.userId };
+
+                // We could fetch the full user here if we added getUser to the adapter
+                // const user = await db.getUser(session.userId);
+                // (request as any).user = user;
+            }
+        } catch (e) {
+            logger.warn(`[auth] Error validating session: ${e}`);
+        }
+    }
 });
 
 // API Endpoints

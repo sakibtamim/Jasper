@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 import logger from '../logger.js';
-import { DatabaseAdapter, PlayRecord, SongStats, UserStats } from './types.js';
+import { DatabaseAdapter, PlayRecord, SongStats, UserStats, User, Session } from './types.js';
 
 export class SqliteAdapter implements DatabaseAdapter {
   private db: Database.Database | null = null;
@@ -67,6 +67,26 @@ export class SqliteAdapter implements DatabaseAdapter {
           entity_type TEXT NOT NULL,
           hit_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
+
+        CREATE TABLE IF NOT EXISTS users (
+          id TEXT PRIMARY KEY,
+          username TEXT NOT NULL,
+          discriminator TEXT NOT NULL,
+          avatar TEXT,
+          access_token TEXT NOT NULL,
+          refresh_token TEXT NOT NULL,
+          expires_at DATETIME NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS sessions (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          expires_at DATETIME NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
       `);
 
       // Migration: Add thumbnail column if it doesn't exist
@@ -90,6 +110,7 @@ export class SqliteAdapter implements DatabaseAdapter {
         CREATE INDEX IF NOT EXISTS idx_audio_metadata_expires_at ON audio_metadata(expires_at);
         CREATE INDEX IF NOT EXISTS idx_cache_hits_entity_id ON cache_hits(entity_id);
         CREATE INDEX IF NOT EXISTS idx_cache_hits_entity_type ON cache_hits(entity_type);
+        CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
       `);
 
       logger.info(`[db] SQLite database initialized at ${this.dbPath}`);
@@ -392,5 +413,60 @@ export class SqliteAdapter implements DatabaseAdapter {
       this.db.close();
       this.db = null;
     }
+  }
+
+  async upsertUser(user: User): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare(`
+      INSERT INTO users (id, username, discriminator, avatar, access_token, refresh_token, expires_at, updated_at)
+      VALUES (@id, @username, @discriminator, @avatar, @accessToken, @refreshToken, @expiresAt, datetime('now'))
+      ON CONFLICT(id) DO UPDATE SET
+        username = excluded.username,
+        discriminator = excluded.discriminator,
+        avatar = excluded.avatar,
+        access_token = excluded.access_token,
+        refresh_token = excluded.refresh_token,
+        expires_at = excluded.expires_at,
+        updated_at = excluded.updated_at
+    `);
+    stmt.run({
+      ...user,
+      expiresAt: user.expiresAt.toISOString()
+    });
+  }
+
+  async createSession(session: Session): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare(`
+      INSERT INTO sessions (id, user_id, expires_at, created_at)
+      VALUES (@id, @userId, @expiresAt, @createdAt)
+    `);
+    stmt.run({
+      ...session,
+      expiresAt: session.expiresAt.toISOString(),
+      createdAt: session.createdAt.toISOString()
+    });
+  }
+
+  async getSession(sessionId: string): Promise<Session | null> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare(`
+      SELECT id, user_id as userId, expires_at as expiresAt, created_at as createdAt
+      FROM sessions
+      WHERE id = ? AND expires_at > datetime('now')
+    `);
+    const row = stmt.get(sessionId) as any;
+    if (!row) return null;
+    return {
+      ...row,
+      expiresAt: new Date(row.expiresAt),
+      createdAt: new Date(row.createdAt)
+    };
+  }
+
+  async deleteSession(sessionId: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare('DELETE FROM sessions WHERE id = ?');
+    stmt.run(sessionId);
   }
 }
