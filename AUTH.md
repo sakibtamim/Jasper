@@ -50,11 +50,13 @@ Stores Discord user information and tokens.
 | `username` | TEXT | Discord Username |
 | `discriminator` | TEXT | Discord Discriminator (0 for new usernames) |
 | `avatar` | TEXT | Full Avatar URL (Discord CDN) |
-| `access_token` | TEXT | OAuth2 Access Token |
-| `refresh_token` | TEXT | OAuth2 Refresh Token |
+| `access_token` | TEXT | OAuth2 Access Token (encrypted at rest) |
+| `refresh_token` | TEXT | OAuth2 Refresh Token (encrypted at rest) |
 | `expires_at` | DATETIME | Token Expiration |
-| `created_at` | DATETIME | Record Creation |
-| `updated_at` | DATETIME | Last Update |
+| `created_at` | DATETIME | User Creation Timestamp |
+| `updated_at` | DATETIME | Last Update Timestamp |
+
+**Security**: Access and refresh tokens are encrypted at rest using AES-256-GCM encryption. The encryption key must be provided via the `ENCRYPTION_KEY` environment variable.
 
 ### `sessions`
 Manages active user sessions.

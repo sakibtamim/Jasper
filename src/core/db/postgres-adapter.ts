@@ -1,6 +1,7 @@
 import pg from 'pg';
 import logger from '../logger.js';
 import { DatabaseAdapter, PlayRecord, SongStats, UserStats, User, Session } from './types.js';
+import { decrypt } from '../../utils/encryption.js';
 
 const { Pool } = pg;
 
@@ -457,8 +458,19 @@ export class PostgresAdapter implements DatabaseAdapter {
 
         if (result.rows.length === 0) return null;
         const row = result.rows[0];
+
+        const encryptionKey = process.env.ENCRYPTION_KEY;
+        if (!encryptionKey) {
+            throw new Error('ENCRYPTION_KEY is required to decrypt user tokens');
+        }
+
         return {
-            ...row,
+            id: row.id,
+            username: row.username,
+            discriminator: row.discriminator,
+            avatar: row.avatar,
+            accessToken: decrypt(row.accessToken, encryptionKey),
+            refreshToken: decrypt(row.refreshToken, encryptionKey),
             expiresAt: new Date(row.expiresAt),
             createdAt: new Date(row.createdAt),
             updatedAt: new Date(row.updatedAt)
