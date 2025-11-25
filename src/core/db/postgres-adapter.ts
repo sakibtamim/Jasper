@@ -1,6 +1,7 @@
 import pg from 'pg';
 import logger from '../logger.js';
-import { DatabaseAdapter, PlayRecord, SongStats, UserStats } from './types.js';
+import { DatabaseAdapter, PlayRecord, SongStats, UserStats, User, Session } from './types.js';
+import { decrypt } from '../../utils/encryption.js';
 
 const { Pool } = pg;
 
@@ -65,6 +66,25 @@ export class PostgresAdapter implements DatabaseAdapter {
           entity_type TEXT NOT NULL,
           hit_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
+
+        CREATE TABLE IF NOT EXISTS users (
+          id TEXT PRIMARY KEY,
+          username TEXT NOT NULL,
+          discriminator TEXT NOT NULL,
+          avatar TEXT,
+          access_token TEXT NOT NULL,
+          refresh_token TEXT NOT NULL,
+          expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS sessions (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
       `);
 
             // Create indexes
@@ -80,6 +100,7 @@ export class PostgresAdapter implements DatabaseAdapter {
         CREATE INDEX IF NOT EXISTS idx_audio_metadata_expires_at ON audio_metadata(expires_at);
         CREATE INDEX IF NOT EXISTS idx_cache_hits_entity_id ON cache_hits(entity_id);
         CREATE INDEX IF NOT EXISTS idx_cache_hits_entity_type ON cache_hits(entity_type);
+        CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
       `);
 
             logger.info('[db] Postgres database initialized');
@@ -360,5 +381,99 @@ export class PostgresAdapter implements DatabaseAdapter {
             await this.pool.end();
             this.pool = null;
         }
+    }
+
+    async upsertUser(user: User): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query(`
+            INSERT INTO users (id, username, discriminator, avatar, access_token, refresh_token, expires_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+            ON CONFLICT (id) DO UPDATE SET
+                username = EXCLUDED.username,
+                discriminator = EXCLUDED.discriminator,
+                avatar = EXCLUDED.avatar,
+                access_token = EXCLUDED.access_token,
+                refresh_token = EXCLUDED.refresh_token,
+                expires_at = EXCLUDED.expires_at,
+                updated_at = NOW()
+        `, [
+            user.id,
+            user.username,
+            user.discriminator,
+            user.avatar,
+            user.accessToken,
+            user.refreshToken,
+            user.expiresAt
+        ]);
+    }
+
+    async createSession(session: Session): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query(`
+            INSERT INTO sessions (id, user_id, expires_at, created_at)
+            VALUES ($1, $2, $3, $4)
+        `, [
+            session.id,
+            session.userId,
+            session.expiresAt,
+            session.createdAt
+        ]);
+    }
+
+    async getSession(sessionId: string): Promise<Session | null> {
+        if (!this.pool) throw new Error('Database not initialized');
+        const result = await this.pool.query(`
+            SELECT id, user_id as "userId", expires_at as "expiresAt", created_at as "createdAt"
+            FROM sessions
+            WHERE id = $1 AND expires_at > NOW()
+        `, [sessionId]);
+
+        if (result.rows.length === 0) return null;
+        const row = result.rows[0];
+        return {
+            ...row,
+            expiresAt: new Date(row.expiresAt),
+            createdAt: new Date(row.createdAt)
+        };
+    }
+
+    async deleteSession(sessionId: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('DELETE FROM sessions WHERE id = $1', [sessionId]);
+    }
+
+    async getUser(userId: string): Promise<User | null> {
+        if (!this.pool) throw new Error('Database not initialized');
+        const result = await this.pool.query(`
+            SELECT 
+                id, username, discriminator, avatar, 
+                access_token as "accessToken", 
+                refresh_token as "refreshToken", 
+                expires_at as "expiresAt", 
+                created_at as "createdAt", 
+                updated_at as "updatedAt"
+            FROM users
+            WHERE id = $1
+        `, [userId]);
+
+        if (result.rows.length === 0) return null;
+        const row = result.rows[0];
+
+        const encryptionKey = process.env.ENCRYPTION_KEY;
+        if (!encryptionKey) {
+            throw new Error('ENCRYPTION_KEY is required to decrypt user tokens');
+        }
+
+        return {
+            id: row.id,
+            username: row.username,
+            discriminator: row.discriminator,
+            avatar: row.avatar,
+            accessToken: decrypt(row.accessToken, encryptionKey),
+            refreshToken: decrypt(row.refreshToken, encryptionKey),
+            expiresAt: new Date(row.expiresAt),
+            createdAt: new Date(row.createdAt),
+            updatedAt: new Date(row.updatedAt)
+        };
     }
 }

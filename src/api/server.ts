@@ -6,7 +6,9 @@ import logger, { getRecentLogs } from '../core/logger.js';
 import workerPool from '../core/worker-pool.js';
 import musicPlayer from '../core/music-player.js';
 import { getCacheStats } from '../core/cache-manager.js';
+import fastifyCookie from '@fastify/cookie';
 import db from '../core/db/index.js';
+import authRoutes from './auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,6 +19,40 @@ const server = fastify({ logger: false });
 server.register(fastifyStatic, {
     root: path.join(__dirname, '../../public'),
     prefix: '/', // optional: default '/'
+});
+
+// Register Cookie Plugin
+server.register(fastifyCookie, {
+    secret: process.env.COOKIE_SECRET, // should be in .env
+});
+
+// Register Auth Routes
+server.register(authRoutes);
+
+// Global Session Hook
+server.addHook('onRequest', async (request, reply) => {
+    // Only run auth logic for API routes to avoid hitting the DB for static assets
+    if (!request.raw.url?.startsWith('/api/')) {
+        return;
+    }
+
+    const sessionId = request.cookies.session_id;
+    if (sessionId) {
+        try {
+            const session = await db.getSession(sessionId);
+            if (!session) {
+                // Invalid session, clear cookie and allow request to continue without user attached
+                reply.clearCookie('session_id');
+            } else {
+                const user = await db.getUser(session.userId);
+                if (user) {
+                    request.user = user;
+                }
+            }
+        } catch (e) {
+            logger.warn(`[auth] Error validating session: ${e}`);
+        }
+    }
 });
 
 // API Endpoints

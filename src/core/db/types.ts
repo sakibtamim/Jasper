@@ -68,6 +68,25 @@ export interface CacheHitStats {
     entityType: 'user' | 'bot';
 }
 
+export interface User {
+    id: string; // Discord ID
+    username: string;
+    discriminator: string;
+    avatar?: string;
+    accessToken: string;
+    refreshToken: string;
+    expiresAt: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+export interface Session {
+    id: string; // UUID
+    userId: string;
+    expiresAt: Date;
+    createdAt: Date;
+}
+
 export interface DatabaseAdapter {
     /**
      * Initialize the database connection and schema.
@@ -154,4 +173,11 @@ export interface DatabaseAdapter {
      * Close the database connection.
      */
     close(): Promise<void>;
+
+    // Auth methods
+    upsertUser(user: User): Promise<void>;
+    createSession(session: Session): Promise<void>;
+    getSession(sessionId: string): Promise<Session | null>;
+    deleteSession(sessionId: string): Promise<void>;
+    getUser(userId: string): Promise<User | null>;
 }
