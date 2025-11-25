@@ -288,18 +288,13 @@ async function runMigration() {
 
         console.log('[migration] Running migration...');
 
-        // Wrap everything in a transaction
-        const migrationTransaction = db.transaction(async () => {
-            const searchMigrated = await migrateSearchCache(db, false); // Pass false to skip deletion
-            const audioMigrated = await migrateAudioMetadata(db, false); // Pass false to skip deletion
-            return { searchMigrated, audioMigrated };
-        });
-
-        const { searchMigrated, audioMigrated } = await migrationTransaction();
+        // Run migrations (not in a transaction since they use async file operations)
+        const searchMigrated = await migrateSearchCache(db, false);
+        const audioMigrated = await migrateAudioMetadata(db, false);
 
         console.log(`[migration] Migration complete! Total: ${searchMigrated} search + ${audioMigrated} audio entries`);
 
-        // Only delete files after successful transaction commit
+        // Only delete files after successful migration
         console.log('[migration] Deleting old cache files...');
         try {
             if (await fileExists(SEARCH_CACHE_FILE)) {
