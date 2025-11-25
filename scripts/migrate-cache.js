@@ -209,6 +209,44 @@ async function ensureSchema(db) {
         );
     `);
 
+    // Migrate existing plays table if it has old schema (missing channel_id or bot_name)
+    const playsInfo = db.prepare("PRAGMA table_info(plays)").all();
+    const hasChannelId = playsInfo.some(col => col.name === 'channel_id');
+    const hasBotName = playsInfo.some(col => col.name === 'bot_name');
+
+    if (!hasChannelId || !hasBotName) {
+        console.log('[migration] Migrating plays table schema...');
+
+        // SQLite doesn't support DROP COLUMN, so we need to recreate the table
+        db.exec(`
+            -- Create new table with correct schema
+            CREATE TABLE plays_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                guild_id TEXT NOT NULL,
+                channel_id TEXT NOT NULL DEFAULT '',
+                bot_name TEXT NOT NULL DEFAULT 'Unknown',
+                song_title TEXT NOT NULL,
+                song_url TEXT NOT NULL,
+                duration INTEGER NOT NULL,
+                played_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+
+            -- Copy data from old table
+            INSERT INTO plays_new (id, user_id, guild_id, song_title, song_url, duration, played_at)
+            SELECT id, user_id, guild_id, song_title, song_url, duration, played_at
+            FROM plays;
+
+            -- Drop old table
+            DROP TABLE plays;
+
+            -- Rename new table
+            ALTER TABLE plays_new RENAME TO plays;
+        `);
+
+        console.log('[migration] Plays table schema migrated successfully');
+    }
+
     // Create indexes for performance
     db.exec(`
         CREATE INDEX IF NOT EXISTS idx_plays_user_id ON plays(user_id);

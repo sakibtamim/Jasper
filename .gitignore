@@ -12,6 +12,9 @@ dist/
 # Cache directories (not committed to version control)
 /cache/
 
+# Database files (runtime data)
+/data/
+
 # Ignore example artifacts used for AI context and training
 example-codes/
 
