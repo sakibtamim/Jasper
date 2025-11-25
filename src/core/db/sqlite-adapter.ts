@@ -427,7 +427,7 @@ export class SqliteAdapter implements DatabaseAdapter {
         access_token = excluded.access_token,
         refresh_token = excluded.refresh_token,
         expires_at = excluded.expires_at,
-        updated_at = excluded.updated_at
+        updated_at = datetime('now')
     `);
     stmt.run({
       ...user,

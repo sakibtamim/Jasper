@@ -59,22 +59,14 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
             const token = tokenResponse.token as DiscordToken;
 
             // Fetch user info from Discord
-            let userResponse;
-            try {
-                userResponse = await fetch('https://discord.com/api/users/@me', {
-                    headers: {
-                        Authorization: `Bearer ${token.access_token}`,
-                    },
-                });
+            const userResponse = await fetch('https://discord.com/api/users/@me', {
+                headers: {
+                    Authorization: `Bearer ${token.access_token}`,
+                },
+            });
 
-                if (!userResponse.ok) {
-                    throw new DiscordAPIError(`Failed to fetch user info from Discord: ${userResponse.status} ${userResponse.statusText}`);
-                }
-            } catch (error) {
-                if (error instanceof DiscordAPIError) {
-                    throw error;
-                }
-                throw new DiscordAPIError(`Failed to fetch user info from Discord: ${error}`);
+            if (!userResponse.ok) {
+                throw new DiscordAPIError(`Failed to fetch user info from Discord: ${userResponse.status} ${userResponse.statusText}`);
             }
 
             const discordUser = (await userResponse.json()) as DiscordUser;
