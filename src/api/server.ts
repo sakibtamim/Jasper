@@ -24,7 +24,6 @@ server.register(fastifyStatic, {
 // Register Cookie Plugin
 server.register(fastifyCookie, {
     secret: process.env.COOKIE_SECRET, // should be in .env
-    parseOptions: {}     // options for parsing cookies
 });
 
 // Register Auth Routes
@@ -32,6 +31,11 @@ server.register(authRoutes);
 
 // Global Session Hook
 server.addHook('onRequest', async (request, reply) => {
+    // Only run auth logic for API routes to avoid hitting the DB for static assets
+    if (!request.raw.url?.startsWith('/api/')) {
+        return;
+    }
+
     const sessionId = request.cookies.session_id;
     if (sessionId) {
         try {

@@ -451,14 +451,27 @@ export class SqliteAdapter implements DatabaseAdapter {
   async getSession(sessionId: string): Promise<Session | null> {
     if (!this.db) throw new Error('Database not initialized');
     const stmt = this.db.prepare(`
-      SELECT id, user_id as userId, expires_at as expiresAt, created_at as createdAt
+      SELECT 
+        id, 
+        user_id as userId, 
+        expires_at as expiresAt, 
+        created_at as createdAt
       FROM sessions
       WHERE id = ? AND expires_at > datetime('now')
     `);
-    const row = stmt.get(sessionId) as any;
+
+    interface SessionRow {
+      id: string;
+      userId: string;
+      expiresAt: string;
+      createdAt: string;
+    }
+
+    const row = stmt.get(sessionId) as SessionRow | undefined;
     if (!row) return null;
     return {
-      ...row,
+      id: row.id,
+      userId: row.userId,
       expiresAt: new Date(row.expiresAt),
       createdAt: new Date(row.createdAt)
     };
@@ -483,10 +496,28 @@ export class SqliteAdapter implements DatabaseAdapter {
       FROM users
       WHERE id = ?
     `);
-    const row = stmt.get(userId) as any;
+
+    interface UserRow {
+      id: string;
+      username: string;
+      discriminator: string;
+      avatar: string | null;
+      accessToken: string;
+      refreshToken: string;
+      expiresAt: string;
+      createdAt: string;
+      updatedAt: string;
+    }
+
+    const row = stmt.get(userId) as UserRow | undefined;
     if (!row) return null;
     return {
-      ...row,
+      id: row.id,
+      username: row.username,
+      discriminator: row.discriminator,
+      avatar: row.avatar || undefined,
+      accessToken: row.accessToken,
+      refreshToken: row.refreshToken,
       expiresAt: new Date(row.expiresAt),
       createdAt: new Date(row.createdAt),
       updatedAt: new Date(row.updatedAt)

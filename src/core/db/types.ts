@@ -76,8 +76,8 @@ export interface User {
     accessToken: string;
     refreshToken: string;
     expiresAt: Date;
-    createdAt: Date;
-    updatedAt: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 export interface Session {

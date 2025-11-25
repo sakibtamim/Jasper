@@ -3,6 +3,7 @@ import oauthPlugin, { OAuth2Namespace } from '@fastify/oauth2';
 import { randomUUID } from 'crypto';
 import db from '../core/db/index.js';
 import logger from '../core/logger.js';
+import { DiscordAPIError, DiscordOAuthError, DatabaseAuthError } from './auth-errors.js';
 
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -58,14 +59,22 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
             const token = tokenResponse.token as DiscordToken;
 
             // Fetch user info from Discord
-            const userResponse = await fetch('https://discord.com/api/users/@me', {
-                headers: {
-                    Authorization: `Bearer ${token.access_token}`,
-                },
-            });
+            let userResponse;
+            try {
+                userResponse = await fetch('https://discord.com/api/users/@me', {
+                    headers: {
+                        Authorization: `Bearer ${token.access_token}`,
+                    },
+                });
 
-            if (!userResponse.ok) {
-                throw new Error('Failed to fetch user info from Discord');
+                if (!userResponse.ok) {
+                    throw new DiscordAPIError(`Failed to fetch user info from Discord: ${userResponse.status} ${userResponse.statusText}`);
+                }
+            } catch (error) {
+                if (error instanceof DiscordAPIError) {
+                    throw error;
+                }
+                throw new DiscordAPIError(`Failed to fetch user info from Discord: ${error}`);
             }
 
             const discordUser = (await userResponse.json()) as DiscordUser;
@@ -82,12 +91,14 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
                 avatar: avatarUrl,
                 accessToken: token.access_token,
                 refreshToken: token.refresh_token,
-                expiresAt: new Date(Date.now() + token.expires_in * 1000),
-                createdAt: new Date(),
-                updatedAt: new Date()
+                expiresAt: new Date(Date.now() + token.expires_in * 1000)
             };
 
-            await db.upsertUser(user);
+            try {
+                await db.upsertUser(user);
+            } catch (error) {
+                throw new DatabaseAuthError(`Failed to upsert user: ${error}`);
+            }
 
             // Create session
             const sessionId = randomUUID();
@@ -98,7 +109,11 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
                 createdAt: new Date()
             };
 
-            await db.createSession(session);
+            try {
+                await db.createSession(session);
+            } catch (error) {
+                throw new DatabaseAuthError(`Failed to create session: ${error}`);
+            }
 
             // Set cookie
             reply.setCookie('session_id', sessionId, {
@@ -112,22 +127,22 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
             return reply.redirect('/');
         } catch (error) {
             let userMessage = 'Login failed';
-            if (error instanceof Error) {
-                if (error.message.includes('Failed to fetch user info from Discord')) {
-                    logger.error(`[auth] Discord API error: ${error.message}`);
-                    userMessage = 'Could not fetch user info from Discord. Please try again later.';
-                } else if (error.message.includes('getAccessTokenFromAuthorizationCodeFlow')) {
-                    logger.error(`[auth] Discord OAuth token exchange error: ${error.message}`);
-                    userMessage = 'Discord login failed. Please try again.';
-                } else if (error.message.includes('upsertUser') || error.message.includes('createSession')) {
-                    logger.error(`[auth] Database error: ${error.message}`);
-                    userMessage = 'Internal server error during login. Please try again later.';
-                } else {
-                    logger.error(`[auth] Unexpected error: ${error.message}`);
-                }
+
+            if (error instanceof DiscordAPIError) {
+                logger.error(`[auth] Discord API error: ${error.message}`);
+                userMessage = 'Could not fetch user info from Discord. Please try again later.';
+            } else if (error instanceof DiscordOAuthError) {
+                logger.error(`[auth] Discord OAuth error: ${error.message}`);
+                userMessage = 'Discord login failed. Please try again.';
+            } else if (error instanceof DatabaseAuthError) {
+                logger.error(`[auth] Database error: ${error.message}`);
+                userMessage = 'Internal server error during login. Please try again later.';
+            } else if (error instanceof Error) {
+                logger.error(`[auth] Unexpected error: ${error.message}`);
             } else {
                 logger.error(`[auth] Unknown error: ${JSON.stringify(error)}`);
             }
+
             return reply.status(500).send({ error: userMessage });
         }
     });
