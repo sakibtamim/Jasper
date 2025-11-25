@@ -82,7 +82,17 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
 
     fastify.get('/api/auth/callback', async (request, reply) => {
         try {
-            const tokenResponse = await fastify.discordOAuth2.getAccessTokenFromAuthorizationCodeFlow(request);
+            let tokenResponse;
+            try {
+                tokenResponse = await fastify.discordOAuth2.getAccessTokenFromAuthorizationCodeFlow(request);
+            } catch (error) {
+                logger.error(`[auth] OAuth token exchange failed: ${error instanceof Error ? error.message : String(error)}`);
+                if (error instanceof Error) {
+                    throw new DiscordOAuthError(`Failed to exchange code for token: ${error.message}`);
+                }
+                throw new DiscordOAuthError('Failed to exchange code for token');
+            }
+
             const tokenData = tokenResponse.token;
 
             if (!isDiscordToken(tokenData)) {
