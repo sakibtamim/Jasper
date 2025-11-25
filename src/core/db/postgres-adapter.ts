@@ -1,6 +1,6 @@
 import pg from 'pg';
 import logger from '../logger.js';
-import { DatabaseAdapter, PlayRecord, SongStats, UserStats } from './types.js';
+import { DatabaseAdapter, PlayRecord, SongStats, UserStats, User, Session } from './types.js';
 
 const { Pool } = pg;
 
@@ -382,7 +382,7 @@ export class PostgresAdapter implements DatabaseAdapter {
         }
     }
 
-    async upsertUser(user: import('./types.js').User): Promise<void> {
+    async upsertUser(user: User): Promise<void> {
         if (!this.pool) throw new Error('Database not initialized');
         await this.pool.query(`
             INSERT INTO users (id, username, discriminator, avatar, access_token, refresh_token, expires_at, updated_at)
@@ -406,7 +406,7 @@ export class PostgresAdapter implements DatabaseAdapter {
         ]);
     }
 
-    async createSession(session: import('./types.js').Session): Promise<void> {
+    async createSession(session: Session): Promise<void> {
         if (!this.pool) throw new Error('Database not initialized');
         await this.pool.query(`
             INSERT INTO sessions (id, user_id, expires_at, created_at)
@@ -419,7 +419,7 @@ export class PostgresAdapter implements DatabaseAdapter {
         ]);
     }
 
-    async getSession(sessionId: string): Promise<import('./types.js').Session | null> {
+    async getSession(sessionId: string): Promise<Session | null> {
         if (!this.pool) throw new Error('Database not initialized');
         const result = await this.pool.query(`
             SELECT id, user_id as "userId", expires_at as "expiresAt", created_at as "createdAt"
@@ -441,7 +441,7 @@ export class PostgresAdapter implements DatabaseAdapter {
         await this.pool.query('DELETE FROM sessions WHERE id = $1', [sessionId]);
     }
 
-    async getUser(userId: string): Promise<import('./types.js').User | null> {
+    async getUser(userId: string): Promise<User | null> {
         if (!this.pool) throw new Error('Database not initialized');
         const result = await this.pool.query(`
             SELECT 

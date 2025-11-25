@@ -638,14 +638,14 @@ function renderLogs() {
 }
 
 // Toggle queue expansion
-function toggleQueueExpansion(queueId) {
+window.toggleQueueExpansion = function (queueId) {
     if (expandedQueues.has(queueId)) {
         expandedQueues.delete(queueId);
     } else {
         expandedQueues.add(queueId);
     }
     renderQueues();
-}
+};
 
 // Helper: Format Duration
 function formatDuration(seconds) {
@@ -761,12 +761,17 @@ async function checkAuth() {
                 }
                         <span class="text-sm font-medium text-gray-700 dark:text-gray-200 hidden sm:inline">${escapeHtml(user.username)}</span>
                     </div>
-                    <button onclick="logout()" class="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Logout">
+                    <button id="logout-btn" class="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Logout">
                         <i data-lucide="log-out" class="w-4 h-4"></i>
                     </button>
                 </div>
             `;
             lucide.createIcons();
+            // Attach logout event listener programmatically
+            const logoutBtn = document.getElementById('logout-btn');
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', logout);
+            }
         } else {
             // Show Login Button (Default)
             container.innerHTML = `

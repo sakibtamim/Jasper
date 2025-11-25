@@ -37,14 +37,13 @@ server.addHook('onRequest', async (request, reply) => {
         try {
             const session = await db.getSession(sessionId);
             if (!session) {
-                // Invalid session, clear cookie
+                // Invalid session, clear cookie and allow request to continue without user attached
                 reply.clearCookie('session_id');
-                return;
-            }
-
-            const user = await db.getUser(session.userId);
-            if (user) {
-                (request as any).user = user;
+            } else {
+                const user = await db.getUser(session.userId);
+                if (user) {
+                    request.user = user;
+                }
             }
         } catch (e) {
             logger.warn(`[auth] Error validating session: ${e}`);

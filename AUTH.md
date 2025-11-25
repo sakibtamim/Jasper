@@ -49,7 +49,7 @@ Stores Discord user information and tokens.
 | `id` | TEXT (PK) | Discord User ID |
 | `username` | TEXT | Discord Username |
 | `discriminator` | TEXT | Discord Discriminator (0 for new usernames) |
-| `avatar` | TEXT | Avatar Hash |
+| `avatar` | TEXT | Full Avatar URL (Discord CDN) |
 | `access_token` | TEXT | OAuth2 Access Token |
 | `refresh_token` | TEXT | OAuth2 Refresh Token |
 | `expires_at` | DATETIME | Token Expiration |
