@@ -172,40 +172,72 @@ server.get('/api/stats', async (request, _reply) => {
         db.getGlobalStats()
     ]);
 
-    // Enhance topUsers with Discord data (usernames and avatars)
     const workers = workerPool.getWorkers();
-    const enhancedUsers = await Promise.all(topUsers.map(async (user) => {
-        let username = user.userId;
-        let avatarUrl: string | null = null;
 
-        // Try to find the user across all workers
+    // Helper to find a user across all workers (Cache-First Strategy)
+    const findUser = async (userId: string): Promise<{ username: string; avatarUrl: string | null } | null> => {
+        // 1. Try local cache of all workers first
         for (const worker of workers) {
             try {
-                const discordUser = await worker.client.users.fetch(user.userId).catch(() => null);
-                if (discordUser) {
-                    username = discordUser.username;
-                    avatarUrl = discordUser.displayAvatarURL();
-                    break;
+                const guildId = worker.guildId;
+                if (guildId) {
+                    const guild = worker.client.guilds.cache.get(guildId);
+                    if (guild) {
+                        const member = guild.members.cache.get(userId);
+                        if (member) {
+                            return {
+                                username: member.user.username,
+                                avatarUrl: member.user.displayAvatarURL()
+                            };
+                        }
+                    }
                 }
-            } catch {
-                // Continue to next worker
+                // Also check global user cache
+                const user = worker.client.users.cache.get(userId);
+                if (user) {
+                    return {
+                        username: user.username,
+                        avatarUrl: user.displayAvatarURL()
+                    };
+                }
+            } catch (e) {
+                logger.warn(`[api] Error checking cache for user ${userId} on worker ${worker.name}: ${e instanceof Error ? e.message : String(e)}`);
             }
         }
 
+        // 2. Fallback to fetch if not found in any cache
+        // We use the first available worker to fetch
+        if (workers.length > 0) {
+            try {
+                const discordUser = await workers[0].client.users.fetch(userId);
+                return {
+                    username: discordUser.username,
+                    avatarUrl: discordUser.displayAvatarURL()
+                };
+            } catch (e) {
+                logger.warn(`[api] Error fetching user ${userId}: ${e instanceof Error ? e.message : String(e)}`);
+            }
+        }
+
+        return null;
+    };
+
+    // Enhance topUsers
+    const enhancedUsers = await Promise.all(topUsers.map(async (user) => {
+        const discordData = await findUser(user.userId);
         return {
             ...user,
-            username,
-            avatarUrl
+            username: discordData?.username || user.userId,
+            avatarUrl: discordData?.avatarUrl || null
         };
     }));
 
-    // Enhance topChannels with Discord data (guild names, channel names, guild icons)
+    // Enhance topChannels
     const enhancedChannels = await Promise.all(topChannels.map(async (channel) => {
         let guildName = channel.guildId;
         let channelName = channel.channelId;
         let guildIconUrl: string | null = null;
 
-        // Try to find the channel across all workers
         for (const worker of workers) {
             try {
                 const guild = worker.client.guilds.cache.get(channel.guildId);
@@ -219,8 +251,8 @@ server.get('/api/stats', async (request, _reply) => {
                     }
                     break;
                 }
-            } catch {
-                // Continue to next worker
+            } catch (e) {
+                logger.warn(`[api] Error fetching channel ${channel.channelId} from worker ${worker.name}: ${e instanceof Error ? e.message : String(e)}`);
             }
         }
 
@@ -232,24 +264,16 @@ server.get('/api/stats', async (request, _reply) => {
         };
     }));
 
-    // Enhance cache hits with Discord data (usernames/bot names and avatars)
+    // Enhance cache hits
     const enhancedCacheHits = await Promise.all(topCacheHits.map(async (hit) => {
         let displayName = hit.entityName;
         let avatarUrl: string | null = null;
 
         if (hit.entityType === 'user') {
-            // Try to fetch user data
-            for (const worker of workers) {
-                try {
-                    const discordUser = await worker.client.users.fetch(hit.entityId).catch(() => null);
-                    if (discordUser) {
-                        displayName = discordUser.username;
-                        avatarUrl = discordUser.displayAvatarURL();
-                        break;
-                    }
-                } catch {
-                    // Continue
-                }
+            const discordData = await findUser(hit.entityId);
+            if (discordData) {
+                displayName = discordData.username;
+                avatarUrl = discordData.avatarUrl;
             }
         } else {
             // For bots, use worker data

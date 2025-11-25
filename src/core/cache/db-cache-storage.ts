@@ -60,7 +60,9 @@ export class DatabaseCacheStorage implements ICacheStorage {
 
             if (!metadata) {
                 // Expired or missing metadata, delete orphaned file
-                await fs.unlink(audioPath).catch(() => { });
+                await fs.unlink(audioPath).catch((err) => {
+                    logger.warn(`[cache] Failed to delete orphaned file ${audioPath}: ${err.message}`);
+                });
                 return null;
             }
 
@@ -123,7 +125,9 @@ export class DatabaseCacheStorage implements ICacheStorage {
             if (code !== 0 && !hasError) {
                 logger.error(`[cache] yt-dlp exited with code ${code} for: ${url}`);
                 hasError = true;
-                await fs.unlink(audioPath).catch(() => { });
+                await fs.unlink(audioPath).catch((err) => {
+                    logger.warn(`[cache] Failed to delete partial file ${audioPath}: ${err.message}`);
+                });
             } else if (code === 0 && !hasError) {
                 // Success: save metadata to database
                 try {
@@ -140,7 +144,9 @@ export class DatabaseCacheStorage implements ICacheStorage {
                     logger.info(`[cache] Cached audio for video: ${videoId} (${(totalBytes / 1024 / 1024).toFixed(2)}MB)`);
                 } catch (err) {
                     logger.error(`[cache] Failed to save metadata for ${videoId}: ${err instanceof Error ? err.message : String(err)}`);
-                    await fs.unlink(audioPath).catch(() => { });
+                    await fs.unlink(audioPath).catch((err) => {
+                        logger.warn(`[cache] Failed to delete file after metadata error ${audioPath}: ${err.message}`);
+                    });
                 }
             }
         });
