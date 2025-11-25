@@ -10,7 +10,7 @@ yt-dlp.exe
 dist/
 
 # Cache directories (not committed to version control)
-cache/
+/cache/
 
 # Ignore example artifacts used for AI context and training
 example-codes/

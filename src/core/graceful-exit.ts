@@ -2,7 +2,6 @@ import logger from "./logger.js";
 import musicPlayer from "./music-player.js";
 import workerPool from "./worker-pool.js";
 import { sendAnnouncement } from "./announcer.js";
-import { TextChannel } from "discord.js";
 
 let isShuttingDown = false;
 

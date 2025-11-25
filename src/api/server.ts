@@ -163,15 +163,140 @@ server.get('/api/stats', async (request, _reply) => {
     const { limit = '10' } = request.query as { limit?: string };
     const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 10));
 
-    const [topSongs, topUsers, globalStats] = await Promise.all([
+    const [topSongs, topUsers, topChannels, topBots, topCacheHits, globalStats] = await Promise.all([
         db.getTopSongs(limitNum),
         db.getTopUsers(limitNum),
+        db.getTopChannels(limitNum),
+        db.getTopBots(limitNum),
+        db.getTopCacheHits(limitNum),
         db.getGlobalStats()
     ]);
 
+    const workers = workerPool.getWorkers();
+
+    // Helper to find a user across all workers (Cache-First Strategy)
+    const findUser = async (userId: string): Promise<{ username: string; avatarUrl: string | null } | null> => {
+        // 1. Try local cache of all workers first
+        for (const worker of workers) {
+            try {
+                const guildId = worker.guildId;
+                if (guildId) {
+                    const guild = worker.client.guilds.cache.get(guildId);
+                    if (guild) {
+                        const member = guild.members.cache.get(userId);
+                        if (member) {
+                            return {
+                                username: member.user.username,
+                                avatarUrl: member.user.displayAvatarURL()
+                            };
+                        }
+                    }
+                }
+                // Also check global user cache
+                const user = worker.client.users.cache.get(userId);
+                if (user) {
+                    return {
+                        username: user.username,
+                        avatarUrl: user.displayAvatarURL()
+                    };
+                }
+            } catch (e) {
+                logger.warn(`[api] Error checking cache for user ${userId} on worker ${worker.name}: ${e instanceof Error ? e.message : String(e)}`);
+            }
+        }
+
+        // 2. Fallback to fetch if not found in any cache
+        // We use the first available worker to fetch
+        if (workers.length > 0) {
+            try {
+                const discordUser = await workers[0].client.users.fetch(userId);
+                return {
+                    username: discordUser.username,
+                    avatarUrl: discordUser.displayAvatarURL()
+                };
+            } catch (e) {
+                logger.warn(`[api] Error fetching user ${userId}: ${e instanceof Error ? e.message : String(e)}`);
+            }
+        }
+
+        return null;
+    };
+
+    // Enhance topUsers
+    const enhancedUsers = await Promise.all(topUsers.map(async (user) => {
+        const discordData = await findUser(user.userId);
+        return {
+            ...user,
+            username: discordData?.username || user.userId,
+            avatarUrl: discordData?.avatarUrl || null
+        };
+    }));
+
+    // Enhance topChannels
+    const enhancedChannels = await Promise.all(topChannels.map(async (channel) => {
+        let guildName = channel.guildId;
+        let channelName = channel.channelId;
+        let guildIconUrl: string | null = null;
+
+        for (const worker of workers) {
+            try {
+                const guild = worker.client.guilds.cache.get(channel.guildId);
+                if (guild) {
+                    guildName = guild.name;
+                    guildIconUrl = guild.iconURL();
+
+                    const discordChannel = guild.channels.cache.get(channel.channelId);
+                    if (discordChannel) {
+                        channelName = discordChannel.name;
+                    }
+                    break;
+                }
+            } catch (e) {
+                logger.warn(`[api] Error fetching channel ${channel.channelId} from worker ${worker.name}: ${e instanceof Error ? e.message : String(e)}`);
+            }
+        }
+
+        return {
+            ...channel,
+            guildName,
+            channelName,
+            guildIconUrl
+        };
+    }));
+
+    // Enhance cache hits
+    const enhancedCacheHits = await Promise.all(topCacheHits.map(async (hit) => {
+        let displayName = hit.entityName;
+        let avatarUrl: string | null = null;
+
+        if (hit.entityType === 'user') {
+            const discordData = await findUser(hit.entityId);
+            if (discordData) {
+                displayName = discordData.username;
+                avatarUrl = discordData.avatarUrl;
+            }
+        } else {
+            // For bots, use worker data
+            const worker = workers.find(w => w.name === hit.entityId);
+            if (worker && worker.client.user) {
+                displayName = worker.client.user.username;
+                avatarUrl = worker.client.user.displayAvatarURL();
+            }
+        }
+
+        return {
+            ...hit,
+            displayName,
+            avatarUrl
+        };
+    }));
+
     return {
         topSongs,
-        topUsers,
+        topUsers: enhancedUsers,
+        topChannels: enhancedChannels,
+        topBots,
+        topCacheHits: enhancedCacheHits,
         globalStats
     };
 });

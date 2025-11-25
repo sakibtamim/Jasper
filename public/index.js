@@ -473,7 +473,7 @@ function renderStats() {
         }
     }
 
-    // Top Users
+    // Top Users (already enriched with avatars)
     const usersContainer = document.getElementById('stats-top-users');
     if (usersContainer) {
         if (!stats.topUsers.length) {
@@ -482,9 +482,13 @@ function renderStats() {
             usersContainer.innerHTML = stats.topUsers.map((user, index) => `
                 <div class="p-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                     <div class="text-2xl font-bold text-gray-300 dark:text-gray-600 w-8 text-center">${index + 1}</div>
+                    ${user.avatarUrl ? `
+                        <img src="${escapeHtml(user.avatarUrl)}" alt="${escapeHtml(user.username)}" 
+                             class="w-10 h-10 rounded-full border-2 border-brand-primary object-cover">
+                    ` : '<div class="w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600"></div>'}
                     <div class="flex-1 min-w-0">
                         <div class="font-medium text-gray-900 dark:text-white truncate">
-                            ${escapeHtml(user.userId)}
+                            ${escapeHtml(user.username)}
                         </div>
                         <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                             ${formatDuration(user.totalDuration)} total listening time
@@ -498,6 +502,105 @@ function renderStats() {
             `).join('');
         }
     }
+
+    // Top Channels (enriched with guild icons and names)
+    const channelsContainer = document.getElementById('stats-top-channels');
+    if (channelsContainer) {
+        if (!stats.topChannels || !stats.topChannels.length) {
+            channelsContainer.innerHTML = '<div class="p-4 text-center text-gray-500 text-sm">No data yet</div>';
+        } else {
+            channelsContainer.innerHTML = stats.topChannels.map((channel, index) => `
+                <div class="p-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors" 
+                     title="${escapeHtml(channel.guildName)}">
+                    <div class="text-2xl font-bold text-gray-300 dark:text-gray-600 w-8 text-center">${index + 1}</div>
+                    ${channel.guildIconUrl ? `
+                        <img src="${escapeHtml(channel.guildIconUrl)}" alt="${escapeHtml(channel.guildName)}" 
+                             class="w-10 h-10 rounded-full border-2 border-brand-primary object-cover">
+                    ` : '<div class="w-10 h-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center"><i data-lucide="hash" class="w-5 h-5 text-gray-500"></i></div>'}
+                    <div class="flex-1 min-w-0">
+                        <div class="font-medium text-gray-900 dark:text-white truncate flex items-center gap-1">
+                            <i data-lucide="hash" class="w-3 h-3 text-gray-400"></i>
+                            ${escapeHtml(channel.channelName)}
+                        </div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                            ${escapeHtml(channel.guildName)}
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-bold text-brand-primary">${channel.playCount}</div>
+                        <div class="text-[10px] text-gray-400 uppercase tracking-wider">Plays</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    // Top Bots
+    const botsContainer = document.getElementById('stats-top-bots');
+    if (botsContainer) {
+        if (!stats.topBots || !stats.topBots.length) {
+            botsContainer.innerHTML = '<div class="p-4 text-center text-gray-500 text-sm">No data yet</div>';
+        } else {
+            botsContainer.innerHTML = stats.topBots.map((bot, index) => `
+                <div class="p-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                    <div class="text-2xl font-bold text-gray-300 dark:text-gray-600 w-8 text-center">${index + 1}</div>
+                    <div class="w-10 h-10 rounded-full bg-brand-secondary/10 flex items-center justify-center">
+                        <i data-lucide="bot" class="w-5 h-5 text-brand-secondary"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-medium text-gray-900 dark:text-white truncate">
+                            ${escapeHtml(bot.botName)}
+                        </div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            Heavenly Council Member
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-bold text-brand-secondary">${bot.playCount}</div>
+                        <div class="text-[10px] text-gray-400 uppercase tracking-wider">Plays</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    // Cache Hits (enriched with avatars)
+    const cacheHitsContainer = document.getElementById('stats-cache-hits');
+    if (cacheHitsContainer) {
+        if (!stats.topCacheHits || !stats.topCacheHits.length) {
+            cacheHitsContainer.innerHTML = '<div class="p-4 text-center text-gray-500 text-sm">No cache hits yet</div>';
+        } else {
+            cacheHitsContainer.innerHTML = stats.topCacheHits.map((hit, index) => `
+                <div class="p-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                    <div class="text-2xl font-bold text-gray-300 dark:text-gray-600 w-8 text-center">${index + 1}</div>
+                    ${hit.avatarUrl ? `
+                        <img src="${escapeHtml(hit.avatarUrl)}" alt="${escapeHtml(hit.displayName)}" 
+                             class="w-10 h-10 rounded-full border-2 border-yellow-500 object-cover">
+                    ` : `<div class="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center">
+                        <i data-lucide="${hit.entityType === 'bot' ? 'bot' : 'user'}" class="w-5 h-5 text-yellow-500"></i>
+                    </div>`}
+                    <div class="flex-1 min-w-0">
+                        <div class="font-medium text-gray-900 dark:text-white truncate">
+                            ${escapeHtml(hit.displayName)}
+                        </div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            ${hit.entityType === 'bot' ? '🤖 Bot' : '👤 User'}
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-bold text-yellow-500 flex items-center gap-1">
+                            <i data-lucide="zap" class="w-4 h-4"></i>
+                            ${hit.cacheHits}
+                        </div>
+                        <div class="text-[10px] text-gray-400 uppercase tracking-wider">Hits</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    // Re-initialize Lucide icons for newly rendered content
+    lucide.createIcons();
 }
 
 // Render Logs

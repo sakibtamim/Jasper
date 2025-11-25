@@ -27,17 +27,18 @@ import {
   Song,
 } from "./audio/queue-manager.js";
 
+import { resolveTrack } from './audio/track-resolver.js';
+import { songAddedEmbed } from '../utils/embed-factory.js';
+import { getDevPrefix } from '../utils/dev-mode.js';
+
 import {
-  fetchVideoData,
   fetchPlaylistData,
-  isUrl,
 } from "./audio/stream-handler.js";
 
 import { playSong, handleAutoplay, handleRadio } from "./audio/playback-engine.js";
 import { getAutoplayButton } from "./ui/player-controls.js";
 import { getEntryMessage } from "../config/afr-config.js";
-import ytSearch from "yt-search";
-import { isCacheEnabled, getCacheStorage } from "./cache-manager.js";
+
 
 // --- Helpers ---
 
@@ -259,58 +260,7 @@ async function createQueue(interaction: ChatInputCommandInteraction, worker: Wor
   return queue;
 }
 
-async function resolveTrack(query: string): Promise<Song> {
-  // Check search cache first
-  if (isCacheEnabled() && !isUrl(query)) {
-    const storage = getCacheStorage();
-    if (storage) {
-      const cached = await storage.getCachedSearchResult(query);
-      if (cached) {
-        return cached;
-      }
-    }
-  }
 
-  // Feature 1: Direct URL support
-  if (isUrl(query)) {
-    try {
-      const videoData = await fetchVideoData(query);
-      return {
-        title: videoData.title,
-        url: videoData.webpage_url || videoData.url,
-        durationInSec: videoData.duration,
-        requestedBy: "Unknown", // Will be overwritten
-        thumbnail: videoData.thumbnail,
-      };
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : String(error);
-      throw new Error(`Failed to resolve URL: ${msg} `);
-    }
-  }
-
-  const searchResult = await ytSearch(query);
-  if (searchResult && searchResult.videos.length > 0) {
-    const video = searchResult.videos[0];
-    const track: Song = {
-      title: video.title,
-      url: video.url,
-      durationInSec: video.seconds,
-      requestedBy: "Unknown", // Will be overwritten
-      thumbnail: video.thumbnail,
-    };
-
-    // Cache the search result
-    if (isCacheEnabled()) {
-      const storage = getCacheStorage();
-      if (storage) {
-        await storage.setCachedSearchResult(query, track);
-      }
-    }
-
-    return track;
-  }
-  throw new Error("No results found on YouTube.");
-}
 
 async function reacquireIdleWorker(interaction: ChatInputCommandInteraction, queue: Queue): Promise<boolean> {
   if (queue.idleTimeout) {
@@ -394,17 +344,22 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string):
       queue.voiceChannelId
     );
 
-    const prefix = track.fromCache ? "⚡⚡ " : "";
+    const prefix = track.fromCache ? '⚡⚡ ' : '';
+    const devPrefix = getDevPrefix();
+
+    const embed = songAddedEmbed(
+      track.title,
+      track.url,
+      track.thumbnail,
+      queue.worker.name,
+      `${prefix}${devPrefix}`
+    );
 
     if (queue.songs.length === 1 && !queue.nowPlaying) {
       await playSong(queue);
-      await interaction.editReply(
-        `${prefix}✅ **${queue.worker.name}** added to queue in **#${channelName}**: [${track.title}](${track.url})`
-      );
+      await interaction.editReply({ embeds: [embed] });
     } else {
-      await interaction.editReply(
-        `${prefix}✅ **${queue.worker.name}** queued in **#${channelName}**: [${track.title}](${track.url})`
-      );
+      await interaction.editReply({ embeds: [embed] });
     }
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
