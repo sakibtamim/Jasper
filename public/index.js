@@ -737,4 +737,57 @@ window.addEventListener('resize', () => {
 
 // Initial Fetch and Polling
 fetchData();
+checkAuth();
 setInterval(fetchData, 3000);
+
+// Auth Logic
+async function checkAuth() {
+    try {
+        const res = await fetch(`${API_BASE}/auth/me`);
+        const container = document.getElementById('auth-container');
+        if (!container) return;
+
+        if (res.ok) {
+            const data = await res.json();
+            const user = data.user;
+
+            // Show User Profile & Logout
+            container.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2">
+                        ${user.avatar
+                    ? `<img src="${escapeHtml(user.avatar)}" class="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-700">`
+                    : `<div class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center"><i data-lucide="user" class="w-4 h-4 text-gray-500"></i></div>`
+                }
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-200 hidden sm:inline">${escapeHtml(user.username)}</span>
+                    </div>
+                    <button onclick="logout()" class="p-2 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Logout">
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            `;
+            lucide.createIcons();
+        } else {
+            // Show Login Button (Default)
+            container.innerHTML = `
+                <a href="/api/auth/login"
+                    class="px-4 py-2 rounded-full text-sm font-semibold text-white bg-brand-primary hover:bg-brand-primary/90 transition-colors flex items-center gap-2">
+                    <i data-lucide="log-in" class="w-4 h-4"></i>
+                    Login
+                </a>
+            `;
+            lucide.createIcons();
+        }
+    } catch (error) {
+        console.error('Auth check failed:', error);
+    }
+}
+
+async function logout() {
+    try {
+        await fetch(`${API_BASE}/auth/logout`, { method: 'POST' });
+        window.location.reload();
+    } catch (error) {
+        console.error('Logout failed:', error);
+    }
+}
