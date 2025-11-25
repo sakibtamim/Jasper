@@ -2,7 +2,7 @@
 // Migration script to transfer file-based cache to database
 // This script is compatible with production environments (no TypeScript/tsx required)
 
-import { readFile, readdir, unlink } from 'fs/promises';
+import { readFile, readdir, unlink, mkdir } from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import Database from 'better-sqlite3';
@@ -163,7 +163,16 @@ async function fileExists(path) {
 }
 
 async function runMigration() {
+    // Skip migration in CI environments (build phase)
+    if (process.env.CI) {
+        console.log('[migration] Skipping migration in CI environment');
+        return;
+    }
+
     try {
+        // Ensure database directory exists
+        await mkdir(path.dirname(DB_PATH), { recursive: true });
+
         const db = new Database(DB_PATH);
 
         // Check if migration is needed

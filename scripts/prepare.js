@@ -17,40 +17,25 @@ const root = join(__dirname, '..');
 const tscPath = join(root, 'node_modules', '.bin', 'tsc');
 const tscExists = existsSync(tscPath) || existsSync(tscPath + '.cmd');
 
-if (!tscExists) {
-    console.log('Skipping build: devDependencies not installed (production mode)');
-    process.exit(0);
-}
-
 // Check if dist directory already exists and has content
 const distPath = join(root, 'dist');
 const distIndexPath = join(distPath, 'index.js');
-if (existsSync(distIndexPath)) {
+
+if (!tscExists) {
+    console.log('Skipping build: devDependencies not installed (production mode)');
+} else if (existsSync(distIndexPath)) {
     console.log('Skipping build: dist/index.js already exists');
-    process.exit(0);
-}
-
-// Run the build
-console.log('Running build...');
-const result = spawnSync('npm', ['run', 'build'], {
-    cwd: root,
-    stdio: 'inherit',
-    shell: true
-})
-
-// Run cache migration if needed (silent, only logs if migration actually happens)
-const migratePath = join(root, 'scripts', 'migrate-cache.js');
-if (existsSync(migratePath)) {
-    const migrateResult = spawnSync('node', [migratePath], {
+} else {
+    // Run the build
+    console.log('Running build...');
+    const result = spawnSync('npm', ['run', 'build'], {
         cwd: root,
         stdio: 'inherit',
         shell: true
     });
-    // Migration failures should be fatal to prevent inconsistent state
-    if (migrateResult.status !== 0) {
-        console.error('Error: Cache migration failed. Please check the logs above.');
-        process.exit(1);
+    if (result.status !== 0) {
+        process.exit(result.status);
     }
 }
 
-process.exit(result.status || 0);
+process.exit(0);
