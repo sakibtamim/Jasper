@@ -27,6 +27,32 @@ interface DiscordToken {
     expires_in: number;
 }
 
+function isDiscordToken(data: unknown): data is DiscordToken {
+    return (
+        typeof data === 'object' &&
+        data !== null &&
+        'access_token' in data &&
+        'refresh_token' in data &&
+        'expires_in' in data &&
+        typeof (data as any).access_token === 'string' &&
+        typeof (data as any).refresh_token === 'string' &&
+        typeof (data as any).expires_in === 'number'
+    );
+}
+
+function isDiscordUser(data: unknown): data is DiscordUser {
+    return (
+        typeof data === 'object' &&
+        data !== null &&
+        'id' in data &&
+        'username' in data &&
+        'discriminator' in data &&
+        typeof (data as any).id === 'string' &&
+        typeof (data as any).username === 'string' &&
+        typeof (data as any).discriminator === 'string'
+    );
+}
+
 const authRoutes: FastifyPluginAsync = async (fastify) => {
     if (!process.env.DISCORD_CLIENT_ID || !process.env.DISCORD_CLIENT_SECRET || !process.env.COOKIE_SECRET) {
         throw new Error('Missing required environment variables: DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, COOKIE_SECRET');
@@ -56,7 +82,12 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
     fastify.get('/api/auth/callback', async (request, reply) => {
         try {
             const tokenResponse = await fastify.discordOAuth2.getAccessTokenFromAuthorizationCodeFlow(request);
-            const token = tokenResponse.token as DiscordToken;
+            const tokenData = tokenResponse.token;
+
+            if (!isDiscordToken(tokenData)) {
+                throw new DiscordOAuthError('Invalid token response from Discord');
+            }
+            const token = tokenData;
 
             // Fetch user info from Discord
             const userResponse = await fetch('https://discord.com/api/users/@me', {
@@ -69,7 +100,12 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
                 throw new DiscordAPIError(`Failed to fetch user info from Discord: ${userResponse.status} ${userResponse.statusText}`);
             }
 
-            const discordUser = (await userResponse.json()) as DiscordUser;
+            const discordUserData = await userResponse.json();
+
+            if (!isDiscordUser(discordUserData)) {
+                throw new DiscordAPIError('Invalid user data received from Discord');
+            }
+            const discordUser = discordUserData;
 
             const avatarUrl = discordUser.avatar
                 ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
