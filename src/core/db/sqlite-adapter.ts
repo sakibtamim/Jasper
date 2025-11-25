@@ -469,4 +469,27 @@ export class SqliteAdapter implements DatabaseAdapter {
     const stmt = this.db.prepare('DELETE FROM sessions WHERE id = ?');
     stmt.run(sessionId);
   }
+
+  async getUser(userId: string): Promise<User | null> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare(`
+      SELECT 
+        id, username, discriminator, avatar, 
+        access_token as accessToken, 
+        refresh_token as refreshToken, 
+        expires_at as expiresAt, 
+        created_at as createdAt, 
+        updated_at as updatedAt
+      FROM users
+      WHERE id = ?
+    `);
+    const row = stmt.get(userId) as any;
+    if (!row) return null;
+    return {
+      ...row,
+      expiresAt: new Date(row.expiresAt),
+      createdAt: new Date(row.createdAt),
+      updatedAt: new Date(row.updatedAt)
+    };
+  }
 }

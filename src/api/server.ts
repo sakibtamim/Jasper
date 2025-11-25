@@ -23,7 +23,7 @@ server.register(fastifyStatic, {
 
 // Register Cookie Plugin
 server.register(fastifyCookie, {
-    secret: process.env.COOKIE_SECRET || 'jasper-secret-key-change-me', // should be in .env
+    secret: process.env.COOKIE_SECRET, // should be in .env
     parseOptions: {}     // options for parsing cookies
 });
 
@@ -31,21 +31,20 @@ server.register(fastifyCookie, {
 server.register(authRoutes);
 
 // Global Session Hook
-server.addHook('onRequest', async (request, _reply) => {
+server.addHook('onRequest', async (request, reply) => {
     const sessionId = request.cookies.session_id;
     if (sessionId) {
         try {
             const session = await db.getSession(sessionId);
-            if (session) {
-                // Fetch user details (could be cached)
-                // For now, we'll just attach the session and minimal user info if needed
-                // Ideally we should have a db.getUser(session.userId)
-                // But for now let's just attach the session
-                (request as any).user = { id: session.userId };
+            if (!session) {
+                // Invalid session, clear cookie
+                reply.clearCookie('session_id');
+                return;
+            }
 
-                // We could fetch the full user here if we added getUser to the adapter
-                // const user = await db.getUser(session.userId);
-                // (request as any).user = user;
+            const user = await db.getUser(session.userId);
+            if (user) {
+                (request as any).user = user;
             }
         } catch (e) {
             logger.warn(`[auth] Error validating session: ${e}`);

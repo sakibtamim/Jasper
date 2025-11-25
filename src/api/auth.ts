@@ -19,6 +19,10 @@ interface DiscordUser {
 }
 
 const authRoutes: FastifyPluginAsync = async (fastify) => {
+    if (!process.env.DISCORD_CLIENT_ID || !process.env.DISCORD_CLIENT_SECRET || !process.env.COOKIE_SECRET) {
+        throw new Error('Missing required environment variables: DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, COOKIE_SECRET');
+    }
+
     const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
 
     await fastify.register(oauthPlugin, {

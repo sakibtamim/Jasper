@@ -179,4 +179,5 @@ export interface DatabaseAdapter {
     createSession(session: Session): Promise<void>;
     getSession(sessionId: string): Promise<Session | null>;
     deleteSession(sessionId: string): Promise<void>;
+    getUser(userId: string): Promise<User | null>;
 }
