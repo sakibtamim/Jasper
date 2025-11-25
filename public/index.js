@@ -399,7 +399,8 @@ function renderQueues() {
                     if (isExpanded) {
                         button = `
                             <button 
-                                onclick="toggleQueueExpansion('${queueId}')"
+                                data-action="toggle-queue"
+                                data-queue-id="${queueId}"
                                 class="w-full mt-2 px-3 py-2 text-xs font-medium text-brand-secondary hover:text-brand-primary border border-brand-secondary/30 hover:border-brand-primary rounded-lg transition-colors flex items-center justify-center gap-2"
                             >
                                 <i data-lucide="chevron-up" class="w-4 h-4"></i>
@@ -410,7 +411,8 @@ function renderQueues() {
                         const songsToAdd = Math.min(maxExpandedSongs - maxInitialSongs, remainingSongs);
                         button = `
                             <button 
-                                onclick="toggleQueueExpansion('${queueId}')"
+                                data-action="toggle-queue"
+                                data-queue-id="${queueId}"
                                 class="w-full mt-2 px-3 py-2 text-xs font-medium text-brand-secondary hover:text-brand-primary border border-brand-secondary/30 hover:border-brand-primary rounded-lg transition-colors flex items-center justify-center gap-2"
                             >
                                 <i data-lucide="chevron-down" class="w-4 h-4"></i>
@@ -638,14 +640,14 @@ function renderLogs() {
 }
 
 // Toggle queue expansion
-window.toggleQueueExpansion = function (queueId) {
+function toggleQueueExpansion(queueId) {
     if (expandedQueues.has(queueId)) {
         expandedQueues.delete(queueId);
     } else {
         expandedQueues.add(queueId);
     }
     renderQueues();
-};
+}
 
 // Helper: Format Duration
 function formatDuration(seconds) {
@@ -734,6 +736,20 @@ window.addEventListener('resize', () => {
         }
     }, 250);
 });
+
+// Event delegation for queue expansion
+const queuesContainer = document.getElementById('queues-container');
+if (queuesContainer) {
+    queuesContainer.addEventListener('click', (e) => {
+        const toggleBtn = e.target.closest('[data-action="toggle-queue"]');
+        if (toggleBtn) {
+            const queueId = toggleBtn.dataset.queueId;
+            if (queueId) {
+                toggleQueueExpansion(queueId);
+            }
+        }
+    });
+}
 
 // Initial Fetch and Polling
 fetchData();

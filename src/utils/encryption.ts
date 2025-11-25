@@ -4,12 +4,13 @@ const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
 const AUTH_TAG_LENGTH = 16;
 const SALT_LENGTH = 32;
+const PBKDF2_ITERATIONS = parseInt(process.env.PBKDF2_ITERATIONS || '100000', 10);
 
 /**
  * Derives a key from the encryption key using PBKDF2
  */
 function deriveKey(key: string, salt: Buffer): Buffer {
-    return crypto.pbkdf2Sync(key, salt, 100000, 32, 'sha256');
+    return crypto.pbkdf2Sync(key, salt, PBKDF2_ITERATIONS, 32, 'sha256');
 }
 
 /**

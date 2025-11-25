@@ -36,6 +36,8 @@ The following environment variables are required in `.env`:
 | `DISCORD_CLIENT_SECRET` | Client Secret from Discord Developer Portal | `abcdef...` |
 | `BASE_URL` | Public-facing URL of the application | `http://localhost:3000` |
 | `COOKIE_SECRET` | Secret key for signing cookies | `secret-change-me` |
+| `ENCRYPTION_KEY` | **Required**. Key for encrypting OAuth tokens (32+ characters) | `your-super-secret-key-here` |
+| `PBKDF2_ITERATIONS` | **Optional**. PBKDF2 iterations for key derivation | `100000` (default) |
 
 > **Note**: The Redirect URI in the Discord Developer Portal must be set to `${BASE_URL}/api/auth/callback`.
 
