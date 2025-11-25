@@ -162,6 +162,69 @@ async function fileExists(path) {
     }
 }
 
+async function ensureSchema(db) {
+    // Create tables if they don't exist (idempotent)
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS plays (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            guild_id TEXT NOT NULL,
+            channel_id TEXT NOT NULL,
+            bot_name TEXT NOT NULL,
+            song_title TEXT NOT NULL,
+            song_url TEXT NOT NULL,
+            duration INTEGER NOT NULL,
+            played_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS search_cache (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            query TEXT NOT NULL UNIQUE,
+            song_title TEXT NOT NULL,
+            song_url TEXT NOT NULL,
+            duration INTEGER NOT NULL,
+            thumbnail TEXT,
+            cached_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            expires_at DATETIME NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS audio_metadata (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            video_id TEXT NOT NULL UNIQUE,
+            title TEXT NOT NULL,
+            url TEXT NOT NULL,
+            duration INTEGER NOT NULL,
+            thumbnail TEXT,
+            search_terms TEXT NOT NULL,
+            cached_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            expires_at DATETIME NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS cache_hits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            entity_id TEXT NOT NULL,
+            entity_name TEXT NOT NULL,
+            entity_type TEXT NOT NULL,
+            hit_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+    `);
+
+    // Create indexes for performance
+    db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_plays_user_id ON plays(user_id);
+        CREATE INDEX IF NOT EXISTS idx_plays_song_url ON plays(song_url);
+        CREATE INDEX IF NOT EXISTS idx_plays_played_at ON plays(played_at);
+        CREATE INDEX IF NOT EXISTS idx_plays_channel_id ON plays(channel_id);
+        CREATE INDEX IF NOT EXISTS idx_plays_bot_name ON plays(bot_name);
+        CREATE INDEX IF NOT EXISTS idx_search_cache_query ON search_cache(query);
+        CREATE INDEX IF NOT EXISTS idx_search_cache_expires_at ON search_cache(expires_at);
+        CREATE INDEX IF NOT EXISTS idx_audio_metadata_video_id ON audio_metadata(video_id);
+        CREATE INDEX IF NOT EXISTS idx_audio_metadata_expires_at ON audio_metadata(expires_at);
+        CREATE INDEX IF NOT EXISTS idx_cache_hits_entity_id ON cache_hits(entity_id);
+        CREATE INDEX IF NOT EXISTS idx_cache_hits_entity_type ON cache_hits(entity_type);
+    `);
+}
+
 async function runMigration() {
     // Skip migration in CI environments (build phase)
     if (process.env.CI) {
@@ -174,6 +237,9 @@ async function runMigration() {
         await mkdir(path.dirname(DB_PATH), { recursive: true });
 
         const db = new Database(DB_PATH);
+
+        // Ensure schema exists before attempting migration
+        ensureSchema(db);
 
         // Check if migration is needed
         const needed = await checkMigrationNeeded(db);
