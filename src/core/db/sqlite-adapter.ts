@@ -4,6 +4,7 @@ import fs from 'fs';
 import logger from '../logger.js';
 import { DatabaseAdapter, PlayRecord, SongStats, UserStats, User, Session } from './types.js';
 import { decrypt } from '../../utils/encryption.js';
+import { ENCRYPTION_KEY } from '../../config/env.js';
 
 export class SqliteAdapter implements DatabaseAdapter {
   private db: Database.Database | null = null;
@@ -514,8 +515,7 @@ export class SqliteAdapter implements DatabaseAdapter {
     const row = stmt.get(userId) as UserRow | undefined;
     if (!row) return null;
 
-    const encryptionKey = process.env.ENCRYPTION_KEY;
-    if (!encryptionKey) {
+    if (!ENCRYPTION_KEY) {
       throw new Error('ENCRYPTION_KEY is required to decrypt user tokens');
     }
 
@@ -524,8 +524,8 @@ export class SqliteAdapter implements DatabaseAdapter {
       username: row.username,
       discriminator: row.discriminator,
       avatar: row.avatar || undefined,
-      accessToken: decrypt(row.accessToken, encryptionKey),
-      refreshToken: decrypt(row.refreshToken, encryptionKey),
+      accessToken: decrypt(row.accessToken, ENCRYPTION_KEY),
+      refreshToken: decrypt(row.refreshToken, ENCRYPTION_KEY),
       expiresAt: new Date(row.expiresAt),
       createdAt: new Date(row.createdAt),
       updatedAt: new Date(row.updatedAt)
@@ -565,19 +565,18 @@ export class SqliteAdapter implements DatabaseAdapter {
     }
 
     const rows = stmt.all(limit, offset) as UserRow[];
-    const encryptionKey = process.env.ENCRYPTION_KEY!;
 
     const users = rows.map(row => {
       let accessToken = row.accessToken;
       let refreshToken = row.refreshToken;
       try {
-        accessToken = decrypt(row.accessToken, encryptionKey);
-      } catch (e) {
+        accessToken = ENCRYPTION_KEY ? decrypt(row.accessToken, ENCRYPTION_KEY) : '[No Key]';
+      } catch {
         accessToken = '[Decryption Failed]';
       }
       try {
-        refreshToken = decrypt(row.refreshToken, encryptionKey);
-      } catch (e) {
+        refreshToken = ENCRYPTION_KEY ? decrypt(row.refreshToken, ENCRYPTION_KEY) : '[No Key]';
+      } catch {
         refreshToken = '[Decryption Failed]';
       }
 

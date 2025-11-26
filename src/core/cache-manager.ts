@@ -2,12 +2,20 @@ import { Readable } from 'stream';
 import logger from './logger.js';
 import { Song } from './audio/queue-manager.js';
 import { DatabaseCacheStorage } from './cache/db-cache-storage.js';
+import {
+    CACHE_ENABLED,
+    CACHE_SEARCH_TTL_HOURS,
+    CACHE_AUDIO_TTL_HOURS,
+    CACHE_CLEANUP_INTERVAL_HOURS
+} from '../config/env.js';
 
-// Cache configuration from environment
-export const CACHE_ENABLED = process.env.CACHE_ENABLED === 'true';
-export const CACHE_SEARCH_TTL_HOURS = parseInt(process.env.CACHE_SEARCH_TTL_HOURS || '168', 10); // 7 days
-export const CACHE_AUDIO_TTL_HOURS = parseInt(process.env.CACHE_AUDIO_TTL_HOURS || '72', 10); // 3 days
-export const CACHE_CLEANUP_INTERVAL_HOURS = parseInt(process.env.CACHE_CLEANUP_INTERVAL_HOURS || '1', 10);
+// Re-export for backwards compatibility
+export {
+    CACHE_ENABLED,
+    CACHE_SEARCH_TTL_HOURS,
+    CACHE_AUDIO_TTL_HOURS,
+    CACHE_CLEANUP_INTERVAL_HOURS
+};
 
 
 export interface CacheStats {

@@ -2,6 +2,7 @@ import pg from 'pg';
 import logger from '../logger.js';
 import { DatabaseAdapter, PlayRecord, SongStats, UserStats, User, Session } from './types.js';
 import { decrypt } from '../../utils/encryption.js';
+import { DATABASE_URL, ENCRYPTION_KEY, isProduction } from '../../config/env.js';
 
 const { Pool } = pg;
 
@@ -9,14 +10,14 @@ export class PostgresAdapter implements DatabaseAdapter {
     private pool: pg.Pool | null = null;
 
     constructor() {
-        // Connection string should be in DATABASE_URL env var
+        // Connection string comes from DATABASE_URL env var
     }
 
     async init(): Promise<void> {
         try {
             this.pool = new Pool({
-                connectionString: process.env.DATABASE_URL,
-                ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined
+                connectionString: DATABASE_URL,
+                ssl: isProduction ? { rejectUnauthorized: false } : undefined
             });
 
             // Test connection
@@ -459,8 +460,7 @@ export class PostgresAdapter implements DatabaseAdapter {
         if (result.rows.length === 0) return null;
         const row = result.rows[0];
 
-        const encryptionKey = process.env.ENCRYPTION_KEY;
-        if (!encryptionKey) {
+        if (!ENCRYPTION_KEY) {
             throw new Error('ENCRYPTION_KEY is required to decrypt user tokens');
         }
 
@@ -469,8 +469,8 @@ export class PostgresAdapter implements DatabaseAdapter {
             username: row.username,
             discriminator: row.discriminator,
             avatar: row.avatar,
-            accessToken: decrypt(row.accessToken, encryptionKey),
-            refreshToken: decrypt(row.refreshToken, encryptionKey),
+            accessToken: decrypt(row.accessToken, ENCRYPTION_KEY),
+            refreshToken: decrypt(row.refreshToken, ENCRYPTION_KEY),
             expiresAt: new Date(row.expiresAt),
             createdAt: new Date(row.createdAt),
             updatedAt: new Date(row.updatedAt)
@@ -497,19 +497,17 @@ export class PostgresAdapter implements DatabaseAdapter {
             LIMIT $1 OFFSET $2
         `, [limit, offset]);
 
-        const encryptionKey = process.env.ENCRYPTION_KEY!;
-
         const users = result.rows.map(row => {
             let accessToken = row.accessToken;
             let refreshToken = row.refreshToken;
             try {
-                accessToken = decrypt(row.accessToken, encryptionKey);
-            } catch (e) {
+                accessToken = ENCRYPTION_KEY ? decrypt(row.accessToken, ENCRYPTION_KEY) : '[No Key]';
+            } catch {
                 accessToken = '[Decryption Failed]';
             }
             try {
-                refreshToken = decrypt(row.refreshToken, encryptionKey);
-            } catch (e) {
+                refreshToken = ENCRYPTION_KEY ? decrypt(row.refreshToken, ENCRYPTION_KEY) : '[No Key]';
+            } catch {
                 refreshToken = '[Decryption Failed]';
             }
 

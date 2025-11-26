@@ -10,6 +10,7 @@ import fastifyCookie from '@fastify/cookie';
 import db from '../core/db/index.js';
 import authRoutes from './auth.js';
 import devtoolsRoutes from './devtools.js';
+import { PORT, COOKIE_SECRET } from '../config/env.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,7 +25,7 @@ server.register(fastifyStatic, {
 
 // Register Cookie Plugin
 server.register(fastifyCookie, {
-    secret: process.env.COOKIE_SECRET, // should be in .env
+    secret: COOKIE_SECRET || undefined,
 });
 
 // Global Session Hook
@@ -348,14 +349,13 @@ server.get('/api/stats', async (request, _reply) => {
 });
 
 export async function startServer() {
-    if (!process.env.PORT) {
+    if (!PORT) {
         return;
     }
 
     try {
-        const port = parseInt(process.env.PORT, 10);
-        await server.listen({ port, host: '0.0.0.0' });
-        logger.info(`[webui] Web UI server running at http://localhost:${port}`);
+        await server.listen({ port: PORT, host: '0.0.0.0' });
+        logger.info(`[webui] Web UI server running at http://localhost:${PORT}`);
     } catch (err) {
         server.log.error(err);
         process.exit(1);

@@ -1,20 +1,20 @@
-import dotenv from "dotenv";
-dotenv.config();
 import fs from "node:fs";
 import path from "node:path";
 import { REST, Routes, RESTPostAPIChatInputApplicationCommandsJSONBody } from "discord.js";
 import { fileURLToPath } from "url";
 import logger from "./core/logger.js";
+import {
+  DISCORD_CLIENT_ID,
+  GUILD_ID,
+  DISCORD_TOKEN,
+  validateDeployConfig
+} from "./config/env.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const { CLIENT_ID, GUILD_ID, DISCORD_TOKEN } = process.env;
-
-if (!CLIENT_ID || !GUILD_ID || !DISCORD_TOKEN) {
-  logger.error("[commands] Missing CLIENT_ID, GUILD_ID, or DISCORD_TOKEN in environment.");
-  process.exit(1);
-}
+// Validate required environment variables for deployment
+validateDeployConfig();
 
 const commands: RESTPostAPIChatInputApplicationCommandsJSONBody[] = [];
 const commandsPath = path.join(__dirname, "commands");
@@ -38,7 +38,7 @@ const rest = new REST({ version: "10" }).setToken(DISCORD_TOKEN);
   try {
     logger.info(`[commands] Started refreshing ${commands.length} application (/) commands.`);
     const data = await rest.put(
-      Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+      Routes.applicationGuildCommands(DISCORD_CLIENT_ID, GUILD_ID),
       { body: commands }
     ) as unknown[];
     logger.info(`[commands] Successfully reloaded ${data.length} application (/) commands.`);
