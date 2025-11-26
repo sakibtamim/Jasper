@@ -299,7 +299,12 @@ async function ensureQueue(
 
 // --- Exported Functions ---
 
-async function enqueue(interaction: ChatInputCommandInteraction, query: string): Promise<void> {
+interface EnqueueOptions {
+  position?: 'next' | 'end';
+  skipCurrent?: boolean;
+}
+
+async function enqueue(interaction: ChatInputCommandInteraction, query: string, options: EnqueueOptions = {}): Promise<void> {
   const voiceChannel = await validateInteraction(interaction);
   if (!voiceChannel) return;
 
@@ -332,11 +337,19 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string):
       );
     }
 
-    queue.songs.push({
+    const songToAdd = {
       ...track,
       requestedBy: interaction.user.tag,
       requesterId: interaction.user.id,
-    });
+    };
+
+    if (options.position === 'next') {
+      // splice(1, 0, item) inserts at index 1 for non-empty arrays, or index 0 for empty arrays
+      queue.songs.splice(1, 0, songToAdd);
+    } else {
+      queue.songs.push(songToAdd);
+    }
+
     queue.stopping = false;
 
     const channelName = await getChannelName(
@@ -355,11 +368,24 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string):
       `${prefix}${devPrefix}`
     );
 
+    // If skipCurrent is true, we want to play the new song immediately.
+    // If the queue was empty, it will just play.
+    // If something was playing, we skip it.
+    if (options.skipCurrent && queue.nowPlaying) {
+      queue.player.stop(); // This triggers Idle event, which plays the next song (which we just inserted at index 1)
+      await interaction.editReply({ content: `⏭️ **Skipping current song to play:** ${track.title}` });
+      return;
+    }
+
     if (queue.songs.length === 1 && !queue.nowPlaying) {
       await playSong(queue);
       await interaction.editReply({ embeds: [embed] });
     } else {
-      await interaction.editReply({ embeds: [embed] });
+      if (options.position === 'next') {
+        await interaction.editReply({ content: `✅ **Queued next:** ${track.title}`, embeds: [] });
+      } else {
+        await interaction.editReply({ embeds: [embed] });
+      }
     }
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
