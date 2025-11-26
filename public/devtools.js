@@ -182,7 +182,7 @@ async function loadCache() {
     try {
         const response = await fetch('/api/devtools/cache');
         const data = await response.json();
-        const tbody = document.getElementById('cacheTableBody');
+        const tbody = document.getElementById('cache-table-body');
         tbody.innerHTML = '';
 
         data.entries.forEach(entry => {
@@ -207,7 +207,7 @@ async function loadCache() {
     try {
         const response = await fetch('/api/devtools/cache/audio');
         const data = await response.json();
-        const tbody = document.getElementById('audioCacheTableBody');
+        const tbody = document.getElementById('audio-cache-table-body');
         tbody.innerHTML = '';
 
         data.entries.forEach(entry => {

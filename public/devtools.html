@@ -272,7 +272,8 @@
             <!-- Cache Tab -->
             <div class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50" id="cache" role="tabpanel"
                 aria-labelledby="cache-tab">
-                <div class="overflow-x-auto relative shadow-md sm:rounded-lg">
+                <div class="overflow-x-auto relative shadow-md sm:rounded-lg mb-8">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Search Cache</h3>
                     <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
                         <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
                             <tr>
@@ -285,6 +286,24 @@
                         </thead>
                         <tbody id="cache-table-body">
                             <!-- Cache entries injected here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="overflow-x-auto relative shadow-md sm:rounded-lg">
+                    <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Audio Cache</h3>
+                    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                            <tr>
+                                <th scope="col" class="py-3 px-6">Video ID</th>
+                                <th scope="col" class="py-3 px-6">Title</th>
+                                <th scope="col" class="py-3 px-6">Duration</th>
+                                <th scope="col" class="py-3 px-6">Cached At</th>
+                                <th scope="col" class="py-3 px-6">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="audio-cache-table-body">
+                            <!-- Audio cache entries injected here -->
                         </tbody>
                     </table>
                 </div>
