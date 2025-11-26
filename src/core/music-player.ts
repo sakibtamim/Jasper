@@ -344,14 +344,8 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string, 
     };
 
     if (options.position === 'next') {
-      // If something is playing, add after it (index 1). If nothing playing, it becomes index 0 via push/splice logic
-      // But queue.songs[0] is the currently playing song.
-      // So 'next' means at index 1.
-      if (queue.songs.length === 0) {
-        queue.songs.push(songToAdd);
-      } else {
-        queue.songs.splice(1, 0, songToAdd);
-      }
+      // splice(1, 0, item) inserts at index 1 for non-empty arrays, or index 0 for empty arrays
+      queue.songs.splice(1, 0, songToAdd);
     } else {
       queue.songs.push(songToAdd);
     }
