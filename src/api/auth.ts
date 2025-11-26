@@ -5,6 +5,14 @@ import db from '../core/db/index.js';
 import logger from '../core/logger.js';
 import { DiscordAPIError, DiscordOAuthError, DatabaseAuthError } from './auth-errors.js';
 import { encrypt } from '../utils/encryption.js';
+import {
+    DISCORD_CLIENT_ID,
+    DISCORD_CLIENT_SECRET,
+    ENCRYPTION_KEY,
+    BASE_URL,
+    isProduction,
+    validateAuthConfig
+} from '../config/env.js';
 
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -55,18 +63,15 @@ function isDiscordUser(data: unknown): data is DiscordUser {
 }
 
 const authRoutes: FastifyPluginAsync = async (fastify) => {
-    if (!process.env.DISCORD_CLIENT_ID || !process.env.DISCORD_CLIENT_SECRET || !process.env.COOKIE_SECRET || !process.env.ENCRYPTION_KEY) {
-        throw new Error('Missing required environment variables: DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, COOKIE_SECRET, ENCRYPTION_KEY');
-    }
-
-    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+    // Validate required auth environment variables
+    validateAuthConfig();
 
     await fastify.register(oauthPlugin, {
         name: 'discordOAuth2',
         credentials: {
             client: {
-                id: process.env.DISCORD_CLIENT_ID,
-                secret: process.env.DISCORD_CLIENT_SECRET,
+                id: DISCORD_CLIENT_ID,
+                secret: DISCORD_CLIENT_SECRET,
             },
             auth: {
                 authorizeHost: 'https://discord.com',
@@ -76,7 +81,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
             },
         },
         startRedirectPath: '/api/auth/login',
-        callbackUri: `${baseUrl}/api/auth/callback`,
+        callbackUri: `${BASE_URL}/api/auth/callback`,
         scope: ['identify'],
     });
 
@@ -128,8 +133,8 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
                 username: discordUser.username,
                 discriminator: discordUser.discriminator,
                 avatar: avatarUrl,
-                accessToken: encrypt(token.access_token, process.env.ENCRYPTION_KEY!),
-                refreshToken: encrypt(token.refresh_token, process.env.ENCRYPTION_KEY!),
+                accessToken: encrypt(token.access_token, ENCRYPTION_KEY),
+                refreshToken: encrypt(token.refresh_token, ENCRYPTION_KEY),
                 expiresAt: new Date(Date.now() + token.expires_in * 1000)
             };
 
@@ -158,7 +163,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
             reply.setCookie('session_id', sessionId, {
                 path: '/',
                 httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
+                secure: isProduction,
                 sameSite: 'lax',
                 expires: session.expiresAt,
             });

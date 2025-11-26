@@ -1,5 +1,4 @@
-import dotenv from "dotenv";
-dotenv.config();
+import { AFR_JASPER_WEIGHT } from "./env.js";
 
 /**
  * AFR (Automatic Feline Rotation) Configuration
@@ -21,16 +20,9 @@ dotenv.config();
  * - 0.0: Jasper is never selected when other workers are available
  * 
  * Configurable via AFR_JASPER_WEIGHT environment variable.
+ * Validated in env.ts to be between 0 and 1.
  */
-const rawJasperWeight = process.env.AFR_JASPER_WEIGHT || "0.5";
-export const JASPER_WEIGHT = parseFloat(rawJasperWeight);
-
-// Validate weight is in valid range [0, 1]
-if (JASPER_WEIGHT < 0 || JASPER_WEIGHT > 1 || isNaN(JASPER_WEIGHT)) {
-    throw new Error(
-        `AFR_JASPER_WEIGHT must be between 0 and 1, but received invalid value: "${rawJasperWeight}"`
-    );
-}
+export const JASPER_WEIGHT = AFR_JASPER_WEIGHT;
 
 // ============================================================================
 // Entry Messages Configuration

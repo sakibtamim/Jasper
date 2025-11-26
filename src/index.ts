@@ -1,5 +1,5 @@
-import dotenv from "dotenv";
-dotenv.config();
+// Import env.ts first to ensure environment variables are loaded
+import { validateBotConfig } from './config/env.js';
 
 import fs from "node:fs";
 import path from "node:path";
@@ -14,6 +14,9 @@ import { startServer } from "./api/server.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Validate required environment variables early
+validateBotConfig();
 
 // Register process signal handlers immediately
 process.on("SIGINT", () => handleGracefulExit("SIGINT"));

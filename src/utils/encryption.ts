@@ -1,10 +1,9 @@
 import crypto from 'crypto';
+import { PBKDF2_ITERATIONS } from '../config/env.js';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
-const AUTH_TAG_LENGTH = 16;
 const SALT_LENGTH = 32;
-const PBKDF2_ITERATIONS = parseInt(process.env.PBKDF2_ITERATIONS || '100000', 10);
 
 /**
  * Derives a key from the encryption key using PBKDF2

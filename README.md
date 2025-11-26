@@ -319,9 +319,11 @@ Fill in your details in the `.env` file:
 
 ```env
 DISCORD_TOKEN=your_bot_token_here
-CLIENT_ID=your_client_id
+DISCORD_CLIENT_ID=your_client_id
 GUILD_ID=your_guild_id_for_testing
 ```
+
+> **Note:** See [ENV.md](ENV.md) for complete documentation of all environment variables.
 
 ### 5. Build the Project
 

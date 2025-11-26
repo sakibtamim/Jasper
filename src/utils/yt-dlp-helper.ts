@@ -2,6 +2,7 @@ import { spawnSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { YT_DLP_JS_RUNTIME, YT_DLP_PLAYER_CLIENT } from '../config/env.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,12 +53,9 @@ export function findYtDlpPath(): string | null {
  * Reads from environment variables with sensible defaults.
  */
 export function getBaseYtDlpArgs(): string[] {
-    const jsRuntime = process.env.YT_DLP_JS_RUNTIME || 'node';
-    const playerClient = process.env.YT_DLP_PLAYER_CLIENT || 'default';
-
     return [
-        '--js-runtimes', jsRuntime,
-        '--extractor-args', `youtube:player_client=${playerClient}`,
+        '--js-runtimes', YT_DLP_JS_RUNTIME,
+        '--extractor-args', `youtube:player_client=${YT_DLP_PLAYER_CLIENT}`,
     ];
 }
 
