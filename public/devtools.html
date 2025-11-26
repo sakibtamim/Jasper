@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en" style="scroll-behavior: smooth">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jasper - Developer Tools</title>
+
+    <!-- Theme Initialization Script (Prevent FOUC) -->
+    <script>
+        (function () {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        })();
+    </script>
+
+    <!-- Tailwind CSS -->
+    <script src="vendor/tailwindcss.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="vendor/lucide.min.js"></script>
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="index.css" />
+</head>
+
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300">
+    <!-- Header / Navbar -->
+    <header
+        class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 fixed top-0 left-0 right-0 z-50 h-20">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-20">
+                <!-- Logo Container -->
+                <div class="flex items-center gap-3">
+                    <img src="assets/images/jasper-logo.png" alt="Jasper Logo"
+                        class="h-12 w-12 object-contain rounded-full border-2 border-brand-primary glow-primary">
+                    <span class="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+                        Jasper <span class="text-brand-primary">DevTools</span>
+                    </span>
+                </div>
+
+                <!-- Desktop Nav -->
+                <nav class="hidden lg:flex items-center space-x-1">
+                    <a href="/"
+                        class="px-4 py-2 rounded-full text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-brand-primary transition-colors">
+                        <i data-lucide="arrow-left" class="w-4 h-4 inline-block mr-1"></i> Back to Dashboard
+                    </a>
+                    
+                    <!-- Dark Mode Toggle -->
+                    <button id="theme-toggle" type="button"
+                        class="ml-4 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full p-2.5 transition-colors">
+                        <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
+                        </svg>
+                        <svg id="theme-toggle-light-icon" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"
+                            xmlns="http://www.w3.org/2000/svg">
+                            <path
+                                d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607l-.707-.707a1 1 0 010-1.414 1 1 0 011.414 0l.707.707a1 1 0 01-1.414 1.414zM4.95 15.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707a1 1 0 001.414-1.414zM1.414 6.364l.707.707a1 1 0 010 1.414 1 1 0 01-1.414 0l-.707-.707a1 1 0 011.414-1.414zM10 16a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1z"
+                                fill-rule="evenodd" clip-rule="evenodd"></path>
+                        </svg>
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 mt-6">
+        
+        <!-- Tabs -->
+        <div class="mb-8 border-b border-gray-200 dark:border-gray-700">
+            <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="tabs-nav" role="tablist">
+                <li class="mr-2" role="presentation">
+                    <button class="inline-block p-4 border-b-2 rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300 border-brand-primary text-brand-primary" id="overview-tab" data-tabs-target="#overview" type="button" role="tab" aria-controls="overview" aria-selected="true">Overview</button>
+                </li>
+                <li class="mr-2" role="presentation">
+                    <button class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300" id="users-tab" data-tabs-target="#users" type="button" role="tab" aria-controls="users" aria-selected="false">Users</button>
+                </li>
+                <li class="mr-2" role="presentation">
+                    <button class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300" id="sessions-tab" data-tabs-target="#sessions" type="button" role="tab" aria-controls="sessions" aria-selected="false">Sessions</button>
+                </li>
+                <li class="mr-2" role="presentation">
+                    <button class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300" id="cache-tab" data-tabs-target="#cache" type="button" role="tab" aria-controls="cache" aria-selected="false">Cache</button>
+                </li>
+            </ul>
+        </div>
+
+        <div id="tab-content">
+            <!-- Overview Tab -->
+            <div class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
+                        <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium uppercase tracking-wider">Total Plays</h3>
+                        <p id="stats-total-plays" class="text-3xl font-bold text-gray-900 dark:text-white mt-2">0</p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
+                        <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium uppercase tracking-wider">Total Playtime</h3>
+                        <p id="stats-total-duration" class="text-3xl font-bold text-gray-900 dark:text-white mt-2">0h 0m</p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
+                        <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium uppercase tracking-wider">Search Cache</h3>
+                        <p id="stats-search-cache" class="text-3xl font-bold text-gray-900 dark:text-white mt-2">0</p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
+                        <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium uppercase tracking-wider">Audio Cache</h3>
+                        <p id="stats-audio-cache" class="text-3xl font-bold text-gray-900 dark:text-white mt-2">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users Tab -->
+            <div class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50" id="users" role="tabpanel" aria-labelledby="users-tab">
+                <div class="overflow-x-auto relative shadow-md sm:rounded-lg">
+                    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                            <tr>
+                                <th scope="col" class="py-3 px-6">User</th>
+                                <th scope="col" class="py-3 px-6">ID</th>
+                                <th scope="col" class="py-3 px-6">Created At</th>
+                                <th scope="col" class="py-3 px-6">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body">
+                            <!-- Users injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Sessions Tab -->
+            <div class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50" id="sessions" role="tabpanel" aria-labelledby="sessions-tab">
+                <div class="overflow-x-auto relative shadow-md sm:rounded-lg">
+                    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                            <tr>
+                                <th scope="col" class="py-3 px-6">Session ID</th>
+                                <th scope="col" class="py-3 px-6">User ID</th>
+                                <th scope="col" class="py-3 px-6">Expires At</th>
+                                <th scope="col" class="py-3 px-6">Created At</th>
+                                <th scope="col" class="py-3 px-6">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sessions-table-body">
+                            <!-- Sessions injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Cache Tab -->
+            <div class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50" id="cache" role="tabpanel" aria-labelledby="cache-tab">
+                <div class="overflow-x-auto relative shadow-md sm:rounded-lg">
+                    <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                            <tr>
+                                <th scope="col" class="py-3 px-6">Query</th>
+                                <th scope="col" class="py-3 px-6">Song Title</th>
+                                <th scope="col" class="py-3 px-6">Cached At</th>
+                                <th scope="col" class="py-3 px-6">Expires At</th>
+                                <th scope="col" class="py-3 px-6">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cache-table-body">
+                            <!-- Cache entries injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="devtools.js"></script>
+</body>
+</html>

@@ -9,6 +9,7 @@ import { getCacheStats } from '../core/cache-manager.js';
 import fastifyCookie from '@fastify/cookie';
 import db from '../core/db/index.js';
 import authRoutes from './auth.js';
+import devtoolsRoutes from './devtools.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,9 +26,6 @@ server.register(fastifyStatic, {
 server.register(fastifyCookie, {
     secret: process.env.COOKIE_SECRET, // should be in .env
 });
-
-// Register Auth Routes
-server.register(authRoutes);
 
 // Global Session Hook
 server.addHook('onRequest', async (request, reply) => {
@@ -54,6 +52,12 @@ server.addHook('onRequest', async (request, reply) => {
         }
     }
 });
+
+// Register Auth Routes
+server.register(authRoutes);
+server.register(devtoolsRoutes);
+
+
 
 // API Endpoints
 

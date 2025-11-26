@@ -87,97 +87,44 @@ export interface Session {
     createdAt: Date;
 }
 
-export interface DatabaseAdapter {
-    /**
-     * Initialize the database connection and schema.
-     */
-    init(): Promise<void>;
-
-    /**
-     * Record a song play.
-     */
+export interface IStatsRepository {
     trackPlay(record: PlayRecord): Promise<void>;
-
-    /**
-     * Get top most played songs.
-     */
     getTopSongs(limit?: number): Promise<SongStats[]>;
-
-    /**
-     * Get top users by play count.
-     */
     getTopUsers(limit?: number): Promise<UserStats[]>;
-
-    /**
-     * Get top channels by play count.
-     */
     getTopChannels(limit?: number): Promise<ChannelStats[]>;
-
-    /**
-     * Get top bots by play count.
-     */
     getTopBots(limit?: number): Promise<BotStats[]>;
-
-    /**
-     * Get total stats (total plays, total duration).
-     */
     getGlobalStats(): Promise<{ totalPlays: number; totalDuration: number }>;
+}
 
-    // Cache methods
-    /**
-     * Get a cached search result.
-     */
+export interface ICacheRepository {
     getCachedSearchResult(query: string): Promise<CachedSearchResult | null>;
-
-    /**
-     * Set a cached search result with TTL.
-     */
     setCachedSearchResult(query: string, songTitle: string, songUrl: string, duration: number, thumbnail: string | undefined, ttlHours: number): Promise<void>;
-
-    /**
-     * Get audio metadata from cache.
-     */
     getAudioMetadata(videoId: string): Promise<AudioMetadata | null>;
-
-    /**
-     * Set audio metadata in cache with TTL.
-     */
     setAudioMetadata(videoId: string, title: string, url: string, duration: number, thumbnail: string | undefined, searchTerms: string[], ttlHours: number): Promise<void>;
-
-    /**
-     * Get a random cached song for radio feature.
-     */
     getRandomCachedSong(): Promise<AudioMetadata | null>;
-
-    /**
-     * Cleanup expired cache entries.
-     */
     cleanupExpiredCache(): Promise<void>;
-
-    /**
-     * Get cache statistics.
-     */
     getCacheStats(): Promise<{ searchCacheSize: number; audioMetadataCount: number }>;
-
-    /**
-     * Track a cache hit.
-     */
     trackCacheHit(entityId: string, entityName: string, entityType: 'user' | 'bot'): Promise<void>;
-
-    /**
-     * Get top entities by cache hits.
-     */
     getTopCacheHits(limit?: number): Promise<CacheHitStats[]>;
+}
 
-    /**
-     * Close the database connection.
-     */
-    close(): Promise<void>;
-
-    // Auth methods
+export interface IAuthRepository {
     upsertUser(user: User): Promise<void>;
     createSession(session: Session): Promise<void>;
     getSession(sessionId: string): Promise<Session | null>;
     deleteSession(sessionId: string): Promise<void>;
     getUser(userId: string): Promise<User | null>;
+}
+
+export interface IDevToolsRepository {
+    getAllUsers(limit?: number, offset?: number): Promise<{ users: User[], total: number }>;
+    deleteUser(userId: string): Promise<void>;
+    getAllSessions(limit?: number, offset?: number): Promise<{ sessions: Session[], total: number }>;
+    getAllCacheEntries(limit?: number, offset?: number): Promise<{ entries: CachedSearchResult[], total: number }>;
+    deleteCacheEntry(query: string): Promise<void>;
+}
+
+export interface DatabaseAdapter extends IStatsRepository, ICacheRepository, IAuthRepository, IDevToolsRepository {
+    init(): Promise<void>;
+    close(): Promise<void>;
 }

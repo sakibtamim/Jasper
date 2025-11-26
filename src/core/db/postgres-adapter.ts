@@ -476,4 +476,115 @@ export class PostgresAdapter implements DatabaseAdapter {
             updatedAt: new Date(row.updatedAt)
         };
     }
+
+    // DevTools methods
+    async getAllUsers(limit: number = 50, offset: number = 0): Promise<{ users: User[], total: number }> {
+        if (!this.pool) throw new Error('Database not initialized');
+
+        const countResult = await this.pool.query('SELECT COUNT(*)::int as count FROM users');
+        const total = countResult.rows[0].count;
+
+        const result = await this.pool.query(`
+            SELECT 
+                id, username, discriminator, avatar, 
+                access_token as "accessToken", 
+                refresh_token as "refreshToken", 
+                expires_at as "expiresAt", 
+                created_at as "createdAt", 
+                updated_at as "updatedAt"
+            FROM users
+            ORDER BY created_at DESC
+            LIMIT $1 OFFSET $2
+        `, [limit, offset]);
+
+        const encryptionKey = process.env.ENCRYPTION_KEY!;
+
+        const users = result.rows.map(row => {
+            let accessToken = row.accessToken;
+            let refreshToken = row.refreshToken;
+            try {
+                accessToken = decrypt(row.accessToken, encryptionKey);
+            } catch (e) {
+                accessToken = '[Decryption Failed]';
+            }
+            try {
+                refreshToken = decrypt(row.refreshToken, encryptionKey);
+            } catch (e) {
+                refreshToken = '[Decryption Failed]';
+            }
+
+            return {
+                id: row.id,
+                username: row.username,
+                discriminator: row.discriminator,
+                avatar: row.avatar,
+                accessToken,
+                refreshToken,
+                expiresAt: new Date(row.expiresAt),
+                createdAt: new Date(row.createdAt),
+                updatedAt: new Date(row.updatedAt)
+            }
+        });
+
+        return { users, total };
+    }
+
+    async deleteUser(userId: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('DELETE FROM users WHERE id = $1', [userId]);
+    }
+
+    async getAllSessions(limit: number = 50, offset: number = 0): Promise<{ sessions: Session[], total: number }> {
+        if (!this.pool) throw new Error('Database not initialized');
+
+        const countResult = await this.pool.query('SELECT COUNT(*)::int as count FROM sessions');
+        const total = countResult.rows[0].count;
+
+        const result = await this.pool.query(`
+            SELECT id, user_id as "userId", expires_at as "expiresAt", created_at as "createdAt"
+            FROM sessions
+            ORDER BY created_at DESC
+            LIMIT $1 OFFSET $2
+        `, [limit, offset]);
+
+        const sessions = result.rows.map(row => ({
+            id: row.id,
+            userId: row.userId,
+            expiresAt: new Date(row.expiresAt),
+            createdAt: new Date(row.createdAt)
+        }));
+
+        return { sessions, total };
+    }
+
+    async getAllCacheEntries(limit: number = 50, offset: number = 0): Promise<{ entries: import('./types.js').CachedSearchResult[], total: number }> {
+        if (!this.pool) throw new Error('Database not initialized');
+
+        const countResult = await this.pool.query('SELECT COUNT(*)::int as count FROM search_cache');
+        const total = countResult.rows[0].count;
+
+        const result = await this.pool.query(`
+            SELECT query, song_title as "songTitle", song_url as "songUrl", duration, thumbnail, cached_at as "cachedAt", expires_at as "expiresAt"
+            FROM search_cache
+            ORDER BY cached_at DESC
+            LIMIT $1 OFFSET $2
+        `, [limit, offset]);
+
+        const entries = result.rows.map(row => ({
+            query: row.query,
+            songTitle: row.songTitle,
+            songUrl: row.songUrl,
+            duration: row.duration,
+            thumbnail: row.thumbnail,
+            cachedAt: new Date(row.cachedAt),
+            expiresAt: new Date(row.expiresAt)
+        }));
+
+        return { entries, total };
+    }
+
+    async deleteCacheEntry(query: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('DELETE FROM search_cache WHERE query = $1', [query]);
+    }
 }

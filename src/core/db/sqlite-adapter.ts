@@ -432,6 +432,7 @@ export class SqliteAdapter implements DatabaseAdapter {
     `);
     stmt.run({
       ...user,
+      avatar: user.avatar || null,
       expiresAt: user.expiresAt.toISOString()
     });
   }
@@ -529,5 +530,140 @@ export class SqliteAdapter implements DatabaseAdapter {
       createdAt: new Date(row.createdAt),
       updatedAt: new Date(row.updatedAt)
     };
+  }
+
+  // DevTools methods
+  async getAllUsers(limit: number = 50, offset: number = 0): Promise<{ users: User[], total: number }> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const countStmt = this.db.prepare('SELECT COUNT(*) as count FROM users');
+    const total = (countStmt.get() as { count: number }).count;
+
+    const stmt = this.db.prepare(`
+      SELECT 
+        id, username, discriminator, avatar, 
+        access_token as accessToken, 
+        refresh_token as refreshToken, 
+        expires_at as expiresAt, 
+        created_at as createdAt, 
+        updated_at as updatedAt
+      FROM users
+      ORDER BY created_at DESC
+      LIMIT ? OFFSET ?
+    `);
+
+    interface UserRow {
+      id: string;
+      username: string;
+      discriminator: string;
+      avatar: string | null;
+      accessToken: string;
+      refreshToken: string;
+      expiresAt: string;
+      createdAt: string;
+      updatedAt: string;
+    }
+
+    const rows = stmt.all(limit, offset) as UserRow[];
+    const encryptionKey = process.env.ENCRYPTION_KEY!;
+
+    const users = rows.map(row => {
+      let accessToken = row.accessToken;
+      let refreshToken = row.refreshToken;
+      try {
+        accessToken = decrypt(row.accessToken, encryptionKey);
+      } catch (e) {
+        accessToken = '[Decryption Failed]';
+      }
+      try {
+        refreshToken = decrypt(row.refreshToken, encryptionKey);
+      } catch (e) {
+        refreshToken = '[Decryption Failed]';
+      }
+
+      return {
+        id: row.id,
+        username: row.username,
+        discriminator: row.discriminator,
+        avatar: row.avatar || undefined,
+        accessToken,
+        refreshToken,
+        expiresAt: new Date(row.expiresAt),
+        createdAt: new Date(row.createdAt),
+        updatedAt: new Date(row.updatedAt)
+      }
+    });
+
+    return { users, total };
+  }
+
+  async deleteUser(userId: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare('DELETE FROM users WHERE id = ?');
+    stmt.run(userId);
+  }
+
+  async getAllSessions(limit: number = 50, offset: number = 0): Promise<{ sessions: Session[], total: number }> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const countStmt = this.db.prepare('SELECT COUNT(*) as count FROM sessions');
+    const total = (countStmt.get() as { count: number }).count;
+
+    const stmt = this.db.prepare(`
+      SELECT id, user_id as userId, expires_at as expiresAt, created_at as createdAt
+      FROM sessions
+      ORDER BY created_at DESC
+      LIMIT ? OFFSET ?
+    `);
+
+    interface SessionRow {
+      id: string;
+      userId: string;
+      expiresAt: string;
+      createdAt: string;
+    }
+
+    const rows = stmt.all(limit, offset) as SessionRow[];
+    const sessions = rows.map(row => ({
+      id: row.id,
+      userId: row.userId,
+      expiresAt: new Date(row.expiresAt),
+      createdAt: new Date(row.createdAt)
+    }));
+
+    return { sessions, total };
+  }
+
+  async getAllCacheEntries(limit: number = 50, offset: number = 0): Promise<{ entries: import('./types.js').CachedSearchResult[], total: number }> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const countStmt = this.db.prepare('SELECT COUNT(*) as count FROM search_cache');
+    const total = (countStmt.get() as { count: number }).count;
+
+    const stmt = this.db.prepare(`
+      SELECT query, song_title as songTitle, song_url as songUrl, duration, thumbnail, cached_at as cachedAt, expires_at as expiresAt
+      FROM search_cache
+      ORDER BY cached_at DESC
+      LIMIT ? OFFSET ?
+    `);
+
+    const rows = stmt.all(limit, offset) as any[];
+    const entries = rows.map(row => ({
+      query: row.query,
+      songTitle: row.songTitle,
+      songUrl: row.songUrl,
+      duration: row.duration,
+      thumbnail: row.thumbnail,
+      cachedAt: new Date(row.cachedAt),
+      expiresAt: new Date(row.expiresAt)
+    }));
+
+    return { entries, total };
+  }
+
+  async deleteCacheEntry(query: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare('DELETE FROM search_cache WHERE query = ?');
+    stmt.run(query);
   }
 }
