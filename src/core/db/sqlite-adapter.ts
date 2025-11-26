@@ -666,4 +666,68 @@ export class SqliteAdapter implements DatabaseAdapter {
     const stmt = this.db.prepare('DELETE FROM search_cache WHERE query = ?');
     stmt.run(query);
   }
+
+  async getAllAudioCacheEntries(limit: number = 50, offset: number = 0): Promise<{ entries: import('./types.js').AudioMetadata[], total: number }> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const countStmt = this.db.prepare('SELECT COUNT(*) as count FROM audio_metadata');
+    const total = (countStmt.get() as { count: number }).count;
+
+    const stmt = this.db.prepare(`
+      SELECT video_id as videoId, title, url, duration, thumbnail, search_terms as searchTerms, cached_at as cachedAt, expires_at as expiresAt
+      FROM audio_metadata
+      ORDER BY cached_at DESC
+      LIMIT ? OFFSET ?
+    `);
+
+    const rows = stmt.all(limit, offset) as any[];
+    const entries = rows.map(row => ({
+      videoId: row.videoId,
+      title: row.title,
+      url: row.url,
+      duration: row.duration,
+      thumbnail: row.thumbnail,
+      searchTerms: JSON.parse(row.searchTerms),
+      cachedAt: new Date(row.cachedAt),
+      expiresAt: new Date(row.expiresAt)
+    }));
+
+    return { entries, total };
+  }
+
+  async deleteAudioCacheEntry(videoId: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare('DELETE FROM audio_metadata WHERE video_id = ?');
+    stmt.run(videoId);
+  }
+
+  async updateAudioThumbnail(videoId: string, thumbnail: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare('UPDATE audio_metadata SET thumbnail = ? WHERE video_id = ?');
+    stmt.run(thumbnail, videoId);
+  }
+
+  async deletePlaysForSong(songUrl: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare('DELETE FROM plays WHERE song_url = ?');
+    stmt.run(songUrl);
+  }
+
+  async deletePlaysForUser(userId: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare('DELETE FROM plays WHERE user_id = ?');
+    stmt.run(userId);
+  }
+
+  async deletePlaysForChannel(channelId: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare('DELETE FROM plays WHERE channel_id = ?');
+    stmt.run(channelId);
+  }
+
+  async deletePlaysForBot(botName: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare('DELETE FROM plays WHERE bot_name = ?');
+    stmt.run(botName);
+  }
 }

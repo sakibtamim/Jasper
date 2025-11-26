@@ -17,13 +17,21 @@ const CACHE_AUDIO_DIR = path.join(process.cwd(), 'cache', 'audio');
  * Uses database for metadata, filesystem for audio files
  */
 export class DatabaseCacheStorage implements ICacheStorage {
-    async getCachedSearchResult(query: string): Promise<Song | null> {
+    async getCachedSearchResult(query: string, requesterId?: string, requesterName?: string): Promise<Song | null> {
         const db = getDatabase();
         const result = await db.getCachedSearchResult(query);
 
         if (!result) return null;
 
         logger.info(`[cache] Search hit for: ${query}`);
+
+        if (requesterId && requesterName) {
+            // Track cache hit
+            db.trackCacheHit(requesterId, requesterName, 'user').catch(err =>
+                logger.warn(`[cache] Failed to track search hit: ${err}`)
+            );
+        }
+
         return {
             title: result.songTitle,
             url: result.songUrl,
@@ -47,7 +55,7 @@ export class DatabaseCacheStorage implements ICacheStorage {
         logger.info(`[cache] Cached search result for: ${query}`);
     }
 
-    async getCachedAudioStream(videoId: string): Promise<Readable | null> {
+    async getCachedAudioStream(videoId: string, requesterId?: string, requesterName?: string): Promise<Readable | null> {
         const audioPath = path.join(CACHE_AUDIO_DIR, `${videoId}.webm`);
 
         try {
@@ -68,6 +76,18 @@ export class DatabaseCacheStorage implements ICacheStorage {
 
             // Return read stream
             logger.info(`[cache] Audio cache hit for video: ${videoId}`);
+
+            if (requesterId && requesterName) {
+                // Track cache hit
+                // If requester is "Radio", it's a bot hit
+                const type = requesterName.startsWith('Radio') ? 'bot' : 'user';
+                // For bot hits, we might want to use the bot name as entityName if possible, 
+                // but here we just use what's passed.
+                db.trackCacheHit(requesterId, requesterName, type).catch(err =>
+                    logger.warn(`[cache] Failed to track audio hit: ${err}`)
+                );
+            }
+
             return createReadStream(audioPath);
         } catch {
             logger.warn(`[cache] Failed to read cached audio ${videoId}`);
@@ -214,5 +234,17 @@ export class DatabaseCacheStorage implements ICacheStorage {
             thumbnail: metadata.thumbnail,
             fromCache: true
         };
+    }
+
+    async deleteCachedFile(videoId: string): Promise<boolean> {
+        const audioPath = path.join(CACHE_AUDIO_DIR, `${videoId}.webm`);
+        try {
+            await fs.unlink(audioPath);
+            logger.info(`[cache] Deleted cached file: ${audioPath}`);
+            return true;
+        } catch (error) {
+            logger.warn(`[cache] Failed to delete file ${audioPath}: ${error instanceof Error ? error.message : String(error)}`);
+            return false;
+        }
     }
 }

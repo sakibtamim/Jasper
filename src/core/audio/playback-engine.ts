@@ -157,7 +157,7 @@ export async function playSong(queue: Queue): Promise<void> {
             const storage = getCacheStorage();
             if (storage) {
                 const videoId = extractVideoId(song.url);
-                const cachedStream = await storage.getCachedAudioStream(videoId);
+                const cachedStream = await storage.getCachedAudioStream(videoId, song.requesterId, song.requestedBy);
 
                 if (cachedStream) {
                     // Cache hit: stream from disk

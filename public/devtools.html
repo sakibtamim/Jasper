@@ -51,7 +51,7 @@
                         class="px-4 py-2 rounded-full text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-brand-primary transition-colors">
                         <i data-lucide="arrow-left" class="w-4 h-4 inline-block mr-1"></i> Back to Dashboard
                     </a>
-                    
+
                     <!-- Dark Mode Toggle -->
                     <button id="theme-toggle" type="button"
                         class="ml-4 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full p-2.5 transition-colors">
@@ -73,50 +73,79 @@
 
     <!-- Main Content -->
     <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 mt-6">
-        
+
         <!-- Tabs -->
         <div class="mb-8 border-b border-gray-200 dark:border-gray-700">
             <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="tabs-nav" role="tablist">
                 <li class="mr-2" role="presentation">
-                    <button class="inline-block p-4 border-b-2 rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300 border-brand-primary text-brand-primary" id="overview-tab" data-tabs-target="#overview" type="button" role="tab" aria-controls="overview" aria-selected="true">Overview</button>
+                    <button
+                        class="inline-block p-4 border-b-2 rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300 border-brand-primary text-brand-primary"
+                        id="overview-tab" data-tabs-target="#overview" type="button" role="tab" aria-controls="overview"
+                        aria-selected="true">Overview</button>
                 </li>
                 <li class="mr-2" role="presentation">
-                    <button class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300" id="users-tab" data-tabs-target="#users" type="button" role="tab" aria-controls="users" aria-selected="false">Users</button>
+                    <button
+                        class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300"
+                        id="users-tab" data-tabs-target="#users" type="button" role="tab" aria-controls="users"
+                        aria-selected="false">Users</button>
                 </li>
                 <li class="mr-2" role="presentation">
-                    <button class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300" id="sessions-tab" data-tabs-target="#sessions" type="button" role="tab" aria-controls="sessions" aria-selected="false">Sessions</button>
+                    <button
+                        class="inline-block p-4 rounded-t-lg border-b-2 border-transparent hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300"
+                        id="stats-tab" data-tabs-target="#stats" type="button" role="tab" aria-controls="stats"
+                        aria-selected="false">Stats</button>
                 </li>
                 <li class="mr-2" role="presentation">
-                    <button class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300" id="cache-tab" data-tabs-target="#cache" type="button" role="tab" aria-controls="cache" aria-selected="false">Cache</button>
+                    <button
+                        class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300"
+                        id="sessions-tab" data-tabs-target="#sessions" type="button" role="tab" aria-controls="sessions"
+                        aria-selected="false">Sessions</button>
+                </li>
+                <li class="mr-2" role="presentation">
+                    <button
+                        class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300"
+                        id="cache-tab" data-tabs-target="#cache" type="button" role="tab" aria-controls="cache"
+                        aria-selected="false">Cache</button>
                 </li>
             </ul>
         </div>
 
         <div id="tab-content">
             <!-- Overview Tab -->
-            <div class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+            <div class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50" id="overview" role="tabpanel"
+                aria-labelledby="overview-tab">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
-                        <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium uppercase tracking-wider">Total Plays</h3>
+                    <div
+                        class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
+                        <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium uppercase tracking-wider">Total
+                            Plays</h3>
                         <p id="stats-total-plays" class="text-3xl font-bold text-gray-900 dark:text-white mt-2">0</p>
                     </div>
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
-                        <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium uppercase tracking-wider">Total Playtime</h3>
-                        <p id="stats-total-duration" class="text-3xl font-bold text-gray-900 dark:text-white mt-2">0h 0m</p>
+                    <div
+                        class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
+                        <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium uppercase tracking-wider">Total
+                            Playtime</h3>
+                        <p id="stats-total-duration" class="text-3xl font-bold text-gray-900 dark:text-white mt-2">0h 0m
+                        </p>
                     </div>
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
-                        <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium uppercase tracking-wider">Search Cache</h3>
+                    <div
+                        class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
+                        <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium uppercase tracking-wider">Search
+                            Cache</h3>
                         <p id="stats-search-cache" class="text-3xl font-bold text-gray-900 dark:text-white mt-2">0</p>
                     </div>
-                    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
-                        <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium uppercase tracking-wider">Audio Cache</h3>
+                    <div
+                        class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
+                        <h3 class="text-gray-500 dark:text-gray-400 text-sm font-medium uppercase tracking-wider">Audio
+                            Cache</h3>
                         <p id="stats-audio-cache" class="text-3xl font-bold text-gray-900 dark:text-white mt-2">0</p>
                     </div>
                 </div>
             </div>
 
             <!-- Users Tab -->
-            <div class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50" id="users" role="tabpanel" aria-labelledby="users-tab">
+            <div class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50" id="users" role="tabpanel"
+                aria-labelledby="users-tab">
                 <div class="overflow-x-auto relative shadow-md sm:rounded-lg">
                     <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
                         <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
@@ -134,8 +163,94 @@
                 </div>
             </div>
 
+            <!-- Stats Management Tab -->
+            <div id="stats" class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50" role="tabpanel"
+                aria-labelledby="stats-tab">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Top Songs -->
+                    <div
+                        class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-lg">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Top Songs</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr
+                                        class="text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                                        <th class="p-2">Title</th>
+                                        <th class="p-2">Plays</th>
+                                        <th class="p-2">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="statsSongsTableBody" class="text-gray-800 dark:text-gray-300 text-sm">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Top Users -->
+                    <div
+                        class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-lg">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Top Users (Plays)</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr
+                                        class="text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                                        <th class="p-2">User</th>
+                                        <th class="p-2">Plays</th>
+                                        <th class="p-2">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="statsUsersTableBody" class="text-gray-800 dark:text-gray-300 text-sm">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Top Channels -->
+                    <div
+                        class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-lg">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Top Channels</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr
+                                        class="text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                                        <th class="p-2">Channel</th>
+                                        <th class="p-2">Plays</th>
+                                        <th class="p-2">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="statsChannelsTableBody" class="text-gray-800 dark:text-gray-300 text-sm">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Top Bots -->
+                    <div
+                        class="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-lg">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Top Bots</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr
+                                        class="text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                                        <th class="p-2">Bot</th>
+                                        <th class="p-2">Plays</th>
+                                        <th class="p-2">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="statsBotsTableBody" class="text-gray-800 dark:text-gray-300 text-sm"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Sessions Tab -->
-            <div class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50" id="sessions" role="tabpanel" aria-labelledby="sessions-tab">
+            <div class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50" id="sessions" role="tabpanel"
+                aria-labelledby="sessions-tab">
                 <div class="overflow-x-auto relative shadow-md sm:rounded-lg">
                     <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
                         <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
@@ -155,7 +270,8 @@
             </div>
 
             <!-- Cache Tab -->
-            <div class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50" id="cache" role="tabpanel" aria-labelledby="cache-tab">
+            <div class="hidden p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50" id="cache" role="tabpanel"
+                aria-labelledby="cache-tab">
                 <div class="overflow-x-auto relative shadow-md sm:rounded-lg">
                     <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
                         <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
@@ -179,4 +295,5 @@
 
     <script src="devtools.js"></script>
 </body>
+
 </html>

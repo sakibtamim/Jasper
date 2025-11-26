@@ -122,6 +122,13 @@ export interface IDevToolsRepository {
     getAllSessions(limit?: number, offset?: number): Promise<{ sessions: Session[], total: number }>;
     getAllCacheEntries(limit?: number, offset?: number): Promise<{ entries: CachedSearchResult[], total: number }>;
     deleteCacheEntry(query: string): Promise<void>;
+    getAllAudioCacheEntries(limit?: number, offset?: number): Promise<{ entries: AudioMetadata[], total: number }>;
+    deleteAudioCacheEntry(videoId: string): Promise<void>;
+    updateAudioThumbnail(videoId: string, thumbnail: string): Promise<void>;
+    deletePlaysForSong(songUrl: string): Promise<void>;
+    deletePlaysForUser(userId: string): Promise<void>;
+    deletePlaysForChannel(channelId: string): Promise<void>;
+    deletePlaysForBot(botName: string): Promise<void>;
 }
 
 export interface DatabaseAdapter extends IStatsRepository, ICacheRepository, IAuthRepository, IDevToolsRepository {

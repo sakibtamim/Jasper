@@ -3,12 +3,12 @@ import ytSearch from "yt-search";
 import { isCacheEnabled, getCacheStorage } from "../cache-manager.js";
 import { Song } from "./queue-manager.js";
 
-export async function resolveTrack(query: string): Promise<Song> {
+export async function resolveTrack(query: string, requesterId?: string, requesterName?: string): Promise<Song> {
     // Check search cache first
     if (isCacheEnabled() && !isUrl(query)) {
         const storage = getCacheStorage();
         if (storage) {
-            const cached = await storage.getCachedSearchResult(query);
+            const cached = await storage.getCachedSearchResult(query, requesterId, requesterName);
             if (cached) {
                 return cached;
             }

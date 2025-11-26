@@ -587,4 +587,61 @@ export class PostgresAdapter implements DatabaseAdapter {
         if (!this.pool) throw new Error('Database not initialized');
         await this.pool.query('DELETE FROM search_cache WHERE query = $1', [query]);
     }
+
+    async getAllAudioCacheEntries(limit: number = 50, offset: number = 0): Promise<{ entries: import('./types.js').AudioMetadata[], total: number }> {
+        if (!this.pool) throw new Error('Database not initialized');
+
+        const countResult = await this.pool.query('SELECT COUNT(*) as count FROM audio_metadata');
+        const total = parseInt(countResult.rows[0].count, 10);
+
+        const result = await this.pool.query(`
+            SELECT video_id as "videoId", title, url, duration, thumbnail, search_terms as "searchTerms", cached_at as "cachedAt", expires_at as "expiresAt"
+            FROM audio_metadata
+            ORDER BY cached_at DESC
+            LIMIT $1 OFFSET $2
+        `, [limit, offset]);
+
+        const entries = result.rows.map(row => ({
+            videoId: row.videoId,
+            title: row.title,
+            url: row.url,
+            duration: row.duration,
+            thumbnail: row.thumbnail,
+            searchTerms: row.searchTerms, // Postgres handles JSON automatically
+            cachedAt: new Date(row.cachedAt),
+            expiresAt: new Date(row.expiresAt)
+        }));
+
+        return { entries, total };
+    }
+
+    async deleteAudioCacheEntry(videoId: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('DELETE FROM audio_metadata WHERE video_id = $1', [videoId]);
+    }
+
+    async updateAudioThumbnail(videoId: string, thumbnail: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('UPDATE audio_metadata SET thumbnail = $1 WHERE video_id = $2', [thumbnail, videoId]);
+    }
+
+    async deletePlaysForSong(songUrl: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('DELETE FROM plays WHERE song_url = $1', [songUrl]);
+    }
+
+    async deletePlaysForUser(userId: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('DELETE FROM plays WHERE user_id = $1', [userId]);
+    }
+
+    async deletePlaysForChannel(channelId: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('DELETE FROM plays WHERE channel_id = $1', [channelId]);
+    }
+
+    async deletePlaysForBot(botName: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('DELETE FROM plays WHERE bot_name = $1', [botName]);
+    }
 }

@@ -320,7 +320,7 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string):
   await interaction.deferReply();
 
   try {
-    const track = await resolveTrack(query);
+    const track = await resolveTrack(query, interaction.user.id, interaction.user.tag);
     const queue = await ensureQueue(interaction, voiceChannel, track);
     if (!queue) return;
 

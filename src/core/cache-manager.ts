@@ -22,11 +22,11 @@ export interface CacheStats {
  */
 export interface ICacheStorage {
     // Search result caching
-    getCachedSearchResult(query: string): Promise<Song | null>;
+    getCachedSearchResult(query: string, requesterId?: string, requesterName?: string): Promise<Song | null>;
     setCachedSearchResult(query: string, song: Song): Promise<void>;
 
     // Audio file caching
-    getCachedAudioStream(videoId: string): Promise<Readable | null>;
+    getCachedAudioStream(videoId: string, requesterId?: string, requesterName?: string): Promise<Readable | null>;
     cacheAudioStream(url: string, videoId: string, searchTerms: string[]): Promise<Readable>;
 
     // Cleanup and stats
@@ -35,6 +35,9 @@ export interface ICacheStorage {
 
     // Radio feature
     getRandomCachedSong(): Promise<Song | null>;
+
+    // Management
+    deleteCachedFile(videoId: string): Promise<boolean>;
 }
 
 // Singleton instance
