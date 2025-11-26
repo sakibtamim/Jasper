@@ -131,7 +131,7 @@ export async function handleAutoplay(queue: Queue, lastSong: Song): Promise<void
             url: nextVideo.url,
             durationInSec: nextVideo.seconds,
             requestedBy: "Jasper (Autoplay)",
-            requesterId: queue.worker.name,
+            requesterId: queue.worker.client.user!.id,
         };
 
         queue.songs.push(track);
@@ -196,18 +196,22 @@ export async function playSong(queue: Queue): Promise<void> {
         queue.nowPlaying = song;
         queue.nowPlaying.startTime = Date.now();
 
-        // Track play in DB
-        db.trackPlay({
-            userId: song.requesterId || 'unknown',
-            guildId: queue.guildId,
-            channelId: queue.voiceChannelId,
-            botName: queue.worker.name,
-            songTitle: song.title,
-            songUrl: song.url,
-            duration: song.durationInSec,
-            thumbnail: song.thumbnail,
-            playedAt: new Date()
-        }).catch(err => logger.error(`[db] Failed to track play: ${err}`));
+        // Track play in DB - only if we have a valid requester
+        if (song.requesterId && song.requesterId.trim() !== '') {
+            db.trackPlay({
+                userId: song.requesterId,
+                guildId: queue.guildId,
+                channelId: queue.voiceChannelId,
+                botName: queue.worker.name,
+                songTitle: song.title,
+                songUrl: song.url,
+                duration: song.durationInSec,
+                thumbnail: song.thumbnail,
+                playedAt: new Date()
+            }).catch(err => logger.error(`[db] Failed to track play: ${err}`));
+        } else {
+            logger.warn(`[db] Skipping play tracking for "${song.title}" - no valid requesterId`);
+        }
 
         logger.info(`[playback] Now playing in ${queue.guildId}: ${song.title}`);
 
@@ -408,7 +412,7 @@ export async function handleRadio(queue: Queue): Promise<void> {
 
         // Inject requester info for Cache Hit tracking
         songToPlay.requestedBy = `Radio ${queue.worker.name}`;
-        songToPlay.requesterId = queue.worker.name;
+        songToPlay.requesterId = queue.worker.client.user!.id;
 
         queue.songs.push(songToPlay);
 
