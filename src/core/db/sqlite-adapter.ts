@@ -571,12 +571,14 @@ export class SqliteAdapter implements DatabaseAdapter {
       let refreshToken = row.refreshToken;
       try {
         accessToken = ENCRYPTION_KEY ? decrypt(row.accessToken, ENCRYPTION_KEY) : '[No Key]';
-      } catch {
+      } catch (e) {
+        logger.warn(`[db-devtools] Failed to decrypt access token for user ${row.id}: ${e instanceof Error ? e.message : String(e)}`);
         accessToken = '[Decryption Failed]';
       }
       try {
         refreshToken = ENCRYPTION_KEY ? decrypt(row.refreshToken, ENCRYPTION_KEY) : '[No Key]';
-      } catch {
+      } catch (e) {
+        logger.warn(`[db-devtools] Failed to decrypt refresh token for user ${row.id}: ${e instanceof Error ? e.message : String(e)}`);
         refreshToken = '[Decryption Failed]';
       }
 

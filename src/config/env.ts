@@ -100,7 +100,13 @@ export const PBKDF2_ITERATIONS = getOptionalNumber("PBKDF2_ITERATIONS", 100000);
 /**
  * Database Configuration
  */
-export const DB_TYPE = getOptionalEnv("DB_TYPE", "sqlite") as "sqlite" | "postgres";
+export const DB_TYPE = ((): "sqlite" | "postgres" => {
+    const dbType = getOptionalEnv("DB_TYPE", "sqlite");
+    if (dbType !== "sqlite" && dbType !== "postgres") {
+        throw new Error(`Invalid DB_TYPE: "${dbType}". Must be "sqlite" or "postgres".`);
+    }
+    return dbType as "sqlite" | "postgres";
+})();
 export const DATABASE_URL = getOptionalEnv("DATABASE_URL");
 
 /**
@@ -149,7 +155,7 @@ export interface WorkerToken {
  */
 export function getWorkerTokens(): WorkerToken[] {
     const workers: WorkerToken[] = [];
-    
+
     Object.keys(process.env).forEach((key) => {
         if (key.endsWith("_TOKEN") && key !== "DISCORD_TOKEN") {
             const token = process.env[key];
@@ -190,12 +196,12 @@ export function validateBotConfig(): void {
  */
 export function validateAuthConfig(): void {
     const missing: string[] = [];
-    
+
     if (!DISCORD_CLIENT_ID) missing.push("DISCORD_CLIENT_ID");
     if (!DISCORD_CLIENT_SECRET) missing.push("DISCORD_CLIENT_SECRET");
     if (!COOKIE_SECRET) missing.push("COOKIE_SECRET");
     if (!ENCRYPTION_KEY) missing.push("ENCRYPTION_KEY");
-    
+
     if (missing.length > 0) {
         throw new Error(`Missing required environment variables for authentication: ${missing.join(", ")}`);
     }
@@ -207,11 +213,11 @@ export function validateAuthConfig(): void {
  */
 export function validateDeployConfig(): void {
     const missing: string[] = [];
-    
+
     if (!DISCORD_CLIENT_ID) missing.push("DISCORD_CLIENT_ID");
     if (!GUILD_ID) missing.push("GUILD_ID");
     if (!DISCORD_TOKEN) missing.push("DISCORD_TOKEN");
-    
+
     if (missing.length > 0) {
         throw new Error(`Missing required environment variables for command deployment: ${missing.join(", ")}`);
     }
@@ -225,54 +231,3 @@ export function validatePostgresConfig(): void {
         throw new Error("DATABASE_URL is required when DB_TYPE is 'postgres'");
     }
 }
-
-// ============================================================================
-// Default Export: All env vars as a typed object
-// ============================================================================
-
-const env = {
-    // Discord Bot
-    DISCORD_TOKEN,
-    DISCORD_CLIENT_ID,
-    GUILD_ID,
-    DISCORD_CLIENT_SECRET,
-    
-    // Web Server
-    PORT,
-    BASE_URL,
-    
-    // Security
-    COOKIE_SECRET,
-    ENCRYPTION_KEY,
-    PBKDF2_ITERATIONS,
-    
-    // Database
-    DB_TYPE,
-    DATABASE_URL,
-    
-    // Cache
-    CACHE_ENABLED,
-    CACHE_SEARCH_TTL_HOURS,
-    CACHE_AUDIO_TTL_HOURS,
-    CACHE_CLEANUP_INTERVAL_HOURS,
-    
-    // Features
-    ANNOUNCE_CHANNEL_ID,
-    YT_DLP_JS_RUNTIME,
-    YT_DLP_PLAYER_CLIENT,
-    AFR_JASPER_WEIGHT,
-    
-    // Runtime
-    NODE_ENV,
-    isProduction,
-    isDevelopment,
-    
-    // Functions
-    getWorkerTokens,
-    validateBotConfig,
-    validateAuthConfig,
-    validateDeployConfig,
-    validatePostgresConfig,
-} as const;
-
-export default env;

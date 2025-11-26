@@ -12,14 +12,19 @@ GUILD_ID=your-development-guild-id
 ```
 
 ## Core Bot Configuration
-
-### Required
-
+ 
+### Required for Bot Startup
+ 
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `DISCORD_TOKEN` | Your Discord bot token from the Developer Portal | `MTIzNDU2Nzg5MDEyMzQ1Njc4OQ.G...` |
-| `DISCORD_CLIENT_ID` | Application ID from Discord Developer Portal. Used for command deployment and OAuth2. | `1234567890123456789` |
-| `GUILD_ID` | Guild (server) ID for development command deployment | `9876543210987654321` |
+ 
+### Required for Command Deployment / Authentication
+ 
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `DISCORD_CLIENT_ID` | Application ID from Discord Developer Portal. Required for command deployment and OAuth2 authentication. | `1234567890123456789` |
+| `GUILD_ID` | Guild (server) ID for development command deployment. Required for deploying commands to a specific server. | `9876543210987654321` |
 
 ### Optional
 
