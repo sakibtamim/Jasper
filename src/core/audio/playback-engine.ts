@@ -131,6 +131,7 @@ export async function handleAutoplay(queue: Queue, lastSong: Song): Promise<void
             url: nextVideo.url,
             durationInSec: nextVideo.seconds,
             requestedBy: "Jasper (Autoplay)",
+            requesterId: queue.worker.name,
         };
 
         queue.songs.push(track);
@@ -404,6 +405,11 @@ export async function handleRadio(queue: Queue): Promise<void> {
                 songToPlay = retrySong;
             }
         }
+
+        // Inject requester info for Cache Hit tracking
+        songToPlay.requestedBy = `Radio ${queue.worker.name}`;
+        songToPlay.requesterId = queue.worker.name;
+
         queue.songs.push(songToPlay);
 
         playSong(queue);
