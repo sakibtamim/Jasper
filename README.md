@@ -24,6 +24,8 @@ It uses **yt-dlp** (an external command-line tool) to stream high-quality audio,
 | :--- | :--- |
 | `/play <query>` | Play a song from YouTube or search by keywords. |
 | `/p <query>` | Alias for `/play`. |
+| `/playnext <query>` | Add a song to the top of the queue. |
+| `/playnow <query>` | Skip current song and play this immediately. |
 | `/playlist <url>` | Play a YouTube playlist. |
 | `/pl <url>` | Alias for `/playlist`. |
 | `/radio` | 🆕 Play random songs from the local cache. |

@@ -379,7 +379,7 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string, 
     // If something was playing, we skip it.
     if (options.skipCurrent && queue.nowPlaying) {
       queue.player.stop(); // This triggers Idle event, which plays the next song (which we just inserted at index 1)
-      await interaction.editReply({ content: `⏭️ **Skipping current song to play:** ${track.title}`, embeds: [embed] });
+      await interaction.editReply({ content: `⏭️ **Skipping current song to play:** ${track.title}` });
       return;
     }
 
