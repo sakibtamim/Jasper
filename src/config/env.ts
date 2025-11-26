@@ -190,20 +190,28 @@ export function validateBotConfig(): void {
     }
 }
 
-/**
- * Validate that all required auth env vars are set
- * Call this before using auth features
- */
 export function validateAuthConfig(): void {
-    const missing: string[] = [];
+    const problems: string[] = [];
 
-    if (!DISCORD_CLIENT_ID) missing.push("DISCORD_CLIENT_ID");
-    if (!DISCORD_CLIENT_SECRET) missing.push("DISCORD_CLIENT_SECRET");
-    if (!COOKIE_SECRET) missing.push("COOKIE_SECRET");
-    if (!ENCRYPTION_KEY) missing.push("ENCRYPTION_KEY");
+    if (!DISCORD_CLIENT_ID) {
+        problems.push("DISCORD_CLIENT_ID is missing");
+    }
+    if (!DISCORD_CLIENT_SECRET) {
+        problems.push("DISCORD_CLIENT_SECRET is missing");
+    }
+    if (!COOKIE_SECRET) {
+        problems.push("COOKIE_SECRET is missing");
+    } else if (isProduction && COOKIE_SECRET.length < 32) {
+        problems.push("COOKIE_SECRET must be at least 32 characters long in production");
+    }
+    if (!ENCRYPTION_KEY) {
+        problems.push("ENCRYPTION_KEY is missing");
+    } else if (isProduction && ENCRYPTION_KEY.length < 32) {
+        problems.push("ENCRYPTION_KEY must be at least 32 characters long in production");
+    }
 
-    if (missing.length > 0) {
-        throw new Error(`Missing required environment variables for authentication: ${missing.join(", ")}`);
+    if (problems.length > 0) {
+        throw new Error(`Authentication configuration error(s): ${problems.join("; ")}`);
     }
 }
 

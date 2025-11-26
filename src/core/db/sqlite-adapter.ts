@@ -515,10 +515,6 @@ export class SqliteAdapter implements DatabaseAdapter {
     const row = stmt.get(userId) as UserRow | undefined;
     if (!row) return null;
 
-    if (!ENCRYPTION_KEY) {
-      throw new Error('ENCRYPTION_KEY is required to decrypt user tokens');
-    }
-
     return {
       id: row.id,
       username: row.username,

@@ -45,14 +45,47 @@ describe('env.ts', () => {
             delete process.env.ENCRYPTION_KEY;
 
             const { validateAuthConfig } = await import('../env.js');
-            expect(() => validateAuthConfig()).toThrow(/Missing required environment variables for authentication/);
+            expect(() => validateAuthConfig()).toThrow(/Authentication configuration error/);
         });
 
         it('should not throw when all auth vars are set', async () => {
             process.env.DISCORD_CLIENT_ID = 'test-client-id';
             process.env.DISCORD_CLIENT_SECRET = 'test-secret';
-            process.env.COOKIE_SECRET = 'test-cookie-secret';
-            process.env.ENCRYPTION_KEY = 'test-encryption-key';
+            process.env.COOKIE_SECRET = 'test-cookie-secret-that-is-long-enough';
+            process.env.ENCRYPTION_KEY = 'test-encryption-key-that-is-long-enough';
+
+            const { validateAuthConfig } = await import('../env.js');
+            expect(() => validateAuthConfig()).not.toThrow();
+        });
+
+        it('should throw when COOKIE_SECRET is too short in production', async () => {
+            process.env.NODE_ENV = 'production';
+            process.env.DISCORD_CLIENT_ID = 'test-client-id';
+            process.env.DISCORD_CLIENT_SECRET = 'test-secret';
+            process.env.COOKIE_SECRET = 'short';
+            process.env.ENCRYPTION_KEY = 'test-encryption-key-that-is-long-enough';
+
+            const { validateAuthConfig } = await import('../env.js');
+            expect(() => validateAuthConfig()).toThrow(/COOKIE_SECRET must be at least 32 characters long in production/);
+        });
+
+        it('should throw when ENCRYPTION_KEY is too short in production', async () => {
+            process.env.NODE_ENV = 'production';
+            process.env.DISCORD_CLIENT_ID = 'test-client-id';
+            process.env.DISCORD_CLIENT_SECRET = 'test-secret';
+            process.env.COOKIE_SECRET = 'test-cookie-secret-that-is-long-enough';
+            process.env.ENCRYPTION_KEY = 'short';
+
+            const { validateAuthConfig } = await import('../env.js');
+            expect(() => validateAuthConfig()).toThrow(/ENCRYPTION_KEY must be at least 32 characters long in production/);
+        });
+
+        it('should allow short secrets in development', async () => {
+            process.env.NODE_ENV = 'development';
+            process.env.DISCORD_CLIENT_ID = 'test-client-id';
+            process.env.DISCORD_CLIENT_SECRET = 'test-secret';
+            process.env.COOKIE_SECRET = 'short';
+            process.env.ENCRYPTION_KEY = 'short';
 
             const { validateAuthConfig } = await import('../env.js');
             expect(() => validateAuthConfig()).not.toThrow();

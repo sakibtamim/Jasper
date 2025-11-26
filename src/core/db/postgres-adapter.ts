@@ -460,10 +460,6 @@ export class PostgresAdapter implements DatabaseAdapter {
         if (result.rows.length === 0) return null;
         const row = result.rows[0];
 
-        if (!ENCRYPTION_KEY) {
-            throw new Error('ENCRYPTION_KEY is required to decrypt user tokens');
-        }
-
         return {
             id: row.id,
             username: row.username,
