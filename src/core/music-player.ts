@@ -259,8 +259,8 @@ async function createQueue(interaction: ChatInputCommandInteraction, worker: Wor
 
   setQueue(voiceChannel.id, queue);
 
-  // Hook: QUEUE_CREATE
-  await hookManager.trigger('QUEUE_CREATE', { queue, worker });
+  // Hook: QUEUE_CREATE (Sync to allow plugins to play intro sounds)
+  await hookManager.triggerSync('QUEUE_CREATE', { queue, worker });
 
   return queue;
 }

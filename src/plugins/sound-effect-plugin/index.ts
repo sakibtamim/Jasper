@@ -1,5 +1,5 @@
 import { Plugin, PluginContext, QueueCreateData, SongPlayData } from "../../core/plugins/plugin-interface.js";
-import { createAudioResource, StreamType } from "@discordjs/voice";
+import { createAudioResource, StreamType, AudioPlayerStatus } from "@discordjs/voice";
 import type { ChatInputCommandInteraction } from "discord.js";
 import fs from "fs";
 import path from "path";
@@ -28,9 +28,15 @@ const SoundEffectPlugin: Plugin = {
                 const resource = createAudioResource(fs.createReadStream(soundPath), { inputType: StreamType.Arbitrary });
                 queue.player.play(resource);
 
-                // Block the hook for a few seconds to allow the welcome sound to play
-                // before the core logic proceeds to play the requested song.
-                await new Promise(resolve => setTimeout(resolve, 4000));
+                // Wait for the player to go Idle (sound finishes)
+                // This ensures the welcome sound is not interrupted by the song starting.
+                await new Promise<void>(resolve => {
+                    const onIdle = () => {
+                        queue.player.off(AudioPlayerStatus.Idle, onIdle);
+                        resolve();
+                    };
+                    queue.player.on(AudioPlayerStatus.Idle, onIdle);
+                });
             } else {
                 context.logger.warn(`Welcome sound not found at ${soundPath}`);
             }

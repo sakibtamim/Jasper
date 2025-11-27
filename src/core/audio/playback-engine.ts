@@ -149,8 +149,8 @@ export async function playSong(queue: Queue): Promise<void> {
     const song = queue.songs[0];
     if (!song) return;
 
-    // Hook: PRE_MUSIC_PLAY
-    await hookManager.trigger('PRE_MUSIC_PLAY', { queue, song });
+    // Hook: PRE_MUSIC_PLAY (Async to avoid blocking playback)
+    await hookManager.triggerAsync('PRE_MUSIC_PLAY', { queue, song });
 
     try {
         logger.info(`[playback] Attempting to stream with yt-dlp: ${song.title}`);
@@ -201,8 +201,8 @@ export async function playSong(queue: Queue): Promise<void> {
         queue.nowPlaying = song;
         queue.nowPlaying.startTime = Date.now();
 
-        // Hook: POST_MUSIC_PLAY
-        await hookManager.trigger('POST_MUSIC_PLAY', { queue, song });
+        // Hook: POST_MUSIC_PLAY (Async)
+        await hookManager.triggerAsync('POST_MUSIC_PLAY', { queue, song });
 
         // Track play in DB - only if we have a valid requester
         if (song.requesterId && song.requesterId.trim() !== '') {
