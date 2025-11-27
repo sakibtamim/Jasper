@@ -1,2 +1,47 @@
-/* Import existing Jasper styles */
-@import '../public/index.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Font Import */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+/* Custom brand tokens */
+@layer base {
+    :root {
+        --brand-primary: #ff6ad5;
+        --brand-secondary: #00e5ff;
+    }
+}
+
+/* Import existing custom styles from public */
+body {
+    font-family: 'Inter', sans-serif;
+    padding-top: 5rem;
+}
+
+html,
+body {
+    overflow-x: hidden;
+}
+
+:root.dark {
+    color-scheme: dark;
+}
+
+/* Jasper-specific animations */
+.glow-primary {
+    box-shadow: 0 0 20px rgba(255, 106, 213, 0.5);
+}
+
+.glow-secondary {
+    box-shadow: 0 0 20px rgba(0, 229, 255, 0.5);
+}
+
+.hover-card {
+    transition: all 0.3s ease;
+}
+
+.hover-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px-5px rgba(0, 0, 0, 0.1);
+}
