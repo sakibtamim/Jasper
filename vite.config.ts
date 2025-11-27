@@ -11,7 +11,17 @@ export default defineConfig({
     },
     server: {
         port: 5173,
-        // Proxy temporarily disabled to test module loading
-        // We'll add it back after verifying the app loads
+        proxy: {
+            '/api': {
+                target: 'http://localhost:3000',
+                changeOrigin: true,
+                bypass(req) {
+                    // Don't proxy if it's requesting a .ts or .tsx file
+                    if (req.url?.match(/\.(ts|tsx)$/)) {
+                        return req.url;
+                    }
+                }
+            }
+        }
     }
 });
