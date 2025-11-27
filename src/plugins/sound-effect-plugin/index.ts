@@ -44,7 +44,7 @@ const SoundEffectPlugin: Plugin = {
                 name: "ping-plugin",
                 description: "Replies with Pong from the plugin!",
             },
-            execute: async (interaction: any) => {
+            execute: async (interaction: import("discord.js").ChatInputCommandInteraction) => {
                 await interaction.reply("Pong! 🏓 (from SoundEffectPlugin)");
             },
         });
