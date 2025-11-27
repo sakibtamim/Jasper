@@ -78,11 +78,11 @@ process.on("unhandledRejection", (reason, promise) => {
   // 6. Startup Announcement
   await sendAnnouncement("✅ **Jasper System Online**\nReady to serve the Heavenly Council of Fur.");
 
-  // 7. Start Web UI Server
-  await startServer();
-
-  // 8. Load Plugins
+  // 7. Load Plugins (Must be before server starts)
   pluginManager.init(client, server);
   await pluginManager.loadPlugins();
+
+  // 8. Start Web UI Server
+  await startServer();
 
 })();
