@@ -24,10 +24,12 @@ const CORE_VERSION = packageJson.version;
 
 export class PluginManager {
     private plugins: Map<string, { plugin: Plugin, context: PluginContext }>;
+    private pluginCommands: Map<string, string[]>; // Track commands registered by each plugin
     private context: PluginContext | null;
 
     constructor() {
         this.plugins = new Map();
+        this.pluginCommands = new Map();
         this.context = null;
     }
 
@@ -40,7 +42,8 @@ export class PluginManager {
             workers: workerPool.getWorkers(),
             server,
             registerCommand: (command: any) => {
-                // Dynamic command registration (Phase 1: Basic logging)
+                // Base implementation - just registers to client
+                // This will be wrapped by the scoped context to add tracking
                 logger.info(`[plugins] Registering dynamic command: ${command.data?.name}`);
                 if (client.commands.has(command.data.name)) {
                     logger.warn(`[plugins] Command "${command.data.name}" is being overwritten by a plugin.`);
@@ -163,6 +166,9 @@ export class PluginManager {
         try {
             logger.info(`[plugins] Loading plugin: ${plugin.name} v${plugin.version}`);
 
+            // Initialize command tracking for this plugin
+            this.pluginCommands.set(plugin.name, []);
+
             // 3. Auto-enforced Web Route Namespacing
             // We register a new Fastify scope with the plugin's ID as the prefix.
             // All routes registered via context.server inside onLoad will be scoped.
@@ -180,6 +186,13 @@ export class PluginManager {
                         info: (msg: string) => logger.info(`[${plugin.name}] ${msg}`),
                         warn: (msg: string) => logger.warn(`[${plugin.name}] ${msg}`),
                         error: (msg: string) => logger.error(`[${plugin.name}] ${msg}`),
+                    },
+                    // Override registerCommand to track commands
+                    registerCommand: (command: any) => {
+                        this.context!.registerCommand(command); // Call base implementation
+                        const commands = this.pluginCommands.get(plugin.name) || [];
+                        commands.push(command.data.name);
+                        this.pluginCommands.set(plugin.name, commands);
                     }
                 };
 
@@ -201,6 +214,17 @@ export class PluginManager {
 
         try {
             await entry.plugin.onUnload(entry.context);
+
+            // Unregister commands
+            const commands = this.pluginCommands.get(name) || [];
+            if (commands.length > 0 && this.context?.client) {
+                logger.info(`[plugins] Unregistering commands for ${name}: ${commands.join(", ")}`);
+                for (const cmdName of commands) {
+                    this.context.client.commands.delete(cmdName);
+                }
+            }
+            this.pluginCommands.delete(name);
+
             this.plugins.delete(name);
             logger.info(`[plugins] Unloaded plugin: ${name}`);
         } catch (error) {

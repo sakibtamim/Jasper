@@ -3,7 +3,7 @@
     "id": "db-test-plugin",
     "version": "1.0.0",
     "description": "Verifies database access for plugins.",
-    "entry": "index.ts",
+    "entry": "index.js",
     "author": "Jasper Team",
     "license": "MIT",
     "jasperVersion": "^1.0.0"

@@ -82,9 +82,11 @@ type PluginContext = {
       get<T = unknown>(key: string): Promise<T | null>;
       set<T = unknown>(key: string, value: T): Promise<void>;
       delete(key: string): Promise<void>;
+      clear(): Promise<void>;
     };
     core: {
-      getTopSongs(limit: number): Promise<SongStats[]>;
+      getTopSongs(limit?: number): Promise<SongStats[]>;
+      getTopUsers(limit?: number): Promise<UserStats[]>;
       getGlobalStats(): Promise<{ totalPlays: number; totalDuration: number }>;
     };
   };
