@@ -22,6 +22,9 @@ const SoundEffectPlugin: Plugin = {
 
             if (fs.existsSync(soundPath)) {
                 context.logger.info(`Queue created in ${queue.voiceChannelId}. Playing welcome sound...`);
+                // NOTE: There is a potential race condition here. If this hook is triggered by a /play command,
+                // the core logic will immediately call playSong, which might interrupt this welcome sound.
+                // This is a known limitation for now.
                 const resource = createAudioResource(fs.createReadStream(soundPath), { inputType: StreamType.Arbitrary });
                 queue.player.play(resource);
             } else {

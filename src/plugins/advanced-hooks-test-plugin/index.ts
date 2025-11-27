@@ -17,7 +17,7 @@ const AdvancedHooksTestPlugin: Plugin = {
             server.get("/test-plugin", async (request: any, reply: any) => {
                 return { message: "Hello from AdvancedHooksTestPlugin!" };
             });
-            context.logger.info("Registered /api/test-plugin route.");
+            context.logger.info("Registered /test-plugin route under the plugin's API scope.");
         });
 
         // Hook: WORKER_ASSIGNED
