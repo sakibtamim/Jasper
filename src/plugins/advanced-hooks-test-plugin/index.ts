@@ -8,16 +8,15 @@ const AdvancedHooksTestPlugin: Plugin = {
     onLoad: async (context: PluginContext) => {
         context.logger.info("Loaded!");
 
-        // Hook: SERVER_READY
-        context.on<ServerReadyData>("SERVER_READY", ({ server }) => {
-            context.logger.info("SERVER_READY hook triggered!");
-            // The original line 'const { server } = data;' is removed as 'server' is now directly destructured from the event data.
+        // Register a test route directly in onLoad (scoped to plugin)
+        context.server.get("/test-plugin", async (request: import('fastify').FastifyRequest, reply: import('fastify').FastifyReply) => {
+            return { message: "Hello from AdvancedHooksTestPlugin!" };
+        });
+        context.logger.info("Registered /test-plugin route under the plugin's API scope.");
 
-            // Register a test route
-            server.get("/test-plugin", async (request: import('fastify').FastifyRequest, reply: import('fastify').FastifyReply) => {
-                return { message: "Hello from AdvancedHooksTestPlugin!" };
-            });
-            context.logger.info("Registered /test-plugin route under the plugin's API scope.");
+        // Hook: SERVER_READY
+        context.on("SERVER_READY", (data: any) => {
+            context.logger.info("SERVER_READY hook triggered! Server is listening.");
         });
 
         // Hook: WORKER_ASSIGNED

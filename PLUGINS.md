@@ -168,10 +168,10 @@ Plugins can expose web routes using `context.server`.
 If your plugin ID is `my-cool-plugin`:
 
 ```typescript
-context.on("SERVER_READY", ({ server }) => {
+context.onLoad = async (context) => {
     // This registers: GET /api/plugins/my-cool-plugin/health
-    server.get("/health", async () => ({ ok: true }));
-});
+    context.server.get("/health", async () => ({ ok: true }));
+};
 ```
 
 You do **not** need to manually add the prefix. The `server` instance provided in the context is already scoped.
