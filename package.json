@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
-    "build": "tsc",
+    "build": "tsc && rsync -avm --include='*/' --include='*.json' --include='*.mp3' --exclude='*' src/plugins/ dist/plugins/",
     "lint": "eslint src/**/*.ts",
     "deploy:commands": "tsx src/deploy-commands.ts",
     "deploy:commands:prod": "node dist/deploy-commands.js",
