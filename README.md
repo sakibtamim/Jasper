@@ -16,6 +16,7 @@ It uses **yt-dlp** (an external command-line tool) to stream high-quality audio,
   - **Multi-Client Support:** "One Mind, Many Bodies" architecture allows multiple bots (Jasper + Workers) to play music simultaneously in different channels of the same server.
   - **Automatic Feline Rotation (AFR):** 🆕 Smart, probabilistic bot selection with configurable Jasper presence and unique entry messages for each cat!
   - **Database & Statistics:** 🆕 Tracks song plays, user activity, and global stats using SQLite (default) or PostgreSQL.
+  - **Plugin System:** 🆕 Extend functionality with custom commands, hooks, and web routes. See [PLUGINS.md](PLUGINS.md).
   - **Web Dashboard:** Real-time monitoring of queues, workers, and statistics.
 
 ## Commands
