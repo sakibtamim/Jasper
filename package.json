@@ -37,6 +37,8 @@
     "fastify": "^5.6.2",
     "ffmpeg-static": "^5.3.0",
     "pg": "^8.16.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "semver": "^7.7.3",
     "yt-search": "^2.13.1"
   },
@@ -45,15 +47,19 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^24.10.1",
     "@types/pg": "^8.15.6",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
     "@types/semver": "^7.7.1",
     "@types/ws": "^8.18.1",
     "@types/yt-search": "^2.10.3",
+    "@vitejs/plugin-react": "^4.3.4",
     "@vitest/coverage-v8": "^4.0.13",
     "eslint": "^9.39.1",
     "globals": "^16.5.0",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.47.0",
+    "vite": "^6.0.3",
     "vitest": "^4.0.13"
   }
 }
