@@ -11,11 +11,7 @@ export default defineConfig({
     },
     server: {
         port: 5173,
-        proxy: {
-            '^/api/.*': {
-                target: 'http://localhost:3000',
-                changeOrigin: true,
-            }
-        }
+        // Proxy temporarily disabled to test module loading
+        // We'll add it back after verifying the app loads
     }
 });
