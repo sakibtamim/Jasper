@@ -182,6 +182,10 @@ async function createQueue(interaction: ChatInputCommandInteraction, worker: Wor
   player.on(AudioPlayerStatus.Idle, async () => {
     if (queue.stopping) return;
 
+    // Ignore idle events if nothing was "officially" playing (e.g. plugin sounds)
+    // This prevents "Queue Finished" messages when a plugin plays a sound effect.
+    if (!queue.nowPlaying) return;
+
     const lastSong = queue.nowPlaying;
     queue.songs.shift();
 
