@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { fetchAuthStatus, logout } from '../api/client';
 import { useTheme } from '../hooks/useTheme';
 
 export default function Header() {
     const { isDark, toggleTheme } = useTheme();
     const [user, setUser] = useState<any>(null);
-    const location = useLocation();
 
     useEffect(() => {
         fetchAuthStatus().then(data => {
@@ -119,8 +118,8 @@ function NavLink({ to, icon, children }: { to: string; icon: string; children: R
         <Link
             to={to}
             className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors flex items-center gap-2 ${isActive
-                    ? 'bg-brand-primary/10 text-brand-primary'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-brand-primary'
+                ? 'bg-brand-primary/10 text-brand-primary'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-brand-primary'
                 }`}
         >
             <i data-lucide={icon} className="w-4 h-4"></i>
