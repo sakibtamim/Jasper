@@ -1,5 +1,6 @@
 import { Plugin, PluginContext, QueueCreateData, SongPlayData } from "../../core/plugins/plugin-interface.js";
 import { createAudioResource, StreamType } from "@discordjs/voice";
+import type { ChatInputCommandInteraction } from "discord.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from 'url';
@@ -44,7 +45,7 @@ const SoundEffectPlugin: Plugin = {
                 name: "ping-plugin",
                 description: "Replies with Pong from the plugin!",
             },
-            execute: async (interaction: import("discord.js").ChatInputCommandInteraction) => {
+            execute: async (interaction: ChatInputCommandInteraction) => {
                 await interaction.reply("Pong! 🏓 (from SoundEffectPlugin)");
             },
         });

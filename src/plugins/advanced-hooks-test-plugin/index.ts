@@ -1,4 +1,4 @@
-import { Plugin, PluginContext, ServerReadyData, WorkerAssignedData, VoiceStateUpdateData } from "../../core/plugins/plugin-interface.js";
+import { Plugin, PluginContext, ServerReadyData } from "../../core/plugins/plugin-interface.js";
 
 const AdvancedHooksTestPlugin: Plugin = {
     name: "Advanced Hooks Test Plugin",
