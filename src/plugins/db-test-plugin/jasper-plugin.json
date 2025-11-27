@@ -1,0 +1,6 @@
+{
+    "name": "DB Test Plugin",
+    "version": "1.0.0",
+    "description": "Verifies database access for plugins.",
+    "entry": "index.ts"
+}

@@ -70,33 +70,49 @@ export class PluginManager {
         const entries = await fs.promises.readdir(PLUGINS_DIR, { withFileTypes: true });
 
         for (const entry of entries) {
-            let pluginPath: string | null = null;
+            // Strict Mode: Only load directories with jasper-plugin.json
+            if (!entry.isDirectory()) continue;
 
-            if (entry.isFile() && (entry.name.endsWith(".ts") || entry.name.endsWith(".js")) && !entry.name.endsWith(".d.ts")) {
-                pluginPath = path.join(PLUGINS_DIR, entry.name);
-            } else if (entry.isDirectory()) {
-                // Check for index.ts or index.js
-                const indexTs = path.join(PLUGINS_DIR, entry.name, "index.ts");
-                const indexJs = path.join(PLUGINS_DIR, entry.name, "index.js");
+            const pluginDir = path.join(PLUGINS_DIR, entry.name);
+            const metadataPath = path.join(pluginDir, "jasper-plugin.json");
 
-                if (fs.existsSync(indexTs)) {
-                    pluginPath = indexTs;
-                } else if (fs.existsSync(indexJs)) {
-                    pluginPath = indexJs;
-                }
+            if (!fs.existsSync(metadataPath)) {
+                logger.warn(`[plugins] Skipping directory ${entry.name}: Missing jasper-plugin.json`);
+                continue;
             }
 
-            if (!pluginPath) continue;
-
             try {
+                const metadata = JSON.parse(await fs.promises.readFile(metadataPath, "utf-8"));
+                const entryFile = metadata.entry || "index.js"; // Default to index.js (or index.ts in dev)
+
+                // Resolve entry file (handle .ts for dev environment)
+                let pluginPath = path.join(pluginDir, entryFile);
+                if (!fs.existsSync(pluginPath) && entryFile.endsWith(".js")) {
+                    // Try .ts if .js missing (dev mode)
+                    const tsPath = pluginPath.replace(/\.js$/, ".ts");
+                    if (fs.existsSync(tsPath)) {
+                        pluginPath = tsPath;
+                    }
+                }
+
+                if (!fs.existsSync(pluginPath)) {
+                    logger.error(`[plugins] Entry file ${entryFile} not found for plugin ${entry.name}`);
+                    continue;
+                }
+
                 // Use pathToFileURL to support Windows paths and proper ESM importing
                 const fileUrl = pathToFileURL(pluginPath).href;
                 const pluginModule = await import(fileUrl);
                 const plugin: Plugin = pluginModule.default;
 
                 if (!plugin || !plugin.name || !plugin.onLoad) {
-                    logger.warn(`[plugins] Plugin file ${entry.name} is missing required exports.`);
+                    logger.warn(`[plugins] Plugin ${entry.name} is missing required exports.`);
                     continue;
+                }
+
+                // Verify metadata matches code (optional, but good for consistency)
+                if (plugin.name !== metadata.name) {
+                    logger.warn(`[plugins] Plugin name mismatch: ${plugin.name} (code) vs ${metadata.name} (json)`);
                 }
 
                 await this.registerPlugin(plugin);

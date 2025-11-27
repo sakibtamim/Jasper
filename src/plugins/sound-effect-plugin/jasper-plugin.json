@@ -1,0 +1,6 @@
+{
+    "name": "Sound Effect Plugin",
+    "version": "1.0.0",
+    "description": "Plays a sound effect when the bot joins a channel.",
+    "entry": "index.ts"
+}

@@ -1,0 +1,6 @@
+{
+    "name": "Advanced Hooks Test Plugin",
+    "version": "1.0.0",
+    "description": "Verifies advanced hooks like SERVER_READY and WORKER_ASSIGNED.",
+    "entry": "index.ts"
+}
