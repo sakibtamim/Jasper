@@ -62,6 +62,14 @@ export interface PluginContext {
         plugin: PluginStore; // RW access to plugin's own data
         core: CoreDataAccessor; // RO access to core data
     };
+
+    // Scoped Logger
+    logger: {
+        debug: (msg: string) => void;
+        info: (msg: string) => void;
+        warn: (msg: string) => void;
+        error: (msg: string) => void;
+    };
 }
 
 // --- Plugin Definition ---

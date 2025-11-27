@@ -43,6 +43,12 @@ export class PluginManager {
                 // This will be overridden per-plugin in registerPlugin
                 plugin: new ScopedPluginStore("unknown"),
                 core: coreDataAccessor,
+            },
+            logger: {
+                debug: (msg: string) => logger.debug(`[plugins] ${msg}`),
+                info: (msg: string) => logger.info(`[plugins] ${msg}`),
+                warn: (msg: string) => logger.warn(`[plugins] ${msg}`),
+                error: (msg: string) => logger.error(`[plugins] ${msg}`),
             }
         };
         logger.info("[plugins] PluginManager initialized");
@@ -140,6 +146,12 @@ export class PluginManager {
                 db: {
                     plugin: new ScopedPluginStore(plugin.name),
                     core: coreDataAccessor
+                },
+                logger: {
+                    debug: (msg: string) => logger.debug(`[${plugin.name}] ${msg}`),
+                    info: (msg: string) => logger.info(`[${plugin.name}] ${msg}`),
+                    warn: (msg: string) => logger.warn(`[${plugin.name}] ${msg}`),
+                    error: (msg: string) => logger.error(`[${plugin.name}] ${msg}`),
                 }
             };
 

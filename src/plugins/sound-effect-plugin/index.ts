@@ -1,5 +1,4 @@
 import { Plugin, PluginContext, QueueCreateData, SongPlayData } from "../../core/plugins/plugin-interface.js";
-import logger from "../../core/logger.js";
 import { createAudioResource, StreamType } from "@discordjs/voice";
 import fs from "fs";
 import path from "path";
@@ -14,29 +13,29 @@ const SoundEffectPlugin: Plugin = {
     description: "Plays a sound effect when the bot joins a channel.",
 
     onLoad: async (context: PluginContext) => {
-        logger.info("[SoundEffectPlugin] Loaded!");
+        context.logger.info("Loaded!");
 
         // Hook: QUEUE_CREATE
         context.on<QueueCreateData>('QUEUE_CREATE', async ({ queue }) => {
             const soundPath = path.join(__dirname, 'welcome.mp3');
 
             if (fs.existsSync(soundPath)) {
-                logger.info(`[SoundEffectPlugin] Queue created in ${queue.voiceChannelId}. Playing welcome sound...`);
+                context.logger.info(`Queue created in ${queue.voiceChannelId}. Playing welcome sound...`);
                 const resource = createAudioResource(fs.createReadStream(soundPath), { inputType: StreamType.Arbitrary });
                 queue.player.play(resource);
             } else {
-                logger.warn(`[SoundEffectPlugin] Welcome sound not found at ${soundPath}`);
+                context.logger.warn(`Welcome sound not found at ${soundPath}`);
             }
         });
 
         // Hook: PRE_MUSIC_PLAY
         context.on<SongPlayData>('PRE_MUSIC_PLAY', ({ song }) => {
-            logger.info(`[SoundEffectPlugin] About to play: ${song.title}`);
+            context.logger.info(`About to play: ${song.title}`);
         });
 
         // Hook: POST_MUSIC_PLAY
         context.on<SongPlayData>('POST_MUSIC_PLAY', ({ song }) => {
-            logger.info(`[SoundEffectPlugin] Started playing: ${song.title}`);
+            context.logger.info(`Started playing: ${song.title}`);
         });
 
         // Register a test command
@@ -51,8 +50,8 @@ const SoundEffectPlugin: Plugin = {
         });
     },
 
-    onUnload: async () => {
-        logger.info("[SoundEffectPlugin] Unloaded!");
+    onUnload: async (context: PluginContext) => {
+        context.logger.info("Unloaded!");
     }
 };
 
