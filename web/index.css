@@ -1,20 +1,13 @@
-/* Tailwind CSS v4 import */
-@import "tailwindcss";
-
-/* Custom Font Import */
+/* Custom Font Import - must be first */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
-/* Custom theme configuration */
-@theme {
-    --color-brand-primary: #ff6ad5;
-    --color-brand-secondary: #00e5ff;
-
-    --font-family-sans: 'Inter', sans-serif;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 /* Custom styles */
 body {
-    font-family: var(--font-family-sans);
+    font-family: 'Inter', sans-serif;
     padding-top: 5rem;
 }
 
