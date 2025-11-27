@@ -14,7 +14,10 @@
     "prepare": "node ./scripts/prepare.js",
     "postinstall": "node ./scripts/install-yt-dlp.js && node ./scripts/migrate-cache.js",
     "test": "vitest",
-    "deploy": "git checkout master && git pull && git checkout deploy && git pull && git merge --ff-only master && git push && git checkout master"
+    "deploy": "git checkout master && git pull && git checkout deploy && git pull && git merge --ff-only master && git push && git checkout master",
+    "web:dev": "vite",
+    "web:build": "vite build",
+    "web:preview": "vite preview"
   },
   "keywords": [
     "discord",
