@@ -8,24 +8,23 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Calculate the root 'src' directory based on this file's location (src/utils/event-loader.ts)
-const SRC_DIR = path.resolve(__dirname, "..");
+// We assume this file is always in src/utils
+const EVENTS_DIR = path.join(__dirname, "..", "events");
 
-export async function loadEvents(client: Client): Promise<void> {
-    const eventsPath = path.join(SRC_DIR, "events");
-    
-    if (!fs.existsSync(eventsPath)) {
-        logger.warn(`[event-loader] Events directory not found at ${eventsPath}`);
+export async function loadEvents(client: Client, workerName: string = "Unknown Bot"): Promise<void> {
+    if (!fs.existsSync(EVENTS_DIR)) {
+        logger.warn(`[event-loader] Events directory not found at ${EVENTS_DIR}`);
         return;
     }
 
-    const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith(".js") || file.endsWith(".ts"));
+    const eventFiles = fs.readdirSync(EVENTS_DIR).filter(file => file.endsWith(".js") || file.endsWith(".ts"));
 
     for (const file of eventFiles) {
-        const filePath = path.join(eventsPath, file);
+        const filePath = path.join(EVENTS_DIR, file);
         try {
             const eventModule = await import(filePath);
             const event = eventModule.default;
-            
+
             if (!event || !event.name || !event.execute) {
                 logger.warn(`[event-loader] Event file ${file} is missing required exports (name, execute).`);
                 continue;
@@ -36,7 +35,7 @@ export async function loadEvents(client: Client): Promise<void> {
             } else {
                 client.on(event.name, (...args) => event.execute(...args, client));
             }
-            logger.debug(`[event-loader] Registered event ${event.name} for ${client.user?.tag || 'unknown client'}`);
+            logger.debug(`[event-loader] Registered event ${event.name} for ${workerName}`);
         } catch (error) {
             logger.error(`[event-loader] Failed to load event ${file}: ${error instanceof Error ? error.message : String(error)}`);
         }

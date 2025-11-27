@@ -11,7 +11,7 @@ import { initializeCache, startCacheCleanup } from "./core/cache-manager.js";
 import { handleGracefulExit } from "./core/graceful-exit.js";
 import { sendAnnouncement } from "./core/announcer.js";
 import { startServer } from "./api/server.js";
-import { loadEvents } from "./utils/event-loader.js";
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -66,9 +66,6 @@ process.on("unhandledRejection", (reason, promise) => {
       logger.warn(`[core] The command at ${filePath} is missing a required "data" or "execute" property.`);
     }
   }
-
-  // Load events
-  await loadEvents(client);
 
   // 4. Login all bots
   await workerPool.loginBots();

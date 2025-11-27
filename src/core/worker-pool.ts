@@ -55,7 +55,7 @@ async function loginBots(): Promise<void> {
     const loginPromises = workers.map(async (worker) => {
         try {
             // Load events for this worker
-            await loadEvents(worker.client);
+            await loadEvents(worker.client, worker.name);
 
             await worker.client.login(worker.token);
             logger.info(`[${worker.name}] Logged in as ${worker.role}${worker.role === 'controller' ? ' (Leader)' : ''}`);
