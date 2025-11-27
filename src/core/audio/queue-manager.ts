@@ -29,6 +29,7 @@ export interface Queue {
     idleTimeout: NodeJS.Timeout | null;
     stopping: boolean;
     playingMessage?: Message;
+    isAutoPaused?: boolean;
     isRadio?: boolean;
 }
 

@@ -12,6 +12,7 @@ import { handleGracefulExit } from "./core/graceful-exit.js";
 import { sendAnnouncement } from "./core/announcer.js";
 import { startServer } from "./api/server.js";
 
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -63,23 +64,6 @@ process.on("unhandledRejection", (reason, promise) => {
       logger.info(`[core] Loaded command /${command.data.name}`);
     } else {
       logger.warn(`[core] The command at ${filePath} is missing a required "data" or "execute" property.`);
-    }
-  }
-
-  // Load events
-  const eventsPath = path.join(__dirname, "events");
-  if (fs.existsSync(eventsPath)) {
-    const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith(".js") || file.endsWith(".ts"));
-    for (const file of eventFiles) {
-      const filePath = path.join(eventsPath, file);
-      const eventModule = await import(filePath);
-      const event = eventModule.default;
-      if (event.once) {
-        client.once(event.name, (...args) => event.execute(...args, client));
-      } else {
-        client.on(event.name, (...args) => event.execute(...args, client));
-      }
-      logger.info(`[core] Registered event listener for ${event.name}`);
     }
   }
 
