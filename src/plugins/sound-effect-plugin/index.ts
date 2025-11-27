@@ -26,6 +26,10 @@ const SoundEffectPlugin: Plugin = {
                 // the core logic will immediately call playSong, which might interrupt this welcome sound.
                 // This is a known limitation for now.
                 const resource = createAudioResource(fs.createReadStream(soundPath), { inputType: StreamType.Arbitrary });
+
+                // Add a small delay before playing the sound effect
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
                 queue.player.play(resource);
 
                 // Wait for the player to go Idle (sound finishes)
