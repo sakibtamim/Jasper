@@ -10,7 +10,8 @@ import workerPool from "./core/worker-pool.js";
 import { initializeCache, startCacheCleanup } from "./core/cache-manager.js";
 import { handleGracefulExit } from "./core/graceful-exit.js";
 import { sendAnnouncement } from "./core/announcer.js";
-import { startServer } from "./api/server.js";
+import { startServer, server } from "./api/server.js";
+import pluginManager from "./core/plugins/plugin-manager.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -79,5 +80,9 @@ process.on("unhandledRejection", (reason, promise) => {
 
   // 7. Start Web UI Server
   await startServer();
+
+  // 8. Load Plugins
+  pluginManager.init(client, server);
+  await pluginManager.loadPlugins();
 
 })();

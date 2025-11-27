@@ -15,7 +15,7 @@ import { PORT, COOKIE_SECRET } from '../config/env.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const server = fastify({ logger: false });
+export const server = fastify({ logger: false });
 
 // Serve static files from public directory
 server.register(fastifyStatic, {
