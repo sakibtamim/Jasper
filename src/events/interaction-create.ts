@@ -44,16 +44,20 @@ export default {
       logger.error(
         `[events] Error executing command ${interaction.commandName}: ${msg}`
       );
-      if (interaction.deferred || interaction.replied) {
-        await interaction.followUp({
-          content: "Sorry, something went wrong while executing that command.",
-          ephemeral: true,
-        });
-      } else {
-        await interaction.reply({
-          content: "Sorry, something went wrong while executing that command.",
-          ephemeral: true,
-        });
+      try {
+        if (interaction.deferred || interaction.replied) {
+          await interaction.followUp({
+            content: "Sorry, something went wrong while executing that command.",
+            ephemeral: true,
+          });
+        } else {
+          await interaction.reply({
+            content: "Sorry, something went wrong while executing that command.",
+            ephemeral: true,
+          });
+        }
+      } catch (handlerError) {
+        logger.error(`[events] Failed to send error message to user: ${handlerError instanceof Error ? handlerError.message : String(handlerError)}`);
       }
     }
   },

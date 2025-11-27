@@ -2,6 +2,7 @@ import { Client, GatewayIntentBits, ActivityType } from "discord.js";
 import logger from "./logger.js";
 import bots from "../config/bots.js";
 import { JASPER_WEIGHT } from "../config/afr-config.js";
+import { loadEvents } from "../utils/event-loader.js";
 
 // Registry to hold all worker states
 const workers: WorkerState[] = [];
@@ -53,6 +54,9 @@ function createBots(): WorkerState[] {
 async function loginBots(): Promise<void> {
     const loginPromises = workers.map(async (worker) => {
         try {
+            // Load events for this worker
+            await loadEvents(worker.client);
+
             await worker.client.login(worker.token);
             logger.info(`[${worker.name}] Logged in as ${worker.role}${worker.role === 'controller' ? ' (Leader)' : ''}`);
 
