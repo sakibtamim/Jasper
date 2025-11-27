@@ -153,6 +153,19 @@ function WorkerCard({ worker }: { worker: any }) {
                     <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
                         <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
                             <span className="text-brand-secondary font-bold uppercase tracking-wider">Now Playing</span>
+                            {worker.nowPlaying.requester && (
+                                <div className="flex items-center gap-1.5" title={`Requested by ${worker.nowPlaying.requester.username}`}>
+                                    <span className="text-[10px] uppercase tracking-wider opacity-70">Req by</span>
+                                    <span className="text-[10px] font-medium truncate max-w-[80px]">
+                                        {worker.nowPlaying.requester.displayName || worker.nowPlaying.requester.username}
+                                    </span>
+                                    <img
+                                        src={worker.nowPlaying.requester.avatarUrl || 'https://cdn.discordapp.com/embed/avatars/0.png'}
+                                        className="w-4 h-4 rounded-full border border-gray-200 dark:border-gray-600"
+                                        alt={worker.nowPlaying.requester.username}
+                                    />
+                                </div>
+                            )}
                         </div>
                         <div className="flex items-center gap-3">
                             <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700 shrink-0">
@@ -171,6 +184,22 @@ function WorkerCard({ worker }: { worker: any }) {
                             </div>
                         </div>
                     </div>
+                )}
+
+                {/* Jump to Queue button for busy workers */}
+                {isBusy && worker.guildId && worker.voiceChannelId && (
+                    <button
+                        onClick={() => {
+                            const queueElement = document.getElementById(`queue-${worker.guildId}-${worker.voiceChannelId}`);
+                            if (queueElement) {
+                                queueElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        }}
+                        className="w-full mt-2 px-3 py-2 text-xs font-medium text-brand-primary hover:text-white border border-brand-primary hover:bg-brand-primary rounded-lg transition-colors flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                    >
+                        <i data-lucide="list-music" className="w-3 h-3"></i>
+                        Jump to Queue
+                    </button>
                 )}
             </div>
         </div>

@@ -18,6 +18,10 @@ body {
     padding-top: 5rem;
 }
 
+html {
+    scroll-behavior: smooth;
+}
+
 html,
 body {
     overflow-x: hidden;
