@@ -8,6 +8,7 @@ yt-dlp.exe
 
 # Ignore build output
 dist/
+public/dist-react/
 
 # Cache directories (not committed to version control)
 /cache/
