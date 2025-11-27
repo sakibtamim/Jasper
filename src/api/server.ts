@@ -59,6 +59,10 @@ server.addHook('onRequest', async (request, reply) => {
 server.register(authRoutes);
 server.register(devtoolsRoutes);
 
+// Serve React Dashboard (Phase 0: opt-in route)
+server.get('/react-dashboard', async (request, reply) => {
+    return reply.sendFile('dist-react/index.html');
+});
 
 
 // API Endpoints
