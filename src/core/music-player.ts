@@ -8,6 +8,7 @@ import {
 import { ActionRowBuilder, ChatInputCommandInteraction, VoiceBasedChannel, GuildMember } from "discord.js";
 import logger from "./logger.js";
 import workerPool, { WorkerState } from "./worker-pool.js";
+import hookManager from "./plugins/hook-manager.js";
 
 import {
   validateInteraction,
@@ -257,6 +258,10 @@ async function createQueue(interaction: ChatInputCommandInteraction, worker: Wor
   });
 
   setQueue(voiceChannel.id, queue);
+
+  // Hook: QUEUE_CREATE
+  hookManager.trigger('QUEUE_CREATE', { queue, worker });
+
   return queue;
 }
 

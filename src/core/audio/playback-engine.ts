@@ -4,6 +4,7 @@ import { APIActionRowComponent, APIButtonComponent } from "discord-api-types/v10
 import ytSearch from "yt-search";
 import logger from "../logger.js";
 import workerPool from "../worker-pool.js";
+import hookManager from "../plugins/hook-manager.js";
 import { setVoiceStatus, getChannelName } from "../utils/voice-utils.js";
 import { createStreamProcess } from "./stream-handler.js";
 import { createControlButtons, getAutoplayButton } from "../ui/player-controls.js";
@@ -148,6 +149,9 @@ export async function playSong(queue: Queue): Promise<void> {
     const song = queue.songs[0];
     if (!song) return;
 
+    // Hook: PRE_MUSIC_PLAY
+    await hookManager.trigger('PRE_MUSIC_PLAY', { queue, song });
+
     try {
         logger.info(`[playback] Attempting to stream with yt-dlp: ${song.title}`);
 
@@ -193,6 +197,10 @@ export async function playSong(queue: Queue): Promise<void> {
         });
 
         queue.player.play(resource);
+
+        // Hook: POST_MUSIC_PLAY
+        hookManager.trigger('POST_MUSIC_PLAY', { queue, song });
+
         queue.nowPlaying = song;
         queue.nowPlaying.startTime = Date.now();
 
