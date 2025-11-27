@@ -75,7 +75,7 @@ export class PluginManager {
         if (!fs.existsSync(PLUGINS_DIR)) {
             logger.warn(`[plugins] Plugins directory not found at ${PLUGINS_DIR}, creating it...`);
             try {
-                fs.mkdirSync(PLUGINS_DIR, { recursive: true });
+                await fs.promises.mkdir(PLUGINS_DIR, { recursive: true });
             } catch (e) {
                 logger.error(`[plugins] Failed to create plugins directory: ${e}`);
                 return;
@@ -166,8 +166,6 @@ export class PluginManager {
             // 3. Auto-enforced Web Route Namespacing
             // We register a new Fastify scope with the plugin's ID as the prefix.
             // All routes registered via context.server inside onLoad will be scoped.
-            let capturedContext: PluginContext | null = null;
-
             await this.context!.server.register(async (scopedServer) => {
                 // Create a context specific to this plugin
                 const pluginContext: PluginContext = {
@@ -184,17 +182,11 @@ export class PluginManager {
                         error: (msg: string) => logger.error(`[${plugin.name}] ${msg}`),
                     }
                 };
-                capturedContext = pluginContext;
 
                 await plugin.onLoad(pluginContext);
-            }, { prefix: `/api/plugins/${metadata.id}` });
-
-            if (capturedContext) {
-                this.plugins.set(plugin.name, { plugin, context: capturedContext });
+                this.plugins.set(plugin.name, { plugin, context: pluginContext });
                 logger.info(`[plugins] Successfully loaded ${plugin.name}`);
-            } else {
-                logger.error(`[plugins] Failed to capture context for ${plugin.name}`);
-            }
+            }, { prefix: `/api/plugins/${metadata.id}` });
         } catch (error) {
             logger.error(`[plugins] Failed to initialize plugin ${plugin.name}: ${error instanceof Error ? error.message : String(error)}`);
         }

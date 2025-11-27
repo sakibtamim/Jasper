@@ -14,7 +14,7 @@ const AdvancedHooksTestPlugin: Plugin = {
             // The original line 'const { server } = data;' is removed as 'server' is now directly destructured from the event data.
 
             // Register a test route
-            server.get("/api/test-plugin", async (request: any, reply: any) => {
+            server.get("/test-plugin", async (request: any, reply: any) => {
                 return { message: "Hello from AdvancedHooksTestPlugin!" };
             });
             context.logger.info("Registered /api/test-plugin route.");
