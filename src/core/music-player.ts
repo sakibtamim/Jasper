@@ -260,7 +260,7 @@ async function createQueue(interaction: ChatInputCommandInteraction, worker: Wor
   setQueue(voiceChannel.id, queue);
 
   // Hook: QUEUE_CREATE
-  hookManager.trigger('QUEUE_CREATE', { queue, worker });
+  await hookManager.trigger('QUEUE_CREATE', { queue, worker });
 
   return queue;
 }

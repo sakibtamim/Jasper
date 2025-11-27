@@ -198,11 +198,11 @@ export async function playSong(queue: Queue): Promise<void> {
 
         queue.player.play(resource);
 
-        // Hook: POST_MUSIC_PLAY
-        hookManager.trigger('POST_MUSIC_PLAY', { queue, song });
-
         queue.nowPlaying = song;
         queue.nowPlaying.startTime = Date.now();
+
+        // Hook: POST_MUSIC_PLAY
+        await hookManager.trigger('POST_MUSIC_PLAY', { queue, song });
 
         // Track play in DB - only if we have a valid requester
         if (song.requesterId && song.requesterId.trim() !== '') {

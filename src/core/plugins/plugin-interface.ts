@@ -21,10 +21,25 @@ export type HookName =
     | 'PRE_MUSIC_PLAY'    // Fired before a song starts playing
     | 'POST_MUSIC_PLAY'   // Fired after a song starts playing
     | 'MUSIC_QUEUE_ADD'   // Fired when a song is added to queue
-    | 'MUSIC_QUEUE_ADD'   // Fired when a song is added to queue
     | 'SERVER_READY'      // Fired when web server is ready
     | 'WORKER_ASSIGNED'   // Fired when a worker is assigned to a guild
     | 'VOICE_STATE_UPDATE'; // Fired when a voice state changes
+
+export interface ServerReadyData {
+    server: FastifyInstance;
+}
+
+export interface WorkerAssignedData {
+    worker: WorkerState;
+    guildId: string;
+    voiceChannelId: string;
+}
+
+export interface VoiceStateUpdateData {
+    oldState: import("discord.js").VoiceState;
+    newState: import("discord.js").VoiceState;
+    client: Client;
+}
 
 // Generic Hook Callback
 export type HookCallback<T = any> = (data: T) => void | Promise<void>;

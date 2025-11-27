@@ -23,7 +23,7 @@ const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
 const CORE_VERSION = packageJson.version;
 
 export class PluginManager {
-    private plugins: Map<string, Plugin>;
+    private plugins: Map<string, { plugin: Plugin, context: PluginContext }>;
     private context: PluginContext | null;
 
     constructor() {
@@ -42,6 +42,9 @@ export class PluginManager {
             registerCommand: (command: any) => {
                 // Dynamic command registration (Phase 1: Basic logging)
                 logger.info(`[plugins] Registering dynamic command: ${command.data?.name}`);
+                if (client.commands.has(command.data.name)) {
+                    logger.warn(`[plugins] Command "${command.data.name}" is being overwritten by a plugin.`);
+                }
                 client.commands.set(command.data.name, command);
             },
             on: (hook, callback) => hookManager.register(hook, callback),
@@ -163,6 +166,8 @@ export class PluginManager {
             // 3. Auto-enforced Web Route Namespacing
             // We register a new Fastify scope with the plugin's ID as the prefix.
             // All routes registered via context.server inside onLoad will be scoped.
+            let capturedContext: PluginContext | null = null;
+
             await this.context!.server.register(async (scopedServer) => {
                 // Create a context specific to this plugin
                 const pluginContext: PluginContext = {
@@ -179,12 +184,17 @@ export class PluginManager {
                         error: (msg: string) => logger.error(`[${plugin.name}] ${msg}`),
                     }
                 };
+                capturedContext = pluginContext;
 
                 await plugin.onLoad(pluginContext);
             }, { prefix: `/api/plugins/${metadata.id}` });
 
-            this.plugins.set(plugin.name, plugin);
-            logger.info(`[plugins] Successfully loaded ${plugin.name}`);
+            if (capturedContext) {
+                this.plugins.set(plugin.name, { plugin, context: capturedContext });
+                logger.info(`[plugins] Successfully loaded ${plugin.name}`);
+            } else {
+                logger.error(`[plugins] Failed to capture context for ${plugin.name}`);
+            }
         } catch (error) {
             logger.error(`[plugins] Failed to initialize plugin ${plugin.name}: ${error instanceof Error ? error.message : String(error)}`);
         }
@@ -194,11 +204,11 @@ export class PluginManager {
      * Unload a plugin
      */
     async unloadPlugin(name: string): Promise<void> {
-        const plugin = this.plugins.get(name);
-        if (!plugin) return;
+        const entry = this.plugins.get(name);
+        if (!entry) return;
 
         try {
-            await plugin.onUnload(this.context!);
+            await entry.plugin.onUnload(entry.context);
             this.plugins.delete(name);
             logger.info(`[plugins] Unloaded plugin: ${name}`);
         } catch (error) {

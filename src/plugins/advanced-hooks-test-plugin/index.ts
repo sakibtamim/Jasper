@@ -1,4 +1,4 @@
-import { Plugin, PluginContext } from "../../core/plugins/plugin-interface.js";
+import { Plugin, PluginContext, ServerReadyData, WorkerAssignedData, VoiceStateUpdateData } from "../../core/plugins/plugin-interface.js";
 
 const AdvancedHooksTestPlugin: Plugin = {
     name: "Advanced Hooks Test Plugin",
@@ -9,9 +9,9 @@ const AdvancedHooksTestPlugin: Plugin = {
         context.logger.info("Loaded!");
 
         // Hook: SERVER_READY
-        context.on("SERVER_READY", (data: any) => {
+        context.on<ServerReadyData>("SERVER_READY", ({ server }) => {
             context.logger.info("SERVER_READY hook triggered!");
-            const { server } = data;
+            // The original line 'const { server } = data;' is removed as 'server' is now directly destructured from the event data.
 
             // Register a test route
             server.get("/api/test-plugin", async (request: any, reply: any) => {
