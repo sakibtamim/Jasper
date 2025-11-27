@@ -17,7 +17,7 @@ export async function loadEvents(client: Client, workerName: string = "Unknown B
         return;
     }
 
-    const eventFiles = fs.readdirSync(EVENTS_DIR).filter(file => file.endsWith(".js") || file.endsWith(".ts"));
+    const eventFiles = (await fs.promises.readdir(EVENTS_DIR)).filter(file => file.endsWith(".js") || file.endsWith(".ts"));
 
     for (const file of eventFiles) {
         const filePath = path.join(EVENTS_DIR, file);

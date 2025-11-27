@@ -27,7 +27,7 @@ export default {
             if (!channel) continue;
 
             try {
-                const voiceChannel = await client.channels.fetch(channel);
+                const voiceChannel = await client.channels.fetch(channelId);
                 if (!voiceChannel || !voiceChannel.isVoiceBased()) continue;
 
                 const nonBotMembers = voiceChannel.members.filter(m => !m.user.bot);
