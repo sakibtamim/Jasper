@@ -182,10 +182,10 @@ export class PluginManager {
                         core: coreDataAccessor
                     },
                     logger: {
-                        debug: (msg: string) => logger.debug(`[${plugin.name}] ${msg}`),
-                        info: (msg: string) => logger.info(`[${plugin.name}] ${msg}`),
-                        warn: (msg: string) => logger.warn(`[${plugin.name}] ${msg}`),
-                        error: (msg: string) => logger.error(`[${plugin.name}] ${msg}`),
+                        debug: (msg: string) => logger.debug(`[${metadata.id}] ${msg}`),
+                        info: (msg: string) => logger.info(`[${metadata.id}] ${msg}`),
+                        warn: (msg: string) => logger.warn(`[${metadata.id}] ${msg}`),
+                        error: (msg: string) => logger.error(`[${metadata.id}] ${msg}`),
                     },
                     // Override registerCommand to track commands
                     registerCommand: (command: any) => {
