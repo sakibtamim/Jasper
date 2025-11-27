@@ -1,7 +1,7 @@
 # Jasper Extensions API
 
 > **Status**: Stable / Implemented
-> **Last Updated**: 2025-11-27
+> **Last Updated**: 2025-11-28
 
 The **Jasper Extensions API** allows developers to extend the functionality of the Jasper Music Bot without modifying the core codebase. Plugins can add new commands, listen to events, expose web routes, and store persistent data.
 
@@ -11,10 +11,12 @@ The **Jasper Extensions API** allows developers to extend the functionality of t
 
 The plugin system is built on four main pillars:
 
-1.  **Plugin Manager**: Handles the lifecycle (loading/unloading) of plugins and enforces strict structure.
-2.  **Hook System**: A pub/sub event system allowing plugins to react to core bot events (e.g., music starting, queue creation).
-3.  **Database Abstraction**: Provides **scoped** Read-Write access to a plugin's own data and **Read-Only** access to global bot statistics.
-4.  **Scoped Logging**: Automatically prefixes log messages with the plugin's name for easier debugging.
+1.  **Plugin Manager** – Discovers, validates, and loads plugins from `src/plugins`.
+2.  **Hook System** – Pub/sub bridge between the core bot and plugins.
+3.  **Database Abstraction** – Safe, namespaced storage for plugins + read-only core stats.
+4.  **Scoped Logging** – Per-plugin log channels for debugging.
+
+> **Note:** If a plugin's manifest is missing or invalid (e.g., missing `id`), the Plugin Manager will log an error and skip loading that plugin.
 
 ---
 
@@ -35,13 +37,62 @@ src/plugins/
 ```
 
 ### Manifest (`jasper-plugin.json`)
+
 ```json
 {
-    "name": "My Cool Plugin",
-    "version": "1.0.0",
-    "description": "Adds amazing features to Jasper.",
-    "entry": "index.ts"
+  "name": "My Cool Plugin",
+  "id": "my-cool-plugin",
+  "version": "1.0.0",
+  "description": "Adds amazing features to Jasper.",
+  "entry": "index.ts",
+  "author": "example-author",
+  "license": "MIT",
+  "jasperVersion": "^1.0.0"
 }
+```
+
+*   **`name`** (Required): Human-readable name.
+*   **`id`** (Required): Filesystem-safe, unique identifier (lowercase, alphanumeric, dashes). Used for DB namespacing and web routes.
+*   **`version`** (Required): Plugin version.
+*   **`entry`** (Optional): Entry file (defaults to `index.ts`).
+*   **`jasperVersion`** (Optional): Semver range of compatible Jasper Core versions. The system will warn if the core version doesn't satisfy this range.
+*   **`author`, `license`** (Optional): Metadata.
+
+---
+
+## 🧰 PluginContext Cheat Sheet
+
+The `PluginContext` passed to `onLoad` provides access to all core features.
+
+```typescript
+type PluginContext = {
+  client: Client;            // Discord.js Client
+  workers: WorkerState[];    // Worker bot states
+  server: FastifyInstance;   // Scoped web server instance
+
+  logger: {
+      debug(msg: string): void;
+      info(msg: string): void;
+      warn(msg: string): void;
+      error(msg: string): void;
+  };
+
+  db: {
+    plugin: {
+      get<T = unknown>(key: string): Promise<T | null>;
+      set<T = unknown>(key: string, value: T): Promise<void>;
+      delete(key: string): Promise<void>;
+    };
+    core: {
+      getTopSongs(limit: number): Promise<SongStats[]>;
+      getGlobalStats(): Promise<{ totalPlays: number; totalDuration: number }>;
+    };
+  };
+
+  on<T>(hook: HookName, handler: (payload: T) => void | Promise<void>): void;
+
+  registerCommand(def: SlashCommandDefinition): void;
+};
 ```
 
 ---
@@ -56,16 +107,13 @@ import { Plugin, PluginContext } from "../../core/plugins/plugin-interface.js";
 const MyPlugin: Plugin = {
     name: "My Cool Plugin",
     version: "1.0.0",
-    description: "Optional description",
-
+    
     onLoad: async (context: PluginContext) => {
         context.logger.info("Plugin loaded!");
-        // Initialize your plugin here
     },
 
     onUnload: async (context: PluginContext) => {
         context.logger.info("Plugin unloaded!");
-        // Cleanup resources here
     }
 };
 
@@ -74,58 +122,7 @@ export default MyPlugin;
 
 ---
 
-## 🧰 The Plugin Context
-
-The `PluginContext` passed to `onLoad` provides access to all core features.
-
-### 1. Core Access
--   `context.client`: The main Discord.js `Client` (Controller).
--   `context.workers`: Array of `WorkerState` objects (Worker bots).
--   `context.server`: The Fastify web server instance.
-
-### 2. Scoped Logger
-Use `context.logger` to log messages. They will be automatically prefixed with `[Plugin Name]`.
-
-```typescript
-context.logger.info("Hello"); // Output: [INFO] ... [My Cool Plugin] Hello
-context.logger.error("Something went wrong");
-```
-
-### 3. Database Access (`context.db`)
-*   **Plugin Storage (Read-Write)**: Scoped to your plugin. Keys are prefixed internally.
-    ```typescript
-    await context.db.plugin.set("config", { enabled: true });
-    const config = await context.db.plugin.get("config");
-    ```
-*   **Core Data (Read-Only)**: Access global stats.
-    ```typescript
-    const topSongs = await context.db.core.getTopSongs(10);
-    ```
-
-### 4. Web Server (`context.server`)
-Register new API routes or web pages. **Note**: Use the `SERVER_READY` hook to ensure the server is initialized.
-
-```typescript
-context.on("SERVER_READY", ({ server }) => {
-    server.get("/api/my-plugin", async (req, reply) => {
-        return { message: "Hello from plugin!" };
-    });
-});
-```
-
-### 5. Commands
-Register dynamic slash commands.
-
-```typescript
-context.registerCommand({
-    data: { name: "ping-plugin", description: "Replies with Pong" },
-    execute: async (interaction) => await interaction.reply("Pong!")
-});
-```
-
----
-
-## 🎣 Hooks Reference
+## 🎣 Hooks Guide
 
 Subscribe to hooks using `context.on(HookName, callback)`.
 
@@ -139,46 +136,43 @@ Subscribe to hooks using `context.on(HookName, callback)`.
 | `WORKER_ASSIGNED` | Fired when a worker bot is assigned to a guild. | `{ worker: WorkerState, guildId: string, voiceChannelId: string }` |
 | `VOICE_STATE_UPDATE`| Fired when a voice state changes (join/leave/move). | `{ oldState: VoiceState, newState: VoiceState, client: Client }` |
 
-**Example:**
-```typescript
-context.on<SongPlayData>("PRE_MUSIC_PLAY", ({ song }) => {
-    context.logger.info(`Now playing: ${song.title}`);
-});
-```
+### When to Use Which Hook
+*   **`QUEUE_CREATE`** – Per-guild initialization, analytics, greeting SFX.
+*   **`PRE_MUSIC_PLAY`** – Logging, pre-play checks, "now playing" overlays.
+*   **`POST_MUSIC_PLAY`** – Scrobbling, stats, dashboards.
+*   **`SERVER_READY`** – Registering web routes and dashboards.
+*   **`WORKER_ASSIGNED`** – Worker/guild affinity tracking.
+*   **`VOICE_STATE_UPDATE`** – AFK detection, auto-disconnect, attendance stats.
 
 ---
 
-## 🚀 Example Plugin
+## 🌐 Web Routes & Namespacing
 
-Here is a complete example of a plugin that greets users when a queue is created and tracks how many times it has greeted them.
+Plugins can expose web routes using `context.server`.
+
+**Important:** Route namespacing is **auto-enforced**. All routes registered by a plugin are automatically scoped to:
+`/api/plugins/{pluginId}/**`
+
+**Example:**
+If your plugin ID is `my-cool-plugin`:
 
 ```typescript
-import { Plugin, PluginContext, QueueCreateData } from "../../core/plugins/plugin-interface.js";
-
-const GreeterPlugin: Plugin = {
-    name: "Greeter Plugin",
-    version: "1.0.0",
-
-    onLoad: async (context: PluginContext) => {
-        context.logger.info("Greeter loaded!");
-
-        context.on<QueueCreateData>("QUEUE_CREATE", async ({ queue }) => {
-            // 1. Play a sound (if implemented)
-            context.logger.info(`Queue created in ${queue.voiceChannelId}`);
-
-            // 2. Update stats in DB
-            const stats = (await context.db.plugin.get("greets")) || { count: 0 };
-            stats.count++;
-            await context.db.plugin.set("greets", stats);
-            
-            context.logger.info(`Total greets: ${stats.count}`);
-        });
-    },
-
-    onUnload: async (context: PluginContext) => {
-        context.logger.info("Greeter unloaded!");
-    }
-};
-
-export default GreeterPlugin;
+context.on("SERVER_READY", ({ server }) => {
+    // This registers: GET /api/plugins/my-cool-plugin/health
+    server.get("/health", async () => ({ ok: true }));
+});
 ```
+
+You do **not** need to manually add the prefix. The `server` instance provided in the context is already scoped.
+
+---
+
+## 📦 Version Compatibility
+
+Plugins can declare a `jasperVersion` range in their manifest (e.g., `^1.0.0`).
+The core will validate this against the running Jasper version using semver.
+
+*   If the version is **compatible**, the plugin loads normally.
+*   If the version is **incompatible**, the system will log a warning but still attempt to load the plugin.
+
+This ensures plugins can safely declare their dependencies on core features.

@@ -9,12 +9,18 @@ import { Plugin, PluginContext } from "./plugin-interface.js";
 import hookManager from "./hook-manager.js";
 import { ScopedPluginStore } from "./plugin-store.js";
 import coreDataAccessor from "./core-data-accessor.js";
+import semver from "semver";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Calculate the root 'src' directory based on this file's location (src/core/plugins/plugin-manager.ts)
 const PLUGINS_DIR = path.join(__dirname, "..", "..", "plugins");
+
+// Read core version from package.json
+const packageJsonPath = path.join(__dirname, "..", "..", "..", "package.json");
+const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+const CORE_VERSION = packageJson.version;
 
 export class PluginManager {
     private plugins: Map<string, Plugin>;
@@ -89,6 +95,20 @@ export class PluginManager {
 
             try {
                 const metadata = JSON.parse(await fs.promises.readFile(metadataPath, "utf-8"));
+
+                // 1. Validate ID
+                if (!metadata.id || !/^[a-z0-9-]+$/.test(metadata.id)) {
+                    logger.error(`[plugins] Skipping plugin in ${entry.name}: Invalid or missing 'id'. Must be lowercase, alphanumeric, and dashes only.`);
+                    continue;
+                }
+
+                // 2. Check Version Compatibility
+                if (metadata.jasperVersion) {
+                    if (!semver.satisfies(CORE_VERSION, metadata.jasperVersion)) {
+                        logger.warn(`[plugins] ⚠️ Plugin '${metadata.name}' (${metadata.id}) requires Jasper version ${metadata.jasperVersion}, but core is ${CORE_VERSION}. Loading anyway, but issues may occur.`);
+                    }
+                }
+
                 const entryFile = metadata.entry || "index.js"; // Default to index.js (or index.ts in dev)
 
                 // Resolve entry file (handle .ts for dev environment)
@@ -121,7 +141,7 @@ export class PluginManager {
                     logger.warn(`[plugins] Plugin name mismatch: ${plugin.name} (code) vs ${metadata.name} (json)`);
                 }
 
-                await this.registerPlugin(plugin);
+                await this.registerPlugin(plugin, metadata);
             } catch (error) {
                 logger.error(`[plugins] Failed to load plugin ${entry.name}: ${error instanceof Error ? error.message : String(error)}`);
             }
@@ -131,7 +151,7 @@ export class PluginManager {
     /**
      * Register and load a single plugin
      */
-    async registerPlugin(plugin: Plugin): Promise<void> {
+    async registerPlugin(plugin: Plugin, metadata: any): Promise<void> {
         if (this.plugins.has(plugin.name)) {
             logger.warn(`[plugins] Plugin ${plugin.name} is already registered.`);
             return;
@@ -140,22 +160,29 @@ export class PluginManager {
         try {
             logger.info(`[plugins] Loading plugin: ${plugin.name} v${plugin.version}`);
 
-            // Create a context specific to this plugin
-            const pluginContext: PluginContext = {
-                ...this.context!,
-                db: {
-                    plugin: new ScopedPluginStore(plugin.name),
-                    core: coreDataAccessor
-                },
-                logger: {
-                    debug: (msg: string) => logger.debug(`[${plugin.name}] ${msg}`),
-                    info: (msg: string) => logger.info(`[${plugin.name}] ${msg}`),
-                    warn: (msg: string) => logger.warn(`[${plugin.name}] ${msg}`),
-                    error: (msg: string) => logger.error(`[${plugin.name}] ${msg}`),
-                }
-            };
+            // 3. Auto-enforced Web Route Namespacing
+            // We register a new Fastify scope with the plugin's ID as the prefix.
+            // All routes registered via context.server inside onLoad will be scoped.
+            await this.context!.server.register(async (scopedServer) => {
+                // Create a context specific to this plugin
+                const pluginContext: PluginContext = {
+                    ...this.context!,
+                    server: scopedServer, // Override server with scoped instance
+                    db: {
+                        plugin: new ScopedPluginStore(metadata.id), // Use ID for DB namespace
+                        core: coreDataAccessor
+                    },
+                    logger: {
+                        debug: (msg: string) => logger.debug(`[${plugin.name}] ${msg}`),
+                        info: (msg: string) => logger.info(`[${plugin.name}] ${msg}`),
+                        warn: (msg: string) => logger.warn(`[${plugin.name}] ${msg}`),
+                        error: (msg: string) => logger.error(`[${plugin.name}] ${msg}`),
+                    }
+                };
 
-            await plugin.onLoad(pluginContext);
+                await plugin.onLoad(pluginContext);
+            }, { prefix: `/api/plugins/${metadata.id}` });
+
             this.plugins.set(plugin.name, plugin);
             logger.info(`[plugins] Successfully loaded ${plugin.name}`);
         } catch (error) {
