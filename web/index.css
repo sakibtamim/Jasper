@@ -1,21 +1,20 @@
-/* Custom Font Import - must be first */
+/* Tailwind CSS v4 import */
+@import "tailwindcss";
+
+/* Custom Font Import */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Custom theme configuration */
+@theme {
+    --color-brand-primary: #ff6ad5;
+    --color-brand-secondary: #00e5ff;
 
-/* Custom brand tokens */
-@layer base {
-    :root {
-        --brand-primary: #ff6ad5;
-        --brand-secondary: #00e5ff;
-    }
+    --font-family-sans: 'Inter', sans-serif;
 }
 
-/* Import existing custom styles from public */
+/* Custom styles */
 body {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--font-family-sans);
     padding-top: 5rem;
 }
 
@@ -43,5 +42,5 @@ body {
 
 .hover-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 25px-5px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
 }
