@@ -27,6 +27,10 @@ const SoundEffectPlugin: Plugin = {
                 // This is a known limitation for now.
                 const resource = createAudioResource(fs.createReadStream(soundPath), { inputType: StreamType.Arbitrary });
                 queue.player.play(resource);
+
+                // Block the hook for a few seconds to allow the welcome sound to play
+                // before the core logic proceeds to play the requested song.
+                await new Promise(resolve => setTimeout(resolve, 4000));
             } else {
                 context.logger.warn(`Welcome sound not found at ${soundPath}`);
             }
