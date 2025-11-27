@@ -93,6 +93,15 @@ type PluginContext = {
 
   registerCommand(def: SlashCommandDefinition): void;
 };
+
+type SlashCommandDefinition = {
+    data: {
+        name: string;
+        description: string;
+        options?: any[];
+    };
+    execute: (interaction: ChatInputCommandInteraction) => void | Promise<void>;
+};
 ```
 
 ---

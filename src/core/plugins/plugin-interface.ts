@@ -59,6 +59,16 @@ export interface CoreDataAccessor {
     getGlobalStats(): Promise<{ totalPlays: number; totalDuration: number }>;
 }
 
+export interface SlashCommandDefinition {
+    data: {
+        name: string;
+        description: string;
+        options?: any[];
+        [key: string]: any;
+    };
+    execute: (interaction: import("discord.js").ChatInputCommandInteraction) => void | Promise<void>;
+}
+
 // --- Plugin Context ---
 
 export interface PluginContext {
@@ -66,25 +76,25 @@ export interface PluginContext {
     workers: WorkerState[]; // Access to worker pool
     server: FastifyInstance; // Access to web server
 
-    // Helper to register commands dynamically
-    registerCommand: (command: any) => void;
-
-    // Hook System
-    on: <T>(hook: HookName, callback: HookCallback<T>) => void;
-
-    // Database Access (Phase 2)
-    db: {
-        plugin: PluginStore; // RW access to plugin's own data
-        core: CoreDataAccessor; // RO access to core data
-    };
-
-    // Scoped Logger
+    // Scoped logger for the plugin
     logger: {
         debug: (msg: string) => void;
         info: (msg: string) => void;
         warn: (msg: string) => void;
         error: (msg: string) => void;
     };
+
+    // Database access
+    db: {
+        plugin: PluginStore; // RW access to plugin's own data
+        core: CoreDataAccessor; // RO access to core data
+    };
+
+    // Hook subscription
+    on<T = any>(hook: HookName, handler: HookCallback<T>): void;
+
+    // Command registration
+    registerCommand(command: SlashCommandDefinition): void;
 }
 
 // --- Plugin Definition ---

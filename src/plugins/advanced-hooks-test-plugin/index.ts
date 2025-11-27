@@ -1,4 +1,4 @@
-import { Plugin, PluginContext, ServerReadyData } from "../../core/plugins/plugin-interface.js";
+import { Plugin, PluginContext, ServerReadyData, WorkerAssignedData, VoiceStateUpdateData } from "../../core/plugins/plugin-interface.js";
 
 const AdvancedHooksTestPlugin: Plugin = {
     name: "Advanced Hooks Test Plugin",
@@ -21,15 +21,15 @@ const AdvancedHooksTestPlugin: Plugin = {
         });
 
         // Hook: WORKER_ASSIGNED
-        context.on("WORKER_ASSIGNED", (data: any) => {
-            const { worker, guildId, voiceChannelId } = data;
-            context.logger.info(`WORKER_ASSIGNED: ${worker.name} -> Guild ${guildId} / Channel ${voiceChannelId}`);
+        context.on<WorkerAssignedData>("WORKER_ASSIGNED", ({ worker, guildId, voiceChannelId }) => {
+            context.logger.info(`Worker ${worker.client.user?.tag} assigned to guild ${guildId} in channel ${voiceChannelId}`);
         });
 
         // Hook: VOICE_STATE_UPDATE
-        context.on("VOICE_STATE_UPDATE", (data: any) => {
-            const { oldState, newState } = data;
-            context.logger.info(`VOICE_STATE_UPDATE: ${oldState?.member?.user.username} moved from ${oldState?.channelId} to ${newState?.channelId}`);
+        context.on<VoiceStateUpdateData>("VOICE_STATE_UPDATE", ({ oldState, newState }) => {
+            if (oldState.channelId !== newState.channelId) {
+                context.logger.info(`Voice state update: ${oldState.member?.user.tag} moved from ${oldState.channelId} to ${newState.channelId}`);
+            }
         });
     },
 
