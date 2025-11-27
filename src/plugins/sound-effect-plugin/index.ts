@@ -1,8 +1,12 @@
-import { Plugin, PluginContext, QueueCreateData, SongPlayData } from "../core/plugins/plugin-interface.js";
-import logger from "../core/logger.js";
+import { Plugin, PluginContext, QueueCreateData, SongPlayData } from "../../core/plugins/plugin-interface.js";
+import logger from "../../core/logger.js";
 import { createAudioResource, StreamType } from "@discordjs/voice";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const SoundEffectPlugin: Plugin = {
     name: "Sound Effect Plugin",
@@ -14,13 +18,15 @@ const SoundEffectPlugin: Plugin = {
 
         // Hook: QUEUE_CREATE
         context.on<QueueCreateData>('QUEUE_CREATE', async ({ queue }) => {
-            logger.info(`[SoundEffectPlugin] Queue created in ${queue.voiceChannelId}. Playing hello sound...`);
+            const soundPath = path.join(__dirname, 'welcome.mp3');
 
-            // In a real scenario, we would stream a file. 
-            // For this test, we'll just log, as we don't have a guaranteed sound file.
-            // If we had one:
-            // const resource = createAudioResource(fs.createReadStream('hello.mp3'));
-            // queue.player.play(resource);
+            if (fs.existsSync(soundPath)) {
+                logger.info(`[SoundEffectPlugin] Queue created in ${queue.voiceChannelId}. Playing welcome sound...`);
+                const resource = createAudioResource(fs.createReadStream(soundPath), { inputType: StreamType.Arbitrary });
+                queue.player.play(resource);
+            } else {
+                logger.warn(`[SoundEffectPlugin] Welcome sound not found at ${soundPath}`);
+            }
         });
 
         // Hook: PRE_MUSIC_PLAY

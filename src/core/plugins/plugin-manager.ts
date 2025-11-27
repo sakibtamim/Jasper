@@ -67,24 +67,41 @@ export class PluginManager {
             }
         }
 
-        const pluginFiles = (await fs.promises.readdir(PLUGINS_DIR)).filter(file => file.endsWith(".js") || file.endsWith(".ts"));
+        const entries = await fs.promises.readdir(PLUGINS_DIR, { withFileTypes: true });
 
-        for (const file of pluginFiles) {
-            const filePath = path.join(PLUGINS_DIR, file);
+        for (const entry of entries) {
+            let pluginPath: string | null = null;
+
+            if (entry.isFile() && (entry.name.endsWith(".ts") || entry.name.endsWith(".js")) && !entry.name.endsWith(".d.ts")) {
+                pluginPath = path.join(PLUGINS_DIR, entry.name);
+            } else if (entry.isDirectory()) {
+                // Check for index.ts or index.js
+                const indexTs = path.join(PLUGINS_DIR, entry.name, "index.ts");
+                const indexJs = path.join(PLUGINS_DIR, entry.name, "index.js");
+
+                if (fs.existsSync(indexTs)) {
+                    pluginPath = indexTs;
+                } else if (fs.existsSync(indexJs)) {
+                    pluginPath = indexJs;
+                }
+            }
+
+            if (!pluginPath) continue;
+
             try {
                 // Use pathToFileURL to support Windows paths and proper ESM importing
-                const fileUrl = pathToFileURL(filePath).href;
+                const fileUrl = pathToFileURL(pluginPath).href;
                 const pluginModule = await import(fileUrl);
                 const plugin: Plugin = pluginModule.default;
 
                 if (!plugin || !plugin.name || !plugin.onLoad) {
-                    logger.warn(`[plugins] Plugin file ${file} is missing required exports.`);
+                    logger.warn(`[plugins] Plugin file ${entry.name} is missing required exports.`);
                     continue;
                 }
 
                 await this.registerPlugin(plugin);
             } catch (error) {
-                logger.error(`[plugins] Failed to load plugin ${file}: ${error instanceof Error ? error.message : String(error)}`);
+                logger.error(`[plugins] Failed to load plugin ${entry.name}: ${error instanceof Error ? error.message : String(error)}`);
             }
         }
     }
