@@ -86,6 +86,15 @@ export class PostgresAdapter implements DatabaseAdapter {
           expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
+
+
+        CREATE TABLE IF NOT EXISTS plugin_storage (
+          plugin_name TEXT NOT NULL,
+          key TEXT NOT NULL,
+          value TEXT,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (plugin_name, key)
+        );
       `);
 
             // Create indexes
@@ -102,6 +111,7 @@ export class PostgresAdapter implements DatabaseAdapter {
         CREATE INDEX IF NOT EXISTS idx_cache_hits_entity_id ON cache_hits(entity_id);
         CREATE INDEX IF NOT EXISTS idx_cache_hits_entity_type ON cache_hits(entity_type);
         CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+        CREATE INDEX IF NOT EXISTS idx_plugin_storage_plugin_name ON plugin_storage(plugin_name);
       `);
 
             logger.info('[db] Postgres database initialized');
@@ -639,5 +649,43 @@ export class PostgresAdapter implements DatabaseAdapter {
     async deletePlaysForBot(botName: string): Promise<void> {
         if (!this.pool) throw new Error('Database not initialized');
         await this.pool.query('DELETE FROM plays WHERE bot_name = $1', [botName]);
+    }
+
+    // Plugin Repository Implementation
+    async getPluginData(pluginName: string, key: string): Promise<any | null> {
+        if (!this.pool) throw new Error('Database not initialized');
+        const result = await this.pool.query(
+            'SELECT value FROM plugin_storage WHERE plugin_name = $1 AND key = $2',
+            [pluginName, key]
+        );
+
+        if (result.rows.length === 0) return null;
+        const row = result.rows[0];
+        try {
+            return JSON.parse(row.value);
+        } catch {
+            return row.value;
+        }
+    }
+
+    async setPluginData(pluginName: string, key: string, value: any): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query(`
+            INSERT INTO plugin_storage (plugin_name, key, value, updated_at)
+            VALUES ($1, $2, $3, NOW())
+            ON CONFLICT (plugin_name, key) DO UPDATE SET
+                value = EXCLUDED.value,
+                updated_at = NOW()
+        `, [pluginName, key, JSON.stringify(value)]);
+    }
+
+    async deletePluginData(pluginName: string, key: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('DELETE FROM plugin_storage WHERE plugin_name = $1 AND key = $2', [pluginName, key]);
+    }
+
+    async clearPluginData(pluginName: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('DELETE FROM plugin_storage WHERE plugin_name = $1', [pluginName]);
     }
 }

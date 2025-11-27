@@ -3,6 +3,7 @@ import logger from "./logger.js";
 import bots from "../config/bots.js";
 import { JASPER_WEIGHT } from "../config/afr-config.js";
 import { loadEvents } from "../utils/event-loader.js";
+import hookManager from "./plugins/hook-manager.js";
 
 // Registry to hold all worker states
 const workers: WorkerState[] = [];
@@ -230,6 +231,9 @@ function setWorkerBusy(worker: WorkerState, guildId: string, voiceChannelId: str
             status: "online",
         });
     }
+
+    // Hook: WORKER_ASSIGNED
+    hookManager.trigger('WORKER_ASSIGNED', { worker, guildId, voiceChannelId });
 }
 
 /**

@@ -3,6 +3,7 @@ import { AudioPlayerStatus } from "@discordjs/voice";
 import logger from "../core/logger.js";
 import { getQueue } from "../core/audio/queue-manager.js";
 import { setVoiceStatus } from "../core/utils/voice-utils.js";
+import hookManager from "../core/plugins/hook-manager.js";
 
 export default {
     name: Events.VoiceStateUpdate,
@@ -10,6 +11,9 @@ export default {
     async execute(oldState: VoiceState, newState: VoiceState, client: Client) {
         // Don't process events for the same channel (e.g., mute, deafen)
         if (oldState.channelId === newState.channelId) return;
+
+        // Hook: VOICE_STATE_UPDATE
+        hookManager.trigger('VOICE_STATE_UPDATE', { oldState, newState, client });
 
         const affectedChannelIds = new Set<string | null>();
         affectedChannelIds.add(oldState.channelId);

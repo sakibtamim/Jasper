@@ -1,0 +1,10 @@
+{
+    "name": "Advanced Hooks Test Plugin",
+    "id": "advanced-hooks-test-plugin",
+    "version": "1.0.0",
+    "description": "Verifies advanced hooks like SERVER_READY and WORKER_ASSIGNED.",
+    "entry": "index.js",
+    "author": "Jasper Team",
+    "license": "MIT",
+    "jasperVersion": "^1.0.0"
+}

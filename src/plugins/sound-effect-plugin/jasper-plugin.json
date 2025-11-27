@@ -1,0 +1,10 @@
+{
+    "name": "Sound Effect Plugin",
+    "id": "sound-effect-plugin",
+    "version": "1.0.0",
+    "description": "Plays a sound effect when the bot joins a channel.",
+    "entry": "index.js",
+    "author": "Jasper Team",
+    "license": "MIT",
+    "jasperVersion": "^1.0.0"
+}
