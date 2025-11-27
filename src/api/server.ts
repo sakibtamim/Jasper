@@ -11,6 +11,7 @@ import db from '../core/db/index.js';
 import authRoutes from './auth.js';
 import devtoolsRoutes from './devtools.js';
 import { PORT, COOKIE_SECRET } from '../config/env.js';
+import hookManager from '../core/plugins/hook-manager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -356,6 +357,9 @@ export async function startServer() {
     try {
         await server.listen({ port: PORT, host: '0.0.0.0' });
         logger.info(`[webui] Web UI server running at http://localhost:${PORT}`);
+
+        // Hook: SERVER_READY
+        await hookManager.trigger('SERVER_READY', { server });
     } catch (err) {
         server.log.error(err);
         process.exit(1);
