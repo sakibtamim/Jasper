@@ -12,6 +12,8 @@ import authRoutes from './auth.js';
 import devtoolsRoutes from './devtools.js';
 import { PORT, COOKIE_SECRET } from '../config/env.js';
 import hookManager from '../core/plugins/hook-manager.js';
+import pluginsRegistryRoutes from './plugins-registry.js';
+import pluginStaticRoutes from './plugin-static.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -58,6 +60,8 @@ server.addHook('onRequest', async (request, reply) => {
 // Register Auth Routes
 server.register(authRoutes);
 server.register(devtoolsRoutes);
+server.register(pluginsRegistryRoutes, { prefix: '/api/plugins' });
+server.register(pluginStaticRoutes);
 
 // Serve React Dashboard (Phase 0: opt-in route)
 server.get('/react-dashboard', async (request, reply) => {

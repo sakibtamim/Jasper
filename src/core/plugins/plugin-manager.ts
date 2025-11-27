@@ -23,7 +23,7 @@ const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
 const CORE_VERSION = packageJson.version;
 
 export class PluginManager {
-    private plugins: Map<string, { plugin: Plugin, context: PluginContext }>;
+    private plugins: Map<string, { plugin: Plugin, context: PluginContext, metadata: any, pluginDir: string }>;
     private pluginCommands: Map<string, string[]>; // Track commands registered by each plugin
     private context: PluginContext | null;
 
@@ -64,6 +64,13 @@ export class PluginManager {
             }
         };
         logger.info("[plugins] PluginManager initialized");
+    }
+
+    /**
+     * Get all registered plugins with their metadata
+     */
+    getPlugins() {
+        return this.plugins;
     }
 
     /**
@@ -147,7 +154,7 @@ export class PluginManager {
                     logger.warn(`[plugins] Plugin name mismatch: ${plugin.name} (code) vs ${metadata.name} (json)`);
                 }
 
-                await this.registerPlugin(plugin, metadata);
+                await this.registerPlugin(plugin, metadata, pluginDir);
             } catch (error) {
                 logger.error(`[plugins] Failed to load plugin ${entry.name}: ${error instanceof Error ? error.message : String(error)}`);
             }
@@ -157,7 +164,7 @@ export class PluginManager {
     /**
      * Register and load a single plugin
      */
-    async registerPlugin(plugin: Plugin, metadata: any): Promise<void> {
+    async registerPlugin(plugin: Plugin, metadata: any, pluginDir: string): Promise<void> {
         if (this.plugins.has(plugin.name)) {
             logger.warn(`[plugins] Plugin ${plugin.name} is already registered.`);
             return;
@@ -197,7 +204,7 @@ export class PluginManager {
                 };
 
                 await plugin.onLoad(pluginContext);
-                this.plugins.set(plugin.name, { plugin, context: pluginContext });
+                this.plugins.set(plugin.name, { plugin, context: pluginContext, metadata, pluginDir });
                 logger.info(`[plugins] Successfully loaded ${plugin.name}`);
             }, { prefix: `/api/plugins/${metadata.id}` });
         } catch (error) {

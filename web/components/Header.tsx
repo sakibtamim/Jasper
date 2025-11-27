@@ -1,15 +1,27 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { fetchAuthStatus, logout } from '../api/client';
+import { fetchPluginRegistry, NavItem } from '../api/pluginRegistry';
 import { useTheme } from '../hooks/useTheme';
 
 export default function Header() {
     const { isDark, toggleTheme } = useTheme();
     const [user, setUser] = useState<any>(null);
+    const [pluginNavItems, setPluginNavItems] = useState<NavItem[]>([]);
 
     useEffect(() => {
         fetchAuthStatus().then(data => {
             if (data?.user) setUser(data.user);
+        });
+
+        fetchPluginRegistry().then(plugins => {
+            const items: NavItem[] = [];
+            for (const plugin of plugins) {
+                if (plugin.web?.navItems) {
+                    items.push(...plugin.web.navItems);
+                }
+            }
+            setPluginNavItems(items);
         });
     }, []);
 
@@ -18,7 +30,7 @@ export default function Header() {
         if (typeof (window as any).lucide !== 'undefined') {
             (window as any).lucide.createIcons();
         }
-    }, [user, isDark]);
+    }, [user, isDark, pluginNavItems]);
 
     return (
         <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 fixed top-0 left-0 right-0 z-50 h-20">
@@ -43,6 +55,11 @@ export default function Header() {
                         <NavLink to="/stats" icon="bar-chart-2">Stats</NavLink>
                         <NavLink to="/cache" icon="database">Cache</NavLink>
                         <NavLink to="/logs" icon="terminal">Logs</NavLink>
+
+                        {/* Plugin Nav Items */}
+                        {pluginNavItems.map(item => (
+                            <NavLink key={item.id} to={item.href} icon={item.icon}>{item.label}</NavLink>
+                        ))}
 
                         {/* Auth Button */}
                         <div className="ml-2">
