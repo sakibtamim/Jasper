@@ -89,6 +89,21 @@ export class SqliteAdapter implements DatabaseAdapter {
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         );
+        CREATE TABLE IF NOT EXISTS sessions (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          expires_at DATETIME NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS plugin_storage (
+          plugin_name TEXT NOT NULL,
+          key TEXT NOT NULL,
+          value TEXT,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (plugin_name, key)
+        );
       `);
 
       // Migration: Add thumbnail column if it doesn't exist
@@ -113,6 +128,9 @@ export class SqliteAdapter implements DatabaseAdapter {
         CREATE INDEX IF NOT EXISTS idx_cache_hits_entity_id ON cache_hits(entity_id);
         CREATE INDEX IF NOT EXISTS idx_cache_hits_entity_type ON cache_hits(entity_type);
         CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+        CREATE INDEX IF NOT EXISTS idx_cache_hits_entity_type ON cache_hits(entity_type);
+        CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+        CREATE INDEX IF NOT EXISTS idx_plugin_storage_plugin_name ON plugin_storage(plugin_name);
       `);
 
       logger.info(`[db] SQLite database initialized at ${this.dbPath}`);
@@ -726,5 +744,42 @@ export class SqliteAdapter implements DatabaseAdapter {
     if (!this.db) throw new Error('Database not initialized');
     const stmt = this.db.prepare('DELETE FROM plays WHERE bot_name = ?');
     stmt.run(botName);
+  }
+
+  // Plugin Repository Implementation
+  async getPluginData(pluginName: string, key: string): Promise<any | null> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare('SELECT value FROM plugin_storage WHERE plugin_name = ? AND key = ?');
+    const row = stmt.get(pluginName, key) as { value: string } | undefined;
+    if (!row) return null;
+    try {
+      return JSON.parse(row.value);
+    } catch {
+      return row.value;
+    }
+  }
+
+  async setPluginData(pluginName: string, key: string, value: any): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare(`
+      INSERT INTO plugin_storage (plugin_name, key, value, updated_at)
+      VALUES (?, ?, ?, datetime('now'))
+      ON CONFLICT(plugin_name, key) DO UPDATE SET
+        value = excluded.value,
+        updated_at = excluded.updated_at
+    `);
+    stmt.run(pluginName, key, JSON.stringify(value));
+  }
+
+  async deletePluginData(pluginName: string, key: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare('DELETE FROM plugin_storage WHERE plugin_name = ? AND key = ?');
+    stmt.run(pluginName, key);
+  }
+
+  async clearPluginData(pluginName: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare('DELETE FROM plugin_storage WHERE plugin_name = ?');
+    stmt.run(pluginName);
   }
 }

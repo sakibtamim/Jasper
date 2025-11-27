@@ -7,6 +7,8 @@ import logger from "../logger.js";
 import workerPool from "../worker-pool.js";
 import { Plugin, PluginContext } from "./plugin-interface.js";
 import hookManager from "./hook-manager.js";
+import { ScopedPluginStore } from "./plugin-store.js";
+import coreDataAccessor from "./core-data-accessor.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,18 +40,9 @@ export class PluginManager {
             },
             on: (hook, callback) => hookManager.register(hook, callback),
             db: {
-                // Phase 2 placeholders
-                plugin: {
-                    get: async () => null,
-                    set: async () => { },
-                    delete: async () => { },
-                    clear: async () => { },
-                },
-                core: {
-                    getTopSongs: async () => [],
-                    getTopUsers: async () => [],
-                    getGlobalStats: async () => ({ totalPlays: 0, totalDuration: 0 }),
-                }
+                // This will be overridden per-plugin in registerPlugin
+                plugin: new ScopedPluginStore("unknown"),
+                core: coreDataAccessor,
             }
         };
         logger.info("[plugins] PluginManager initialized");
@@ -107,7 +100,17 @@ export class PluginManager {
 
         try {
             logger.info(`[plugins] Loading plugin: ${plugin.name} v${plugin.version}`);
-            await plugin.onLoad(this.context!);
+
+            // Create a context specific to this plugin
+            const pluginContext: PluginContext = {
+                ...this.context!,
+                db: {
+                    plugin: new ScopedPluginStore(plugin.name),
+                    core: coreDataAccessor
+                }
+            };
+
+            await plugin.onLoad(pluginContext);
             this.plugins.set(plugin.name, plugin);
             logger.info(`[plugins] Successfully loaded ${plugin.name}`);
         } catch (error) {

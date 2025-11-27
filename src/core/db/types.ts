@@ -131,7 +131,14 @@ export interface IDevToolsRepository {
     deletePlaysForBot(botName: string): Promise<void>;
 }
 
-export interface DatabaseAdapter extends IStatsRepository, ICacheRepository, IAuthRepository, IDevToolsRepository {
+export interface IPluginRepository {
+    getPluginData(pluginName: string, key: string): Promise<any | null>;
+    setPluginData(pluginName: string, key: string, value: any): Promise<void>;
+    deletePluginData(pluginName: string, key: string): Promise<void>;
+    clearPluginData(pluginName: string): Promise<void>;
+}
+
+export interface DatabaseAdapter extends IStatsRepository, ICacheRepository, IAuthRepository, IDevToolsRepository, IPluginRepository {
     init(): Promise<void>;
     close(): Promise<void>;
 }
