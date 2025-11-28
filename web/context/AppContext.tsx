@@ -28,13 +28,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { isDark, toggleTheme } = useTheme();
 
     useEffect(() => {
+        // Don't fetch auth status if we're on the login page
+        if (window.location.pathname.startsWith('/login')) {
+            setLoading(false);
+            return;
+        }
+
         fetchAuthStatus()
             .then(data => {
                 if (data?.user) {
                     setUser(data.user);
                 }
             })
-            .catch(err => console.error("Failed to fetch auth status", err))
+            .catch(err => {
+                // Ignore 401/403 errors as they just mean not logged in
+                console.debug("Auth check failed:", err);
+            })
             .finally(() => setLoading(false));
     }, []);
 

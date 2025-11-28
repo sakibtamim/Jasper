@@ -47,12 +47,13 @@ async function buildPlugins() {
                         outDir: outDir,
                         emptyOutDir: true,
                         rollupOptions: {
-                            external: ['react', 'react-dom', 'react-router-dom'],
+                            external: ['react', 'react-dom', 'react-router-dom', '@jasper/elements'],
                             output: {
                                 globals: {
-                                    react: 'React',
-                                    'react-dom': 'ReactDOM',
-                                    'react-router-dom': 'ReactRouterDOM'
+                                    react: 'JasperElements.React',
+                                    'react-dom': 'JasperElements.ReactDOM',
+                                    'react-router-dom': 'JasperElements.ReactRouterDOM',
+                                    '@jasper/elements': 'JasperElements'
                                 }
                             }
                         }

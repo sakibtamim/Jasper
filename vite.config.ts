@@ -10,32 +10,22 @@ export default defineConfig({
     root: 'web',
     publicDir: '../public/assets',
     base: '/',
+    resolve: {
+        alias: {
+            '@jasper/ui': path.resolve(__dirname, './web/ui'),
+            '@jasper/elements': path.resolve(__dirname, './web/elements.ts')
+        }
+    },
     build: {
         outDir: '../dist/public',
         emptyOutDir: true,
-    },
-    server: {
-        port: 5173,
-        proxy: {
-            '/api': {
-                target: 'http://localhost:3000',
-                changeOrigin: true,
-                bypass(req) {
-                    // Don't proxy if it's requesting a .ts or .tsx file
-                    if (req.url?.match(/\.(ts|tsx)$/)) {
-                        return req.url;
-                    }
+        rollupOptions: {
+            external: ['@jasper/elements'],
+            output: {
+                paths: {
+                    '@jasper/elements': '/elements.js'
                 }
-            },
-            '/plugins': {
-                target: 'http://localhost:3000',
-                changeOrigin: true
             }
-        }
-    },
-    resolve: {
-        alias: {
-            '@jasper/ui': path.resolve(__dirname, './web/ui')
         }
     }
 });

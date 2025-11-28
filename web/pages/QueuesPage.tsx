@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchQueues } from '../api/client';
+import { ListMusic, Music2, ChevronLeft, ChevronRight, PlayCircle, Music, ChevronUp, ChevronDown } from 'lucide-react';
 
 interface Song {
     title: string;
@@ -63,13 +64,6 @@ export default function QueuesPage() {
         return () => clearInterval(interval);
     }, [pagination.currentPage]);
 
-    // Initialize Lucide icons
-    useEffect(() => {
-        if (typeof (window as any).lucide !== 'undefined') {
-            (window as any).lucide.createIcons();
-        }
-    }, [queues]);
-
     const formatDuration = (seconds: number) => {
         if (!seconds) return '00:00';
         const min = Math.floor(seconds / 60);
@@ -105,7 +99,7 @@ export default function QueuesPage() {
         return (
             <section id="queues" className="mb-16 scroll-mt-24">
                 <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8 flex items-center gap-3">
-                    <i data-lucide="list-music" className="w-8 h-8 text-brand-secondary"></i>
+                    <ListMusic className="w-8 h-8 text-brand-secondary" />
                     Active Queues
                 </h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -123,13 +117,13 @@ export default function QueuesPage() {
     return (
         <section id="queues" className="mb-16 scroll-mt-24">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8 flex items-center gap-3">
-                <i data-lucide="list-music" className="w-8 h-8 text-brand-secondary"></i>
+                <ListMusic className="w-8 h-8 text-brand-secondary" />
                 Active Queues
             </h2>
 
             {queues.length === 0 ? (
                 <div className="col-span-full text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700">
-                    <i data-lucide="music-2" className="w-12 h-12 mx-auto mb-3 opacity-50"></i>
+                    <Music2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
                     <p className="text-gray-500">No active queues found</p>
                 </div>
             ) : (
@@ -155,7 +149,7 @@ export default function QueuesPage() {
                                 disabled={!pagination.hasPreviousPage}
                                 className="px-4 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
-                                <i data-lucide="chevron-left" className="w-4 h-4"></i>
+                                <ChevronLeft className="w-4 h-4" />
                             </button>
 
                             <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -168,7 +162,7 @@ export default function QueuesPage() {
                                 disabled={!pagination.hasNextPage}
                                 className="px-4 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
-                                <i data-lucide="chevron-right" className="w-4 h-4"></i>
+                                <ChevronRight className="w-4 h-4" />
                             </button>
                         </div>
                     )}
@@ -213,7 +207,7 @@ function QueueCard({ queue, isExpanded, onToggle, formatDuration, formatEta }: Q
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-brand-primary/10 flex items-center justify-center text-brand-primary">
-                        <i data-lucide="list-music" className="w-5 h-5"></i>
+                        <ListMusic className="w-5 h-5" />
                     </div>
                     <div>
                         <h3 className="font-bold text-gray-900 dark:text-white">{queue.guildName || queue.guildId}</h3>
@@ -234,7 +228,7 @@ function QueueCard({ queue, isExpanded, onToggle, formatDuration, formatEta }: Q
             {queue.nowPlaying && (
                 <div className="bg-brand-primary/10 rounded-lg p-3 border-l-4 border-brand-primary mb-3">
                     <div className="text-xs text-brand-primary uppercase tracking-wider font-bold mb-2 flex items-center gap-2">
-                        <i data-lucide="play-circle" className="w-4 h-4"></i>
+                        <PlayCircle className="w-4 h-4" />
                         Now Playing
                     </div>
                     <div className="flex items-start gap-3">
@@ -297,7 +291,7 @@ function QueueCard({ queue, isExpanded, onToggle, formatDuration, formatEta }: Q
                                             <img src={song.thumbnail} className="w-full h-full object-cover" alt="" />
                                         ) : (
                                             <div className="flex items-center justify-center w-full h-full">
-                                                <i data-lucide="music" className="w-6 h-6 text-gray-400"></i>
+                                                <Music className="w-6 h-6 text-gray-400" />
                                             </div>
                                         )}
                                     </div>
@@ -336,12 +330,12 @@ function QueueCard({ queue, isExpanded, onToggle, formatDuration, formatEta }: Q
                         >
                             {isExpanded ? (
                                 <>
-                                    <i data-lucide="chevron-up" className="w-4 h-4"></i>
+                                    <ChevronUp className="w-4 h-4" />
                                     Show Less
                                 </>
                             ) : (
                                 <>
-                                    <i data-lucide="chevron-down" className="w-4 h-4"></i>
+                                    <ChevronDown className="w-4 h-4" />
                                     Show {Math.min(maxExpandedSongs - maxInitialSongs, filteredSongs.length - maxInitialSongs)} More Songs
                                     {canExpand && ` (${filteredSongs.length - maxExpandedSongs} more not shown)`}
                                 </>
