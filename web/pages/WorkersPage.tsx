@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchWorkers } from '../api/client';
+import ExtensionSlot from '../components/ExtensionSlot';
 
 export default function WorkersPage() {
     const [workers, setWorkers] = useState<any[]>([]);
@@ -47,13 +48,17 @@ export default function WorkersPage() {
             </section>
         );
     }
-
     return (
         <section id="workers" className="mb-16 scroll-mt-24">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8 flex items-center gap-3">
                 <i data-lucide="users" className="w-8 h-8 text-brand-primary"></i>
                 Heavenly Council
             </h2>
+
+            <div className="mb-8">
+                <ExtensionSlot slot="dashboard:main" />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {workers.length === 0 ? (
                     <div className="col-span-full text-center py-12 text-gray-500">
