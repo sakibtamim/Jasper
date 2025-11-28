@@ -2,8 +2,8 @@ import { FastifyInstance } from 'fastify';
 import multipart from '@fastify/multipart';
 import fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import AdmZip from 'adm-zip';
 import logger from '../core/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -14,6 +14,15 @@ export default async function pluginsManagementRoutes(server: FastifyInstance) {
     server.register(multipart);
 
     server.post('/install', async (request, reply) => {
+        // 1. Authentication Check (P0)
+        // The global onRequest hook attaches 'user' to the request if a valid session exists.
+        const user = (request as any).user;
+        if (!user) {
+            return reply.code(401).send({ message: 'Unauthorized: You must be logged in to install plugins.' });
+        }
+
+        // Optional: Add role check here if needed (e.g., if (user.role !== 'admin'))
+
         const data = await request.file();
         if (!data) {
             return reply.code(400).send({ message: 'No file uploaded' });
@@ -23,18 +32,31 @@ export default async function pluginsManagementRoutes(server: FastifyInstance) {
             return reply.code(400).send({ message: 'File must be a .zip archive' });
         }
 
-        const tempZipPath = path.join(PLUGINS_DIR, `temp_${Date.now()}.zip`);
         const tempExtractDir = path.join(PLUGINS_DIR, `temp_extract_${Date.now()}`);
 
         try {
-            // 1. Save zip file
-            await fs.promises.writeFile(tempZipPath, await data.toBuffer());
+            const buffer = await data.toBuffer();
+            const zip = new AdmZip(buffer);
+            const zipEntries = zip.getEntries();
 
-            // 2. Extract
+            // 2. Zip Slip Prevention (P1)
+            // Validate all entries before extracting
+            for (const entry of zipEntries) {
+                const entryName = entry.entryName;
+                const targetPath = path.join(tempExtractDir, entryName);
+
+                // Prevent directory traversal attacks
+                if (!targetPath.startsWith(tempExtractDir)) {
+                    throw new Error(`Malicious zip entry detected: ${entryName}`);
+                }
+            }
+
+            // If validation passes, extract
             if (!fs.existsSync(tempExtractDir)) {
                 await fs.promises.mkdir(tempExtractDir, { recursive: true });
             }
-            execSync(`unzip -o "${tempZipPath}" -d "${tempExtractDir}"`);
+
+            zip.extractAllTo(tempExtractDir, true);
 
             // 3. Validate Manifest
             const manifestPath = path.join(tempExtractDir, 'jasper-plugin.json');
@@ -57,7 +79,7 @@ export default async function pluginsManagementRoutes(server: FastifyInstance) {
 
             await fs.promises.rename(tempExtractDir, targetDir);
 
-            logger.info(`[plugins] Installed plugin: ${manifest.id} v${manifest.version}`);
+            logger.info(`[plugins] Installed plugin: ${manifest.id} v${manifest.version} by ${user.username}`);
 
             return { success: true, message: `Plugin ${manifest.id} installed successfully` };
 
@@ -66,9 +88,6 @@ export default async function pluginsManagementRoutes(server: FastifyInstance) {
             return reply.code(500).send({ message: `Installation failed: ${error instanceof Error ? error.message : String(error)}` });
         } finally {
             // Cleanup
-            if (fs.existsSync(tempZipPath)) {
-                await fs.promises.unlink(tempZipPath).catch(() => { });
-            }
             if (fs.existsSync(tempExtractDir)) {
                 await fs.promises.rm(tempExtractDir, { recursive: true, force: true }).catch(() => { });
             }
