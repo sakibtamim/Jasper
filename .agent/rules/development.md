@@ -124,3 +124,17 @@ npm start      # Runs compiled JavaScript
 - Web dashboard at `/` shows bot status
 - `/api/status` endpoint for health checks
 - Check worker pool state with `/music-status` command
+
+## Agent Guidelines
+
+### File Updates
+- **.gemini/** and **.agent/rules/**: Always use command line tools (e.g., `cat`, `sed`) or full file rewrites to update these files. Do NOT use partial replacement tools.
+
+### Commit Practices
+- **Atomic Commits**: Prefer small, focused commits that address a single logical change.
+- **Descriptive Messages**: Write clear, concise commit messages explaining the "why" and "what".
+
+### Temporary Files
+- **Workspace Hygiene**: Never save temporary files (logs, diffs, review comments) in the root or source directories.
+- **Location**: Always use the `tmp/` directory, which is gitignored.
+- **Cleanup**: Delete temporary files when they are no longer needed. 

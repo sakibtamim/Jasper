@@ -6,42 +6,30 @@ trigger: always_on
 
 ## Fetching PR Review Comments
 
-When addressing code review feedback, use the GitHub GraphQL API to fetch ALL inline comments from a specific review.
+When addressing code review feedback, use the `scripts/gh-pr-review-comments.sh` script to fetch ALL inline comments from a specific review.
 
-### Method 1: Get Review ID from URL
-The review URL format is: `https://github.com/OWNER/REPO/pull/NUMBER#pullrequestreview-REVIEW_ID`
+### Method 1: Use the Helper Script (Recommended)
 
-The GraphQL node ID format is: `PRR_kwDO...` (you can find this in the API response)
-
-### Method 2: Fetch All Comments from a Review
+The project includes a helper script to fetch and format review comments.
 
 ```bash
-gh api graphql -f query='
-{
-  node(id: "PRR_REVIEW_NODE_ID") {
-    ... on PullRequestReview {
-      comments(first: 100) {
-        nodes {
-          path
-          body
-          diffHunk
-          originalLine
-        }
-      }
-    }
-  }
-}' | jq -r '.data.node.comments.nodes[] | "FILE: \(.path)\nLINE: \(.originalLine)\nCOMMENT: \(.body)\n---"'
+# Print all comments to stdout
+scripts/gh-pr-review-comments.sh <PR_NUMBER> <REVIEW_ID>
+
+# Save to a file
+scripts/gh-pr-review-comments.sh <PR_NUMBER> <REVIEW_ID> --file review_comments.md
 ```
 
-### Method 3: Get Latest Review
+### Method 2: Get Review ID from URL
+The review URL format is: `https://github.com/OWNER/REPO/pull/NUMBER#pullrequestreview-REVIEW_ID`
+
+### Method 3: Get Latest Review ID via CLI
 
 ```bash
-gh pr view PR_NUMBER --json reviews --jq '.reviews[-1]'
+gh pr view PR_NUMBER --json reviews --jq '.reviews[-1].databaseId'
 ```
 
 ### Important Notes
 
-- **Always use GraphQL** to get ALL inline comments, not just the REST API which may miss comments
-- The REST API endpoint `/pulls/PR_NUMBER/comments` may not return all comments depending on filters
-- Include `first: 100` to ensure you get all comments (adjust if needed)
-- Parse priority levels from comment body: `![critical]`, `![high]`, `![medium]`
+- **Always use the script** to ensure you get all comments and context.
+- Parse priority levels from comment body: `![critical]`, `![high]`, `![medium]` 
