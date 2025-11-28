@@ -234,6 +234,8 @@ Plugins declare frontend capabilities in `jasper-plugin.json` under the `web` ke
 
 Plugins must export their components from the entry file (e.g., `web/index.tsx`). The system automatically registers them based on the manifest.
 
+> **Note:** `React` and `ReactDOM` are **not** exposed globally on `window`. Your plugin build process (handled by `scripts/build-plugins.ts`) automatically configures them as externals, ensuring they share the core application's React instance. Do not bundle React in your plugin.
+
 ```tsx
 // web/index.tsx
 import React from 'react';

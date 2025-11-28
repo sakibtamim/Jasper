@@ -27,10 +27,10 @@ export default function QueuesPage() {
     };
 
     useEffect(() => {
-        loadQueues();
+        loadQueues(pagination.currentPage);
         const interval = setInterval(() => loadQueues(pagination.currentPage), 3000);
         return () => clearInterval(interval);
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [pagination.currentPage]);
 
     // Initialize Lucide icons
     useEffect(() => {

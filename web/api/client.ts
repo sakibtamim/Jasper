@@ -32,7 +32,8 @@ export async function fetchLogs() {
 
 export async function fetchAuthStatus() {
     const res = await fetch(`${API_BASE}/auth/me`);
-    if (!res.ok) return null;
+    if (res.status === 401 || res.status === 403) return null;
+    if (!res.ok) throw new Error(`Failed to fetch auth status: ${res.statusText}`);
     return res.json();
 }
 

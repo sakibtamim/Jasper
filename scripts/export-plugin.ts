@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import archiver from 'archiver';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, '..');
@@ -84,14 +85,26 @@ if (fs.existsSync(assetsDir)) {
 
 // 5. Zip it up
 console.log(`Creating ${zipName}...`);
-try {
-    // Using zip command (available on Mac/Linux)
-    execSync(`zip -r "${zipPath}" .`, { cwd: tempDir, stdio: 'inherit' });
-    console.log(`✅ Exported to ${zipPath}`);
-} catch (e) {
-    console.error('Failed to create zip file.');
-    console.error(e);
-} finally {
+
+const output = fs.createWriteStream(zipPath);
+const archive = archiver('zip', {
+    zlib: { level: 9 } // Sets the compression level.
+});
+
+output.on('close', function () {
+    console.log(`✅ Exported to ${zipPath} (${archive.pointer()} total bytes)`);
     // Cleanup
     fs.rmSync(tempDir, { recursive: true, force: true });
-}
+});
+
+archive.on('error', function (err) {
+    console.error('Failed to create zip file.');
+    console.error(err);
+    // Cleanup
+    fs.rmSync(tempDir, { recursive: true, force: true });
+    process.exit(1);
+});
+
+archive.pipe(output);
+archive.directory(tempDir, false);
+archive.finalize();
