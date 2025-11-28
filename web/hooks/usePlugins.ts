@@ -17,6 +17,7 @@ export function usePlugins() {
                     if (plugin.web && plugin.web.entry) {
                         try {
                             // Construct URL for the plugin entry point
+                            // See PLUGINS_DEV.md "Frontend Asset Serving" for details on this URL structure.
                             const entryUrl = `/plugins/${plugin.id}/web/index.js`;
 
                             console.log(`[PluginLoader] Loading ${plugin.id} from ${entryUrl}`);
