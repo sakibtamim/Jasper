@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import WorkersPage from './pages/WorkersPage';
@@ -6,75 +6,66 @@ import QueuesPage from './pages/QueuesPage';
 import StatsPage from './pages/StatsPage';
 import CachePage from './pages/CachePage';
 import LogsPage from './pages/LogsPage';
-import { fetchPluginRegistry } from './api/pluginRegistry';
+import DevToolsPage from './pages/DevToolsPage';
+import { PluginProvider, usePluginContext } from './context/PluginContext';
 import { componentRegistry } from './core/ComponentRegistry';
 
-function PluginRoute({ pluginId, componentName, entry }: { pluginId: string, componentName: string, entry?: string }) {
+function PluginRoute({ pluginId, componentName }: { pluginId: string, componentName: string }) {
     const [Component, setComponent] = useState<React.ComponentType<any> | null>(null);
 
     useEffect(() => {
-        const load = async () => {
-            if (entry) {
-                try {
-                    const entryUrl = `/plugins/${pluginId}/web/${entry}`;
-                    await import(/* @vite-ignore */ entryUrl);
-                } catch (e) {
-                    console.error(`Failed to load plugin ${pluginId}`, e);
-                }
-            }
-            const Comp = componentRegistry.get(pluginId, componentName);
-            setComponent(() => Comp);
-        };
-        load();
-    }, [pluginId, componentName, entry]);
+        // Components should be registered by now since PluginProvider loads them
+        const Comp = componentRegistry.get(pluginId, componentName);
+        setComponent(() => Comp);
+    }, [pluginId, componentName]);
 
-    if (!Component) return <div className="p-8 text-center">Loading plugin...</div>;
+    if (!Component) return <div className="p-8 text-center text-gray-500">Component not found: {pluginId}:{componentName}</div>;
     return <Component />;
 }
 
-export default function App() {
-    const [pluginPages, setPluginPages] = useState<{ path: string, pluginId: string, component: string, entry?: string }[]>([]);
+function AppContent() {
+    const { plugins, loading } = usePluginContext();
 
-    useEffect(() => {
-        fetchPluginRegistry().then(plugins => {
-            const pages: { path: string, pluginId: string, component: string, entry?: string }[] = [];
-            for (const plugin of plugins) {
-                if (plugin.web?.pages) {
-                    for (const page of plugin.web.pages) {
-                        pages.push({
-                            path: page.path,
-                            pluginId: plugin.id,
-                            component: page.component,
-                            entry: plugin.web.entry || 'index.js'
-                        });
-                    }
-                }
-            }
-            setPluginPages(pages);
-        });
-    }, []);
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 text-gray-500">
+                Loading Jasper...
+            </div>
+        );
+    }
 
     return (
-        <BrowserRouter basename="/">
-            <Routes>
-                <Route path="/" element={<Layout />}>
-                    <Route index element={<Navigate to="/workers" replace />} />
-                    <Route path="workers" element={<WorkersPage />} />
-                    <Route path="queues" element={<QueuesPage />} />
-                    <Route path="stats" element={<StatsPage />} />
-                    <Route path="cache" element={<CachePage />} />
-                    <Route path="logs" element={<LogsPage />} />
+        <Routes>
+            <Route path="/" element={<Layout />}>
+                <Route index element={<Navigate to="/workers" replace />} />
+                <Route path="workers" element={<WorkersPage />} />
+                <Route path="queues" element={<QueuesPage />} />
+                <Route path="stats" element={<StatsPage />} />
+                <Route path="cache" element={<CachePage />} />
+                <Route path="logs" element={<LogsPage />} />
+                <Route path="devtools" element={<DevToolsPage />} />
 
-                    {/* Plugin Routes */}
-                    {pluginPages.map(page => (
+                {/* Plugin Routes */}
+                {plugins.map(plugin =>
+                    plugin.web?.pages?.map(page => (
                         <Route
-                            key={page.path}
+                            key={`${plugin.id}-${page.id}`}
                             path={page.path.startsWith('/') ? page.path.substring(1) : page.path}
-                            element={<PluginRoute pluginId={page.pluginId} componentName={page.component} entry={page.entry} />}
+                            element={<PluginRoute pluginId={plugin.id} componentName={page.component} />}
                         />
-                    ))}
-                </Route>
-            </Routes>
-        </BrowserRouter>
+                    ))
+                )}
+            </Route>
+        </Routes>
+    );
+}
+
+export default function App() {
+    return (
+        <PluginProvider>
+            <BrowserRouter basename="/">
+                <AppContent />
+            </BrowserRouter>
+        </PluginProvider>
     );
 }

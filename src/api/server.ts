@@ -13,6 +13,7 @@ import devtoolsRoutes from './devtools.js';
 import { PORT, COOKIE_SECRET } from '../config/env.js';
 import hookManager from '../core/plugins/hook-manager.js';
 import pluginsRegistryRoutes from './plugins-registry.js';
+import pluginsManagementRoutes from './plugins-management.js';
 import pluginStaticRoutes from './plugin-static.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -68,6 +69,7 @@ server.addHook('onRequest', async (request, reply) => {
 server.register(authRoutes);
 server.register(devtoolsRoutes);
 server.register(pluginsRegistryRoutes, { prefix: '/api/plugins' });
+server.register(pluginsManagementRoutes, { prefix: '/api/plugins' });
 server.register(pluginStaticRoutes);
 
 // Root route: Serve React app

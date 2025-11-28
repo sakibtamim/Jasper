@@ -33,7 +33,15 @@ export interface PluginRegistryEntry {
 }
 
 export async function fetchPluginRegistry(): Promise<PluginRegistryEntry[]> {
-    const res = await fetch('/api/plugins/registry');
-    const data = await res.json();
-    return data.plugins || [];
+    try {
+        const res = await fetch('/api/plugins/registry');
+        if (!res.ok) {
+            throw new Error(`Failed to fetch registry: ${res.statusText}`);
+        }
+        const data = await res.json();
+        return data.plugins || [];
+    } catch (error) {
+        console.error('[PluginRegistry] Failed to fetch plugins:', error);
+        return [];
+    }
 }

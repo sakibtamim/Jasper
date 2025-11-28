@@ -16,7 +16,7 @@ export default function Layout() {
                 <div className="container mx-auto px-4 text-center">
                     <p className="text-gray-500 dark:text-gray-400 text-sm">
                         &copy; 2025 Jasper Music Bot. All rights reserved. |{' '}
-                        <a href="/devtools.html" className="hover:text-brand-primary transition-colors">
+                        <a href="/devtools" className="hover:text-brand-primary transition-colors">
                             DevTools
                         </a>
                     </p>

@@ -1,29 +1,31 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { fetchAuthStatus, logout } from '../api/client';
-import { fetchPluginRegistry, NavItem } from '../api/pluginRegistry';
+import { NavItem } from '../api/pluginRegistry';
 import { useTheme } from '../hooks/useTheme';
+import { usePluginContext } from '../context/PluginContext';
 
 export default function Header() {
     const { isDark, toggleTheme } = useTheme();
     const [user, setUser] = useState<any>(null);
+    const { plugins } = usePluginContext();
     const [pluginNavItems, setPluginNavItems] = useState<NavItem[]>([]);
 
     useEffect(() => {
         fetchAuthStatus().then(data => {
             if (data?.user) setUser(data.user);
         });
-
-        fetchPluginRegistry().then(plugins => {
-            const items: NavItem[] = [];
-            for (const plugin of plugins) {
-                if (plugin.web?.navItems) {
-                    items.push(...plugin.web.navItems);
-                }
-            }
-            setPluginNavItems(items);
-        });
     }, []);
+
+    useEffect(() => {
+        const items: NavItem[] = [];
+        for (const plugin of plugins) {
+            if (plugin.web?.navItems) {
+                items.push(...plugin.web.navItems);
+            }
+        }
+        setPluginNavItems(items);
+    }, [plugins]);
 
     // Initialize Lucide icons after mount
     useEffect(() => {

@@ -187,3 +187,78 @@ The core will validate this against the running Jasper version using semver.
 *   If the version is **incompatible**, the system will log a warning but still attempt to load the plugin.
 
 This ensures plugins can safely declare their dependencies on core features.
+
+---
+
+## 🖥️ Frontend Extensions
+
+The **Frontend Extension System** allows plugins to contribute UI components to the React Dashboard.
+
+### Manifest Schema (`web`)
+
+Plugins declare frontend capabilities in `jasper-plugin.json` under the `web` key:
+
+```json
+{
+  "id": "my-plugin",
+  "web": {
+    "entry": "web/index.tsx",
+    "navItems": [
+      {
+        "id": "my-plugin-nav",
+        "label": "My Plugin",
+        "icon": "activity",
+        "href": "/plugins/my-plugin"
+      }
+    ],
+    "widgets": [
+      {
+        "id": "my-widget",
+        "slot": "dashboard:main",
+        "component": "MyWidget",
+        "order": 100
+      }
+    ],
+    "pages": [
+      {
+        "id": "my-page",
+        "path": "/plugins/my-plugin",
+        "component": "MyPage"
+      }
+    ]
+  }
+}
+```
+
+### Component Registry
+
+Plugins must export their components from the entry file (e.g., `web/index.tsx`). The system automatically registers them based on the manifest.
+
+```tsx
+// web/index.tsx
+import React from 'react';
+
+export const MyWidget = () => (
+  <div className="p-4 bg-white rounded shadow">
+    <h3>My Widget</h3>
+  </div>
+);
+
+export const MyPage = () => (
+  <div className="p-8">
+    <h1>My Plugin Page</h1>
+  </div>
+);
+```
+
+### Extension Slots
+
+Plugins can inject widgets into specific slots in the dashboard:
+
+| Slot Name | Description |
+| :--- | :--- |
+| `nav:main` | Main sidebar navigation. |
+| `dashboard:main` | Main dashboard content area. |
+| `dashboard:stats` | Statistics section on the dashboard. |
+| `pages:*` | Full-page routes under `/plugins/{pluginId}/*`. |
+
