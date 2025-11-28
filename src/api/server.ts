@@ -20,10 +20,17 @@ const __dirname = path.dirname(__filename);
 
 export const server = fastify({ logger: false });
 
-// Serve static files from public directory
+// Serve legacy static UI
 server.register(fastifyStatic, {
     root: path.join(__dirname, '../../public'),
-    prefix: '/', // optional: default '/'
+    prefix: '/legacy',
+    decorateReply: false
+});
+
+// Serve React app static assets
+server.register(fastifyStatic, {
+    root: path.join(__dirname, '../../dist/public'),
+    prefix: '/',
 });
 
 // Register Cookie Plugin
@@ -63,9 +70,9 @@ server.register(devtoolsRoutes);
 server.register(pluginsRegistryRoutes, { prefix: '/api/plugins' });
 server.register(pluginStaticRoutes);
 
-// Serve React Dashboard (Phase 0: opt-in route)
-server.get('/react-dashboard', async (request, reply) => {
-    return reply.sendFile('dist-react/index.html');
+// Root route: Serve React app
+server.get('/', async (request, reply) => {
+    return reply.sendFile('index.html', path.join(__dirname, '../../dist/public'));
 });
 
 
@@ -373,3 +380,15 @@ export async function startServer() {
         process.exit(1);
     }
 }
+
+// SPA Fallback: Serve React app for all non-API, non-legacy routes
+server.setNotFoundHandler((request, reply) => {
+    // Don't apply SPA fallback to API routes or legacy UI
+    if (request.url.startsWith('/api/') || request.url.startsWith('/legacy/') || request.url.startsWith('/plugins/')) {
+        reply.code(404).send({ message: `Route ${request.method}:${request.url} not found`, error: 'Not Found', statusCode: 404 });
+        return;
+    }
+
+    // Serve React app index.html for all other routes (SPA fallback)
+    return reply.sendFile('index.html', path.join(__dirname, '../../dist/public'));
+});

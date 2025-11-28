@@ -55,7 +55,7 @@ export default function App() {
     }, []);
 
     return (
-        <BrowserRouter basename="/react-dashboard">
+        <BrowserRouter basename="/">
             <Routes>
                 <Route path="/" element={<Layout />}>
                     <Route index element={<Navigate to="/workers" replace />} />

@@ -7,7 +7,9 @@
   "scripts": {
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
-    "build": "tsc && rsync -avm --include='*/' --include='*.json' --include='*.mp3' --exclude='*' src/plugins/ dist/plugins/",
+    "build": "npm run build:backend && npm run build:web",
+    "build:backend": "tsc && rsync -avm --include='*/' --include='*.json' --include='*.mp3' --exclude='*' src/plugins/ dist/plugins/",
+    "build:web": "vite build",
     "lint": "eslint src/**/*.ts",
     "deploy:commands": "tsx src/deploy-commands.ts",
     "deploy:commands:prod": "node dist/deploy-commands.js",
@@ -15,7 +17,8 @@
     "postinstall": "node ./scripts/install-yt-dlp.js && node ./scripts/migrate-cache.js",
     "test": "vitest",
     "deploy": "git checkout master && git pull && git checkout deploy && git pull && git merge --ff-only master && git push && git checkout master",
-    "web:dev": "vite",
+    "dev:web": "vite",
+    "dev:all": "concurrently \"npm run dev\" \"npm run dev:web\"",
     "web:build": "vite build",
     "web:preview": "vite preview"
   },
@@ -59,6 +62,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "@vitest/coverage-v8": "^4.0.13",
     "autoprefixer": "^10.4.22",
+    "concurrently": "^9.1.0",
     "eslint": "^9.39.1",
     "globals": "^16.5.0",
     "postcss": "^8.5.6",

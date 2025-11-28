@@ -5,8 +5,9 @@ export default defineConfig({
     plugins: [react()],
     root: 'web',
     publicDir: '../public/assets',
+    base: '/',
     build: {
-        outDir: '../public/dist-react',
+        outDir: '../dist/public',
         emptyOutDir: true,
     },
     server: {
@@ -21,6 +22,10 @@ export default defineConfig({
                         return req.url;
                     }
                 }
+            },
+            '/plugins': {
+                target: 'http://localhost:3000',
+                changeOrigin: true
             }
         }
     }
