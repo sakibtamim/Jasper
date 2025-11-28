@@ -7,7 +7,7 @@ import AdmZip from 'adm-zip';
 import logger from '../core/logger.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PLUGINS_DIR = path.resolve(__dirname, '../../src/plugins');
+const PLUGINS_DIR = path.resolve(__dirname, '../../plugins');
 
 export default async function pluginsManagementRoutes(server: FastifyInstance) {
     // Register multipart support
@@ -46,7 +46,9 @@ export default async function pluginsManagementRoutes(server: FastifyInstance) {
                 const targetPath = path.join(tempExtractDir, entryName);
 
                 // Prevent directory traversal attacks
-                if (!targetPath.startsWith(tempExtractDir)) {
+                const resolvedTargetPath = path.resolve(targetPath);
+                const resolvedTempDir = path.resolve(tempExtractDir);
+                if (!resolvedTargetPath.startsWith(resolvedTempDir + path.sep)) {
                     throw new Error(`Malicious zip entry detected: ${entryName}`);
                 }
             }
@@ -85,7 +87,7 @@ export default async function pluginsManagementRoutes(server: FastifyInstance) {
 
         } catch (error) {
             logger.error(`[plugins] Installation failed: ${error}`);
-            return reply.code(500).send({ message: `Installation failed: ${error instanceof Error ? error.message : String(error)}` });
+            return reply.code(500).send({ message: 'Installation failed. Check server logs for details.' });
         } finally {
             // Cleanup
             if (fs.existsSync(tempExtractDir)) {

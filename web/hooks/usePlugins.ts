@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchPluginRegistry, PluginRegistryEntry } from '../api/pluginRegistry';
+import { componentRegistry } from '../core/ComponentRegistry';
 
 export function usePlugins() {
     const [plugins, setPlugins] = useState<PluginRegistryEntry[]>([]);
@@ -24,7 +25,21 @@ export function usePlugins() {
 
                             // Dynamic import
                             // @ts-ignore
-                            await import(/* @vite-ignore */ entryUrl);
+                            const module = await import(/* @vite-ignore */ entryUrl);
+
+                            // Register components from the imported module based on the manifest
+                            const componentsToRegister = [
+                                ...(plugin.web.widgets || []).map(w => w.component),
+                                ...(plugin.web.pages || []).map(p => p.component)
+                            ];
+
+                            for (const componentName of new Set(componentsToRegister)) {
+                                if (module[componentName]) {
+                                    componentRegistry.register(plugin.id, componentName, module[componentName]);
+                                } else {
+                                    console.warn(`[PluginLoader] Component "${componentName}" not found in exports for plugin "${plugin.id}"`);
+                                }
+                            }
 
                             console.log(`[PluginLoader] Loaded ${plugin.id}`);
                         } catch (e) {

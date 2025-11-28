@@ -28,7 +28,7 @@ The goal was to migrate from a static HTML/JS frontend to a **React-based dashbo
 1.  **Backend** loads plugins and exposes metadata via `/api/plugins/registry`.
 2.  **Frontend** fetches registry on boot.
 3.  **Frontend** dynamically imports plugin entry points (`web/index.js`).
-4.  **Plugins** register components via `componentRegistry.register()`.
+4.  **System** automatically registers components based on the manifest.
 5.  **App** renders registered components in navigation and extension slots.
 
 ---

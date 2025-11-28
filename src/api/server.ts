@@ -14,7 +14,7 @@ import { PORT, COOKIE_SECRET } from '../config/env.js';
 import hookManager from '../core/plugins/hook-manager.js';
 import pluginsRegistryRoutes from './plugins-registry.js';
 import pluginsManagementRoutes from './plugins-management.js';
-import pluginStaticRoutes from './plugin-static.js';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -70,7 +70,12 @@ server.register(authRoutes);
 server.register(devtoolsRoutes);
 server.register(pluginsRegistryRoutes, { prefix: '/api/plugins' });
 server.register(pluginsManagementRoutes, { prefix: '/api/plugins' });
-server.register(pluginStaticRoutes);
+// Serve Plugin Assets
+server.register(fastifyStatic, {
+    root: path.join(__dirname, '../../dist/plugins'),
+    prefix: '/plugins',
+    decorateReply: false,
+});
 
 // Root route: Serve React app
 server.get('/', async (request, reply) => {

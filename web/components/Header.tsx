@@ -118,19 +118,20 @@ export default function Header() {
                                 </svg>
                             )}
                         </button>
-                        {/* Mobile Menu Button */}
-                        <button
-                            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                            className="lg:hidden ml-4 p-2 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-primary"
-                        >
-                            <span className="sr-only">Open main menu</span>
-                            {isMobileMenuOpen ? (
-                                <i data-lucide="x" className="block h-6 w-6" aria-hidden="true" />
-                            ) : (
-                                <i data-lucide="menu" className="block h-6 w-6" aria-hidden="true" />
-                            )}
-                        </button>
                     </nav>
+
+                    {/* Mobile Menu Button */}
+                    <button
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                        className="lg:hidden ml-4 p-2 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-brand-primary"
+                    >
+                        <span className="sr-only">Open main menu</span>
+                        {isMobileMenuOpen ? (
+                            <i data-lucide="x" className="block h-6 w-6" aria-hidden="true" />
+                        ) : (
+                            <i data-lucide="menu" className="block h-6 w-6" aria-hidden="true" />
+                        )}
+                    </button>
                 </div>
             </div>
 

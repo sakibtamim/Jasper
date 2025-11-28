@@ -234,12 +234,17 @@ export default function StatsPage() {
     );
 }
 
+const colorClasses: Record<string, string> = {
+    'brand-primary': 'text-brand-primary',
+    'brand-secondary': 'text-brand-secondary',
+};
+
 function StatsCard({ title, icon, color, children }: { title: string; icon: string; color: string; children: React.ReactNode }) {
     return (
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
             <div className="p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                 <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <i data-lucide={icon} className={`w-4 h-4 text-${color}`}></i>
+                    <i data-lucide={icon} className={`w-4 h-4 ${colorClasses[color] || 'text-gray-500'}`}></i>
                     {title}
                 </h3>
             </div>
