@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Architecture Details
 
 ## Multi-Cat Worker Pool System

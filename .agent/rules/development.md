@@ -1,3 +1,7 @@
+---
+trigger: model_decision
+---
+
 # Development Workflows
 
 ## Common Tasks

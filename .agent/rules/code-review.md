@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Code Review Workflow
 
 ## Fetching PR Review Comments

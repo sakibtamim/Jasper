@@ -1,3 +1,7 @@
+---
+trigger: model_decision
+---
+
 # Jasper Music Bot - Project Overview
 
 > **Note**: This document provides a comprehensive overview of the Jasper Music Bot project for AI agents and developers.

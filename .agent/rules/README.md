@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Agent Instructions
 
 > **META-INSTRUCTION**: Read this file at the start of each session to understand the project context. Update as needed with critical details.
