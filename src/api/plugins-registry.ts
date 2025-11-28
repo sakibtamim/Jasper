@@ -7,7 +7,7 @@ export default async function pluginsRegistryRoutes(server: FastifyInstance) {
         const plugins = pluginManager.getPlugins();
         const registry = [];
 
-        for (const [name, { metadata }] of plugins) {
+        for (const [, { metadata }] of plugins) {
             if (metadata.web) {
                 registry.push({
                     id: metadata.id,

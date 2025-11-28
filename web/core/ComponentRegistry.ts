@@ -43,4 +43,4 @@ export const componentRegistry = new ComponentRegistry();
 // Actually, plugins will import 'react' but how do they access registry?
 // In the sample plugin, I used `window.componentRegistry`.
 // So we need to expose it.
-(window as any).componentRegistry = componentRegistry;
+// (window as any).componentRegistry = componentRegistry;

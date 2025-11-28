@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 
 interface ImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
     fallbackSrc?: string;
+    imgClassName?: string;
 }
 
-export function Image({ src, alt, className = '', fallbackSrc = '/assets/images/placeholder.png', ...props }: ImageProps) {
+export function Image({ src, alt, className = '', imgClassName = '', fallbackSrc = '/assets/images/placeholder.png', ...props }: ImageProps) {
     const [error, setError] = useState(false);
     const [loaded, setLoaded] = useState(false);
 
@@ -26,7 +27,7 @@ export function Image({ src, alt, className = '', fallbackSrc = '/assets/images/
                 alt={alt}
                 onError={handleError}
                 onLoad={handleLoad}
-                className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'} ${className}`}
+                className={`w-full h-full object-cover transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'} ${imgClassName}`}
                 {...props}
             />
         </div>
