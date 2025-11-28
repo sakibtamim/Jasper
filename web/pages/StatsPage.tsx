@@ -1,8 +1,50 @@
 import { useEffect, useState } from 'react';
 import { fetchStats } from '../api/client';
 
+interface GlobalStats {
+    totalPlays: number;
+    totalDuration: number;
+}
+
+interface TopSong {
+    songUrl: string;
+    songTitle: string;
+    playCount: number;
+    totalDuration: number;
+}
+
+interface TopUser {
+    userId: string;
+    username: string;
+    avatarUrl?: string;
+    playCount: number;
+    totalDuration: number;
+}
+
+interface TopChannel {
+    channelId: string;
+    channelName: string;
+    guildId: string;
+    guildName: string;
+    guildIconUrl?: string;
+    playCount: number;
+}
+
+interface TopBot {
+    botName: string;
+    playCount: number;
+}
+
+interface StatsData {
+    globalStats: GlobalStats;
+    topSongs: TopSong[];
+    topUsers: TopUser[];
+    topChannels: TopChannel[];
+    topBots: TopBot[];
+}
+
 export default function StatsPage() {
-    const [stats, setStats] = useState<any>(null);
+    const [stats, setStats] = useState<StatsData | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -88,8 +130,8 @@ export default function StatsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                 {/* Top Songs */}
                 <StatsCard title="Top Songs" icon="music" color="brand-primary">
-                    {topSongs?.length > 0 ? (
-                        topSongs.map((song: any, index: number) => (
+                    {(topSongs && topSongs.length > 0) ? (
+                        topSongs.map((song, index) => (
                             <div key={song.songUrl} className="p-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                                 <div className="text-2xl font-bold text-gray-300 dark:text-gray-600 w-8 text-center">
                                     {index + 1}
@@ -120,8 +162,8 @@ export default function StatsPage() {
 
                 {/* Top Users */}
                 <StatsCard title="Top Listeners" icon="user" color="brand-secondary">
-                    {topUsers?.length > 0 ? (
-                        topUsers.map((user: any, index: number) => (
+                    {(topUsers && topUsers.length > 0) ? (
+                        topUsers.map((user, index) => (
                             <div key={user.userId} className="p-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                                 <div className="text-2xl font-bold text-gray-300 dark:text-gray-600 w-8 text-center">
                                     {index + 1}
@@ -159,8 +201,8 @@ export default function StatsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Top Channels */}
                 <StatsCard title="Top Channels" icon="hash" color="brand-primary">
-                    {topChannels?.length > 0 ? (
-                        topChannels.map((channel: any, index: number) => (
+                    {(topChannels && topChannels.length > 0) ? (
+                        topChannels.map((channel, index) => (
                             <div
                                 key={channel.channelId}
                                 className="p-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
@@ -202,8 +244,8 @@ export default function StatsPage() {
 
                 {/* Top Bots */}
                 <StatsCard title="Top Bots" icon="bot" color="brand-secondary">
-                    {topBots?.length > 0 ? (
-                        topBots.map((bot: any, index: number) => (
+                    {(topBots && topBots.length > 0) ? (
+                        topBots.map((bot, index) => (
                             <div key={bot.botName} className="p-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                                 <div className="text-2xl font-bold text-gray-300 dark:text-gray-600 w-8 text-center">
                                     {index + 1}

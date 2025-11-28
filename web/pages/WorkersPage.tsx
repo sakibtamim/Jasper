@@ -2,8 +2,36 @@ import { useEffect, useState } from 'react';
 import { fetchWorkers } from '../api/client';
 import ExtensionSlot from '../components/ExtensionSlot';
 
+interface Requester {
+    id: string;
+    username: string;
+    displayName: string;
+    avatarUrl: string;
+}
+
+interface NowPlaying {
+    title: string;
+    thumbnail: string;
+    requester?: Requester;
+}
+
+interface Worker {
+    name: string;
+    role: 'controller' | 'worker';
+    busy: boolean;
+    guildId: string | null;
+    voiceChannelId: string | null;
+    status: string;
+    activity: string;
+    avatarUrl: string | null;
+    guildName: string | null;
+    guildIconUrl: string | null;
+    channelName: string | null;
+    nowPlaying: NowPlaying | null;
+}
+
 export default function WorkersPage() {
-    const [workers, setWorkers] = useState<any[]>([]);
+    const [workers, setWorkers] = useState<Worker[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -74,7 +102,7 @@ export default function WorkersPage() {
     );
 }
 
-function WorkerCard({ worker }: { worker: any }) {
+function WorkerCard({ worker }: { worker: Worker }) {
     const isOnline = worker.status !== 'offline';
     const isBusy = worker.busy;
 

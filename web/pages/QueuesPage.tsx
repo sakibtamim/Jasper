@@ -1,13 +1,44 @@
 import { useEffect, useState } from 'react';
 import { fetchQueues } from '../api/client';
 
+interface Song {
+    title: string;
+    url: string;
+    duration: number;
+    requestedBy: string;
+    thumbnail?: string;
+    startTime?: number;
+}
+
+interface Queue {
+    guildId: string;
+    voiceChannelId: string;
+    guildName: string;
+    workerName: string;
+    queueLength: number;
+    nowPlaying: Song | null;
+    songs: Song[];
+    autoplay?: boolean;
+}
+
+interface Pagination {
+    currentPage: number;
+    totalPages: number;
+    totalQueues: number;
+    limit: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+}
+
 export default function QueuesPage() {
-    const [queues, setQueues] = useState<any[]>([]);
-    const [pagination, setPagination] = useState<any>({
+    const [queues, setQueues] = useState<Queue[]>([]);
+    const [pagination, setPagination] = useState<Pagination>({
         currentPage: 1,
         totalPages: 1,
         totalQueues: 0,
-        limit: 10
+        limit: 10,
+        hasNextPage: false,
+        hasPreviousPage: false
     });
     const [loading, setLoading] = useState(true);
     const [expandedSongs, setExpandedSongs] = useState<Set<string>>(new Set());
@@ -147,7 +178,15 @@ export default function QueuesPage() {
     );
 }
 
-function QueueCard({ queue, isExpanded, onToggle, formatDuration, formatEta }: any) {
+interface QueueCardProps {
+    queue: Queue;
+    isExpanded: boolean;
+    onToggle: () => void;
+    formatDuration: (seconds: number) => string;
+    formatEta: (seconds: number) => string;
+}
+
+function QueueCard({ queue, isExpanded, onToggle, formatDuration, formatEta }: QueueCardProps) {
     const maxInitialSongs = 10;
     const maxExpandedSongs = 20;
 
@@ -243,7 +282,7 @@ function QueueCard({ queue, isExpanded, onToggle, formatDuration, formatEta }: a
                     <div className="text-xs text-gray-500 uppercase tracking-wider font-bold">
                         Up Next ({filteredSongs.length} songs)
                     </div>
-                    {songsToShow.map((song: any, index: number) => {
+                    {songsToShow.map((song, index) => {
                         const waitTime = cumulativeEta;
                         cumulativeEta += song.duration || 0;
 

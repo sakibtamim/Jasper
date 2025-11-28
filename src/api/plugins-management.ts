@@ -91,7 +91,7 @@ export default async function pluginsManagementRoutes(server: FastifyInstance) {
         } finally {
             // Cleanup
             if (fs.existsSync(tempExtractDir)) {
-                await fs.promises.rm(tempExtractDir, { recursive: true, force: true }).catch(() => { });
+                await fs.promises.rm(tempExtractDir, { recursive: true, force: true }).catch((err) => { logger.warn(`[plugins] Failed to clean up temp directory ${tempExtractDir}: ${err}`); });
             }
         }
     });

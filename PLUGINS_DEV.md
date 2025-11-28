@@ -118,9 +118,9 @@ The goal was to migrate from a static HTML/JS frontend to a **React-based dashbo
 The plugin system relies on a specific convention for serving frontend assets:
 
 1.  **Build Output**: The `scripts/build-plugins.ts` script compiles plugin frontend code (from `src/plugins/<id>/web/`) into `dist/plugins/<id>/web/`.
-2.  **Serving**: The Fastify backend serves static files from the `dist/` directory.
+2.  **Serving**: The Fastify backend serves static files from multiple locations using separate `fastify-static` registrations.
 3.  **URL Structure**: Plugin assets are accessible at `/plugins/<pluginId>/web/<file>`.
     -   Example: `src/plugins/my-plugin/web/index.tsx` -> `dist/plugins/my-plugin/web/index.js` -> `http://localhost:3000/plugins/my-plugin/web/index.js`
 4.  **Dynamic Import**: The `usePlugins` hook uses this URL structure to dynamically import the plugin's entry point at runtime.
 
-> **Note:** This assumes the backend is configured to serve the `dist/plugins` directory or that `dist` is the static root. Currently, `fastify-static` is configured to serve from `dist/public`, but plugin assets are in `dist/plugins`. Ensure your server configuration allows access to these files, or that a specific route is set up to serve plugin assets.
+> **Note on Asset Serving:** The backend is configured to serve static assets from multiple locations. The main React application is served from `dist/public`, while compiled plugin frontend assets (from `dist/plugins`) are served under the `/plugins` URL prefix. This separation is handled by multiple `fastify-static` registrations in `src/api/server.ts` and is crucial for the dynamic loading of plugin modules.

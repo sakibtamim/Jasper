@@ -1,9 +1,23 @@
 import { useEffect, useState } from 'react';
 import { fetchCacheStats, fetchStats } from '../api/client';
 
+interface CacheStats {
+    searchCacheSize: number;
+    audioCacheFiles: number;
+    audioCacheSizeMB: number;
+}
+
+interface TopCacheHit {
+    entityId: string;
+    avatarUrl?: string;
+    displayName: string;
+    entityType: 'bot' | 'user';
+    cacheHits: number;
+}
+
 export default function CachePage() {
-    const [cacheStats, setCacheStats] = useState<any>(null);
-    const [topCacheHits, setTopCacheHits] = useState<any[]>([]);
+    const [cacheStats, setCacheStats] = useState<CacheStats | null>(null);
+    const [topCacheHits, setTopCacheHits] = useState<TopCacheHit[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -97,7 +111,7 @@ export default function CachePage() {
                 </div>
                 <div className="divide-y divide-gray-100 dark:divide-gray-700 max-h-[400px] overflow-y-auto">
                     {topCacheHits?.length > 0 ? (
-                        topCacheHits.map((hit: any, index: number) => (
+                        topCacheHits.map((hit, index) => (
                             <div key={hit.entityId} className="p-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                                 <div className="text-2xl font-bold text-gray-300 dark:text-gray-600 w-8 text-center">
                                     {index + 1}
