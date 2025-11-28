@@ -28,5 +28,10 @@ export default defineConfig({
                 changeOrigin: true
             }
         }
+    },
+    resolve: {
+        alias: {
+            '@jasper/ui': '/web/ui'
+        }
     }
 });

@@ -20,7 +20,16 @@
         "strict": true,
         "noUnusedLocals": true,
         "noUnusedParameters": true,
-        "noFallthroughCasesInSwitch": true
+        "noFallthroughCasesInSwitch": true,
+        "baseUrl": ".",
+        "paths": {
+            "@jasper/ui/*": [
+                "ui/*"
+            ],
+            "@jasper/ui": [
+                "ui/index.ts"
+            ]
+        }
     },
     "include": [
         "**/*.ts",

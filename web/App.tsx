@@ -8,6 +8,7 @@ import CachePage from './pages/CachePage';
 import LogsPage from './pages/LogsPage';
 import DevToolsPage from './pages/DevToolsPage';
 import { PluginProvider, usePluginContext } from './context/PluginContext';
+import { AppProvider } from './context/AppContext';
 import { componentRegistry } from './core/ComponentRegistry';
 
 function PluginRoute({ pluginId, componentName }: { pluginId: string, componentName: string }) {
@@ -62,10 +63,12 @@ function AppContent() {
 
 export default function App() {
     return (
-        <PluginProvider>
-            <BrowserRouter basename="/">
-                <AppContent />
-            </BrowserRouter>
-        </PluginProvider>
+        <AppProvider>
+            <PluginProvider>
+                <BrowserRouter basename="/">
+                    <AppContent />
+                </BrowserRouter>
+            </PluginProvider>
+        </AppProvider>
     );
 }

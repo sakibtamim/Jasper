@@ -262,3 +262,67 @@ Plugins can inject widgets into specific slots in the dashboard:
 | `dashboard:stats` | Statistics section on the dashboard. |
 | `pages:*` | Full-page routes under `/plugins/{pluginId}/*`. |
 
+---
+
+## 🎨 UI Component Library
+
+To ensure a consistent look and feel, plugins should use the shared UI library `@jasper/ui`.
+
+### Installation
+The library is available globally to plugins. You can import components directly:
+
+```typescript
+import { Card, Button, Input, Table, Badge, Loader } from '@jasper/ui';
+```
+
+### Available Components
+*   **`Card`**: Container with shadow and rounded corners.
+*   **`Button`**: Standard button with variants (`primary`, `secondary`, `danger`, `ghost`).
+*   **`Input`**: Form input with label and error support.
+*   **`Table`**: Styled table components (`Table`, `TableHead`, `TableRow`, `TableCell`).
+*   **`Badge`**: Status indicators (`success`, `warning`, `error`, `info`).
+*   **`Loader`**: Spinner for loading states.
+*   **`Image`**: Image wrapper with fallback support.
+
+---
+
+## 🧠 Plugin Context & State
+
+Widgets rendered in an `ExtensionSlot` receive a `context` prop containing application state.
+
+### Context Object
+```typescript
+interface PluginWidgetContext {
+    user: User | null;          // Current authenticated user
+    theme: {
+        isDark: boolean;        // Current theme state
+        toggleTheme: () => void;
+    };
+    api: ApiClient;             // Pre-configured API client
+}
+```
+
+### Usage Example
+```tsx
+export const MyWidget = ({ context }: { context: PluginWidgetContext }) => {
+    const { user } = context;
+    
+    if (!user) return <div>Please login</div>;
+    
+    return (
+        <Card>
+            <h3>Hello, {user.username}!</h3>
+        </Card>
+    );
+};
+```
+
+---
+
+## 🛡️ Error Handling
+
+All plugin widgets are automatically wrapped in an **Error Boundary**. If your widget crashes, it will display a fallback UI ("Widget Crashed") with a "Try Again" button, preventing the entire dashboard from breaking.
+
+Ensure you handle async errors (like API failures) gracefully within your components using standard React patterns (e.g., `try/catch` or `react-query`).
+
+

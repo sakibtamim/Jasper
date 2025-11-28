@@ -40,3 +40,13 @@ export async function logout() {
     await fetch(`${API_BASE}/auth/logout`, { method: 'POST' });
     window.location.reload();
 }
+
+export const apiClient = {
+    fetchWorkers,
+    fetchQueues,
+    fetchStats,
+    fetchCacheStats,
+    fetchLogs,
+    fetchAuthStatus,
+    logout
+};

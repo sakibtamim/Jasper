@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { componentRegistry } from '../core/ComponentRegistry';
 import { fetchPluginRegistry } from '../api/pluginRegistry';
+import { useAppContext } from '../context/AppContext';
+import { PluginErrorBoundary } from './PluginErrorBoundary';
 
 interface ExtensionSlotProps {
     slot: string;
@@ -53,12 +55,16 @@ export default function ExtensionSlot({ slot, context }: ExtensionSlotProps) {
         loadWidgets();
     }, [slot]);
 
+    const appContext = useAppContext();
+
     if (widgets.length === 0) return null;
 
     return (
         <>
             {widgets.map(({ id, Component }) => (
-                <Component key={id} context={context} />
+                <PluginErrorBoundary key={id} pluginId={id.split(':')[0]} componentName={id.split(':')[1]}>
+                    <Component context={{ ...appContext, ...context }} />
+                </PluginErrorBoundary>
             ))}
         </>
     );
