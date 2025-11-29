@@ -1,0 +1,10 @@
+{
+    "extends": "@jasper/config/tsconfig.react.json",
+    "compilerOptions": {
+        "outDir": "dist",
+        "rootDir": "."
+    },
+    "include": [
+        "**/*"
+    ]
+}

@@ -1,0 +1,53 @@
+{
+    "name": "jasper-bot",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "start": "node dist/index.js",
+        "dev": "tsx watch src/index.ts",
+        "build": "tsc && tsx scripts/build-plugins.ts",
+        "lint": "eslint src/**/*.ts",
+        "deploy:commands": "tsx src/deploy-commands.ts",
+        "deploy:commands:prod": "node dist/deploy-commands.js",
+        "test": "vitest",
+        "export-plugin": "tsx scripts/export-plugin.ts"
+    },
+    "dependencies": {
+        "@discordjs/voice": "^0.19.0",
+        "@fastify/cookie": "^11.0.2",
+        "@fastify/multipart": "^9.3.0",
+        "@fastify/oauth2": "^8.1.2",
+        "@fastify/static": "^8.3.0",
+        "@snazzah/davey": "^0.1.8",
+        "adm-zip": "^0.5.16",
+        "archiver": "^7.0.1",
+        "better-sqlite3": "^12.4.6",
+        "discord-api-types": "^0.37.83",
+        "discord.js": "^14.25.0",
+        "dotenv": "^16.4.5",
+        "fastify": "^5.6.2",
+        "ffmpeg-static": "^5.3.0",
+        "pg": "^8.16.3",
+        "semver": "^7.7.3",
+        "yt-search": "^2.13.1"
+    },
+    "devDependencies": {
+        "@jasper/config": "workspace:*",
+        "@jasper/elements": "workspace:*",
+        "@jasper/ui": "workspace:*",
+        "@types/adm-zip": "^0.5.7",
+        "@types/archiver": "^7.0.0",
+        "@types/better-sqlite3": "^7.6.13",
+        "@types/node": "^24.10.1",
+        "@types/pg": "^8.15.6",
+        "@types/semver": "^7.7.1",
+        "@types/ws": "^8.18.1",
+        "@types/yt-search": "^2.10.3",
+        "@vitejs/plugin-react": "^4.3.4",
+        "tsx": "^4.20.6",
+        "typescript": "^5.9.3",
+        "vite": "^6.0.3",
+        "vitest": "^4.0.13"
+    }
+}

@@ -23,14 +23,14 @@ export const server = fastify({ logger: false });
 
 // Serve legacy static UI
 server.register(fastifyStatic, {
-    root: path.join(__dirname, '../../public'),
+    root: path.join(__dirname, '../../../web/public'),
     prefix: '/legacy',
     decorateReply: false
 });
 
 // Serve React app static assets
 server.register(fastifyStatic, {
-    root: path.join(__dirname, '../../dist/public'),
+    root: path.join(__dirname, '../../../web/dist'),
     prefix: '/',
 });
 
@@ -79,7 +79,7 @@ server.register(fastifyStatic, {
 
 // Root route: Serve React app
 server.get('/', async (request, reply) => {
-    return reply.sendFile('index.html', path.join(__dirname, '../../dist/public'));
+    return reply.sendFile('index.html', path.join(__dirname, '../../../web/dist'));
 });
 
 
@@ -397,5 +397,5 @@ server.setNotFoundHandler((request, reply) => {
     }
 
     // Serve React app index.html for all other routes (SPA fallback)
-    return reply.sendFile('index.html', path.join(__dirname, '../../dist/public'));
+    return reply.sendFile('index.html', path.join(__dirname, '../../../web/dist'));
 });
