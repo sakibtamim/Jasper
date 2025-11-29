@@ -10,31 +10,35 @@ const AdvancedHooksTestPlugin: Plugin = {
         logger.info("[AdvancedHooksTestPlugin] Loaded!");
 
         // Hook: SERVER_READY
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         context.on("SERVER_READY", (data: any) => {
             logger.info("[AdvancedHooksTestPlugin] SERVER_READY hook triggered!");
             const { server } = data;
 
             // Register a test route
-            server.get("/api/test-plugin", async (request: any, reply: any) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            server.get("/api/test-plugin", async (_request: any, _reply: any) => {
                 return { message: "Hello from AdvancedHooksTestPlugin!" };
             });
             logger.info("[AdvancedHooksTestPlugin] Registered /api/test-plugin route.");
         });
 
         // Hook: WORKER_ASSIGNED
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         context.on("WORKER_ASSIGNED", (data: any) => {
             const { worker, guildId, voiceChannelId } = data;
             logger.info(`[AdvancedHooksTestPlugin] WORKER_ASSIGNED: ${worker.name} -> Guild ${guildId} / Channel ${voiceChannelId}`);
         });
 
         // Hook: VOICE_STATE_UPDATE
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         context.on("VOICE_STATE_UPDATE", (data: any) => {
             const { oldState, newState } = data;
             logger.info(`[AdvancedHooksTestPlugin] VOICE_STATE_UPDATE: ${oldState?.member?.user.username} moved from ${oldState?.channelId} to ${newState?.channelId}`);
         });
     },
 
-    onUnload: async (context: PluginContext) => {
+    onUnload: async (_context: PluginContext) => {
         logger.info("[AdvancedHooksTestPlugin] Unloaded!");
     }
 };

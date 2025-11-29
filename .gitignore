@@ -11,10 +11,14 @@ dist/
 public/dist-react/
 
 # Cache directories (not committed to version control)
-/cache/
+cache/
+.cache/
 
 # Database files (runtime data)
-/data/
+data/
+*.db
+*.db-shm
+*.db-wal
 
 # Ignore example artifacts used for AI context and training
 example-codes/

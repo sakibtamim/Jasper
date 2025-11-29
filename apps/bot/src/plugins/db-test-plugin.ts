@@ -27,7 +27,7 @@ const DbTestPlugin: Plugin = {
         }
     },
 
-    onUnload: async (context: PluginContext) => {
+    onUnload: async (_context: PluginContext) => {
         logger.info("[DbTestPlugin] Unloaded!");
     }
 };

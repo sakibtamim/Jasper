@@ -43,9 +43,9 @@ function isDiscordToken(data: unknown): data is DiscordToken {
         'access_token' in data &&
         'refresh_token' in data &&
         'expires_in' in data &&
-        typeof (data as any).access_token === 'string' &&
-        typeof (data as any).refresh_token === 'string' &&
-        typeof (data as any).expires_in === 'number'
+        typeof (data as { access_token: unknown }).access_token === 'string' &&
+        typeof (data as { refresh_token: unknown }).refresh_token === 'string' &&
+        typeof (data as { expires_in: unknown }).expires_in === 'number'
     );
 }
 
@@ -56,9 +56,9 @@ function isDiscordUser(data: unknown): data is DiscordUser {
         'id' in data &&
         'username' in data &&
         'discriminator' in data &&
-        typeof (data as any).id === 'string' &&
-        typeof (data as any).username === 'string' &&
-        typeof (data as any).discriminator === 'string'
+        typeof (data as { id: unknown }).id === 'string' &&
+        typeof (data as { username: unknown }).username === 'string' &&
+        typeof (data as { discriminator: unknown }).discriminator === 'string'
     );
 }
 

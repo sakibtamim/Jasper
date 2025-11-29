@@ -16,7 +16,7 @@ export default async function pluginsManagementRoutes(server: FastifyInstance) {
     server.post('/install', async (request, reply) => {
         // 1. Authentication Check (P0)
         // The global onRequest hook attaches 'user' to the request if a valid session exists.
-        const user = (request as any).user;
+        const user = (request as unknown as { user: { username: string } }).user;
         if (!user) {
             return reply.code(401).send({ message: 'Unauthorized: You must be logged in to install plugins.' });
         }

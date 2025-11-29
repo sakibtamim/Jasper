@@ -24,7 +24,7 @@ export function usePlugins() {
                             console.log(`[PluginLoader] Loading ${plugin.id} from ${entryUrl}`);
 
                             // Dynamic import
-                            // @ts-ignore
+
                             const module = await import(/* @vite-ignore */ entryUrl);
 
                             // Register components from the imported module based on the manifest

@@ -361,10 +361,10 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string, 
 
     queue.stopping = false;
 
-    const channelName = await getChannelName(
-      queue.worker.client,
-      queue.voiceChannelId
-    );
+    // const channelName = await getChannelName(
+    //   queue.worker.client,
+    //   queue.voiceChannelId
+    // );
 
     const prefix = track.fromCache ? '⚡⚡ ' : '';
     const devPrefix = getDevPrefix();

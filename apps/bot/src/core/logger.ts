@@ -32,6 +32,7 @@ function addLog(level: string, msg: string, options: LogOptions = {}) {
 
   // Keep console output as string for terminal readability
   const consoleMsg = `[${level.toUpperCase()}] ${entry.timestamp} - ${msg}`;
+  // eslint-disable-next-line no-console
   console.log(consoleMsg);
 
   // Only add to buffer if not suppressed from WebUI
