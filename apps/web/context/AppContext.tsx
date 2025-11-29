@@ -1,5 +1,5 @@
 import { React, createContext, useContext, useState, useEffect, ReactNode } from '@jasper/elements';
-import { fetchAuthStatus, apiClient } from '../api/client';
+import { fetchAuthStatus, apiClient } from '../services/client';
 import { useTheme } from '../hooks/useTheme';
 
 interface User {

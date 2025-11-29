@@ -1,5 +1,5 @@
 import { useEffect, useState } from '@jasper/elements';
-import { fetchWorkers } from '../api/client';
+import { fetchWorkers } from '../services/client';
 import ExtensionSlot from '../components/ExtensionSlot';
 
 interface Requester {

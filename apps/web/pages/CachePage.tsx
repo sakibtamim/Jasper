@@ -1,5 +1,5 @@
 import { useEffect, useState } from '@jasper/elements';
-import { fetchCacheStats, fetchStats } from '../api/client';
+import { fetchCacheStats, fetchStats } from '../services/client';
 
 interface CacheStats {
     searchCacheSize: number;

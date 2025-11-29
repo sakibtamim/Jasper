@@ -1,5 +1,5 @@
 import { useEffect, useState } from '@jasper/elements';
-import { fetchPluginRegistry, PluginRegistryEntry } from '../api/pluginRegistry';
+import { fetchPluginRegistry, PluginRegistryEntry } from '../services/pluginRegistry';
 import { componentRegistry } from '../core/ComponentRegistry';
 
 export function usePlugins() {

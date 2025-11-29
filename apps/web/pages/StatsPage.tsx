@@ -1,5 +1,5 @@
 import { useEffect, useState } from '@jasper/elements';
-import { fetchStats } from '../api/client';
+import { fetchStats } from '../services/client';
 
 interface GlobalStats {
     totalPlays: number;

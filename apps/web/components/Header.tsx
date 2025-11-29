@@ -1,7 +1,7 @@
 import { useEffect, useState } from '@jasper/elements';
 import { Link, useLocation } from 'react-router-dom';
-import { logout } from '../api/client';
-import { NavItem } from '../api/pluginRegistry';
+import { logout } from '../services/client';
+import { NavItem } from '../services/pluginRegistry';
 import { usePluginContext } from '../context/PluginContext';
 import { useAuth } from '../context/AppContext';
 

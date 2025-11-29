@@ -1,5 +1,5 @@
 import { useEffect, useState } from '@jasper/elements';
-import { fetchLogs } from '../api/client';
+import { fetchLogs } from '../services/client';
 
 export default function LogsPage() {
     const [logs, setLogs] = useState<any[]>([]);
