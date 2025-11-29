@@ -379,6 +379,7 @@ export async function startServer() {
     try {
         await server.listen({ port: PORT, host: '0.0.0.0' });
         logger.info(`[webui] Web UI server running at http://localhost:${PORT}`);
+        logger.info(`[webui] Legacy UI available at http://localhost:${PORT}/legacy/index.html`);
 
         // Hook: SERVER_READY
         await hookManager.trigger('SERVER_READY', { server });
