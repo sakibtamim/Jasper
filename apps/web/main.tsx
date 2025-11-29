@@ -4,9 +4,10 @@ import './index.css';
 
 import { componentRegistry } from './core/ComponentRegistry';
 
-// Expose React for plugins
-// (window as any).React = React;
-// (window as any).ReactDOM = ReactDOM;
+import * as Elements from '@jasper/elements';
+
+// Expose React and Elements for plugins (IIFE/UMD support)
+(window as any).JasperElements = Elements;
 (window as any).componentRegistry = componentRegistry;
 
 ReactDOMClient.createRoot(document.getElementById('root')!).render(

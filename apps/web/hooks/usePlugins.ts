@@ -23,9 +23,23 @@ export function usePlugins() {
 
                             console.log(`[PluginLoader] Loading ${plugin.id} from ${entryUrl}`);
 
-                            // Dynamic import
+                            // Load plugin script via script tag (IIFE)
+                            await new Promise<void>((resolve, reject) => {
+                                const script = document.createElement('script');
+                                script.src = entryUrl;
+                                script.onload = () => resolve();
+                                script.onerror = () => reject(new Error(`Failed to load script ${entryUrl}`));
+                                document.body.appendChild(script);
+                            });
 
-                            const module = await import(/* @vite-ignore */ entryUrl);
+                            // Get the plugin module from the global variable
+                            // Name convention matches build-plugins.ts: JasperPlugin_{id_with_underscores}
+                            const varName = 'JasperPlugin_' + plugin.id.replace(/-/g, '_');
+                            const module = (window as any)[varName];
+
+                            if (!module) {
+                                throw new Error(`Plugin module ${varName} not found in window object`);
+                            }
 
                             // Register components from the imported module based on the manifest
                             const componentsToRegister = [

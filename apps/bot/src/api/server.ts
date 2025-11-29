@@ -391,7 +391,7 @@ export async function startServer() {
 // SPA Fallback: Serve React app for all non-API, non-legacy routes
 server.setNotFoundHandler((request, reply) => {
     // Don't apply SPA fallback to API routes or legacy UI
-    if (request.url.startsWith('/api/') || request.url.startsWith('/legacy/') || request.url.startsWith('/plugins/')) {
+    if (request.url.startsWith('/api/') || request.url.startsWith('/legacy/')) {
         reply.code(404).send({ message: `Route ${request.method}:${request.url} not found`, error: 'Not Found', statusCode: 404 });
         return;
     }

@@ -40,15 +40,16 @@ async function buildPlugins() {
                     build: {
                         lib: {
                             entry: entry,
-                            name: pluginId,
+                            name: 'JasperPlugin_' + pluginId.replace(/-/g, '_'),
                             fileName: 'index',
-                            formats: ['es']
+                            formats: ['iife']
                         },
                         outDir: outDir,
                         emptyOutDir: true,
                         rollupOptions: {
                             external: ['react', 'react-dom', 'react-router-dom', '@jasper/elements'],
                             output: {
+                                extend: true,
                                 globals: {
                                     react: 'JasperElements.React',
                                     'react-dom': 'JasperElements.ReactDOM',
