@@ -34,19 +34,33 @@ function findYtDlpPath() {
   }
 
   // 2. Check for local static binary in the project root
-  const root = path.resolve(__dirname, '..');
-  for (const bin of candidates) {
-    const localPath = path.join(root, bin);
-    if (fs.existsSync(localPath)) {
-      return localPath;
+  // Check both app root and monorepo root
+  const roots = [
+    path.resolve(__dirname, '..'), // App root
+    path.resolve(__dirname, '../../..') // Monorepo root
+  ];
+
+  for (const root of roots) {
+    for (const bin of candidates) {
+      const localPath = path.join(root, bin);
+      if (fs.existsSync(localPath)) {
+        return localPath;
+      }
     }
   }
 
   return null;
 }
 
-// Where to write the binary: project root (one level up from scripts folder)
-const root = path.resolve(__dirname, '..');
+// Where to write the binary:
+// If we are in a monorepo (detected by turbo.json in root), install to monorepo root.
+// Otherwise, install to app root (standard behavior).
+let root = path.resolve(__dirname, '..');
+const monorepoRoot = path.resolve(__dirname, '../../..');
+if (fs.existsSync(path.join(monorepoRoot, 'turbo.json'))) {
+  console.log('Monorepo detected, installing to monorepo root');
+  root = monorepoRoot;
+}
 
 const isWin = process.platform === 'win32';
 const assetName = isWin ? 'yt-dlp.exe' : 'yt-dlp';

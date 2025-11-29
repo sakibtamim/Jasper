@@ -36,12 +36,17 @@ export function findYtDlpPath(): string | null {
 
     // 2. Check for local static binary in the project root
     // Assuming this file is in src/utils/, the root is ../../
-    const root = path.resolve(__dirname, '../../');
+    const roots = [
+        path.resolve(__dirname, '../../'), // App root (production/standard)
+        path.resolve(__dirname, '../../../../') // Monorepo root (development)
+    ];
 
-    for (const bin of candidates) {
-        const localPath = path.join(root, bin);
-        if (fs.existsSync(localPath)) {
-            return localPath;
+    for (const root of roots) {
+        for (const bin of candidates) {
+            const localPath = path.join(root, bin);
+            if (fs.existsSync(localPath)) {
+                return localPath;
+            }
         }
     }
 
