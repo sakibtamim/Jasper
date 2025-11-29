@@ -11,14 +11,6 @@ export default defineConfig({
     base: '/',
     build: {
         outDir: 'dist',
-        emptyOutDir: true,
-        rollupOptions: {
-            external: ['@jasper/elements'],
-            output: {
-                paths: {
-                    '@jasper/elements': '/elements.js'
-                }
-            }
-        }
+        emptyOutDir: true
     }
 });
