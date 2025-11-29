@@ -37,6 +37,9 @@ async function buildPlugins() {
                     configFile: false,
                     root: webDir,
                     plugins: [react()],
+                    define: {
+                        'process.env.NODE_ENV': JSON.stringify('production')
+                    },
                     build: {
                         lib: {
                             entry: entry,
