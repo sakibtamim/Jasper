@@ -61,7 +61,14 @@ export type {
     PropsWithChildren
 } from 'react';
 
-export * as ReactDOM from 'react-dom';
-export * as ReactDOMClient from 'react-dom/client';
+import * as ReactDOM from 'react-dom';
+import { createRoot, hydrateRoot } from 'react-dom/client';
+
+export { ReactDOM };
+
+export const ReactDOMClient = {
+    createRoot,
+    hydrateRoot
+};
 export * from 'react-router-dom';
 export * as ReactRouterDOM from 'react-router-dom';
