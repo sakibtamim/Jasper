@@ -41,7 +41,7 @@ async function buildPlugins() {
                         lib: {
                             entry: entry,
                             name: 'JasperPlugin_' + pluginId.replace(/-/g, '_'),
-                            fileName: 'index',
+                            fileName: () => 'index.js',
                             formats: ['iife']
                         },
                         outDir: outDir,
