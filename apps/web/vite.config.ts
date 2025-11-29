@@ -9,6 +9,26 @@ export default defineConfig({
     plugins: [react()],
     publicDir: 'public/assets',
     base: '/',
+    server: {
+        proxy: {
+            '/api': {
+                target: 'http://localhost:3000',
+                changeOrigin: true
+            },
+            '/auth': {
+                target: 'http://localhost:3000',
+                changeOrigin: true
+            },
+            '/legacy': {
+                target: 'http://localhost:3000',
+                changeOrigin: true
+            },
+            '/plugins': {
+                target: 'http://localhost:3000',
+                changeOrigin: true
+            }
+        }
+    },
     build: {
         outDir: 'dist',
         emptyOutDir: true
