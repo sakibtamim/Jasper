@@ -1,4 +1,4 @@
-import React, { createContext, useContext, ReactNode } from 'react';
+import { React, createContext, useContext, ReactNode } from '@jasper/elements';
 import { usePlugins } from '../hooks/usePlugins';
 import { PluginRegistryEntry } from '../api/pluginRegistry';
 

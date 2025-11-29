@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { React, useState } from '@jasper/elements';
 import { usePluginContext } from '../context/PluginContext';
 
 export default function DevToolsPage() {

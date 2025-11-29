@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from '@jasper/elements';
 
 export function useTheme() {
     const [isDark, setIsDark] = useState(() => {

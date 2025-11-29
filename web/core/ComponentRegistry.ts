@@ -1,4 +1,4 @@
-import React from 'react';
+import { React } from '@jasper/elements';
 
 export type ComponentMap = Map<string, React.ComponentType<any>>;
 

@@ -1,6 +1,6 @@
-import React from 'react';
+import { SVGAttributes } from '@jasper/elements';
 
-interface LoaderProps extends React.SVGAttributes<SVGElement> {
+interface LoaderProps extends SVGAttributes<SVGElement> {
     className?: string;
 }
 

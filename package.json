@@ -9,7 +9,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "npm run build:backend && npm run build:web",
     "build:backend": "tsc && rsync -avm --include='*/' --include='*.json' --include='*.mp3' --exclude='*' src/plugins/ dist/plugins/ && tsx scripts/build-plugins.ts",
-    "build:web": "vite build",
+    "build:web": "vite build && tsx scripts/build-elements.ts",
     "lint": "eslint src/**/*.ts",
     "deploy:commands": "tsx src/deploy-commands.ts",
     "deploy:commands:prod": "node dist/deploy-commands.js",

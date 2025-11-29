@@ -13,25 +13,31 @@ async function verify() {
         await db.trackPlay({
             userId: 'user1',
             guildId: 'guild1',
-            songTitle: 'Song A',
-            songUrl: 'http://example.com/a',
-            duration: 120,
+            channelId: 'channel1',
+            botName: 'Jasper',
+            songTitle: 'Song 1',
+            songUrl: 'http://example.com/1',
+            duration: 180,
             playedAt: new Date()
         });
         await db.trackPlay({
             userId: 'user1',
             guildId: 'guild1',
-            songTitle: 'Song B',
-            songUrl: 'http://example.com/b',
-            duration: 180,
+            channelId: 'channel1',
+            botName: 'Jasper',
+            songTitle: 'Song 2',
+            songUrl: 'http://example.com/2',
+            duration: 200,
             playedAt: new Date()
         });
         await db.trackPlay({
             userId: 'user2',
             guildId: 'guild1',
-            songTitle: 'Song A',
-            songUrl: 'http://example.com/a',
-            duration: 120,
+            channelId: 'channel1',
+            botName: 'Jasper',
+            songTitle: 'Song 1',
+            songUrl: 'http://example.com/1',
+            duration: 180,
             playedAt: new Date()
         });
 

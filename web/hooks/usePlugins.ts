@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from '@jasper/elements';
 import { fetchPluginRegistry, PluginRegistryEntry } from '../api/pluginRegistry';
 import { componentRegistry } from '../core/ComponentRegistry';
 

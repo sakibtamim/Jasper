@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState, ImgHTMLAttributes } from '@jasper/elements';
 
-interface ImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
+interface ImageProps extends ImgHTMLAttributes<HTMLImageElement> {
     fallbackSrc?: string;
     imgClassName?: string;
 }

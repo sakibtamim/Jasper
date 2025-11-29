@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from '@jasper/elements';
 import { fetchQueues } from '../api/client';
 import { ListMusic, Music2, ChevronLeft, ChevronRight, PlayCircle, Music, ChevronUp, ChevronDown } from 'lucide-react';
 

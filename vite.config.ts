@@ -13,7 +13,7 @@ export default defineConfig({
     resolve: {
         alias: {
             '@jasper/ui': path.resolve(__dirname, './web/ui'),
-            '@jasper/elements': path.resolve(__dirname, './web/elements.ts')
+            '@jasper/elements': path.resolve(__dirname, './web/elements.tsx')
         }
     },
     build: {

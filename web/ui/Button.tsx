@@ -1,7 +1,7 @@
-import React from 'react';
+import { React, ButtonHTMLAttributes } from '@jasper/elements';
 import { Loader } from './Loader';
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
     variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
     size?: 'sm' | 'md' | 'lg';
     isLoading?: boolean;

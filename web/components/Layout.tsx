@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet } from '@jasper/elements';
 import Header from './Header';
 
 export default function Layout() {

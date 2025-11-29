@@ -1,5 +1,4 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
+import { React, ReactDOMClient } from '@jasper/elements';
 import App from './App';
 import './index.css';
 
@@ -10,7 +9,7 @@ import { componentRegistry } from './core/ComponentRegistry';
 // (window as any).ReactDOM = ReactDOM;
 (window as any).componentRegistry = componentRegistry;
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+ReactDOMClient.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
         <App />
     </React.StrictMode>

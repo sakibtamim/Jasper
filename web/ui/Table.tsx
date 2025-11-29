@@ -1,6 +1,6 @@
-import React from 'react';
+import { React, TableHTMLAttributes } from '@jasper/elements';
 
-interface TableProps extends React.TableHTMLAttributes<HTMLTableElement> {
+interface TableProps extends TableHTMLAttributes<HTMLTableElement> {
     children: React.ReactNode;
 }
 

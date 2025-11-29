@@ -15,7 +15,7 @@ async function buildElements() {
             root: WEB_DIR,
             build: {
                 lib: {
-                    entry: path.join(WEB_DIR, 'elements.ts'),
+                    entry: path.join(WEB_DIR, 'elements.tsx'),
                     name: 'JasperElements',
                     fileName: () => 'elements.js',
                     formats: ['es']

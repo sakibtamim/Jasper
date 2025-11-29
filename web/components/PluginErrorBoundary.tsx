@@ -1,4 +1,5 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { React, Component, ReactNode } from '@jasper/elements';
+import type { ErrorInfo } from 'react';
 
 interface Props {
     children: ReactNode;

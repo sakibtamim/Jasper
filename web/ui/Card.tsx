@@ -1,6 +1,6 @@
-import React from 'react';
+import { React, HTMLAttributes } from '@jasper/elements';
 
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+interface CardProps extends HTMLAttributes<HTMLDivElement> {
     children: React.ReactNode;
     className?: string;
 }

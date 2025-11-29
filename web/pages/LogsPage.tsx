@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from '@jasper/elements';
 import { fetchLogs } from '../api/client';
 
 export default function LogsPage() {

@@ -1,6 +1,6 @@
-import React from 'react';
+import { React, InputHTMLAttributes } from '@jasper/elements';
 
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
     label?: string;
     error?: string;
     helperText?: string;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from '@jasper/elements';
 import { fetchStats } from '../api/client';
 
 interface GlobalStats {

@@ -1,18 +1,34 @@
 {
     "compilerOptions": {
         "target": "ES2022",
-        "module": "NodeNext",
-        "moduleResolution": "NodeNext",
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "outDir": "./dist",
-        "rootDir": "./src",
-        "resolveJsonModule": true
+        "rootDir": ".",
+        "baseUrl": ".",
+        "jsx": "react-jsx",
+        "resolveJsonModule": true,
+        "paths": {
+            "@jasper/elements": [
+                "./web/elements.tsx"
+            ],
+            "@jasper/ui": [
+                "./web/ui"
+            ],
+            "@jasper/ui/*": [
+                "./web/ui/*"
+            ]
+        }
     },
     "include": [
-        "src/**/*"
+        "src/**/*",
+        "web/**/*",
+        "scripts/**/*",
+        "vite.config.ts"
     ],
     "exclude": [
         "node_modules",

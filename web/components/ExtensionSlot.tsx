@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { React, useMemo } from '@jasper/elements';
 import { componentRegistry } from '../core/ComponentRegistry';
 import { useAppContext } from '../context/AppContext';
 import { usePluginContext } from '../context/PluginContext';

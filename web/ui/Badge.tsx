@@ -1,6 +1,6 @@
-import React from 'react';
+import { HTMLAttributes } from '@jasper/elements';
 
-interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
+interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
     variant?: 'success' | 'warning' | 'error' | 'info' | 'default';
 }
 
