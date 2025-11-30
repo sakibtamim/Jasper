@@ -7,11 +7,17 @@ import {
     StringSelectMenuBuilder,
     SlashCommandBuilder,
     AutocompleteInteraction,
-    ButtonInteraction
+    ButtonInteraction,
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle,
+    ModalSubmitInteraction
 } from "discord.js";
 import { PluginContext } from "@jasper/types";
 import { Sound } from "../types.js";
 import { playSoundboardClip } from "../services/playback.js";
+import { SoundService } from "../services/sound-service.js";
+import axios from "axios";
 
 export const registerCommand = (context: PluginContext) => {
     const data = new SlashCommandBuilder()
@@ -38,6 +44,30 @@ export const registerCommand = (context: PluginContext) => {
             sub
                 .setName("ui")
                 .setDescription("Post a permanent soundboard UI in this channel")
+        )
+        .addSubcommand(sub =>
+            sub
+                .setName("add")
+                .setDescription("Add a new sound to the soundboard")
+                .addAttachmentOption(option =>
+                    option
+                        .setName("file")
+                        .setDescription("The audio file (MP3/WAV, max 10s)")
+                        .setRequired(false)
+                )
+                .addStringOption(option =>
+                    option
+                        .setName("name")
+                        .setDescription("The name of the sound")
+                        .setRequired(false)
+                        .setMaxLength(32)
+                )
+                .addStringOption(option =>
+                    option
+                        .setName("emoji")
+                        .setDescription("The emoji for the sound")
+                        .setRequired(false)
+                )
         );
 
     context.registerCommand({
@@ -53,10 +83,14 @@ export const registerCommand = (context: PluginContext) => {
                 await handlePlayCommand(interaction, context);
             } else if (subcommand === 'ui') {
                 await handleUICommand(interaction, context);
+            } else if (subcommand === 'add') {
+                await handleAddCommand(interaction, context);
             }
         },
     });
 };
+
+// ... (handleMenuCommand, handlePlayCommand, handleUICommand remain same)
 
 async function handleMenuCommand(interaction: ChatInputCommandInteraction, context: PluginContext) {
     const member = interaction.guild!.members.cache.get(interaction.user.id);
@@ -200,6 +234,59 @@ async function handleUICommand(interaction: ChatInputCommandInteraction, context
     });
 }
 
+async function handleAddCommand(interaction: ChatInputCommandInteraction, context: PluginContext) {
+    const file = interaction.options.getAttachment('file');
+    const name = interaction.options.getString('name');
+    const emoji = interaction.options.getString('emoji') || '🔊';
+
+    // If arguments are missing, show the "UI" (Modal Flow)
+    if (!file || !name) {
+        const row = new ActionRowBuilder<ButtonBuilder>()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('soundboard_add_modal_btn')
+                    .setLabel('Open Sound Wizard')
+                    .setEmoji('✨')
+                    .setStyle(ButtonStyle.Primary)
+            );
+
+        await interaction.reply({
+            content: "👋 **Add a New Sound**\n\nTo add a sound quickly with custom emojis, use the command arguments:\n`/soundboard add file:[upload] name:[name] emoji:[emoji]`\n\nOr click the button below to use the interactive wizard (Note: Custom emojis are harder to use here).",
+            components: [row],
+            ephemeral: true
+        });
+        return;
+    }
+
+    // Process direct command usage
+    await interaction.deferReply({ ephemeral: true });
+
+    try {
+        // Validate file type
+        if (!file.contentType?.startsWith('audio/')) {
+            await interaction.editReply("❌ Please upload a valid audio file (MP3/WAV).");
+            return;
+        }
+
+        // Download file
+        const response = await axios.get(file.url, { responseType: 'arraybuffer' });
+        const buffer = Buffer.from(response.data);
+
+        // Save to storage
+        const filename = `${Date.now()}-${file.name}`;
+        const uri = await context.storage.save(filename, buffer);
+
+        // Add to DB
+        const soundService = new SoundService(context);
+        await soundService.addSound(name, emoji, uri, interaction.user.id);
+
+        await interaction.editReply(`✅ Sound **${emoji} ${name}** added successfully!`);
+    } catch (error) {
+        context.logger.error(`Failed to add sound: ${error}`);
+        await interaction.editReply("❌ Failed to add sound. Please try again.");
+    }
+}
+
 export const handleAutocomplete = async (interaction: AutocompleteInteraction, context: PluginContext) => {
     const focusedValue = interaction.options.getFocused().toLowerCase();
     const sounds = (await context.db.plugin.get("sounds") as Sound[]) || [];
@@ -217,6 +304,36 @@ export const handleAutocomplete = async (interaction: AutocompleteInteraction, c
 const activeUsers = new Set<string>();
 
 export const handleButtonInteraction = async (interaction: ButtonInteraction, context: PluginContext) => {
+    // Handle Add Sound Wizard Button
+    if (interaction.customId === 'soundboard_add_modal_btn') {
+        const modal = new ModalBuilder()
+            .setCustomId('soundboard_add_modal')
+            .setTitle('Add New Sound');
+
+        const nameInput = new TextInputBuilder()
+            .setCustomId('sound_name')
+            .setLabel("Sound Name")
+            .setStyle(TextInputStyle.Short)
+            .setMaxLength(32)
+            .setRequired(true);
+
+        const emojiInput = new TextInputBuilder()
+            .setCustomId('sound_emoji')
+            .setLabel("Emoji (Paste one)")
+            .setStyle(TextInputStyle.Short)
+            .setMaxLength(4)
+            .setPlaceholder('🔊')
+            .setRequired(false);
+
+        const firstActionRow = new ActionRowBuilder<TextInputBuilder>().addComponents(nameInput);
+        const secondActionRow = new ActionRowBuilder<TextInputBuilder>().addComponents(emojiInput);
+
+        modal.addComponents(firstActionRow, secondActionRow);
+
+        await interaction.showModal(modal);
+        return;
+    }
+
     if (!interaction.customId.startsWith('soundboard_play_')) return;
 
     if (activeUsers.has(interaction.user.id)) {
@@ -262,4 +379,67 @@ export const handleButtonInteraction = async (interaction: ButtonInteraction, co
             activeUsers.delete(interaction.user.id);
         }, 1000);
     }
+};
+
+// Handle Modal Submit
+export const handleModalSubmit = async (interaction: ModalSubmitInteraction, context: PluginContext) => {
+    if (interaction.customId !== 'soundboard_add_modal') return;
+
+    const name = interaction.fields.getTextInputValue('sound_name');
+    const emoji = interaction.fields.getTextInputValue('sound_emoji') || '🔊';
+
+    await interaction.reply({
+        content: `✨ **Step 2/2**: Please upload the audio file for **${name}**.\nReply to this message with the MP3/WAV file attachment.`,
+        ephemeral: true
+    });
+
+    // Check if channel supports message collection
+    if (!interaction.channel || !interaction.channel.isTextBased() || interaction.channel.isDMBased()) {
+        await interaction.followUp({ content: "❌ Cannot collect messages in this channel type.", ephemeral: true });
+        return;
+    }
+
+    const filter = (m: any) => m.author.id === interaction.user.id && m.attachments.size > 0;
+    const collector = interaction.channel.createMessageCollector({ filter, time: 60000, max: 1 });
+
+    if (!collector) return;
+
+    collector.on('collect', async (m: any) => {
+        const attachment = m.attachments.first();
+        if (!attachment) return;
+
+        if (!attachment.contentType?.startsWith('audio/')) {
+            await interaction.followUp({ content: "❌ Invalid file type. Please try again with an audio file.", ephemeral: true });
+            return;
+        }
+
+        try {
+            // Download file
+            const response = await axios.get(attachment.url, { responseType: 'arraybuffer' });
+            const buffer = Buffer.from(response.data);
+
+            // Save to storage
+            const filename = `${Date.now()}-${attachment.name}`;
+            const uri = await context.storage.save(filename, buffer);
+
+            // Add to DB
+            const soundService = new SoundService(context);
+            await soundService.addSound(name, emoji, uri, interaction.user.id);
+
+            await interaction.followUp({ content: `✅ Sound **${emoji} ${name}** added successfully!`, ephemeral: true });
+
+            // Try to delete the user's message to keep chat clean
+            try { await m.delete(); } catch (e) { }
+
+        } catch (error) {
+            context.logger.error(`Failed to add sound via wizard: ${error}`);
+            await interaction.followUp({ content: "❌ Failed to save sound.", ephemeral: true });
+        }
+    });
+
+    collector.on('end', (collected: any, reason: string) => {
+        if (reason === 'time' && collected.size === 0) {
+            interaction.followUp({ content: "❌ Timed out waiting for file upload.", ephemeral: true }).catch(() => { });
+        }
+    });
 };
