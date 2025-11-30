@@ -43,6 +43,26 @@ export const registerRoutes = (context: PluginContext) => {
         return { success: true };
     });
 
+    // PATCH /api/plugins/soundboard/sounds/:id
+    server.patch("/sounds/:id", async (req, reply) => {
+        const { id } = req.params as { id: string };
+        const body = req.body as { name?: string; emoji?: string };
+
+        if (!body.name && !body.emoji) {
+            return reply.code(400).send({ error: "No updates provided" });
+        }
+
+        if (body.name && body.name.length > 32) return reply.code(400).send({ error: "Name too long" });
+
+        const updatedSound = await soundService.updateSound(id, body);
+
+        if (!updatedSound) {
+            return reply.code(404).send({ error: "Sound not found" });
+        }
+
+        return updatedSound;
+    });
+
     // GET /api/plugins/soundboard/stats
     server.get("/stats", async (req, reply) => {
         return await soundService.getStats();

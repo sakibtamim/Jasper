@@ -1,7 +1,7 @@
 import { React, useState, useEffect } from '@jasper/elements';
 import { Card, Button, Input, Loader, Badge } from '@jasper/ui';
 import { usePluginStorage } from '@jasper/hooks';
-import { Trash2, Upload, Music, Play, AlertTriangle } from 'lucide-react';
+import { Trash2, Upload, Music, Play, AlertTriangle, Edit2, X } from 'lucide-react';
 
 interface Sound {
     id: string;
@@ -32,6 +32,11 @@ export const SoundboardPage = () => {
     const [emoji, setEmoji] = useState('🔊');
     const [file, setFile] = useState<File | null>(null);
     const [previewAudio, setPreviewAudio] = useState<string | null>(null);
+
+    // Edit State
+    const [editingSound, setEditingSound] = useState<Sound | null>(null);
+    const [editName, setEditName] = useState('');
+    const [editEmoji, setEditEmoji] = useState('');
 
     const { upload } = usePluginStorage('soundboard');
 
@@ -120,6 +125,36 @@ export const SoundboardPage = () => {
         }
     };
 
+    const handleEdit = (sound: Sound) => {
+        setEditingSound(sound);
+        setEditName(sound.name);
+        setEditEmoji(sound.emoji);
+    };
+
+    const handleUpdateSound = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingSound || !editName || !editEmoji) return;
+
+        try {
+            const res = await fetch(`/api/plugins/soundboard/sounds/${editingSound.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: editName,
+                    emoji: editEmoji
+                })
+            });
+
+            if (!res.ok) throw new Error("Failed to update sound");
+
+            setEditingSound(null);
+            fetchData();
+        } catch (err) {
+            console.error("Update failed", err);
+            alert("Failed to update sound");
+        }
+    };
+
     const handlePreview = (soundId: string) => {
         const sound = sounds.find(s => s.id === soundId);
         if (sound) {
@@ -183,6 +218,13 @@ export const SoundboardPage = () => {
                                                 title="Preview in browser"
                                             >
                                                 <Play className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleEdit(sound)}
+                                                className="p-2 text-gray-500 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-full transition-colors"
+                                                title="Edit"
+                                            >
+                                                <Edit2 className="w-4 h-4" />
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(sound.id)}
@@ -289,6 +331,59 @@ export const SoundboardPage = () => {
                 >
                     <source src={previewAudio} type="audio/mpeg" />
                 </audio>
+            )}
+
+            {/* Edit Modal */}
+            {editingSound && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <Card className="w-full max-w-md p-6 relative">
+                        <button
+                            onClick={() => setEditingSound(null)}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                        <h2 className="text-xl font-bold mb-4">Edit Sound</h2>
+                        <form onSubmit={handleUpdateSound} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
+                                <Input
+                                    value={editName}
+                                    onChange={(e) => setEditName(e.target.value)}
+                                    placeholder="e.g. Vine Boom"
+                                    maxLength={32}
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Emoji</label>
+                                <Input
+                                    value={editEmoji}
+                                    onChange={(e) => setEditEmoji(e.target.value)}
+                                    placeholder="🔊"
+                                    maxLength={4}
+                                    required
+                                />
+                            </div>
+                            <div className="flex gap-3 mt-6">
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    className="flex-1"
+                                    onClick={() => setEditingSound(null)}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    className="flex-1"
+                                >
+                                    Save Changes
+                                </Button>
+                            </div>
+                        </form>
+                    </Card>
+                </div>
             )}
         </div>
     );

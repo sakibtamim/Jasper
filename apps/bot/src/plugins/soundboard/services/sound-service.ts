@@ -66,6 +66,23 @@ export class SoundService {
         return true;
     }
 
+    async updateSound(id: string, updates: { name?: string; emoji?: string }): Promise<Sound | null> {
+        const sounds = await this.getDbSounds();
+        const soundIndex = sounds.findIndex(s => s.id === id);
+
+        if (soundIndex === -1) return null;
+
+        const sound = sounds[soundIndex];
+
+        if (updates.name) sound.name = updates.name;
+        if (updates.emoji) sound.emoji = updates.emoji;
+
+        sounds[soundIndex] = sound;
+        await this.saveDbSounds(sounds);
+
+        return sound;
+    }
+
     async getStats(): Promise<SoundboardStats> {
         const plays = await this.getDbPlays();
         const sounds = await this.getDbSounds();
