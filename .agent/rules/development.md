@@ -7,7 +7,7 @@ trigger: model_decision
 ## Common Tasks
 
 ### Adding a New Command
-1. Create file in `src/commands/` (e.g., `mycommand.ts`)
+1. Create file in `apps/bot/src/commands/` (e.g., `mycommand.ts`)
 2. Use this boilerplate:
    ```typescript
    import { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.js";
@@ -26,14 +26,14 @@ trigger: model_decision
 4. Restart the bot
 
 ### Modifying Audio Logic
-- Edit `src/core/music-player.ts` or sub-modules in `src/core/audio/`
-- Stream handler: `src/core/audio/stream-handler.ts` (yt-dlp integration)
+- Edit `apps/bot/src/core/music-player.ts` or sub-modules in `apps/bot/src/core/audio/`
+- Stream handler: `apps/bot/src/core/audio/stream-handler.ts` (yt-dlp integration)
 - Always use `workerPool.allocateWorker()` before creating queue
 - Always release workers with `workerPool.releaseWorker()` when done
 - Queue Map is keyed by `voiceChannelId` for multi-channel support
 
 ### Adding Database Models
-1. Add interface to `src/core/db/types.ts`
+1. Add interface to `apps/bot/src/core/db/types.ts`
 2. Add methods to `DatabaseAdapter` interface
 3. Implement in both `sqlite-adapter.ts` and `postgres-adapter.ts`
 4. Use proper TypeScript types for all fields
@@ -72,7 +72,7 @@ trigger: model_decision
 
 ### Running Tests
 ```bash
-npm test              # Run all tests
+npm test              # Run all tests (Turbo)
 npm run test:watch    # Watch mode
 npm run test:coverage # Coverage report
 ```
@@ -101,7 +101,7 @@ npm run test:coverage # Coverage report
 - Ensure all bots invited to server
 
 ### Logging
-- Use `src/core/logger.ts` instead of `console.log`
+- Use `apps/bot/src/core/logger.ts` instead of `console.log`
 - AFR decisions logged for debugging
 - Database queries logged in development
 - Web API requests logged with `fastify.log`
@@ -110,7 +110,7 @@ npm run test:coverage # Coverage report
 
 ### Building
 ```bash
-npm run build  # Compiles TypeScript to dist/
+npm run build  # Compiles all apps/packages via Turbo
 npm start      # Runs compiled JavaScript
 ```
 
@@ -119,6 +119,7 @@ npm start      # Runs compiled JavaScript
 - Set `AFR_JASPER_WEIGHT` for production behavior
 - Ensure `ENCRYPTION_KEY` is 32+ characters
 - Use `BASE_URL` for OAuth redirect URI
+- Use `FRONTEND_URL` for React redirects
 
 ### Monitoring
 - Web dashboard at `/` shows bot status
@@ -137,4 +138,4 @@ npm start      # Runs compiled JavaScript
 ### Temporary Files
 - **Workspace Hygiene**: Never save temporary files (logs, diffs, review comments) in the root or source directories.
 - **Location**: Always use the `tmp/` directory, which is gitignored.
-- **Cleanup**: Delete temporary files when they are no longer needed. 
+- **Cleanup**: Delete temporary files when they are no longer needed.

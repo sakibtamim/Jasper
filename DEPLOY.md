@@ -40,7 +40,7 @@ Configure the following secrets in your GitHub repository settings (Settings > S
 This file configures PM2 to manage the bot process. It uses the `.cjs` extension because the project uses ES modules (`"type": "module"` in package.json), but PM2 requires CommonJS format.
 
 -   **Name**: `jasper-bot`
--   **Script**: `./dist/index.js` (The compiled entry point)
+-   **Script**: `./apps/bot/dist/index.js` (The compiled entry point)
 -   **Instances**: 1
 -   **Autorestart**: Enabled
 -   **Max Memory**: 1G (Restarts if memory usage exceeds 1GB)
@@ -51,11 +51,11 @@ The deployment is handled automatically by GitHub Actions when you push to the `
 
 1.  **Build**: 
     -   The workflow installs dependencies (with `YT_DLP_SKIP_POSTINSTALL=1` to skip yt-dlp download during build)
-    -   Compiles the TypeScript code
+    -   Runs `turbo run build` to compile all packages and apps
     -   Generates SHA256 checksums for:
-        -   All files in `dist/` (compiled application code)
-        -   All files in `public/` (Web UI assets: HTML, CSS, JS, images, vendor files)
-        -   Top-level config files (`package.json`, `package-lock.json`, `ecosystem.config.cjs`)
+        -   All files in `apps/bot/dist/` (compiled bot code)
+        -   All files in `apps/web/dist/` (compiled frontend code)
+        -   Top-level config files (`package.json`, `pnpm-lock.yaml`, `ecosystem.config.cjs`)
 2.  **Upload**: The compiled `dist` folder, `public` folder (Web UI), `scripts`, configuration files, and checksums are uploaded as an artifact.
 3.  **Deploy**:
     -   The artifact is downloaded and its integrity is verified using the checksums.

@@ -5,6 +5,8 @@ trigger: model_decision
 # Improvement Roadmap
 
 ## Current Status
+- ✅ Monorepo architecture (Turborepo)
+- ✅ React-based Web Dashboard (Vite)
 - ✅ Multi-cat worker pool architecture
 - ✅ Web dashboard with OAuth authentication
 - ✅ Database abstraction (SQLite/Postgres)

@@ -34,7 +34,8 @@ The following environment variables are required in `.env`:
 | :--- | :--- | :--- |
 | `DISCORD_CLIENT_ID` | Application ID from Discord Developer Portal | `1234567890` |
 | `DISCORD_CLIENT_SECRET` | Client Secret from Discord Developer Portal | `abcdef...` |
-| `BASE_URL` | Public-facing URL of the application | `http://localhost:3000` |
+| `BASE_URL` | Public-facing URL of the application (Backend) | `http://localhost:3000` |
+| `FRONTEND_URL` | URL of the React Frontend (for redirects) | `http://localhost:5173` (dev) |
 | `COOKIE_SECRET` | Secret key for signing cookies | `secret-change-me` |
 | `ENCRYPTION_KEY` | **Required**. Key for encrypting OAuth tokens (32+ characters) | `your-super-secret-key-here` |
 | `PBKDF2_ITERATIONS` | **Optional**. PBKDF2 iterations for key derivation | `100000` (default) |

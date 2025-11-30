@@ -13,7 +13,7 @@ trigger: always_on
   - `version`: Semantic versioning.
   - `entry`: Backend entry point (default: `index.js`).
   - `web`: Frontend entry point (optional, e.g., `web/index.js`).
-- **Directory**: Plugins reside in `src/plugins/<id>/`.
+- **Directory**: Plugins reside in `apps/bot/src/plugins/<id>/`.
 
 ## Backend Development
 - **Entry Point**: Must export a default object implementing the `Plugin` interface.
@@ -37,5 +37,5 @@ trigger: always_on
 - **Mocking**: Mock `PluginContext` for unit testing plugin logic.
 
 ## Build & Publish
-- **Build**: Run `npm run build:backend` to compile plugins.
+- **Build**: Run `turbo run build` to compile plugins.
 - **Export**: Run `npm run export-plugin <id>` to create a distributable `.zip`.
