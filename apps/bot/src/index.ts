@@ -1,10 +1,10 @@
 // Import env.ts first to ensure environment variables are loaded
-import { validateBotConfig } from './config/env.js';
+import { validateBotConfig, DISCORD_CLIENT_ID, GUILD_ID, DISCORD_TOKEN } from './config/env.js';
 
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "url";
-import { Collection } from "discord.js";
+import { Collection, REST, Routes } from "discord.js";
 import logger from "./core/logger.js";
 import workerPool from "./core/worker-pool.js";
 import { WorkerState } from "@jasper/types";
@@ -82,6 +82,29 @@ process.on("unhandledRejection", (reason, promise) => {
   // 7. Load Plugins (Must be before server starts)
   pluginManager.init(client, server);
   await pluginManager.loadPlugins();
+
+  // 7.5 Deploy Commands (Implicit Loading)
+  if (DISCORD_CLIENT_ID && GUILD_ID) {
+    try {
+      logger.info("[core] Deploying commands to Discord...");
+      const commandsData = client.commands.map((cmd: any) => {
+        // Handle both Builders (toJSON) and plain objects
+        return typeof cmd.data.toJSON === 'function' ? cmd.data.toJSON() : cmd.data;
+      });
+
+      const rest = new REST({ version: "10" }).setToken(DISCORD_TOKEN);
+
+      await rest.put(
+        Routes.applicationGuildCommands(DISCORD_CLIENT_ID, GUILD_ID),
+        { body: commandsData }
+      );
+      logger.info(`[core] Successfully deployed ${commandsData.length} commands.`);
+    } catch (error) {
+      logger.error(`[core] Failed to deploy commands: ${error}`);
+    }
+  } else {
+    logger.warn("[core] Skipping command deployment: DISCORD_CLIENT_ID or GUILD_ID missing.");
+  }
 
   // 8. Start Web UI Server
   await startServer();
