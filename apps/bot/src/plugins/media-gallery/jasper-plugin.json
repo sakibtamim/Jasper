@@ -24,7 +24,7 @@
         "navItems": [
             {
                 "label": "Media Gallery",
-                "path": "/plugins/media-gallery",
+                "href": "/plugins/media-gallery",
                 "icon": "Image"
             }
         ]
