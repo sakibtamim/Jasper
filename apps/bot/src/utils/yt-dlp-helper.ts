@@ -35,10 +35,10 @@ export function findYtDlpPath(): string | null {
     }
 
     // 2. Check for local static binary in the project root
-    // Assuming this file is in src/utils/, the root is ../../
+    // Use process.cwd() for more robust path resolution in both development and production
     const roots = [
-        path.resolve(__dirname, '../../'), // App root (production/standard)
-        path.resolve(__dirname, '../../../../') // Monorepo root (development)
+        path.join(process.cwd(), 'apps/bot'),  // App root when running from monorepo root
+        process.cwd(),                          // When running from app directory
     ];
 
     for (const root of roots) {

@@ -1,8 +1,15 @@
 import { useEffect, useState } from '@jasper/elements';
 import { fetchLogs } from '../services/client';
 
+interface LogEntry {
+    level: 'error' | 'warn' | 'info' | 'debug';
+    timestamp: string;
+    module?: string;
+    message: string;
+}
+
 export default function LogsPage() {
-    const [logs, setLogs] = useState<any[]>([]);
+    const [logs, setLogs] = useState<LogEntry[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {

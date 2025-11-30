@@ -1,6 +1,6 @@
 import { React } from '@jasper/elements';
 
-export type ComponentMap = Map<string, React.ComponentType<any>>;
+export type ComponentMap = Map<string, React.ComponentType<unknown>>;
 
 class ComponentRegistry {
     private components: ComponentMap = new Map();
@@ -11,7 +11,7 @@ class ComponentRegistry {
      * @param componentName The name of the component (must match manifest).
      * @param component The React component.
      */
-    register(pluginId: string, componentName: string, component: React.ComponentType<any>) {
+    register(pluginId: string, componentName: string, component: React.ComponentType<unknown>) {
         const key = `${pluginId}:${componentName}`;
         this.components.set(key, component);
         console.log(`[ComponentRegistry] Registered ${key}`);
@@ -22,7 +22,7 @@ class ComponentRegistry {
      * @param pluginId The ID of the plugin.
      * @param componentName The name of the component.
      */
-    get(pluginId: string, componentName: string): React.ComponentType<any> | null {
+    get(pluginId: string, componentName: string): React.ComponentType<unknown> | null {
         const key = `${pluginId}:${componentName}`;
         return this.components.get(key) || null;
     }
@@ -31,7 +31,7 @@ class ComponentRegistry {
      * Get a component by its full key (pluginId:componentName).
      * @param key The full key.
      */
-    getByKey(key: string): React.ComponentType<any> | null {
+    getByKey(key: string): React.ComponentType<unknown> | null {
         return this.components.get(key) || null;
     }
 }

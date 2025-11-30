@@ -9,6 +9,17 @@ interface User {
     discriminator: string;
 }
 
+// Type for the API client - matches the shape of apiClient from apps/web/services/client.ts
+interface ApiClient {
+    fetchWorkers: () => Promise<any>;
+    fetchQueues: (page?: number, limit?: number) => Promise<any>;
+    fetchStats: (limit?: number) => Promise<any>;
+    fetchCacheStats: () => Promise<any>;
+    fetchLogs: () => Promise<any>;
+    fetchAuthStatus: () => Promise<any>;
+    logout: () => Promise<void>;
+}
+
 interface AuthContextType {
     user: User | null;
     setUser: (user: User | null) => void;
@@ -17,8 +28,7 @@ interface AuthContextType {
         isDark: boolean;
         toggleTheme: () => void;
     };
-    // api client type would be here, simplified for now
-    api: any;
+    api: ApiClient;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);

@@ -4,9 +4,13 @@ import { useAppContext } from '../context/AppContext';
 import { usePluginContext } from '../context/PluginContext';
 import { PluginErrorBoundary } from './PluginErrorBoundary';
 
+interface ExtensionContext {
+    [key: string]: unknown;
+}
+
 interface ExtensionSlotProps {
     slot: string;
-    context?: Record<string, any>;
+    context?: ExtensionContext;
 }
 
 export default function ExtensionSlot({ slot, context }: ExtensionSlotProps) {
@@ -14,7 +18,7 @@ export default function ExtensionSlot({ slot, context }: ExtensionSlotProps) {
     const appContext = useAppContext();
 
     const widgets = useMemo(() => {
-        const slotWidgets: { id: string; Component: React.ComponentType<any> }[] = [];
+        const slotWidgets: { id: string; Component: React.ComponentType<unknown> }[] = [];
 
         for (const plugin of plugins) {
             const matchingWidgets = plugin.web?.widgets
@@ -39,7 +43,7 @@ export default function ExtensionSlot({ slot, context }: ExtensionSlotProps) {
         <>
             {widgets.map(({ id, Component }) => (
                 <PluginErrorBoundary key={id} pluginId={id.split(':')[0]} componentName={id.split(':')[1]}>
-                    <Component context={{ ...appContext, ...context }} />
+                    <Component {...({ context: { ...appContext, ...context } } as any)} />
                 </PluginErrorBoundary>
             ))}
         </>

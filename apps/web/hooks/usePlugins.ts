@@ -17,7 +17,9 @@ export function usePlugins() {
                 await Promise.all(registry.map(async (plugin) => {
                     if (plugin.web && plugin.web.entry) {
                         try {
-                            // Construct URL for the plugin entry point
+                            // Construct URL for the plugin entry point.
+                            // Plugin entry URL uses .js extension because plugins are built to ES modules
+                            // before deployment. See build-plugins.ts for the build process.
                             // See PLUGINS_DEV.md "Frontend Asset Serving" for details on this URL structure.
                             const entryUrl = `/plugins/${plugin.id}/web/index.js`;
 

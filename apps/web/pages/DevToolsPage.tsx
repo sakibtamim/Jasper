@@ -5,12 +5,121 @@ import { Trash2, RefreshCw, Upload, HardDrive, Users, Clock, Database, BarChart2
 import { useAuth } from '../context/AppContext';
 import { Lock } from 'lucide-react';
 
+// Type definitions for DevTools tab data
+interface OverviewData {
+    totalPlays: number;
+    totalDuration: number;
+    searchCacheSize: number;
+    audioMetadataCount: number;
+}
+
+interface UserData {
+    id: string;
+    username: string;
+    avatar?: string;
+    createdAt: string;
+}
+
+interface UsersData {
+    users: UserData[];
+}
+
+interface SessionData {
+    id: string;
+    userId: string;
+    expiresAt: string;
+    createdAt: string;
+}
+
+interface SessionsData {
+    sessions: SessionData[];
+}
+
+interface SearchCacheEntry {
+    query: string;
+    songTitle: string;
+    cachedAt: string;
+    expiresAt: string;
+}
+
+interface AudioCacheEntry {
+    videoId: string;
+    title: string;
+    duration: number;
+    cachedAt: string;
+}
+
+interface CacheData {
+    search: SearchCacheEntry[];
+    audio: AudioCacheEntry[];
+}
+
+interface SongStat {
+    songUrl: string;
+    songTitle: string;
+    playCount: number;
+}
+
+interface UserStat {
+    userId: string;
+    playCount: number;
+}
+
+interface StatsData {
+    songs: SongStat[];
+    users: UserStat[];
+    channels?: unknown[];
+    bots?: unknown[];
+}
+
+interface PluginData {
+    id: string;
+    name: string;
+    version: string;
+    enabled: boolean;
+    description?: string;
+    web?: { entry: string };
+    isTestPlugin?: boolean;
+}
+
+interface PluginsData {
+    plugins: PluginData[];
+}
+
+type DevToolsData = OverviewData | UsersData | SessionsData | CacheData | StatsData | PluginsData | null;
+
+// Type guards
+function isOverviewData(data: DevToolsData): data is OverviewData {
+    return data !== null && 'totalPlays' in data;
+}
+
+function isUsersData(data: DevToolsData): data is UsersData {
+    return data !== null && 'users' in data && !('songs' in data);
+}
+
+function isSessionsData(data: DevToolsData): data is SessionsData {
+    return data !== null && 'sessions' in data;
+}
+
+function isCacheData(data: DevToolsData): data is CacheData {
+    return data !== null && 'search' in data && 'audio' in data;
+}
+
+function isStatsData(data: DevToolsData): data is StatsData {
+    return data !== null && 'songs' in data;
+}
+
+function isPluginsData(data: DevToolsData): data is PluginsData {
+    return data !== null && 'plugins' in data;
+}
+
+
 export default function DevToolsPage() {
     const { plugins } = usePluginContext();
     const { isAuthenticated, loading: authLoading } = useAuth();
     const [activeTab, setActiveTab] = useState('overview');
     const [loading, setLoading] = useState(false);
-    const [data, setData] = useState<any>(null);
+    const [data, setData] = useState<DevToolsData>(null);
     const [message, setMessage] = useState<string | null>(null);
 
     // Plugin Upload State
@@ -233,7 +342,7 @@ export default function DevToolsPage() {
                             </div>
                         ) : (
                             <>
-                                {activeTab === 'overview' && data && (
+                                {activeTab === 'overview' && isOverviewData(data) && (
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                                         <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                                             <div className="text-sm text-gray-500 dark:text-gray-400">Total Plays</div>
@@ -256,7 +365,7 @@ export default function DevToolsPage() {
                                     </div>
                                 )}
 
-                                {activeTab === 'users' && data?.users && (
+                                {activeTab === 'users' && isUsersData(data) && (
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
                                             <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
@@ -290,7 +399,7 @@ export default function DevToolsPage() {
                                     </div>
                                 )}
 
-                                {activeTab === 'sessions' && data?.sessions && (
+                                {activeTab === 'sessions' && isSessionsData(data) && (
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
                                             <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
@@ -319,7 +428,7 @@ export default function DevToolsPage() {
                                     </div>
                                 )}
 
-                                {activeTab === 'cache' && data && (
+                                {activeTab === 'cache' && isCacheData(data) && (
                                     <div className="space-y-8">
                                         <div>
                                             <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-white">Search Cache</h3>
@@ -384,7 +493,7 @@ export default function DevToolsPage() {
                                     </div>
                                 )}
 
-                                {activeTab === 'stats' && data && (
+                                {activeTab === 'stats' && isStatsData(data) && (
                                     <div className="space-y-8">
                                         {/* Songs */}
                                         <div>
@@ -470,11 +579,11 @@ export default function DevToolsPage() {
 
                                         <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
                                             <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-4">Installed Plugins</h3>
-                                            {!data?.plugins || data.plugins.length === 0 ? (
+                                            {!isPluginsData(data) || data.plugins.length === 0 ? (
                                                 <p className="text-gray-500 dark:text-gray-400">No plugins installed.</p>
                                             ) : (
                                                 <div className="grid gap-4">
-                                                    {data.plugins.map((plugin: any) => (
+                                                    {isPluginsData(data) && data.plugins.map((plugin) => (
                                                         <div key={plugin.id} className={`flex items-center justify-between p-4 rounded-lg border ${plugin.enabled ? 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700' : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-800 opacity-75'}`}>
                                                             <div>
                                                                 <div className="flex items-center gap-2">

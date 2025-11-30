@@ -1,3 +1,9 @@
+/**
+ * @note This package uses @jasper/elements for React imports to prevent
+ * multi-React issues in the monorepo. All React imports should come from
+ * @jasper/elements instead of 'react' directly. This ensures a single
+ * React instance is shared across all packages.
+ */
 import { React, TableHTMLAttributes } from '@jasper/elements';
 
 interface TableProps extends TableHTMLAttributes<HTMLTableElement> {

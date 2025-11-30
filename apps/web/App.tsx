@@ -17,7 +17,7 @@ function PluginRoute({ pluginId, componentName }: { pluginId: string, componentN
     useEffect(() => {
         // Components should be registered by now since PluginProvider loads them
         const Comp = componentRegistry.get(pluginId, componentName);
-        setComponent(() => Comp);
+        setComponent(Comp);
     }, [pluginId, componentName]);
 
     if (!Component) return <div className="p-8 text-center text-gray-500">Component not found: {pluginId}:{componentName}</div>;
