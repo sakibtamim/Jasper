@@ -1,7 +1,8 @@
 import { React, useState, useEffect, FormEvent, ReactRouterDOM } from '@jasper/elements';
 
-import { Card, Button, Input } from '@jasper/ui';
+import { Card, Button, Input, Loader } from '@jasper/ui';
 import { usePluginStorage } from '@jasper/hooks';
+import { Upload, ExternalLink, Trash2 } from 'lucide-react';
 
 const PLUGIN_ID = 'media-gallery';
 
@@ -86,9 +87,12 @@ function GalleryPage() {
     };
 
     return (
-        <div className="p-6 max-w-6xl mx-auto">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold">Media Gallery</h1>
+        <div className="p-8 max-w-7xl mx-auto">
+            <div className="flex justify-between items-center mb-8">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">Media Gallery</h1>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1">Manage your plugin assets</p>
+                </div>
                 <div className="relative">
                     <input
                         type="file"
@@ -100,52 +104,63 @@ function GalleryPage() {
                     />
                     <label
                         htmlFor="gallery-upload"
-                        className={`px-4 py-2 rounded-md bg-blue-600 text-white cursor-pointer hover:bg-blue-700 transition-colors ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-lg bg-blue-600 text-white cursor-pointer hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                        {uploading ? 'Uploading...' : 'Upload Image'}
+                        <Upload className="w-4 h-4" />
+                        <span className="font-medium">{uploading ? 'Uploading...' : 'Upload Image'}</span>
                     </label>
                 </div>
             </div>
 
             {error && (
-                <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-md">
-                    {error}
+                <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-lg flex items-center gap-2">
+                    <span className="font-bold">Error:</span> {error}
                 </div>
             )}
 
             {loading && files.length === 0 ? (
-                <div className="text-center py-12">Loading...</div>
+                <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                    <Loader className="w-8 h-8 mb-4 text-blue-500" />
+                    <p>Loading your gallery...</p>
+                </div>
             ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                     {files.map(file => (
-                        <div key={file} className="group relative aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-                            <img src={getUrl(file)} alt={file} className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                <a
-                                    href={getUrl(file)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="p-2 bg-white/20 hover:bg-white/40 rounded-full text-white backdrop-blur-sm"
-                                    title="View full size"
-                                >
-                                    View
-                                </a>
-                                <button
-                                    onClick={() => handleDelete(file)}
-                                    className="p-2 bg-red-500/80 hover:bg-red-600/80 rounded-full text-white backdrop-blur-sm"
-                                    title="Delete"
-                                >
-                                    Delete
-                                </button>
-                            </div>
-                            <div className="absolute bottom-0 left-0 right-0 p-2 bg-black/60 text-white text-xs truncate">
-                                {file}
+                        <div key={file} className="group relative aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all duration-300">
+                            <img src={getUrl(file)} alt={file} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-3 p-4">
+                                <div className="flex gap-2">
+                                    <a
+                                        href={getUrl(file)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-2.5 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-md transition-colors"
+                                        title="View full size"
+                                    >
+                                        <ExternalLink className="w-5 h-5" />
+                                    </a>
+                                    <button
+                                        onClick={() => handleDelete(file)}
+                                        className="p-2.5 bg-red-500/80 hover:bg-red-600/80 rounded-full text-white backdrop-blur-md transition-colors"
+                                        title="Delete"
+                                    >
+                                        <Trash2 className="w-5 h-5" />
+                                    </button>
+                                </div>
+                                <p className="text-white/90 text-xs font-medium truncate w-full text-center px-2">
+                                    {file}
+                                </p>
                             </div>
                         </div>
                     ))}
                     {files.length === 0 && !loading && (
-                        <div className="col-span-full text-center py-12 text-gray-500 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
-                            No images found. Upload one to get started!
+                        <div className="col-span-full flex flex-col items-center justify-center py-16 text-gray-500 dark:text-gray-400 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50/50 dark:bg-gray-800/50">
+                            <div className="w-16 h-16 mb-4 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                                <Upload className="w-8 h-8 text-gray-400" />
+                            </div>
+                            <p className="text-lg font-medium">No images yet</p>
+                            <p className="text-sm mt-1">Upload an image to get started</p>
                         </div>
                     )}
                 </div>
