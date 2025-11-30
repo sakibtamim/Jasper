@@ -35,12 +35,21 @@ interface TopBot {
     playCount: number;
 }
 
+interface TopCacheHit {
+    entityId: string;
+    avatarUrl?: string;
+    displayName: string;
+    entityType: 'bot' | 'user';
+    cacheHits: number;
+}
+
 interface StatsData {
     globalStats: GlobalStats;
     topSongs: TopSong[];
     topUsers: TopUser[];
     topChannels: TopChannel[];
     topBots: TopBot[];
+    topCacheHits: TopCacheHit[];
 }
 
 export default function StatsPage() {
@@ -97,7 +106,7 @@ export default function StatsPage() {
         );
     }
 
-    const { globalStats, topSongs, topUsers, topChannels, topBots } = stats || {};
+    const { globalStats, topSongs, topUsers, topChannels, topBots, topCacheHits } = stats || {};
 
     return (
         <section id="stats" className="mb-16 scroll-mt-24">
@@ -272,6 +281,49 @@ export default function StatsPage() {
                     )}
                 </StatsCard>
             </div>
+
+            {/* Third row: Top Cache Hits */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+                <StatsCard title="Top Cache Hits" icon="zap" color="text-yellow-500">
+                    {(topCacheHits && topCacheHits.length > 0) ? (
+                        topCacheHits.map((hit, index) => (
+                            <div key={hit.entityId} className="p-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                <div className="text-2xl font-bold text-gray-300 dark:text-gray-600 w-8 text-center">
+                                    {index + 1}
+                                </div>
+                                {hit.avatarUrl ? (
+                                    <img
+                                        src={hit.avatarUrl}
+                                        alt={hit.displayName}
+                                        className="w-10 h-10 rounded-full border-2 border-yellow-500 object-cover"
+                                    />
+                                ) : (
+                                    <div className="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center">
+                                        <i data-lucide={hit.entityType === 'bot' ? 'bot' : 'user'} className="w-5 h-5 text-yellow-500"></i>
+                                    </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-gray-900 dark:text-white truncate">
+                                        {hit.displayName}
+                                    </div>
+                                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                        {hit.entityType === 'bot' ? '🤖 Bot' : '👤 User'}
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="font-bold text-yellow-500 flex items-center gap-1">
+                                        <i data-lucide="zap" className="w-4 h-4"></i>
+                                        {hit.cacheHits}
+                                    </div>
+                                    <div className="text-[10px] text-gray-400 uppercase tracking-wider">Hits</div>
+                                </div>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="p-4 text-center text-gray-500 text-sm">No cache hits yet</div>
+                    )}
+                </StatsCard>
+            </div>
         </section>
     );
 }
@@ -286,7 +338,7 @@ function StatsCard({ title, icon, color, children }: { title: string; icon: stri
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
             <div className="p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                 <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <i data-lucide={icon} className={`w-4 h-4 ${colorClasses[color] || 'text-gray-500'}`}></i>
+                    <i data-lucide={icon} className={`w-4 h-4 ${colorClasses[color] || color}`}></i>
                     {title}
                 </h3>
             </div>

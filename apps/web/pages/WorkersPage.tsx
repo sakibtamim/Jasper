@@ -134,11 +134,17 @@ function WorkerCard({ worker }: { worker: Worker }) {
 
             <div className="flex items-start gap-4 mb-4 relative z-10">
                 <div className="relative">
-                    <img
-                        src={worker.avatarUrl || '/assets/images/jasper-logo.png'}
-                        alt={worker.name}
-                        className={`w-16 h-16 rounded-full border-2 ${borderColor} shadow-md object-cover bg-gray-100 dark:bg-gray-700`}
-                    />
+                    {worker.avatarUrl ? (
+                        <img
+                            src={worker.avatarUrl}
+                            alt={worker.name}
+                            className={`w-16 h-16 rounded-full border-2 ${borderColor} shadow-md object-cover bg-gray-100 dark:bg-gray-700`}
+                        />
+                    ) : (
+                        <div className={`w-16 h-16 rounded-full border-2 ${borderColor} shadow-md bg-gray-100 dark:bg-gray-700 flex items-center justify-center`}>
+                            <i data-lucide="bot" className="w-8 h-8 text-gray-400"></i>
+                        </div>
+                    )}
                     <div className={`absolute bottom-0 right-0 w-4 h-4 rounded-full ${statusDot} border-2 border-white dark:border-gray-800`}></div>
                 </div>
 
@@ -158,9 +164,7 @@ function WorkerCard({ worker }: { worker: Worker }) {
             <div className="space-y-3 relative z-10">
                 <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
                     <i data-lucide="activity" className="w-4 h-4 text-brand-primary shrink-0"></i>
-                    <span className="truncate">
-                        {worker.activity === 'Custom Status' ? 'Playing Music' : worker.activity || 'None'}
-                    </span>
+                    <span className="truncate">{(worker.activity === 'Custom Status' ? 'Playing Music' : worker.activity) || 'None'}</span>
                 </div>
 
                 {worker.guildId && (
@@ -189,9 +193,7 @@ function WorkerCard({ worker }: { worker: Worker }) {
                             {worker.nowPlaying.requester && (
                                 <div className="flex items-center gap-1.5" title={`Requested by ${worker.nowPlaying.requester.username}`}>
                                     <span className="text-[10px] uppercase tracking-wider opacity-70">Req by</span>
-                                    <span className="text-[10px] font-medium truncate max-w-[80px]">
-                                        {worker.nowPlaying.requester.displayName || worker.nowPlaying.requester.username}
-                                    </span>
+                                    <span className="text-[10px] font-medium truncate max-w-[80px]">{worker.nowPlaying.requester.displayName || worker.nowPlaying.requester.username}</span>
                                     <img
                                         src={worker.nowPlaying.requester.avatarUrl || 'https://cdn.discordapp.com/embed/avatars/0.png'}
                                         className="w-4 h-4 rounded-full border border-gray-200 dark:border-gray-600"
@@ -205,9 +207,7 @@ function WorkerCard({ worker }: { worker: Worker }) {
                                 {worker.nowPlaying.thumbnail ? (
                                     <img src={worker.nowPlaying.thumbnail} className="w-full h-full object-cover" alt="" />
                                 ) : (
-                                    <div className="flex items-center justify-center w-full h-full">
-                                        <i data-lucide="music" className="w-6 h-6 text-gray-400"></i>
-                                    </div>
+                                    <div className="flex items-center justify-center w-full h-full"><i data-lucide="music" className="w-6 h-6 text-gray-400"></i></div>
                                 )}
                             </div>
                             <div className="min-w-0">
@@ -219,8 +219,7 @@ function WorkerCard({ worker }: { worker: Worker }) {
                     </div>
                 )}
 
-                {/* Jump to Queue button for busy workers */}
-                {isBusy && worker.guildId && worker.voiceChannelId && (
+                {isBusy && worker.guildId && (
                     <button
                         onClick={() => {
                             const queueElement = document.getElementById(`queue-${worker.guildId}-${worker.voiceChannelId}`);

@@ -11,6 +11,8 @@ module.exports = {
                 brand: {
                     primary: '#ff6ad5',
                     secondary: '#00e5ff',
+                    dark: '#0f172a',
+                    surface: '#1e293b',
                 },
             },
         },

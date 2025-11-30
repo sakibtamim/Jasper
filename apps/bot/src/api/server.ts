@@ -10,7 +10,7 @@ import fastifyCookie from '@fastify/cookie';
 import db from '../core/db/index.js';
 import authRoutes from './auth.js';
 import devtoolsRoutes from './devtools.js';
-import { PORT, COOKIE_SECRET } from '../config/env.js';
+import { PORT, COOKIE_SECRET, isDevelopment } from '../config/env.js';
 import hookManager from '../core/plugins/hook-manager.js';
 import pluginsRegistryRoutes from './plugins-registry.js';
 import pluginsManagementRoutes from './plugins-management.js';
@@ -378,8 +378,14 @@ export async function startServer() {
 
     try {
         await server.listen({ port: PORT, host: '0.0.0.0' });
-        logger.info(`[webui] Web UI server running at http://localhost:${PORT}`);
-        logger.info(`[webui] Legacy UI available at http://localhost:${PORT}/legacy/index.html`);
+        logger.info(`[webui] Backend API server running at http://localhost:${PORT}`);
+        if (isDevelopment) {
+            logger.info(`[webui] React Dashboard: http://localhost:5173 (Vite dev server)`);
+            logger.info(`[webui] Legacy UI: http://localhost:5173/legacy/index.html (via Vite proxy)`);
+        } else {
+            logger.info(`[webui] React Dashboard: http://localhost:${PORT}`);
+            logger.info(`[webui] Legacy UI: http://localhost:${PORT}/legacy/index.html`);
+        }
 
         // Hook: SERVER_READY
         await hookManager.trigger('SERVER_READY', { server });

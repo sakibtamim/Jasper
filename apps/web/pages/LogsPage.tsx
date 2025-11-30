@@ -31,8 +31,8 @@ export default function LogsPage() {
         switch (level) {
             case 'error': return 'text-red-600 dark:text-red-400';
             case 'warn': return 'text-yellow-600 dark:text-yellow-400';
-            case 'debug': return 'text-blue-600 dark:text-blue-400';
-            case 'info': return 'text-green-600 dark:text-green-400';
+            case 'debug': return 'text-gray-500 dark:text-gray-400';
+            case 'info': return 'text-blue-600 dark:text-blue-400';
             default: return 'text-gray-500 dark:text-gray-400';
         }
     };
