@@ -1,4 +1,4 @@
-import { HookName, HookCallback } from "./plugin-interface.js";
+import { HookName, HookCallback } from "@jasper/types";
 import logger from "../logger.js";
 
 export class HookManager {

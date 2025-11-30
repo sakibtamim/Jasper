@@ -4,7 +4,7 @@ import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs/promises';
 import logger from '../logger.js';
-import { Song } from '../audio/queue-manager.js';
+import { Song } from "@jasper/types";
 import { ICacheStorage, CacheStats, CACHE_AUDIO_TTL_HOURS, CACHE_SEARCH_TTL_HOURS } from '../cache-manager.js';
 import { getDatabase } from '../db/index.js';
 import { getYtDlpPath } from '../audio/stream-handler.js';

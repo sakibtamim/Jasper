@@ -1,7 +1,10 @@
 import { Events, VoiceState, Client } from "discord.js";
 import { AudioPlayerStatus } from "@discordjs/voice";
 import logger from "../core/logger.js";
+import workerPool from "../core/worker-pool.js";
+import { WorkerState } from "@jasper/types";
 import { getQueue } from "../core/audio/queue-manager.js";
+import { Queue } from "@jasper/types";
 import { setVoiceStatus } from "../core/utils/voice-utils.js";
 import hookManager from "../core/plugins/hook-manager.js";
 

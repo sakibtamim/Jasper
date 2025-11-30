@@ -8,12 +8,14 @@ import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import logger from "../logger.js";
 import workerPool from "../worker-pool.js";
-import { Plugin, PluginContext } from "./plugin-interface.js";
+import { WorkerState } from "@jasper/types";
+import { Plugin, PluginContext } from "@jasper/types";
 import hookManager from "./hook-manager.js";
 import { ScopedPluginStore } from "./plugin-store.js";
 import { PluginStorage } from "./plugin-storage.js";
 import coreDataAccessor from "./core-data-accessor.js";
 import { getQueue } from "../audio/queue-manager.js";
+import { Queue } from "@jasper/types";
 import semver from "semver";
 
 const execPromise = promisify(exec);

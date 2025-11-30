@@ -1,5 +1,5 @@
 import db from "../db/index.js";
-import { CoreDataAccessor } from "./plugin-interface.js";
+import { CoreDataAccessor } from "@jasper/types";
 import { SongStats, UserStats } from "../db/types.js";
 
 export class ReadOnlyCoreDataAccessor implements CoreDataAccessor {

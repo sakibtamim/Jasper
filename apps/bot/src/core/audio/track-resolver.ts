@@ -1,7 +1,7 @@
 import { fetchVideoData, isUrl } from "./stream-handler.js";
 import ytSearch from "yt-search";
 import { isCacheEnabled, getCacheStorage } from "../cache-manager.js";
-import { Song } from "./queue-manager.js";
+import { Song } from "@jasper/types";
 
 export async function resolveTrack(query: string, requesterId?: string, requesterName?: string): Promise<Song> {
     // Check search cache first

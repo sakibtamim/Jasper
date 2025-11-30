@@ -3,35 +3,7 @@ import { setVoiceStatus } from "../utils/voice-utils.js";
 import workerPool from "../worker-pool.js";
 import { VoiceConnection, AudioPlayer } from "@discordjs/voice";
 import { TextBasedChannel, Message } from "discord.js";
-import { WorkerState } from "../worker-pool.js";
-
-export interface Song {
-    title: string;
-    url: string;
-    durationInSec: number;
-    requestedBy: string;
-    requesterId?: string;
-    thumbnail?: string;
-    fromCache?: boolean;
-    startTime?: number;
-}
-
-export interface Queue {
-    voiceChannelId: string;
-    guildId: string;
-    textChannel: TextBasedChannel | null;
-    connection: VoiceConnection;
-    player: AudioPlayer;
-    songs: Song[];
-    nowPlaying: Song | null;
-    autoplay: boolean;
-    worker: WorkerState;
-    idleTimeout: NodeJS.Timeout | null;
-    stopping: boolean;
-    playingMessage?: Message;
-    isAutoPaused?: boolean;
-    isRadio?: boolean;
-}
+import { WorkerState, Queue, Song } from "@jasper/types";
 
 // Map<VoiceChannelId, QueueObject>
 const queues = new Map<string, Queue>();

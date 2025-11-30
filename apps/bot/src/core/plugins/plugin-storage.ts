@@ -1,12 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { IPluginStorage } from '@jasper/types';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // apps/bot/src/core/plugins/plugin-storage.ts -> apps/bot/data/plugins
 const STORAGE_ROOT = path.resolve(__dirname, '../../../../data/plugins');
 
-export class PluginStorage {
+export class PluginStorage implements IPluginStorage {
     private pluginId: string;
     private storageDir: string;
 
