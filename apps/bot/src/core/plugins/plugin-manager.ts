@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { Client } from "discord.js";
 import { FastifyInstance } from "fastify";
+import { joinVoiceChannel, createAudioPlayer, createAudioResource, StreamType, NoSubscriberBehavior } from "@discordjs/voice";
 import logger from "../logger.js";
 import workerPool from "../worker-pool.js";
 import { Plugin, PluginContext } from "./plugin-interface.js";
@@ -10,7 +11,9 @@ import hookManager from "./hook-manager.js";
 import { ScopedPluginStore } from "./plugin-store.js";
 import { PluginStorage } from "./plugin-storage.js";
 import coreDataAccessor from "./core-data-accessor.js";
+import { getQueue } from "../audio/queue-manager.js";
 import semver from "semver";
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -63,6 +66,87 @@ export class PluginManager {
                 info: (msg: string) => logger.info(`[plugins] ${msg}`),
                 warn: (msg: string) => logger.warn(`[plugins] ${msg}`),
                 error: (msg: string) => logger.error(`[plugins] ${msg}`),
+            },
+            playAudio: async (params) => {
+                const { voiceChannelId, guildId, audioPath, title, requesterId } = params;
+
+                // Check if file exists
+                if (!fs.existsSync(audioPath)) {
+                    throw new Error(`Audio file not found: ${audioPath}`);
+                }
+
+                // Check if queue already exists
+                const existingQueue = getQueue(voiceChannelId);
+
+                if (existingQueue) {
+                    // Queue exists - play directly on existing player
+                    logger.info(`[plugins] Playing audio on existing queue in ${voiceChannelId}`);
+                    const resource = createAudioResource(fs.createReadStream(audioPath), {
+                        inputType: StreamType.Arbitrary
+                    });
+                    existingQueue.player.play(resource);
+                    return;
+                }
+
+                // No queue - need to create temporary connection
+                logger.info(`[plugins] No queue found, creating temporary connection for ${voiceChannelId}`);
+
+                // Allocate a worker
+                const worker = workerPool.allocateWorker(guildId, voiceChannelId);
+                if (!worker) {
+                    throw new Error("No workers available for audio playback");
+                }
+
+                try {
+                    // Fetch the channel
+                    const channel = await worker.client.channels.fetch(voiceChannelId);
+                    if (!channel || !channel.isVoiceBased()) {
+                        throw new Error("Invalid voice channel");
+                    }
+
+                    // Join voice channel
+                    const connection = joinVoiceChannel({
+                        channelId: voiceChannelId,
+                        guildId: guildId,
+                        adapterCreator: channel.guild.voiceAdapterCreator,
+                        group: worker.client.user!.id,
+                        selfDeaf: true,
+                    });
+
+                    // Create player
+                    const player = createAudioPlayer({
+                        behaviors: { noSubscriber: NoSubscriberBehavior.Stop }
+                    });
+                    connection.subscribe(player);
+
+                    // Play audio
+                    const resource = createAudioResource(fs.createReadStream(audioPath), {
+                        inputType: StreamType.Arbitrary
+                    });
+                    player.play(resource);
+
+                    logger.info(`[plugins] Playing audio: ${title || audioPath}`);
+
+                    // Auto-cleanup after playback
+                    player.once('idle', () => {
+                        setTimeout(() => {
+                            connection.destroy();
+                            workerPool.releaseWorker(voiceChannelId);
+                            logger.info(`[plugins] Cleaned up temporary audio connection for ${voiceChannelId}`);
+                        }, 5000); // 5 second delay after idle
+                    });
+
+                    // Error handling
+                    player.on('error', (error) => {
+                        logger.error(`[plugins] Audio player error: ${error.message}`);
+                        connection.destroy();
+                        workerPool.releaseWorker(voiceChannelId);
+                    });
+
+                } catch (error) {
+                    workerPool.releaseWorker(voiceChannelId);
+                    throw error;
+                }
             }
         };
         logger.info("[plugins] PluginManager initialized");

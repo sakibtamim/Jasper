@@ -99,6 +99,15 @@ export interface PluginContext {
 
     // Command registration
     registerCommand(command: SlashCommandDefinition): void;
+
+    // Audio playback (for plugins that need to play audio files)
+    playAudio(params: {
+        voiceChannelId: string;
+        guildId: string;
+        audioPath: string;  // Absolute path to audio file
+        title?: string;     // Display name for the audio
+        requesterId: string; // User who triggered this
+    }): Promise<void>;
 }
 
 // --- Plugin Definition ---

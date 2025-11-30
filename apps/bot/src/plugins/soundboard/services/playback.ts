@@ -1,13 +1,9 @@
 import { PluginContext } from "../../../core/plugins/plugin-interface.js";
 import { Sound, Play } from "../types.js";
 import { randomUUID } from "crypto";
-import { getQueue } from "../../../core/audio/queue-manager.js";
-import { createAudioResource, StreamType } from "@discordjs/voice";
-import fs from "fs";
 
 /**
- * Ultra-simple soundboard playback - if queue exists, play sound directly on that worker
- * This is the simplest possible implementation
+ * Play a soundboard clip using the new core playAudio API
  */
 export async function playSoundboardClip(
     context: PluginContext,
@@ -52,31 +48,23 @@ export async function playSoundboardClip(
         throw new Error("Sound file not found");
     }
 
-    if (!fs.existsSync(fsPath)) {
-        throw new Error("Sound file does not exist on disk");
-    }
-
-    // 3. Get existing queue (user must already be in a voice channel with the bot)
-    const queue = getQueue(voiceChannelId);
-
-    if (!queue) {
-        throw new Error("No active music session. Please use /play first to start a session, then use /soundboard");
-    }
-
-    // 4. Play sound directly on the existing player
+    // 3. Use core playAudio API
     try {
-        const resource = createAudioResource(fs.createReadStream(fsPath), {
-            inputType: StreamType.Arbitrary
+        await context.playAudio({
+            voiceChannelId,
+            guildId,
+            audioPath: fsPath,
+            title: `${sound.emoji} ${sound.name}`,
+            requesterId: userId
         });
 
-        queue.player.play(resource);
-        logger.info(`Playing soundboard clip: ${sound.name} in ${voiceChannelId}`);
+        logger.info(`Played soundboard clip: ${sound.name}`);
     } catch (err) {
         logger.error(`Failed to play sound: ${err}`);
-        throw new Error("Failed to play sound effect");
+        throw err;
     }
 
-    // 5. Log Stats
+    // 4. Log Stats
     const playRecord: Play = {
         id: randomUUID(),
         soundId: sound.id,
