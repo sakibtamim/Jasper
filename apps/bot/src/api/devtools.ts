@@ -7,6 +7,11 @@ import { fetchVideoData } from '../core/audio/stream-handler.js';
 const devtoolsRoutes: FastifyPluginAsync = async (fastify) => {
     // Middleware to check if user is authenticated
     fastify.addHook('onRequest', async (request, reply) => {
+        // Allow public access to global stats
+        if (request.url === '/api/devtools/stats' || request.url.startsWith('/api/devtools/stats?')) {
+            return;
+        }
+
         if (!request.user) {
             return reply.status(401).send({ error: 'Unauthorized' });
         }
