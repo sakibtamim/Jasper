@@ -100,32 +100,51 @@ export class PluginManager {
                 const existingQueue = getQueue(voiceChannelId);
 
                 if (existingQueue) {
-                    logger.debug(`[plugins] Found existing queue for ${voiceChannelId}, using separate temp player`);
+                    logger.debug(`[plugins] Found existing queue for ${voiceChannelId}, using pause/resume with player switching`);
 
-                    // Create a separate temporary player for soundboard
-                    // This prevents interfering with the main player and its idle handlers
+                    // 1. Pause main player if currently playing
+                    const wasPlaying = existingQueue.player.state.status === AudioPlayerStatus.Playing;
+                    if (wasPlaying) {
+                        existingQueue.player.pause();
+                        logger.info(`[plugins] Paused music for soundboard in ${voiceChannelId}`);
+                    }
+
+                    // 2. Create temporary player for soundboard
                     const tempPlayer = createAudioPlayer({
                         behaviors: { noSubscriber: NoSubscriberBehavior.Stop }
                     });
 
-                    // Subscribe temp player to the existing connection
-                    // Discord allows multiple players on the same connection
+                    // 3. Switch subscription from main player to temp player
                     existingQueue.connection.subscribe(tempPlayer);
+                    logger.info(`[plugins] Switched to temp player for soundboard in ${voiceChannelId}`);
 
-                    logger.info(`[plugins] Playing soundboard on temporary player in ${voiceChannelId}`);
+                    // 4. Play soundboard on temp player
                     const resource = createAudioResource(fs.createReadStream(audioPath), {
                         inputType: StreamType.Arbitrary
                     });
                     tempPlayer.play(resource);
 
-                    // Clean up temp player when soundboard finishes
+                    // 5. On soundboard finish: restore main player
                     tempPlayer.once('idle', () => {
+                        // Re-subscribe main player to connection
+                        existingQueue.connection.subscribe(existingQueue.player);
+                        logger.info(`[plugins] Restored main player subscription in ${voiceChannelId}`);
+
+                        // Resume if was playing
+                        if (wasPlaying) {
+                            existingQueue.player.unpause();
+                            logger.info(`[plugins] Resumed music after soundboard in ${voiceChannelId}`);
+                        }
+
+                        // Cleanup temp player
                         tempPlayer.stop();
-                        logger.info(`[plugins] Soundboard finished, temp player cleaned up in ${voiceChannelId}`);
                     });
 
+                    // 6. Error handling - ensure we restore main player
                     tempPlayer.on('error', (error) => {
-                        logger.error(`[plugins] Temp player error: ${error.message}`);
+                        logger.error(`[plugins] Soundboard error: ${error.message}`);
+                        existingQueue.connection.subscribe(existingQueue.player);
+                        if (wasPlaying) existingQueue.player.unpause();
                         tempPlayer.stop();
                     });
 
@@ -171,6 +190,10 @@ export class PluginManager {
                     const duration = await getAudioDuration(audioPath);
                     logger.info(`[plugins] Audio duration detected: ${duration}ms`);
 
+                    // Validate timeout duration (minimum 5s)
+                    const timeoutDuration = Math.max(60000, 5000); // Use 60s or minimum 5s
+                    logger.debug(`[plugins] Using cleanup timeout: ${timeoutDuration}ms`);
+
                     // Play audio
                     const resource = createAudioResource(fs.createReadStream(audioPath), {
                         inputType: StreamType.Arbitrary
@@ -184,7 +207,7 @@ export class PluginManager {
                         connection.destroy();
                         workerPool.releaseWorker(voiceChannelId);
                         logger.info(`[plugins] Cleaned up temporary audio connection for ${voiceChannelId}`);
-                    }, 60000); // 1 minute
+                    }, timeoutDuration);
 
                     // Error handling
                     player.on('error', (error) => {
