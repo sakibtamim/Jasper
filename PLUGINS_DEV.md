@@ -214,3 +214,45 @@ We provide several scripts to help with plugin development:
 | `pnpm plugin:export <id>` | Packages your plugin into a `.zip` file. Use `--src` to export source code. |
 | `pnpm plugin:import <zip>` | Imports a plugin from a zip file. |
 
+---
+
+## 📚 Reference Plugins
+
+We provide several reference plugins in the `apps/bot/src/plugins` directory to help you get started.
+
+### 1. Dashboard Notes (`dashboard-notes`)
+**Type**: Full-Stack (Backend + Frontend)
+
+A complete CRUD application that allows users to manage personal notes from the dashboard.
+
+*   **Backend**:
+    *   Implements a REST API (`GET`, `POST`, `DELETE`) for managing notes.
+    *   Uses `context.db.plugin` to persist data safely.
+    *   Demonstrates input validation and error handling.
+*   **Frontend**:
+    *   **Widget**: Displays a quick view of recent notes on the main dashboard.
+    *   **Page**: A full management interface with a table, form, and delete actions.
+    *   **UI**: Uses `@jasper/ui` components (`Card`, `Table`, `Button`) for a native look.
+*   **DX Tip**: Check `web/index.tsx` to see how to share state logic (hooks) between the Widget and the Page.
+
+### 2. Sound Effect Plugin (`sound-effect-plugin`)
+**Type**: Backend Only
+
+Plays a sound effect when the bot joins a voice channel.
+
+*   **Backend**:
+    *   Listens to the `QUEUE_CREATE` hook to detect when the bot joins a channel.
+    *   Uses `queue.player.play()` to inject audio into the stream.
+    *   Demonstrates how to interact with the core audio engine.
+*   **DX Tip**: This is a great example of how to build "reactive" plugins that respond to bot events.
+
+### 3. Advanced Hooks Test (`advanced-hooks-test-plugin`)
+**Type**: Backend Only
+
+Verifies the functionality of advanced lifecycle hooks.
+
+*   **Backend**:
+    *   Logs events for `SERVER_READY`, `WORKER_ASSIGNED`, and `VOICE_STATE_UPDATE`.
+    *   Demonstrates how to access the Fastify server instance and Worker state.
+
+
