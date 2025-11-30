@@ -38,8 +38,9 @@ try {
     process.exit(1);
 }
 
-console.error(`Plugin dist directory not found: ${PLUGINS_DIST_DIR}`);
-process.exit(1);
+if (!fs.existsSync(DIST_DIR)) {
+    console.error(`Plugin dist directory not found: ${DIST_DIR}`);
+    process.exit(1);
 }
 
 // 2. Prepare export directory
