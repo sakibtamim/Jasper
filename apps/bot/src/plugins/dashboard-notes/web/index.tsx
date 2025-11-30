@@ -131,7 +131,7 @@ export const NotesPage = () => {
                         onChange={(e) => setNewNote(e.target.value)}
                         className="flex-1"
                     />
-                    <Button type="submit" disabled={!newNote.trim()}>
+                    <Button type="submit" variant="primary" disabled={!newNote.trim()}>
                         <Plus className="w-4 h-4 mr-2" />
                         Add Note
                     </Button>
@@ -144,20 +144,20 @@ export const NotesPage = () => {
                 ) : (
                     <Table>
                         <thead>
-                            <tr>
-                                <th className="text-left">Content</th>
-                                <th className="text-left w-48">Created At</th>
-                                <th className="text-right w-24">Actions</th>
+                            <tr className="border-b border-gray-200 dark:border-gray-700">
+                                <th className="text-left p-3 font-semibold text-gray-700 dark:text-gray-300">Content</th>
+                                <th className="text-left w-48 p-3 font-semibold text-gray-700 dark:text-gray-300">Created At</th>
+                                <th className="text-right w-24 p-3 font-semibold text-gray-700 dark:text-gray-300">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {notes.map(note => (
-                                <tr key={note.id}>
-                                    <td>{note.content}</td>
-                                    <td className="text-gray-500 text-sm">
+                                <tr key={note.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                    <td className="p-3 text-gray-800 dark:text-gray-200">{note.content}</td>
+                                    <td className="text-gray-500 dark:text-gray-400 text-sm p-3">
                                         {new Date(note.createdAt).toLocaleString()}
                                     </td>
-                                    <td className="text-right">
+                                    <td className="text-right p-3">
                                         <Button
                                             variant="danger"
                                             size="sm"
@@ -170,7 +170,7 @@ export const NotesPage = () => {
                             ))}
                             {notes.length === 0 && (
                                 <tr>
-                                    <td colSpan={3} className="text-center py-8 text-gray-500">
+                                    <td colSpan={3} className="text-center py-12 text-gray-500 dark:text-gray-400">
                                         No notes found. Add one above!
                                     </td>
                                 </tr>

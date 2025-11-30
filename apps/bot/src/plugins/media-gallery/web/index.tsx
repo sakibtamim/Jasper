@@ -19,11 +19,18 @@ function GalleryWidget() {
 
     if (loading && images.length === 0) return <Card>Loading gallery...</Card>;
 
+    const navigate = ReactRouterDOM.useNavigate();
+
     return (
         <Card className="p-4">
             <div className="flex justify-between items-center mb-4">
                 <h3 className="font-bold text-lg">Recent Media</h3>
-                <ReactRouterDOM.Link to="/plugins/media-gallery" className="text-sm text-blue-500 hover:underline">View All</ReactRouterDOM.Link>
+                <button
+                    onClick={() => navigate('/plugins/media-gallery')}
+                    className="text-sm text-blue-500 hover:underline bg-transparent border-0 p-0 cursor-pointer"
+                >
+                    View All
+                </button>
             </div>
             <div className="grid grid-cols-3 gap-2">
                 {images.length > 0 ? (
