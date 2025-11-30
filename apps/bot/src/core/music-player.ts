@@ -7,7 +7,8 @@ import {
 } from "@discordjs/voice";
 import { ActionRowBuilder, ChatInputCommandInteraction, VoiceBasedChannel, GuildMember } from "discord.js";
 import logger from "./logger.js";
-import workerPool, { WorkerState } from "./worker-pool.js";
+import workerPool from "./worker-pool.js";
+import { WorkerState } from "@jasper/types";
 import hookManager from "./plugins/hook-manager.js";
 
 import {
@@ -24,9 +25,8 @@ import {
   getAllQueues,
   cleanupWorkerOldQueues,
   clearAllQueues,
-  Queue,
-  Song,
 } from "./audio/queue-manager.js";
+import { Queue, Song } from "@jasper/types";
 
 import { resolveTrack } from './audio/track-resolver.js';
 import { songAddedEmbed } from '../utils/embed-factory.js';

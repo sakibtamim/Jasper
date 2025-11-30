@@ -1,5 +1,5 @@
 import { Collection } from "discord.js";
-import { Command } from "./command.js";
+import { Command } from "./bot-types.js";
 
 declare module "discord.js" {
     interface Client {

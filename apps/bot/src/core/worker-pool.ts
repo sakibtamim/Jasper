@@ -4,19 +4,10 @@ import bots from "../config/bots.js";
 import { JASPER_WEIGHT } from "../config/afr-config.js";
 import { loadEvents } from "../utils/event-loader.js";
 import hookManager from "./plugins/hook-manager.js";
+import { WorkerState } from "@jasper/types";
 
 // Registry to hold all worker states
 const workers: WorkerState[] = [];
-
-export interface WorkerState {
-    name: string;
-    client: Client;
-    role: 'controller' | 'worker';
-    token: string;
-    busy: boolean;
-    guildId: string | null;
-    voiceChannelId: string | null;
-}
 
 /**
  * Create all bot clients defined in config but do not login yet
@@ -26,11 +17,19 @@ function createBots(): WorkerState[] {
     if (workers.length > 0) return workers;
 
     for (const botConfig of bots) {
+        const intents = [
+            GatewayIntentBits.Guilds,
+            GatewayIntentBits.GuildVoiceStates,
+        ];
+
+        // Only the controller needs message content/guild messages for plugins/commands
+        if (botConfig.role === 'controller') {
+            intents.push(GatewayIntentBits.GuildMessages);
+            intents.push(GatewayIntentBits.MessageContent);
+        }
+
         const client = new Client({
-            intents: [
-                GatewayIntentBits.Guilds,
-                GatewayIntentBits.GuildVoiceStates,
-            ],
+            intents: intents,
         });
 
         workers.push({

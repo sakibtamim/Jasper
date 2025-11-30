@@ -1,6 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import db from '../core/db/index.js';
 import logger from '../core/logger.js';
+import pluginManager from '../core/plugins/plugin-manager.js';
 import { getCacheStorage } from '../core/cache-manager.js';
 import { fetchVideoData } from '../core/audio/stream-handler.js';
 
@@ -220,6 +221,39 @@ const devtoolsRoutes: FastifyPluginAsync = async (fastify) => {
         } catch (error) {
             logger.error(`[devtools] Failed to delete plays for bot ${name}: ${error}`);
             return reply.status(500).send({ error: 'Failed to delete plays for bot' });
+        }
+    });
+
+    // 6. Plugin Management
+    fastify.get('/api/devtools/plugins', async (_request, reply) => {
+        try {
+            const plugins = await pluginManager.getPluginStatus();
+            reply.send({ plugins });
+        } catch (error) {
+            logger.error(`[api] Failed to get plugin status: ${error}`);
+            reply.status(500).send({ error: 'Failed to get plugin status' });
+        }
+    });
+
+    fastify.post<{ Params: { id: string }, Body: { enabled: boolean } }>('/api/devtools/plugins/:id/toggle', async (request, reply) => {
+        const { id } = request.params;
+        const { enabled } = request.body;
+
+        if (typeof enabled !== 'boolean') {
+            reply.status(400).send({ error: 'Invalid body: enabled must be a boolean' });
+            return;
+        }
+
+        try {
+            const result = await pluginManager.togglePlugin(id, enabled);
+            if (result.success) {
+                reply.send({ success: true });
+            } else {
+                reply.status(400).send({ error: result.message || 'Failed to toggle plugin' });
+            }
+        } catch (error) {
+            logger.error(`[api] Failed to toggle plugin ${id}: ${error}`);
+            reply.status(500).send({ error: 'Internal server error' });
         }
     });
 };

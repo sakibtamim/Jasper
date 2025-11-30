@@ -1,4 +1,4 @@
-import { Plugin, PluginContext } from "../../core/plugins/plugin-interface.js";
+import { Plugin, PluginContext } from "@jasper/types";
 
 const DbTestPlugin: Plugin = {
     name: "DB Test Plugin",

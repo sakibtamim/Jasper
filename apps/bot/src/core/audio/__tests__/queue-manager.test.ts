@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getQueue, setQueue, deleteQueue, getAllQueues, clearAllQueues, cleanupWorkerOldQueues, Queue } from '../queue-manager.js';
+import { getQueue, setQueue, deleteQueue, getAllQueues, clearAllQueues, cleanupWorkerOldQueues } from '../queue-manager.js';
+import { Queue } from '@jasper/types';
 import * as voiceUtils from '../../utils/voice-utils.js';
 import workerPool from '../../worker-pool.js';
 

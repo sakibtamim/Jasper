@@ -95,6 +95,12 @@ export class PostgresAdapter implements DatabaseAdapter {
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           PRIMARY KEY (plugin_name, key)
         );
+
+        CREATE TABLE IF NOT EXISTS plugin_meta (
+          plugin_id TEXT PRIMARY KEY,
+          enabled BOOLEAN NOT NULL DEFAULT TRUE,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
       `);
 
             // Create indexes
@@ -687,5 +693,33 @@ export class PostgresAdapter implements DatabaseAdapter {
     async clearPluginData(pluginName: string): Promise<void> {
         if (!this.pool) throw new Error('Database not initialized');
         await this.pool.query('DELETE FROM plugin_storage WHERE plugin_name = $1', [pluginName]);
+    }
+
+    // Plugin Meta Implementation
+    async isPluginEnabled(pluginId: string): Promise<boolean | null> {
+        if (!this.pool) throw new Error('Database not initialized');
+        const result = await this.pool.query('SELECT enabled FROM plugin_meta WHERE plugin_id = $1', [pluginId]);
+        if (result.rows.length === 0) return null;
+        return result.rows[0].enabled;
+    }
+
+    async setPluginEnabled(pluginId: string, enabled: boolean): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query(`
+            INSERT INTO plugin_meta (plugin_id, enabled, updated_at)
+            VALUES ($1, $2, NOW())
+            ON CONFLICT (plugin_id) DO UPDATE SET
+                enabled = EXCLUDED.enabled,
+                updated_at = NOW()
+        `, [pluginId, enabled]);
+    }
+
+    async getAllPluginMeta(): Promise<Array<{ pluginId: string, enabled: boolean }>> {
+        if (!this.pool) throw new Error('Database not initialized');
+        const result = await this.pool.query('SELECT plugin_id as "pluginId", enabled FROM plugin_meta');
+        return result.rows.map(row => ({
+            pluginId: row.pluginId,
+            enabled: row.enabled
+        }));
     }
 }

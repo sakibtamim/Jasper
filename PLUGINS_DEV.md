@@ -86,6 +86,11 @@ const MyPlugin: Plugin = {
         context.server.get("/hello", async (req, reply) => {
             return { message: "Hello from backend!" };
         });
+
+        context.registerCommand({
+            data: { name: "hello", description: "Say hello" },
+            execute: async (interaction) => await interaction.reply("Hello!")
+        });
     },
 
     onUnload: async (context: PluginContext) => {
@@ -123,6 +128,40 @@ const files = await context.storage.list();
 // Resolve URI to filesystem path and web URL
 const { fsPath, webUrl } = context.storage.resolve(uri);
 ```
+
+### Audio Playback API
+
+Plugins can play audio files in voice channels using `context.playAudio()`:
+
+```typescript
+await context.playAudio({
+    voiceChannelId: "123456789",
+    guildId: "987654321",
+    audioPath: "/absolute/path/to/audio.mp3",
+    title: "🔊 Sound Effect",  // Optional
+    requesterId: userId,
+    channelId: "123456789" // Optional: Text channel ID for welcome messages
+});
+```
+
+**How it works:**
+- **Existing Queue**: If bot is already in the channel, plays audio directly on existing player
+- **New Connection**: 
+  - Allocates a worker bot
+  - Joins voice channel
+  - Waits for `VoiceConnectionStatus.Ready` (max 5s) to ensure audio is heard
+  - Sends a personalized welcome message to the text channel (if `channelId` provided)
+  - Detects audio duration using ffprobe
+  - Plays audio
+  - Auto-disconnects after duration + 1 second buffer
+- **Error Handling**: Automatically cleans up resources on error
+- **Requirements**: Requires `ffprobe` in PATH for duration detection (falls back to 10s default)
+
+**Example use cases:**
+- Soundboard sound effects
+- Join/leave announcement sounds
+- Achievement notifications
+- Custom bot event sounds
 
 ---
 
@@ -337,7 +376,22 @@ Verifies the functionality of advanced lifecycle hooks.
 
 
 
-### 4. Media Gallery (`media-gallery`)
+### 4. Jasper Soundboard (`soundboard`)
+**Type**: Full-Stack (Backend + Frontend + Audio)
+
+A complete soundboard system that allows users to upload sounds via the dashboard and play them via slash commands or a persistent UI.
+
+*   **Backend**:
+    *   Registers a complex slash command with subcommands (`menu`, `play`, `ui`).
+    *   Implements a **concurrency queue** to handle multiple sound requests safely without crashing the bot.
+    *   Uses `context.playAudio()` with a custom queue management system.
+    *   Demonstrates how to handle Discord interactions (Buttons, Select Menus, Autocomplete) globally.
+*   **Frontend**:
+    *   **Page**: A management interface to upload, rename, and delete sounds.
+    *   Uses `usePluginStorage` for sound files and `usePluginContext` for database records.
+*   **DX Tip**: Check `commands/soundboard.ts` and `core/plugins/plugin-manager.ts` to see how to implement safe concurrent audio playback and prevent "button mashing" with rate limits.
+
+### 5. Media Gallery (`media-gallery`)
 **Type**: Full-Stack (Storage API Demo)
 
 Demonstrates how to use the Extension Storage API to upload, view, and manage files.
@@ -348,3 +402,34 @@ Demonstrates how to use the Extension Storage API to upload, view, and manage fi
     *   **Widget**: Displays the latest 3 uploaded images.
     *   **Page**: Allows uploading new images and deleting existing ones.
     *   Demonstrates how to handle file uploads and display images using the storage URL.
+## 🔧 Plugin Management
+
+### Listing Plugins
+
+```bash
+pnpm plugin:list
+```
+
+Shows all installed plugins with their enabled/disabled status.
+
+### Enabling/Disabling Plugins
+
+```bash
+# Enable a plugin
+pnpm plugin:enable
+
+# Disable a plugin
+pnpm plugin:disable
+```
+
+### Production Defaults
+
+In production (`NODE_ENV=production`), test plugins are automatically disabled:
+- `advanced-hooks-test-plugin`
+- `db-test-plugin`
+- `dashboard-notes`
+- `media-gallery`
+
+The `soundboard` and `sound-effect-plugin` plugins remain enabled as they are functional features.
+
+You can override these defaults using the CLI commands above.

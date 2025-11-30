@@ -1,5 +1,5 @@
 import db from "../db/index.js";
-import { PluginStore } from "./plugin-interface.js";
+import { PluginStore } from "@jasper/types";
 
 export class ScopedPluginStore implements PluginStore {
     private pluginName: string;

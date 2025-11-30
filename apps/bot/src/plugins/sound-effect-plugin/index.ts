@@ -1,4 +1,4 @@
-import { Plugin, PluginContext, QueueCreateData, SongPlayData } from "../../core/plugins/plugin-interface.js";
+import { Plugin, PluginContext, QueueCreateData, SongPlayData } from "@jasper/types";
 import { createAudioResource, StreamType, AudioPlayerStatus } from "@discordjs/voice";
 import type { ChatInputCommandInteraction } from "discord.js";
 import fs from "fs";

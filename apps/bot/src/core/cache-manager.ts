@@ -1,6 +1,6 @@
 import { Readable } from 'stream';
 import logger from './logger.js';
-import { Song } from './audio/queue-manager.js';
+import { Song } from "@jasper/types";
 import { DatabaseCacheStorage } from './cache/db-cache-storage.js';
 import {
     CACHE_ENABLED,

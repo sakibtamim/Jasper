@@ -44,7 +44,7 @@ export default function DevToolsPage() {
                 case 'sessions': endpoint = '/api/devtools/sessions'; break;
                 case 'cache': endpoint = '/api/devtools/cache'; break; // Also needs audio cache
                 case 'stats': endpoint = '/api/devtools/stats/songs'; break; // Default to songs
-                case 'plugins': endpoint = '/api/plugins'; break;
+                case 'plugins': endpoint = '/api/devtools/plugins'; break;
                 default: break;
             }
 
@@ -475,16 +475,49 @@ export default function DevToolsPage() {
                                             ) : (
                                                 <div className="grid gap-4">
                                                     {data.plugins.map((plugin: any) => (
-                                                        <div key={plugin.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                                                        <div key={plugin.id} className={`flex items-center justify-between p-4 rounded-lg border ${plugin.enabled ? 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700' : 'bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-800 opacity-75'}`}>
                                                             <div>
-                                                                <h4 className="font-medium text-gray-900 dark:text-white">{plugin.name} <span className="text-xs text-gray-500 ml-2">v{plugin.version}</span></h4>
+                                                                <div className="flex items-center gap-2">
+                                                                    <h4 className="font-medium text-gray-900 dark:text-white">{plugin.name}</h4>
+                                                                    <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">v{plugin.version}</span>
+                                                                    {plugin.isTestPlugin && (
+                                                                        <span className="text-xs text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/30 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">Test Plugin</span>
+                                                                    )}
+                                                                </div>
                                                                 <p className="text-xs text-gray-500 dark:text-gray-400 font-mono mt-1">ID: {plugin.id}</p>
                                                                 {plugin.description && <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">{plugin.description}</p>}
                                                             </div>
-                                                            <div className="flex items-center gap-2">
+                                                            <div className="flex items-center gap-4">
                                                                 {plugin.web?.entry && (
                                                                     <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">Frontend</span>
                                                                 )}
+
+                                                                <button
+                                                                    onClick={async () => {
+                                                                        try {
+                                                                            const res = await fetch(`/api/devtools/plugins/${plugin.id}/toggle`, {
+                                                                                method: 'POST',
+                                                                                headers: { 'Content-Type': 'application/json' },
+                                                                                body: JSON.stringify({ enabled: !plugin.enabled })
+                                                                            });
+
+                                                                            if (!res.ok) {
+                                                                                const err = await res.json();
+                                                                                throw new Error(err.error || 'Failed to toggle');
+                                                                            }
+
+                                                                            // Reload list
+                                                                            loadTab('plugins');
+                                                                        } catch (e) {
+                                                                            alert(`Failed to toggle plugin: ${e instanceof Error ? e.message : String(e)}`);
+                                                                        }
+                                                                    }}
+                                                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 ${plugin.enabled ? 'bg-brand-primary' : 'bg-gray-200 dark:bg-gray-700'}`}
+                                                                >
+                                                                    <span
+                                                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${plugin.enabled ? 'translate-x-6' : 'translate-x-1'}`}
+                                                                    />
+                                                                </button>
                                                             </div>
                                                         </div>
                                                     ))}
