@@ -399,7 +399,7 @@ export const handleModalSubmit = async (interaction: ModalSubmitInteraction, con
     const emoji = interaction.fields.getTextInputValue('sound_emoji') || '🔊';
 
     await interaction.reply({
-        content: `✨ **Step 2/2**: Please upload the audio file for **${name}**.\nJust send the file in this channel (no need to reply).`,
+        content: `✨ **Step 2/2**: Please upload the audio file for **${name}**.\nUpload the file in this channel and **mention me** (@${context.client.user?.username}).`,
         ephemeral: true
     });
 
@@ -409,7 +409,7 @@ export const handleModalSubmit = async (interaction: ModalSubmitInteraction, con
         return;
     }
 
-    const filter = (m: any) => m.author.id === interaction.user.id && m.attachments.size > 0;
+    const filter = (m: any) => m.author.id === interaction.user.id && m.attachments.size > 0 && m.mentions.has(context.client.user!.id);
     const collector = interaction.channel.createMessageCollector({ filter, time: 60000, max: 1 });
 
     if (!collector) return;
