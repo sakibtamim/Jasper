@@ -37,7 +37,12 @@ for (const file of commandFiles) {
 logger.info("[commands] Loading plugin commands...");
 
 // Mock Client & Server for PluginManager
-const mockClient = { commands: new Collection() } as any;
+const mockClient = {
+  commands: new Collection(),
+  on: () => { },
+  off: () => { },
+  emit: () => { }
+} as any;
 const mockServer = {
   register: async (fn: any) => await fn(mockServer),
   get: () => { },

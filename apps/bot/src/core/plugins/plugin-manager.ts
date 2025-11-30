@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { Client } from "discord.js";
 import { FastifyInstance } from "fastify";
-import { joinVoiceChannel, createAudioPlayer, createAudioResource, StreamType, NoSubscriberBehavior, AudioPlayerStatus } from "@discordjs/voice";
+import { joinVoiceChannel, createAudioPlayer, createAudioResource, StreamType, NoSubscriberBehavior, AudioPlayerStatus, VoiceConnectionStatus } from "@discordjs/voice";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import logger from "../logger.js";
@@ -52,10 +52,156 @@ export class PluginManager {
     private pluginCommands: Map<string, string[]>; // Track commands registered by each plugin
     private context: PluginContext | null;
 
+    private soundboardQueues: Map<string, {
+        queue: Array<{ audioPath: string, title?: string, requesterId: string, resolve: () => void, reject: (err: any) => void }>,
+        processing: boolean,
+        connection?: import("@discordjs/voice").VoiceConnection,
+        timeout?: NodeJS.Timeout
+    }>;
+
     constructor() {
         this.plugins = new Map();
         this.pluginCommands = new Map();
+        this.soundboardQueues = new Map();
         this.context = null;
+    }
+
+    /**
+     * Process the soundboard queue for a specific voice channel
+     */
+    private async processSoundboardQueue(voiceChannelId: string, guildId: string) {
+        const queueData = this.soundboardQueues.get(voiceChannelId);
+        if (!queueData || queueData.queue.length === 0) {
+            // Queue empty, set cleanup timeout
+            if (queueData && queueData.connection) {
+                logger.debug(`[plugins] Queue empty for ${voiceChannelId}, setting cleanup timeout`);
+                if (queueData.timeout) clearTimeout(queueData.timeout);
+
+                queueData.timeout = setTimeout(() => {
+                    logger.info(`[plugins] Cleaning up idle soundboard connection for ${voiceChannelId}`);
+                    if (queueData.connection && queueData.connection.state.status !== VoiceConnectionStatus.Destroyed) {
+                        queueData.connection.destroy();
+                    }
+                    // Release worker if we allocated one (logic needs to track if we allocated it)
+                    // For now, we rely on the fact that if we created a connection, we likely allocated a worker or reused one.
+                    // If we reused one, releasing it is fine (it just decrements ref count or similar, or we might need to be careful).
+                    // Actually, workerPool.releaseWorker checks if it's the controller or a worker.
+                    workerPool.releaseWorker(voiceChannelId);
+
+                    this.soundboardQueues.delete(voiceChannelId);
+                }, 60000); // 1 minute idle timeout
+            }
+            queueData!.processing = false;
+            return;
+        }
+
+        queueData.processing = true;
+        if (queueData.timeout) {
+            clearTimeout(queueData.timeout);
+            queueData.timeout = undefined;
+        }
+
+        const item = queueData.queue.shift()!;
+        const { audioPath, title, resolve, reject } = item;
+
+        try {
+            // Check if file exists
+            if (!fs.existsSync(audioPath)) {
+                throw new Error(`Audio file not found: ${audioPath}`);
+            }
+
+            // Check for existing music queue
+            const existingQueue = getQueue(voiceChannelId);
+            let player: import("@discordjs/voice").AudioPlayer;
+            let connection: import("@discordjs/voice").VoiceConnection;
+
+            if (existingQueue) {
+                // Use existing connection
+                connection = existingQueue.connection;
+                queueData.connection = connection; // Update reference
+
+                // Pause main player
+                const wasPlaying = existingQueue.player.state.status === AudioPlayerStatus.Playing;
+                if (wasPlaying) existingQueue.player.pause();
+
+                // Create temp player
+                player = createAudioPlayer({ behaviors: { noSubscriber: NoSubscriberBehavior.Stop } });
+                connection.subscribe(player);
+
+                logger.info(`[plugins] Playing soundboard clip over music in ${voiceChannelId}`);
+
+                // Play
+                const resource = createAudioResource(fs.createReadStream(audioPath), { inputType: StreamType.Arbitrary });
+                player.play(resource);
+
+                await new Promise<void>((res, rej) => {
+                    player.once('idle', () => {
+                        connection.subscribe(existingQueue.player);
+                        if (wasPlaying) existingQueue.player.unpause();
+                        player.stop();
+                        res();
+                    });
+                    player.once('error', (err) => {
+                        connection.subscribe(existingQueue.player);
+                        if (wasPlaying) existingQueue.player.unpause();
+                        player.stop();
+                        rej(err);
+                    });
+                });
+
+            } else {
+                // No music queue, manage our own connection
+                if (!queueData.connection || queueData.connection.state.status === VoiceConnectionStatus.Destroyed) {
+                    // Allocate worker
+                    const worker = workerPool.allocateWorker(guildId, voiceChannelId);
+                    if (!worker) throw new Error("No workers available");
+
+                    const channel = await worker.client.channels.fetch(voiceChannelId);
+                    if (!channel || !channel.isVoiceBased()) throw new Error("Invalid voice channel");
+
+                    connection = joinVoiceChannel({
+                        channelId: voiceChannelId,
+                        guildId: guildId,
+                        adapterCreator: channel.guild.voiceAdapterCreator,
+                        group: worker.client.user!.id,
+                        selfDeaf: true,
+                    });
+                    queueData.connection = connection;
+
+                    // Wait for connection
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                } else {
+                    connection = queueData.connection;
+                }
+
+                player = createAudioPlayer({ behaviors: { noSubscriber: NoSubscriberBehavior.Stop } });
+                connection.subscribe(player);
+
+                const resource = createAudioResource(fs.createReadStream(audioPath), { inputType: StreamType.Arbitrary });
+                player.play(resource);
+
+                logger.info(`[plugins] Playing soundboard clip in ${voiceChannelId}`);
+
+                await new Promise<void>((res, rej) => {
+                    player.once('idle', () => {
+                        player.stop();
+                        res();
+                    });
+                    player.once('error', (err) => {
+                        player.stop();
+                        rej(err);
+                    });
+                });
+            }
+
+            resolve();
+        } catch (error) {
+            logger.error(`[plugins] Error playing soundboard clip: ${error}`);
+            reject(error);
+        } finally {
+            // Process next item
+            this.processSoundboardQueue(voiceChannelId, guildId);
+        }
     }
 
     /**
@@ -91,137 +237,21 @@ export class PluginManager {
             playAudio: async (params) => {
                 const { voiceChannelId, guildId, audioPath, title, requesterId } = params;
 
-                logger.debug(`[plugins] playAudio called for ${voiceChannelId}, checking paths...`);
-
-                // Check if file exists
-                if (!fs.existsSync(audioPath)) {
-                    throw new Error(`Audio file not found: ${audioPath}`);
+                if (!this.soundboardQueues.has(voiceChannelId)) {
+                    this.soundboardQueues.set(voiceChannelId, {
+                        queue: [],
+                        processing: false
+                    });
                 }
 
-                // Check if queue already exists
-                const existingQueue = getQueue(voiceChannelId);
+                const queueData = this.soundboardQueues.get(voiceChannelId)!;
 
-                if (existingQueue) {
-                    logger.debug(`[plugins] Found existing queue for ${voiceChannelId}, using pause/resume with player switching`);
-
-                    // 1. Pause main player if currently playing
-                    const wasPlaying = existingQueue.player.state.status === AudioPlayerStatus.Playing;
-                    if (wasPlaying) {
-                        existingQueue.player.pause();
-                        logger.info(`[plugins] Paused music for soundboard in ${voiceChannelId}`);
+                return new Promise<void>((resolve, reject) => {
+                    queueData.queue.push({ audioPath, title, requesterId, resolve, reject });
+                    if (!queueData.processing) {
+                        this.processSoundboardQueue(voiceChannelId, guildId);
                     }
-
-                    // 2. Create temporary player for soundboard
-                    const tempPlayer = createAudioPlayer({
-                        behaviors: { noSubscriber: NoSubscriberBehavior.Stop }
-                    });
-
-                    // 3. Switch subscription from main player to temp player
-                    existingQueue.connection.subscribe(tempPlayer);
-                    logger.info(`[plugins] Switched to temp player for soundboard in ${voiceChannelId}`);
-
-                    // 4. Play soundboard on temp player
-                    const resource = createAudioResource(fs.createReadStream(audioPath), {
-                        inputType: StreamType.Arbitrary
-                    });
-                    tempPlayer.play(resource);
-
-                    // 5. On soundboard finish: restore main player
-                    tempPlayer.once('idle', () => {
-                        // Re-subscribe main player to connection
-                        existingQueue.connection.subscribe(existingQueue.player);
-                        logger.info(`[plugins] Restored main player subscription in ${voiceChannelId}`);
-
-                        // Resume if was playing
-                        if (wasPlaying) {
-                            existingQueue.player.unpause();
-                            logger.info(`[plugins] Resumed music after soundboard in ${voiceChannelId}`);
-                        }
-
-                        // Cleanup temp player
-                        tempPlayer.stop();
-                    });
-
-                    // 6. Error handling - ensure we restore main player
-                    tempPlayer.on('error', (error) => {
-                        logger.error(`[plugins] Soundboard error: ${error.message}`);
-                        existingQueue.connection.subscribe(existingQueue.player);
-                        if (wasPlaying) existingQueue.player.unpause();
-                        tempPlayer.stop();
-                    });
-
-                    logger.debug(`[plugins] Returning early from playAudio for ${voiceChannelId}, no temp connection created`);
-                    return;
-                }
-
-                // No queue - need to create temporary connection
-                logger.info(`[plugins] No queue found, creating temporary connection for ${voiceChannelId}`);
-
-                // Allocate a worker
-                const worker = workerPool.allocateWorker(guildId, voiceChannelId);
-                if (!worker) {
-                    throw new Error("No workers available for audio playback");
-                }
-
-                try {
-                    // Fetch the channel
-                    const channel = await worker.client.channels.fetch(voiceChannelId);
-                    if (!channel || !channel.isVoiceBased()) {
-                        throw new Error("Invalid voice channel");
-                    }
-
-                    // Join voice channel
-                    const connection = joinVoiceChannel({
-                        channelId: voiceChannelId,
-                        guildId: guildId,
-                        adapterCreator: channel.guild.voiceAdapterCreator,
-                        group: worker.client.user!.id,
-                        selfDeaf: true,
-                    });
-
-                    // Create player
-                    const player = createAudioPlayer({
-                        behaviors: { noSubscriber: NoSubscriberBehavior.Stop }
-                    });
-                    connection.subscribe(player);
-
-                    // Wait 2s for connection to stabilize
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-
-                    // Get audio duration
-                    const duration = await getAudioDuration(audioPath);
-                    logger.info(`[plugins] Audio duration detected: ${duration}ms`);
-
-                    // Validate timeout duration (minimum 5s)
-                    const timeoutDuration = Math.max(60000, 5000); // Use 60s or minimum 5s
-                    logger.debug(`[plugins] Using cleanup timeout: ${timeoutDuration}ms`);
-
-                    // Play audio
-                    const resource = createAudioResource(fs.createReadStream(audioPath), {
-                        inputType: StreamType.Arbitrary
-                    });
-                    player.play(resource);
-
-                    logger.info(`[plugins] Playing audio: ${title || audioPath}`);
-
-                    // Auto-cleanup after 1 minute
-                    setTimeout(() => {
-                        connection.destroy();
-                        workerPool.releaseWorker(voiceChannelId);
-                        logger.info(`[plugins] Cleaned up temporary audio connection for ${voiceChannelId}`);
-                    }, timeoutDuration);
-
-                    // Error handling
-                    player.on('error', (error) => {
-                        logger.error(`[plugins] Audio player error: ${error.message}`);
-                        connection.destroy();
-                        workerPool.releaseWorker(voiceChannelId);
-                    });
-
-                } catch (error) {
-                    workerPool.releaseWorker(voiceChannelId);
-                    throw error;
-                }
+                });
             }
         };
         logger.info("[plugins] PluginManager initialized");

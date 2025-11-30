@@ -374,7 +374,22 @@ Verifies the functionality of advanced lifecycle hooks.
 
 
 
-### 4. Media Gallery (`media-gallery`)
+### 4. Jasper Soundboard (`soundboard`)
+**Type**: Full-Stack (Backend + Frontend + Audio)
+
+A complete soundboard system that allows users to upload sounds via the dashboard and play them via slash commands or a persistent UI.
+
+*   **Backend**:
+    *   Registers a complex slash command with subcommands (`menu`, `play`, `ui`).
+    *   Implements a **concurrency queue** to handle multiple sound requests safely without crashing the bot.
+    *   Uses `context.playAudio()` with a custom queue management system.
+    *   Demonstrates how to handle Discord interactions (Buttons, Select Menus, Autocomplete) globally.
+*   **Frontend**:
+    *   **Page**: A management interface to upload, rename, and delete sounds.
+    *   Uses `usePluginStorage` for sound files and `usePluginContext` for database records.
+*   **DX Tip**: Check `commands/soundboard.ts` and `core/plugins/plugin-manager.ts` to see how to implement safe concurrent audio playback and prevent "button mashing" with rate limits.
+
+### 5. Media Gallery (`media-gallery`)
 **Type**: Full-Stack (Storage API Demo)
 
 Demonstrates how to use the Extension Storage API to upload, view, and manage files.
