@@ -262,9 +262,19 @@ async function handleAddCommand(interaction: ChatInputCommandInteraction, contex
     await interaction.deferReply({ ephemeral: true });
 
     try {
-        // Validate file type
-        if (!file.contentType?.startsWith('audio/')) {
-            await interaction.editReply("❌ Please upload a valid audio file (MP3/WAV).");
+        // Validate file size (max 2MB)
+        if (file.size > 2 * 1024 * 1024) {
+            await interaction.editReply("❌ File too large. Maximum size is 2MB.");
+            return;
+        }
+
+        // Validate file type (audio/* or specific extensions)
+        const validExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.amr', '.aac'];
+        const isAudioType = file.contentType?.startsWith('audio/');
+        const hasValidExtension = validExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+
+        if (!isAudioType && !hasValidExtension) {
+            await interaction.editReply(`❌ Invalid file format. Supported formats: ${validExtensions.join(', ')}`);
             return;
         }
 
@@ -389,7 +399,7 @@ export const handleModalSubmit = async (interaction: ModalSubmitInteraction, con
     const emoji = interaction.fields.getTextInputValue('sound_emoji') || '🔊';
 
     await interaction.reply({
-        content: `✨ **Step 2/2**: Please upload the audio file for **${name}**.\nReply to this message with the MP3/WAV file attachment.`,
+        content: `✨ **Step 2/2**: Please upload the audio file for **${name}**.\nJust send the file in this channel (no need to reply).`,
         ephemeral: true
     });
 
@@ -408,8 +418,22 @@ export const handleModalSubmit = async (interaction: ModalSubmitInteraction, con
         const attachment = m.attachments.first();
         if (!attachment) return;
 
-        if (!attachment.contentType?.startsWith('audio/')) {
-            await interaction.followUp({ content: "❌ Invalid file type. Please try again with an audio file.", ephemeral: true });
+        // Validate file size (max 2MB)
+        if (attachment.size > 2 * 1024 * 1024) {
+            await interaction.followUp({ content: "❌ File too large. Maximum size is 2MB.", ephemeral: true });
+            // Try to delete the large file message
+            try { await m.delete(); } catch (e) { }
+            return;
+        }
+
+        // Validate file type
+        const validExtensions = ['.mp3', '.wav', '.ogg', '.m4a', '.amr', '.aac'];
+        const isAudioType = attachment.contentType?.startsWith('audio/');
+        const hasValidExtension = validExtensions.some(ext => attachment.name.toLowerCase().endsWith(ext));
+
+        if (!isAudioType && !hasValidExtension) {
+            await interaction.followUp({ content: `❌ Invalid file format. Supported formats: ${validExtensions.join(', ')}`, ephemeral: true });
+            try { await m.delete(); } catch (e) { }
             return;
         }
 
@@ -430,6 +454,9 @@ export const handleModalSubmit = async (interaction: ModalSubmitInteraction, con
 
             // Try to delete the user's message to keep chat clean
             try { await m.delete(); } catch (e) { }
+
+            // Stop collector
+            collector.stop('success');
 
         } catch (error) {
             context.logger.error(`Failed to add sound via wizard: ${error}`);
