@@ -1,5 +1,5 @@
 import { PluginContext } from "@jasper/types";
-import { registerCommand, handleAutocomplete, handleButtonInteraction, handleModalSubmit } from "./commands/soundboard.js";
+import { registerCommand, handleAutocomplete, handleButtonInteraction, handleModalSubmit, clearActiveUsers } from "./commands/soundboard.js";
 import { registerRoutes } from "./routes.js";
 import { SoundService } from "./services/sound-service.js";
 import { Interaction } from "discord.js";
@@ -35,6 +35,8 @@ const soundboardPlugin = {
         if (interactionHandler) {
             context.client.off('interactionCreate', interactionHandler);
         }
+        // Clear rate-limiting state to prevent memory leaks
+        clearActiveUsers();
         context.logger.info("Jasper Soundboard unloaded!");
     }
 };
@@ -76,7 +78,8 @@ async function cleanupOrphanedFiles(context: PluginContext) {
             }
 
             if (!storageFiles.has(filename)) {
-                await soundService.deleteSound(sound.id);
+                // Use deleteSoundRecord to avoid redundant file deletion attempt
+                await soundService.deleteSoundRecord(sound.id);
                 deletedDbCount++;
             }
         }

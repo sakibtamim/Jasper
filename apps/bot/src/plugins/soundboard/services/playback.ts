@@ -31,13 +31,6 @@ export async function playSoundboardClip(
         throw new Error("Invalid sound data - please delete this sound and re-upload it");
     }
 
-    // Extract filename if it's a storage:// URI
-    let filename = fileUri;
-    if (filename.startsWith("storage://")) {
-        const parts = filename.split("/");
-        filename = parts[parts.length - 1];
-    }
-
     // Resolve to absolute path
     let fsPath: string;
     try {

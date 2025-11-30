@@ -341,6 +341,14 @@ export const handleAutocomplete = async (interaction: AutocompleteInteraction, c
 
 const activeUsers = new Set<string>();
 
+/**
+ * Clear the active users rate-limiting set.
+ * Called during plugin unload to prevent memory leaks.
+ */
+export function clearActiveUsers() {
+    activeUsers.clear();
+}
+
 export const handleButtonInteraction = async (interaction: ButtonInteraction, context: PluginContext) => {
     // Handle Add Sound Wizard Button
     if (interaction.customId === 'soundboard_add_modal_btn') {

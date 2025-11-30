@@ -3,7 +3,7 @@ import { setVoiceStatus } from "../utils/voice-utils.js";
 import workerPool from "../worker-pool.js";
 import { VoiceConnection, AudioPlayer } from "@discordjs/voice";
 import { TextBasedChannel, Message } from "discord.js";
-import { WorkerState, Queue, Song } from "@jasper/types";
+import { WorkerState, Queue } from "@jasper/types";
 
 // Map<VoiceChannelId, QueueObject>
 const queues = new Map<string, Queue>();

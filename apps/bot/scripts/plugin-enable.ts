@@ -1,57 +1,17 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import inquirer from 'inquirer';
 import db from '../src/core/db/index.js';
-import { isProduction } from '../src/config/env.js';
-import { TEST_PLUGINS } from '../src/config/plugins.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const PLUGINS_DIR = path.join(__dirname, '..', 'src', 'plugins');
-
-// TEST_PLUGINS imported from config
+import { getPluginStatuses } from './plugin-utils.js';
 
 async function enablePlugin() {
     try {
         await db.init();
-        const dbMeta = await db.getAllPluginMeta();
-        const dbEnabledMap = new Map(dbMeta.map(m => [m.pluginId, m.enabled]));
-
-        const entries = await fs.promises.readdir(PLUGINS_DIR, { withFileTypes: true });
-        const disabledPlugins = [];
-
-        for (const entry of entries) {
-            if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
-
-            try {
-                const metadataPath = path.join(PLUGINS_DIR, entry.name, 'jasper-plugin.json');
-                if (!fs.existsSync(metadataPath)) continue;
-
-                const metadata = JSON.parse(await fs.promises.readFile(metadataPath, 'utf-8'));
-
-                let enabled = false;
-                if (dbEnabledMap.has(metadata.id)) {
-                    enabled = dbEnabledMap.get(metadata.id)!;
-                } else {
-                    const isTestPlugin = TEST_PLUGINS.includes(metadata.id);
-                    if (isProduction && isTestPlugin) {
-                        enabled = false;
-                    } else {
-                        enabled = true;
-                    }
-                }
-
-                if (!enabled) {
-                    disabledPlugins.push({
-                        name: `${metadata.name} (${metadata.id})`,
-                        value: metadata.id
-                    });
-                }
-            } catch (e) {
-                console.error(`Failed to process plugin metadata for ${entry.name}:`, e);
-            }
-        }
+        const plugins = await getPluginStatuses();
+        const disabledPlugins = plugins
+            .filter(p => !p.enabled)
+            .map(p => ({
+                name: `${p.name} (${p.id})`,
+                value: p.id
+            }));
 
         if (disabledPlugins.length === 0) {
             console.log('No disabled plugins found.');

@@ -20,6 +20,7 @@ export const registerRoutes = (context: PluginContext) => {
         }
 
         if (body.name.length > 32) return reply.code(400).send({ error: "Name too long" });
+        if (body.emoji.length > 10) return reply.code(400).send({ error: "Emoji too long" });
 
         const newSound = await soundService.addSound(
             body.name,
@@ -53,6 +54,7 @@ export const registerRoutes = (context: PluginContext) => {
         }
 
         if (body.name && body.name.length > 32) return reply.code(400).send({ error: "Name too long" });
+        if (body.emoji && body.emoji.length > 10) return reply.code(400).send({ error: "Emoji too long" });
 
         const updatedSound = await soundService.updateSound(id, body);
 
@@ -69,7 +71,13 @@ export const registerRoutes = (context: PluginContext) => {
     });
 
     // DELETE /api/plugins/soundboard/data (Debug: Clear all data)
+    // WARNING: This is a destructive operation - requires authentication
     server.delete("/data", async (req, reply) => {
+        // Check if user is authenticated (req.user is set by auth middleware)
+        if (!req.user) {
+            return reply.code(401).send({ error: "Authentication required" });
+        }
+
         await context.db.plugin.set("sounds", []);
         await context.db.plugin.set("plays", []);
         return { success: true, message: "All data cleared" };

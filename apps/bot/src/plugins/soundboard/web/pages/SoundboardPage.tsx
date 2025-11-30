@@ -1,7 +1,7 @@
 import { React, useState, useEffect } from '@jasper/elements';
 import { Card, Button, Input, Loader, Badge } from '@jasper/ui';
 import { usePluginStorage } from '@jasper/hooks';
-import { Trash2, Upload, Music, Play, AlertTriangle, Edit2, X } from 'lucide-react';
+import { Trash2, Upload, Music, Play, AlertTriangle, Edit2 } from 'lucide-react';
 
 interface Sound {
     id: string;

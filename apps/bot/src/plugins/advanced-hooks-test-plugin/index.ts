@@ -1,4 +1,4 @@
-import { Plugin, PluginContext, ServerReadyData, WorkerAssignedData, VoiceStateUpdateData } from "@jasper/types";
+import { Plugin, PluginContext, WorkerAssignedData, VoiceStateUpdateData } from "@jasper/types";
 
 const AdvancedHooksTestPlugin: Plugin = {
     name: "Advanced Hooks Test Plugin",

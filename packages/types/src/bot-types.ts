@@ -1,4 +1,4 @@
-import { Client, TextBasedChannel, Message, ChatInputCommandInteraction, AutocompleteInteraction, RESTPostAPIChatInputApplicationCommandsJSONBody, SlashCommandBuilder, Collection } from "discord.js";
+import { Client, TextBasedChannel, Message, ChatInputCommandInteraction, AutocompleteInteraction, RESTPostAPIChatInputApplicationCommandsJSONBody, SlashCommandBuilder } from "discord.js";
 import { VoiceConnection, AudioPlayer } from "@discordjs/voice";
 
 // --- Worker Pool Types ---

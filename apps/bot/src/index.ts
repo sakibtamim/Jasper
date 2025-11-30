@@ -7,7 +7,6 @@ import { fileURLToPath } from "url";
 import { Collection, REST, Routes } from "discord.js";
 import logger from "./core/logger.js";
 import workerPool from "./core/worker-pool.js";
-import { WorkerState } from "@jasper/types";
 import { initializeCache, startCacheCleanup } from "./core/cache-manager.js";
 import { handleGracefulExit } from "./core/graceful-exit.js";
 import { sendAnnouncement } from "./core/announcer.js";

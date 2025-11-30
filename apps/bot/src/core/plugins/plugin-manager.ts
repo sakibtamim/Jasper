@@ -1,42 +1,21 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "url";
-import { Client } from "discord.js";
+import { Client, REST, Routes } from "discord.js";
 import { FastifyInstance } from "fastify";
 import { joinVoiceChannel, createAudioPlayer, createAudioResource, StreamType, NoSubscriberBehavior, AudioPlayerStatus, VoiceConnectionStatus, entersState } from "@discordjs/voice";
-import { exec } from "node:child_process";
-import { promisify } from "node:util";
 import logger from "../logger.js";
 import workerPool from "../worker-pool.js";
-import { WorkerState } from "@jasper/types";
 import { Plugin, PluginContext } from "@jasper/types";
 import hookManager from "./hook-manager.js";
 import { ScopedPluginStore } from "./plugin-store.js";
 import { PluginStorage } from "./plugin-storage.js";
 import coreDataAccessor from "./core-data-accessor.js";
 import { getQueue } from "../audio/queue-manager.js";
-import { Queue } from "@jasper/types";
 import semver from "semver";
 import { TEST_PLUGINS } from "../../config/plugins.js";
 import { getEntryMessage } from "../../config/afr-config.js";
-
-const execPromise = promisify(exec);
-
-/**
- * Get audio duration in milliseconds using ffprobe
- */
-async function getAudioDuration(filePath: string): Promise<number> {
-    try {
-        const { stdout } = await execPromise(
-            `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${filePath}"`
-        );
-        const durationInSeconds = parseFloat(stdout.trim());
-        return Math.ceil(durationInSeconds * 1000); // Convert to ms and round up
-    } catch (error) {
-        logger.warn(`[plugins] Failed to detect audio duration for ${filePath}: ${error}`);
-        return 10000; // Default to 10 seconds if detection fails
-    }
-}
+import { DISCORD_CLIENT_ID, GUILD_ID, DISCORD_TOKEN } from "../../config/env.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -60,7 +39,8 @@ export class PluginManager {
         processing: boolean,
         connection?: import("@discordjs/voice").VoiceConnection,
         timeout?: NodeJS.Timeout,
-        textChannelId?: string
+        textChannelId?: string,
+        ownsConnection?: boolean  // Track if we created the connection or borrowed it from music queue
     }>;
 
     constructor() {
@@ -84,14 +64,13 @@ export class PluginManager {
 
                 queueData.timeout = setTimeout(() => {
                     logger.info(`[plugins] Cleaning up idle soundboard connection for ${voiceChannelId}`);
-                    if (queueData.connection && queueData.connection.state.status !== VoiceConnectionStatus.Destroyed) {
+
+                    // Only destroy connection if we own it (not borrowed from music queue)
+                    if (queueData.ownsConnection && queueData.connection && queueData.connection.state.status !== VoiceConnectionStatus.Destroyed) {
                         queueData.connection.destroy();
+                        // Only release worker if we owned the connection
+                        workerPool.releaseWorker(voiceChannelId);
                     }
-                    // Release worker if we allocated one (logic needs to track if we allocated it)
-                    // For now, we rely on the fact that if we created a connection, we likely allocated a worker or reused one.
-                    // If we reused one, releasing it is fine (it just decrements ref count or similar, or we might need to be careful).
-                    // Actually, workerPool.releaseWorker checks if it's the controller or a worker.
-                    workerPool.releaseWorker(voiceChannelId);
 
                     this.soundboardQueues.delete(voiceChannelId);
                 }, 60000); // 1 minute idle timeout
@@ -107,7 +86,7 @@ export class PluginManager {
         }
 
         const item = queueData.queue.shift()!;
-        const { audioPath, title, resolve, reject } = item;
+        const { audioPath, resolve, reject } = item;
 
         try {
             // Check if file exists
@@ -121,9 +100,10 @@ export class PluginManager {
             let connection: import("@discordjs/voice").VoiceConnection;
 
             if (existingQueue) {
-                // Use existing connection
+                // Use existing connection (borrowed from music queue)
                 connection = existingQueue.connection;
-                queueData.connection = connection; // Update reference
+                queueData.connection = connection;
+                queueData.ownsConnection = false;  // We're borrowing this connection
 
                 // Pause main player
                 const wasPlaying = existingQueue.player.state.status === AudioPlayerStatus.Playing;
@@ -172,6 +152,7 @@ export class PluginManager {
                         selfDeaf: true,
                     });
                     queueData.connection = connection;
+                    queueData.ownsConnection = true;  // We created this connection
 
                     // Wait for connection to be ready
                     try {
@@ -455,6 +436,10 @@ export class PluginManager {
                         this.pluginCommands.set(plugin.name, commands);
                     },
                     scheduleTask: (intervalMs, task) => {
+                        if (intervalMs <= 0) {
+                            throw new Error('Interval must be positive');
+                        }
+
                         const interval = setInterval(async () => {
                             try {
                                 await task();
@@ -566,6 +551,10 @@ export class PluginManager {
 
                         await this.registerPlugin(plugin, metadata, pluginDir);
                         found = true;
+
+                        // Deploy commands to Discord after loading plugin
+                        await this.deployCommands();
+
                         break;
                     }
                 }
@@ -585,6 +574,8 @@ export class PluginManager {
 
                 if (pluginName) {
                     await this.unloadPlugin(pluginName);
+                    // Deploy commands to Discord after unloading plugin
+                    await this.deployCommands();
                 } else {
                     // It might be already unloaded, which is fine
                     logger.info(`[plugins] Plugin ${pluginId} is already unloaded`);
@@ -595,6 +586,35 @@ export class PluginManager {
         } catch (error) {
             logger.error(`[plugins] Failed to toggle plugin ${pluginId}: ${error}`);
             return { success: false, message: error instanceof Error ? error.message : String(error) };
+        }
+    }
+
+    /**
+     * Deploy all registered commands to Discord
+     * Called after loading/unloading plugins to update slash commands
+     */
+    async deployCommands(): Promise<void> {
+        if (!this.context || !DISCORD_CLIENT_ID || !GUILD_ID) {
+            logger.warn("[plugins] Skipping command deployment: Missing client context or Discord credentials");
+            return;
+        }
+
+        try {
+            logger.info("[plugins] Deploying commands to Discord...");
+            const commandsData = this.context.client.commands.map((cmd: any) => {
+                // Handle both Builders (toJSON) and plain objects
+                return typeof cmd.data.toJSON === 'function' ? cmd.data.toJSON() : cmd.data;
+            });
+
+            const rest = new REST({ version: "10" }).setToken(DISCORD_TOKEN);
+
+            await rest.put(
+                Routes.applicationGuildCommands(DISCORD_CLIENT_ID, GUILD_ID),
+                { body: commandsData }
+            );
+            logger.info(`[plugins] Successfully deployed ${commandsData.length} commands.`);
+        } catch (error) {
+            logger.error(`[plugins] Failed to deploy commands: ${error}`);
         }
     }
 

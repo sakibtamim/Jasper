@@ -66,6 +66,22 @@ export class SoundService {
         return true;
     }
 
+    /**
+     * Delete only the database record for a sound, without attempting to delete the file.
+     * Useful for cleanup of orphaned database entries where the file is already missing.
+     */
+    async deleteSoundRecord(id: string): Promise<boolean> {
+        const sounds = await this.getDbSounds();
+        const soundIndex = sounds.findIndex(s => s.id === id);
+
+        if (soundIndex === -1) return false;
+
+        sounds.splice(soundIndex, 1);
+        await this.saveDbSounds(sounds);
+
+        return true;
+    }
+
     async updateSound(id: string, updates: { name?: string; emoji?: string }): Promise<Sound | null> {
         const sounds = await this.getDbSounds();
         const soundIndex = sounds.findIndex(s => s.id === id);
