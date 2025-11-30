@@ -14,6 +14,18 @@ export class ReadOnlyCoreDataAccessor implements CoreDataAccessor {
     async getGlobalStats(): Promise<{ totalPlays: number; totalDuration: number }> {
         return await db.getGlobalStats();
     }
+
+    async isPluginEnabled(pluginId: string): Promise<boolean | null> {
+        return await db.isPluginEnabled(pluginId);
+    }
+
+    async setPluginEnabled(pluginId: string, enabled: boolean): Promise<void> {
+        return await db.setPluginEnabled(pluginId, enabled);
+    }
+
+    async getAllPluginMeta(): Promise<Array<{ pluginId: string, enabled: boolean }>> {
+        return await db.getAllPluginMeta();
+    }
 }
 
 // Singleton instance

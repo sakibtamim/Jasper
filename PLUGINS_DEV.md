@@ -385,3 +385,34 @@ Demonstrates how to use the Extension Storage API to upload, view, and manage fi
     *   **Widget**: Displays the latest 3 uploaded images.
     *   **Page**: Allows uploading new images and deleting existing ones.
     *   Demonstrates how to handle file uploads and display images using the storage URL.
+## 🔧 Plugin Management
+
+### Listing Plugins
+
+```bash
+pnpm plugin:list
+```
+
+Shows all installed plugins with their enabled/disabled status.
+
+### Enabling/Disabling Plugins
+
+```bash
+# Enable a plugin
+pnpm plugin:enable
+
+# Disable a plugin
+pnpm plugin:disable
+```
+
+### Production Defaults
+
+In production (`NODE_ENV=production`), test plugins are automatically disabled:
+- `advanced-hooks-test-plugin`
+- `db-test-plugin`
+- `dashboard-notes`
+- `media-gallery`
+
+The `soundboard` and `sound-effect-plugin` plugins remain enabled as they are functional features.
+
+You can override these defaults using the CLI commands above.

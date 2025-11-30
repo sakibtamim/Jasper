@@ -98,6 +98,12 @@ export class SqliteAdapter implements DatabaseAdapter {
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           PRIMARY KEY (plugin_name, key)
         );
+
+        CREATE TABLE IF NOT EXISTS plugin_meta (
+          plugin_id TEXT PRIMARY KEY,
+          enabled BOOLEAN NOT NULL DEFAULT 1,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
       `);
 
       // Migration: Add thumbnail column if it doesn't exist
@@ -773,5 +779,36 @@ export class SqliteAdapter implements DatabaseAdapter {
     if (!this.db) throw new Error('Database not initialized');
     const stmt = this.db.prepare('DELETE FROM plugin_storage WHERE plugin_name = ?');
     stmt.run(pluginName);
+  }
+
+  // Plugin Meta Implementation
+  async isPluginEnabled(pluginId: string): Promise<boolean | null> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare('SELECT enabled FROM plugin_meta WHERE plugin_id = ?');
+    const row = stmt.get(pluginId) as { enabled: number } | undefined;
+    if (!row) return null;
+    return row.enabled === 1;
+  }
+
+  async setPluginEnabled(pluginId: string, enabled: boolean): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare(`
+      INSERT INTO plugin_meta (plugin_id, enabled, updated_at)
+      VALUES (?, ?, datetime('now'))
+      ON CONFLICT(plugin_id) DO UPDATE SET
+        enabled = excluded.enabled,
+        updated_at = excluded.updated_at
+    `);
+    stmt.run(pluginId, enabled ? 1 : 0);
+  }
+
+  async getAllPluginMeta(): Promise<Array<{ pluginId: string, enabled: boolean }>> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare('SELECT plugin_id as pluginId, enabled FROM plugin_meta');
+    const rows = stmt.all() as Array<{ pluginId: string, enabled: number }>;
+    return rows.map(row => ({
+      pluginId: row.pluginId,
+      enabled: row.enabled === 1
+    }));
   }
 }

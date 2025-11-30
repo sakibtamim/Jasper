@@ -253,6 +253,14 @@ export class PluginManager {
 
         const entries = await fs.promises.readdir(PLUGINS_DIR, { withFileTypes: true });
 
+        // Test plugins to disable in production by default
+        const TEST_PLUGINS = [
+            "advanced-hooks-test-plugin",
+            "db-test-plugin",
+            "dashboard-notes",
+            "media-gallery"
+        ];
+
         for (const entry of entries) {
             // Strict Mode: Only load directories or symlinks with jasper-plugin.json
             if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
@@ -274,7 +282,32 @@ export class PluginManager {
                     continue;
                 }
 
-                // 2. Check Version Compatibility
+                // 2. Check Enabled Status
+                let isEnabled = await this.context.db.core.isPluginEnabled(metadata.id);
+
+                // If not set in DB, determine default
+                if (isEnabled === null) {
+                    const isProduction = process.env.NODE_ENV === "production";
+                    const isTestPlugin = TEST_PLUGINS.includes(metadata.id);
+
+                    // In production, disable test plugins by default
+                    if (isProduction && isTestPlugin) {
+                        isEnabled = false;
+                        logger.info(`[plugins] Auto-disabling test plugin in production: ${metadata.id}`);
+                    } else {
+                        isEnabled = true;
+                    }
+
+                    // Persist default state
+                    await this.context.db.core.setPluginEnabled(metadata.id, isEnabled);
+                }
+
+                if (!isEnabled) {
+                    logger.info(`[plugins] Skipping disabled plugin: ${metadata.id}`);
+                    continue;
+                }
+
+                // 3. Check Version Compatibility
                 if (metadata.jasperVersion) {
                     if (!semver.satisfies(CORE_VERSION, metadata.jasperVersion)) {
                         logger.warn(`[plugins] ⚠️ Plugin '${metadata.name}' (${metadata.id}) requires Jasper version ${metadata.jasperVersion}, but core is ${CORE_VERSION}. Loading anyway, but issues may occur.`);
@@ -397,6 +430,147 @@ export class PluginManager {
         } catch (error) {
             logger.error(`[plugins] Error unloading plugin ${name}: ${error instanceof Error ? error.message : String(error)}`);
         }
+    }
+
+    /**
+     * Toggle plugin enabled state
+     */
+    async togglePlugin(pluginId: string, enabled: boolean): Promise<{ success: boolean; message?: string }> {
+        if (!this.context) {
+            return { success: false, message: "Plugin manager not initialized" };
+        }
+
+        try {
+            // 1. Update database state
+            await this.context.db.core.setPluginEnabled(pluginId, enabled);
+
+            // 2. Load or Unload
+            if (enabled) {
+                // To load, we need to find the plugin directory and metadata
+                // This is a bit inefficient as we scan all plugins, but safe
+                const entries = await fs.promises.readdir(PLUGINS_DIR, { withFileTypes: true });
+                let found = false;
+
+                for (const entry of entries) {
+                    if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
+
+                    const pluginDir = path.join(PLUGINS_DIR, entry.name);
+                    const metadataPath = path.join(pluginDir, "jasper-plugin.json");
+
+                    if (!fs.existsSync(metadataPath)) continue;
+
+                    const metadata = JSON.parse(await fs.promises.readFile(metadataPath, "utf-8"));
+                    if (metadata.id === pluginId) {
+                        // Found it, load it
+                        const entryFile = metadata.entry || "index.js";
+                        let pluginPath = path.join(pluginDir, entryFile);
+
+                        if (!fs.existsSync(pluginPath) && entryFile.endsWith(".js")) {
+                            const tsPath = pluginPath.replace(/\.js$/, ".ts");
+                            if (fs.existsSync(tsPath)) pluginPath = tsPath;
+                        }
+
+                        if (!fs.existsSync(pluginPath)) {
+                            return { success: false, message: "Plugin entry file not found" };
+                        }
+
+                        const fileUrl = pathToFileURL(pluginPath).href;
+                        // Cache busting for reload
+                        const pluginModule = await import(`${fileUrl}?t=${Date.now()}`);
+                        const plugin: Plugin = pluginModule.default;
+
+                        await this.registerPlugin(plugin, metadata, pluginDir);
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found) return { success: false, message: "Plugin not found on disk" };
+
+            } else {
+                // Disable: find plugin by name (which usually matches ID, but we should be careful)
+                // We store plugins by name in the map, but we need to find it by ID
+                let pluginName = "";
+                for (const [name, data] of this.plugins.entries()) {
+                    if (data.metadata.id === pluginId) {
+                        pluginName = name;
+                        break;
+                    }
+                }
+
+                if (pluginName) {
+                    await this.unloadPlugin(pluginName);
+                } else {
+                    // It might be already unloaded, which is fine
+                    logger.info(`[plugins] Plugin ${pluginId} is already unloaded`);
+                }
+            }
+
+            return { success: true };
+        } catch (error) {
+            logger.error(`[plugins] Failed to toggle plugin ${pluginId}: ${error}`);
+            return { success: false, message: error instanceof Error ? error.message : String(error) };
+        }
+    }
+
+    /**
+     * Get all plugins with their status
+     */
+    async getPluginStatus(): Promise<Array<{ id: string; name: string; version: string; description: string; enabled: boolean; isTestPlugin: boolean }>> {
+        if (!this.context) return [];
+
+        const statusList: Array<{ id: string; name: string; version: string; description: string; enabled: boolean; isTestPlugin: boolean }> = [];
+        const dbMeta = await this.context.db.core.getAllPluginMeta();
+        const dbEnabledMap = new Map(dbMeta.map(m => [m.pluginId, m.enabled]));
+
+        // Scan directory to get all available plugins
+        if (fs.existsSync(PLUGINS_DIR)) {
+            const entries = await fs.promises.readdir(PLUGINS_DIR, { withFileTypes: true });
+
+            for (const entry of entries) {
+                if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
+
+                try {
+                    const metadataPath = path.join(PLUGINS_DIR, entry.name, "jasper-plugin.json");
+                    if (!fs.existsSync(metadataPath)) continue;
+
+                    const metadata = JSON.parse(await fs.promises.readFile(metadataPath, "utf-8"));
+
+                    // Determine enabled status
+                    // 1. Check DB
+                    // 2. If not in DB, check if it's currently loaded
+                    // 3. If not loaded, check default logic (test plugins disabled in prod)
+
+                    let enabled = false;
+                    if (dbEnabledMap.has(metadata.id)) {
+                        enabled = dbEnabledMap.get(metadata.id)!;
+                    } else {
+                        // Fallback to loaded status
+                        enabled = Array.from(this.plugins.values()).some(p => p.metadata.id === metadata.id);
+                    }
+
+                    const isTestPlugin = [
+                        "advanced-hooks-test-plugin",
+                        "db-test-plugin",
+                        "dashboard-notes",
+                        "media-gallery"
+                    ].includes(metadata.id);
+
+                    statusList.push({
+                        id: metadata.id,
+                        name: metadata.name,
+                        version: metadata.version,
+                        description: metadata.description,
+                        enabled,
+                        isTestPlugin
+                    });
+                } catch (e) {
+                    logger.warn(`[plugins] Failed to read metadata for ${entry.name}: ${e}`);
+                }
+            }
+        }
+
+        return statusList;
     }
 }
 

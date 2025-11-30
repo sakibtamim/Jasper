@@ -138,7 +138,13 @@ export interface IPluginRepository {
     clearPluginData(pluginName: string): Promise<void>;
 }
 
-export interface DatabaseAdapter extends IStatsRepository, ICacheRepository, IAuthRepository, IDevToolsRepository, IPluginRepository {
+export interface IPluginMetaRepository {
+    isPluginEnabled(pluginId: string): Promise<boolean | null>;
+    setPluginEnabled(pluginId: string, enabled: boolean): Promise<void>;
+    getAllPluginMeta(): Promise<Array<{ pluginId: string, enabled: boolean }>>;
+}
+
+export interface DatabaseAdapter extends IStatsRepository, ICacheRepository, IAuthRepository, IDevToolsRepository, IPluginRepository, IPluginMetaRepository {
     init(): Promise<void>;
     close(): Promise<void>;
 }

@@ -58,6 +58,11 @@ export interface CoreDataAccessor {
     getTopSongs(limit?: number): Promise<SongStats[]>;
     getTopUsers(limit?: number): Promise<UserStats[]>;
     getGlobalStats(): Promise<{ totalPlays: number; totalDuration: number }>;
+
+    // Plugin Meta (Read-only for plugins, but accessible to system)
+    isPluginEnabled(pluginId: string): Promise<boolean | null>;
+    setPluginEnabled(pluginId: string, enabled: boolean): Promise<void>;
+    getAllPluginMeta(): Promise<Array<{ pluginId: string, enabled: boolean }>>;
 }
 
 export interface SlashCommandDefinition {
