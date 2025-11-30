@@ -1,7 +1,7 @@
 import { React, useState, useEffect } from '@jasper/elements';
 import { Card, Button, Input, Loader, Badge } from '@jasper/ui';
 import { usePluginStorage } from '@jasper/hooks';
-import { Trash2, Upload, Music } from 'lucide-react';
+import { Trash2, Upload, Music, Play, AlertTriangle } from 'lucide-react';
 
 interface Sound {
     id: string;
@@ -31,6 +31,7 @@ export const SoundboardPage = () => {
     const [name, setName] = useState('');
     const [emoji, setEmoji] = useState('🔊');
     const [file, setFile] = useState<File | null>(null);
+    const [previewAudio, setPreviewAudio] = useState<string | null>(null);
 
     const { upload } = usePluginStorage('soundboard');
 
@@ -108,6 +109,25 @@ export const SoundboardPage = () => {
         }
     };
 
+    const handleClearData = async () => {
+        if (!confirm("Are you sure you want to clear ALL soundboard data? This cannot be undone!")) return;
+
+        try {
+            await fetch('/api/plugins/soundboard/data', { method: 'DELETE' });
+            fetchData();
+        } catch (err) {
+            console.error("Clear data failed", err);
+        }
+    };
+
+    const handlePreview = (soundId: string) => {
+        const sound = sounds.find(s => s.id === soundId);
+        if (sound) {
+            // Construct the URL for the sound file
+            setPreviewAudio(`/api/plugins/soundboard/storage/${sound.fileUri.split('/').pop()}`);
+        }
+    };
+
     if (loading && sounds.length === 0) {
         return (
             <div className="p-8 flex justify-center">
@@ -129,6 +149,14 @@ export const SoundboardPage = () => {
                     <Card className="p-0 overflow-hidden">
                         <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex justify-between items-center">
                             <h2 className="font-semibold text-lg">Sounds ({sounds.length})</h2>
+                            <button
+                                onClick={handleClearData}
+                                className="flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                                title="Clear all data"
+                            >
+                                <AlertTriangle className="w-4 h-4" />
+                                Clear Data
+                            </button>
                         </div>
 
                         {sounds.length === 0 ? (
@@ -149,6 +177,13 @@ export const SoundboardPage = () => {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => handlePreview(sound.id)}
+                                                className="p-2 text-gray-500 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-colors"
+                                                title="Preview in browser"
+                                            >
+                                                <Play className="w-4 h-4" />
+                                            </button>
                                             <button
                                                 onClick={() => handleDelete(sound.id)}
                                                 className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
@@ -243,6 +278,18 @@ export const SoundboardPage = () => {
                     </Card>
                 </div>
             </div>
+
+            {/* Hidden audio element for preview */}
+            {previewAudio && (
+                <audio
+                    key={previewAudio}
+                    autoPlay
+                    onEnded={() => setPreviewAudio(null)}
+                    className="hidden"
+                >
+                    <source src={previewAudio} type="audio/mpeg" />
+                </audio>
+            )}
         </div>
     );
 };

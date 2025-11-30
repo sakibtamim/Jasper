@@ -86,6 +86,11 @@ const MyPlugin: Plugin = {
         context.server.get("/hello", async (req, reply) => {
             return { message: "Hello from backend!" };
         });
+
+        context.registerCommand({
+            data: { name: "hello", description: "Say hello" },
+            execute: async (interaction) => await interaction.reply("Hello!")
+        });
     },
 
     onUnload: async (context: PluginContext) => {
@@ -123,6 +128,38 @@ const files = await context.storage.list();
 // Resolve URI to filesystem path and web URL
 const { fsPath, webUrl } = context.storage.resolve(uri);
 ```
+
+### Audio Playback API
+
+Plugins can play audio files in voice channels using `context.playAudio()`:
+
+```typescript
+await context.playAudio({
+    voiceChannelId: "123456789",
+    guildId: "987654321",
+    audioPath: "/absolute/path/to/audio.mp3",
+    title: "🔊 Sound Effect",  // Optional
+    requesterId: userId
+});
+```
+
+**How it works:**
+- **Existing Queue**: If bot is already in the channel, plays audio directly on existing player
+- **New Connection**: 
+  - Allocates a worker bot
+  - Joins voice channel
+  - Waits 2 seconds for connection to stabilize
+  - Detects audio duration using ffprobe
+  - Plays audio
+  - Auto-disconnects after duration + 1 second buffer
+- **Error Handling**: Automatically cleans up resources on error
+- **Requirements**: Requires `ffprobe` in PATH for duration detection (falls back to 10s default)
+
+**Example use cases:**
+- Soundboard sound effects
+- Join/leave announcement sounds
+- Achievement notifications
+- Custom bot event sounds
 
 ---
 

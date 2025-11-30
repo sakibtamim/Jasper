@@ -4,6 +4,8 @@ import { fileURLToPath, pathToFileURL } from "url";
 import { Client } from "discord.js";
 import { FastifyInstance } from "fastify";
 import { joinVoiceChannel, createAudioPlayer, createAudioResource, StreamType, NoSubscriberBehavior } from "@discordjs/voice";
+import { exec } from "node:child_process";
+import { promisify } from "node:util";
 import logger from "../logger.js";
 import workerPool from "../worker-pool.js";
 import { Plugin, PluginContext } from "./plugin-interface.js";
@@ -14,6 +16,23 @@ import coreDataAccessor from "./core-data-accessor.js";
 import { getQueue } from "../audio/queue-manager.js";
 import semver from "semver";
 
+const execPromise = promisify(exec);
+
+/**
+ * Get audio duration in milliseconds using ffprobe
+ */
+async function getAudioDuration(filePath: string): Promise<number> {
+    try {
+        const { stdout } = await execPromise(
+            `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${filePath}"`
+        );
+        const durationInSeconds = parseFloat(stdout.trim());
+        return Math.ceil(durationInSeconds * 1000); // Convert to ms and round up
+    } catch (error) {
+        logger.warn(`[plugins] Failed to detect audio duration for ${filePath}: ${error}`);
+        return 10000; // Default to 10 seconds if detection fails
+    }
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -119,6 +138,13 @@ export class PluginManager {
                     });
                     connection.subscribe(player);
 
+                    // Wait 2s for connection to stabilize
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+
+                    // Get audio duration
+                    const duration = await getAudioDuration(audioPath);
+                    logger.info(`[plugins] Audio duration detected: ${duration}ms`);
+
                     // Play audio
                     const resource = createAudioResource(fs.createReadStream(audioPath), {
                         inputType: StreamType.Arbitrary
@@ -128,13 +154,11 @@ export class PluginManager {
                     logger.info(`[plugins] Playing audio: ${title || audioPath}`);
 
                     // Auto-cleanup after playback
-                    player.once('idle', () => {
-                        setTimeout(() => {
-                            connection.destroy();
-                            workerPool.releaseWorker(voiceChannelId);
-                            logger.info(`[plugins] Cleaned up temporary audio connection for ${voiceChannelId}`);
-                        }, 5000); // 5 second delay after idle
-                    });
+                    setTimeout(() => {
+                        connection.destroy();
+                        workerPool.releaseWorker(voiceChannelId);
+                        logger.info(`[plugins] Cleaned up temporary audio connection for ${voiceChannelId}`);
+                    }, duration + 1000); // Duration + 1 second buffer
 
                     // Error handling
                     player.on('error', (error) => {
