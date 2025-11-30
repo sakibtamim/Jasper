@@ -22,7 +22,7 @@ trigger: model_decision
      },
    } satisfies Command;
    ```
-3. Run `npm run deploy:commands`
+3. Run `pnpm run deploy:commands`
 4. Restart the bot
 
 ### Modifying Audio Logic
@@ -72,9 +72,9 @@ trigger: model_decision
 
 ### Running Tests
 ```bash
-npm test              # Run all tests (Turbo)
-npm run test:watch    # Watch mode
-npm run test:coverage # Coverage report
+pnpm test              # Run all tests (Turbo)
+pnpm run test:watch    # Watch mode
+pnpm run test:coverage # Coverage report
 ```
 
 ### Writing Tests
@@ -89,7 +89,7 @@ npm run test:coverage # Coverage report
 
 **"yt-dlp not found"**
 - Binary missing from root
-- Fix: `npm run postinstall` or manual download
+- Fix: `pnpm run postinstall` or manual download
 
 **Audio Stops / 403 Errors**
 - YouTube anti-bot measures
@@ -110,8 +110,8 @@ npm run test:coverage # Coverage report
 
 ### Building
 ```bash
-npm run build  # Compiles all apps/packages via Turbo
-npm start      # Runs compiled JavaScript
+pnpm run build  # Compiles all apps/packages via Turbo
+pnpm start      # Runs compiled JavaScript
 ```
 
 ### Environment

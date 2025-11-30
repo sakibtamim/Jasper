@@ -38,7 +38,7 @@ The goal was to migrate from a static HTML/JS frontend to a **React-based dashbo
 ### Phase 0: React Scaffold
 -   Established Vite + React + TypeScript environment.
 -   Configured backend to serve React app.
--   Set up build pipeline (`npm run web:build`).
+-   Set up build pipeline (`pnpm run web:build`).
 
 ### Phase 1: Core Dashboard
 -   Replicated 100% of legacy features in React.
@@ -81,9 +81,9 @@ The goal was to migrate from a static HTML/JS frontend to a **React-based dashbo
 -   **Manifest-Driven**: Declare contributions in `jasper-plugin.json`.
 -   **React Components**: Build widgets and pages using standard React.
 -   **Build Tools**:
-    -   `npm run build:backend`: Compiles backend and plugin frontend code.
-    -   `npm run export-plugin <id>`: Packages plugin for distribution.
--   **Hot Reload**: `npm run dev:all` runs backend and frontend dev servers.
+    -   `pnpm run build:backend`: Compiles backend and plugin frontend code.
+    -   `pnpm run export-plugin <id>`: Packages plugin for distribution.
+-   **Hot Reload**: `pnpm run dev:all` runs backend and frontend dev servers.
 
 ---
 

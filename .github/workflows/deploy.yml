@@ -13,26 +13,36 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
         with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
+          version: 9
 
-      - name: Install dependencies
-        env:
-          YT_DLP_SKIP_POSTINSTALL: 1
-        run: npm ci
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'pnpm'
 
-      - name: Build project
-        run: npm run build
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run build
 
       - name: Generate checksums
         run: |
           find dist -type f -exec sha256sum {} \; | sort > dist-checksums.txt
           find public -type f -exec sha256sum {} \; | sort >> dist-checksums.txt
-          sha256sum package.json package-lock.json ecosystem.config.cjs >> dist-checksums.txt
+          sha256sum package.json pnpm-lock.yaml ecosystem.config.cjs >> dist-checksums.txt
           cat dist-checksums.txt
+
+      - name: Deploy Commands
+        if: github.ref == 'refs/heads/main'
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
+        run: pnpm run deploy:commands:prod
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -113,6 +123,6 @@ jobs:
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             cd ${{ secrets.SSH_TARGET }}
-            npm ci --omit=dev
-            npm run deploy:commands:prod
+            pnpm install --prod --frozen-lockfile
+            pnpm run deploy:commands:prod
             pm2 startOrRestart ecosystem.config.cjs

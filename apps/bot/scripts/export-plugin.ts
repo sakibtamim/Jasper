@@ -10,33 +10,36 @@ const PLUGINS_SRC_DIR = path.join(ROOT_DIR, 'src/plugins');
 const PLUGINS_DIST_DIR = path.join(ROOT_DIR, 'dist/plugins');
 const EXPORTS_DIR = path.join(ROOT_DIR, 'exports');
 
-const pluginId = process.argv[2];
+const PLUGIN_ID = process.argv[2];
 
-if (!pluginId) {
-    console.error('Usage: npm run export-plugin <plugin-id>');
+if (!PLUGIN_ID) {
+    console.error('Usage: pnpm run export-plugin <plugin-id>');
     process.exit(1);
 }
 
-const pluginSrcDir = path.join(PLUGINS_SRC_DIR, pluginId);
-const pluginDistDir = path.join(PLUGINS_DIST_DIR, pluginId);
+const PLUGIN_DIR = path.join(ROOT_DIR, 'apps', 'bot', 'plugins', PLUGIN_ID);
+const DIST_DIR = path.join(ROOT_DIR, 'dist', 'plugins', PLUGIN_ID);
+const OUTPUT_ZIP = path.join(ROOT_DIR, 'exports', `${PLUGIN_ID}.zip`);
 
-if (!fs.existsSync(pluginSrcDir)) {
-    console.error(`Plugin source directory not found: ${pluginSrcDir}`);
+// Ensure plugin exists
+if (!fs.existsSync(PLUGIN_DIR)) {
+    console.error(`Plugin not found: ${PLUGIN_DIR}`);
     process.exit(1);
 }
 
-// 1. Ensure build is up to date (running full build for simplicity)
-console.log('Running build...');
+console.log(`Exporting plugin: ${PLUGIN_ID}...`);
+
+// 1. Build the backend
+console.log('Building backend...');
 try {
-    execSync('npm run build:backend', { stdio: 'inherit', cwd: ROOT_DIR });
+    execSync('pnpm run build:backend', { stdio: 'inherit', cwd: ROOT_DIR });
 } catch (e) {
     console.error('Build failed.');
     process.exit(1);
 }
 
-if (!fs.existsSync(pluginDistDir)) {
-    console.error(`Plugin dist directory not found: ${pluginDistDir}`);
-    process.exit(1);
+console.error(`Plugin dist directory not found: ${PLUGINS_DIST_DIR}`);
+process.exit(1);
 }
 
 // 2. Prepare export directory
@@ -45,26 +48,26 @@ if (!fs.existsSync(EXPORTS_DIR)) {
 }
 
 // 3. Read version from manifest
-const manifestPath = path.join(pluginSrcDir, 'jasper-plugin.json');
+const manifestPath = path.join(PLUGIN_DIR, 'jasper-plugin.json');
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
 const version = manifest.version || '0.0.0';
-const zipName = `${pluginId}-${version}.zip`;
+const zipName = `${PLUGIN_ID}-${version}.zip`;
 const zipPath = path.join(EXPORTS_DIR, zipName);
 
 // 4. Create temp directory for staging
-const tempDir = path.join(EXPORTS_DIR, 'temp_' + pluginId);
+const tempDir = path.join(EXPORTS_DIR, 'temp_' + PLUGIN_ID);
 if (fs.existsSync(tempDir)) {
     fs.rmSync(tempDir, { recursive: true, force: true });
 }
 fs.mkdirSync(tempDir);
 
-console.log(`Staging files for ${pluginId} v${version}...`);
+console.log(`Staging files for ${PLUGIN_ID} v${version}...`);
 
 // Copy manifest
 fs.copyFileSync(manifestPath, path.join(tempDir, 'jasper-plugin.json'));
 
 // Copy backend entry (index.js)
-const distEntry = path.join(pluginDistDir, 'index.js');
+const distEntry = path.join(DIST_DIR, 'index.js');
 if (fs.existsSync(distEntry)) {
     fs.copyFileSync(distEntry, path.join(tempDir, 'index.js'));
 } else {
@@ -72,13 +75,13 @@ if (fs.existsSync(distEntry)) {
 }
 
 // Copy web directory
-const webDistDir = path.join(pluginDistDir, 'web');
+const webDistDir = path.join(DIST_DIR, 'web');
 if (fs.existsSync(webDistDir)) {
     fs.cpSync(webDistDir, path.join(tempDir, 'web'), { recursive: true });
 }
 
 // Copy assets
-const assetsDir = path.join(pluginSrcDir, 'assets');
+const assetsDir = path.join(PLUGIN_DIR, 'assets');
 if (fs.existsSync(assetsDir)) {
     fs.cpSync(assetsDir, path.join(tempDir, 'assets'), { recursive: true });
 }

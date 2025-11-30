@@ -38,4 +38,4 @@ trigger: always_on
 
 ## Build & Publish
 - **Build**: Run `turbo run build` to compile plugins.
-- **Export**: Run `npm run export-plugin <id>` to create a distributable `.zip`.
+- **Export**: Run `pnpm run export-plugin <id>` to create a distributable `.zip`.

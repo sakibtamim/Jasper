@@ -12,7 +12,7 @@ trigger: model_decision
 ## Key Technologies
 - **Runtime**: Node.js (v18+)
 - **Language**: TypeScript (strict mode)
-- **Architecture**: Monorepo (Turborepo + pnpm/npm workspaces)
+- **Architecture**: Monorepo (Turborepo + pnpm workspaces)
 - **Module System**: ES Modules (`import`/`export`)
 - **Framework**: discord.js v14
 - **Voice Library**: @discordjs/voice
@@ -79,11 +79,11 @@ Optional:
 
 ### Installation
 ```bash
-npm install
+pnpm install
 cp .env.example .env
 # Edit .env with your tokens
-npm run deploy:commands
-npm run dev
+pnpm run deploy:commands
+pnpm run dev
 ```
 
 ## Key Features

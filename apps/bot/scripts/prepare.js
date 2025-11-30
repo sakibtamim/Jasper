@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // Skip build if this is a production install (no devDependencies)
-// The prepare script runs after npm install, but we only want to build
+// The prepare script runs after pnpm install, but we only want to build
 // when devDependencies are available (i.e., not during --production installs)
 
 import { existsSync } from 'fs';
@@ -21,14 +21,18 @@ const tscExists = existsSync(tscPath) || existsSync(tscPath + '.cmd');
 const distPath = join(root, 'dist');
 const distIndexPath = join(distPath, 'index.js');
 
-if (!tscExists) {
-    console.log('Skipping build: devDependencies not installed (production mode)');
-} else if (existsSync(distIndexPath)) {
-    console.log('Skipping build: dist/index.js already exists');
-} else {
-    // Run the build
-    console.log('Running build...');
-    const result = spawnSync('npm', ['run', 'build'], {
+// The prepare script runs after pnpm install, but we only want to build
+// yt-dlp if we are not in a CI environment (where it might be cached or handled differently)
+// or if we explicitly want to skip it.
+
+if (process.env.YT_DLP_SKIP_POSTINSTALL) {
+    console.log('Skipping yt-dlp download (YT_DLP_SKIP_POSTINSTALL is set)');
+    process.exit(0);
+}
+
+try {
+    console.log('Running yt-dlp download script...');
+    const result = spawnSync('pnpm', ['run', 'build'], {
         cwd: root,
         stdio: 'inherit',
         shell: true
@@ -36,6 +40,9 @@ if (!tscExists) {
     if (result.status !== 0) {
         process.exit(result.status);
     }
+} catch (e) {
+    console.error('Failed to run build script:', e);
+    process.exit(1);
 }
 
 process.exit(0);

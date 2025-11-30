@@ -447,7 +447,7 @@ export default function DevToolsPage() {
                                         <div className="mb-6">
                                             <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">Install Plugin</h3>
                                             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                                                Upload a plugin .zip file (exported via <code>npm run export-plugin</code>).
+                                                Upload a plugin .zip file (exported via <code>pnpm run export-plugin</code>).
                                             </p>
                                             <div className="flex items-center gap-4">
                                                 <input

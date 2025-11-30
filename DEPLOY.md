@@ -10,7 +10,7 @@ The target server must have the following installed:
     - **Important**: If using `nvm` to manage Node.js, ensure it's properly configured in your shell's `.bashrc` or `.bash_profile`.
 2.  **PM2**: Process manager for Node.js. Install globally:
     ```bash
-    npm install -g pm2
+    pnpm install -g pm2
     ```
 3.  **FFmpeg**: Required for music playback.
 4.  **yt-dlp**: Will be automatically downloaded during deployment.
@@ -63,13 +63,13 @@ The deployment is handled automatically by GitHub Actions when you push to the `
     -   Old files are cleaned from the deployment directory.
     -   Files are copied to the server via SCP.
     -   The integrity of the copied files on the server is verified again.
-    -   `npm ci --omit=dev` is run on the server to install production dependencies (yt-dlp is downloaded here).
-    -   `npm run deploy:commands:prod` is run to register slash commands with Discord.
+    -   `pnpm install --prod --frozen-lockfile` is run on the server to install production dependencies (yt-dlp is downloaded here).
+    -   `pnpm run deploy:commands:prod` is run to register slash commands with Discord.
     -   `pm2 startOrRestart ecosystem.config.cjs` is executed to start or reload the bot.
 
 ### Important Notes
 
--   **nvm Support**: The deployment scripts automatically source nvm if it's installed, ensuring node/npm/pm2 are available.
+-   **nvm Support**: The deployment scripts automatically source nvm if it's installed, ensuring node/pnpm/pm2 are available.
 -   **yt-dlp**: Skipped during CI build but downloaded on the server during production install.
 -   **Checksums**: SHA256 verification ensures deployment integrity at multiple stages.
 

@@ -245,7 +245,7 @@ Once enabled, start the bot and visit:
 
   - **Runtime:** Node.js (v18+)
   - **Language:** TypeScript (strict mode)
-  - **Architecture:** Monorepo (Turborepo + pnpm/npm workspaces)
+  - **Architecture:** Monorepo (Turborepo + pnpm/pnpm workspaces)
   - **Bot Framework:** [discord.js](https://discord.js.org/) v14
   - **Frontend:** React 18 + Vite + Tailwind CSS
   - **Audio Engine:** `yt-dlp` (via child process) + `@discordjs/voice`
@@ -276,7 +276,7 @@ cd Jasper
 Install the required packages.
 
 ```bash
-npm install
+pnpm install
 ```
 
 > **Note:** The project is written in TypeScript and requires compilation before running in production.
@@ -285,11 +285,11 @@ npm install
 
 This bot **requires** the `yt-dlp` executable to function.
 
-- When you run `npm install`, the postinstall script will attempt to automatically download the **latest** yt-dlp binary for your platform and place it in the project root.
-- If you prefer to manage the binary manually (or you're offline), you can skip the automatic download by setting the `YT_DLP_SKIP_POSTINSTALL` environment variable before running `npm install`:
+- When you run `pnpm install`, the postinstall script will attempt to automatically download the **latest** yt-dlp binary for your platform and place it in the project root.
+- If you prefer to manage the binary manually (or you're offline), you can skip the automatic download by setting the `YT_DLP_SKIP_POSTINSTALL` environment variable before running `pnpm install`:
 
 ```bash
-YT_DLP_SKIP_POSTINSTALL=1 npm install
+YT_DLP_SKIP_POSTINSTALL=1 pnpm install
 ```
 
 If the postinstall script cannot download yt-dlp (e.g., no network), you can still install it manually:
@@ -337,7 +337,7 @@ GUILD_ID=your_guild_id_for_testing
 Compile TypeScript to JavaScript:
 
 ```bash
-npm run build
+pnpm run build
 ```
 
 This will create a `dist/` directory with the compiled JavaScript files.
@@ -347,27 +347,27 @@ This will create a `dist/` directory with the compiled JavaScript files.
 Register the slash commands with Discord (run this whenever you add new commands):
 
 ```bash
-npm run deploy:commands
+pnpm run deploy:commands
 ```
 
 ### 7. Start the Bot
 
 **Development mode** (with hot-reloading):
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 **Production mode** (runs compiled JavaScript):
 ```bash
-npm start
+pnpm start
 ```
 
 ## Development
 
-- **Dev Mode**: `npm run dev` - Runs TypeScript with hot-reloading using tsx
-- **Build**: `npm run build` - Compiles TypeScript to JavaScript in `dist/`
-- **Lint**: `npm run lint` - Runs ESLint with TypeScript rules
-- **Deploy Commands**: `npm run deploy:commands` - Registers slash commands with Discord
+- **Dev Mode**: `pnpm run dev` - Runs TypeScript with hot-reloading using tsx
+- **Build**: `pnpm run build` - Compiles TypeScript to JavaScript in `dist/`
+- **Lint**: `pnpm run lint` - Runs ESLint with TypeScript rules
+- **Deploy Commands**: `pnpm run deploy:commands` - Registers slash commands with Discord
 
 ## Deployment
 
