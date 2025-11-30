@@ -10,16 +10,21 @@ const PLUGINS_SRC_DIR = path.join(ROOT_DIR, 'src/plugins');
 const PLUGINS_DIST_DIR = path.join(ROOT_DIR, 'dist/plugins');
 const EXPORTS_DIR = path.join(ROOT_DIR, 'exports');
 
-const PLUGIN_ID = process.argv[2];
+const args = process.argv.slice(2);
+const srcFlagIndex = args.indexOf('--src');
+const isSourceExport = srcFlagIndex !== -1;
+
+// Remove flags to get ID
+if (isSourceExport) args.splice(srcFlagIndex, 1);
+const PLUGIN_ID = args[0];
 
 if (!PLUGIN_ID) {
-    console.error('Usage: pnpm run export-plugin <plugin-id>');
+    console.error('Usage: pnpm plugin:export <plugin-id> [--src]');
     process.exit(1);
 }
 
-const PLUGIN_DIR = path.join(ROOT_DIR, 'apps', 'bot', 'plugins', PLUGIN_ID);
-const DIST_DIR = path.join(ROOT_DIR, 'dist', 'plugins', PLUGIN_ID);
-const OUTPUT_ZIP = path.join(ROOT_DIR, 'exports', `${PLUGIN_ID}.zip`);
+const PLUGIN_DIR = path.join(PLUGINS_SRC_DIR, PLUGIN_ID);
+const DIST_DIR = path.join(PLUGINS_DIST_DIR, PLUGIN_ID);
 
 // Ensure plugin exists
 if (!fs.existsSync(PLUGIN_DIR)) {
@@ -27,20 +32,22 @@ if (!fs.existsSync(PLUGIN_DIR)) {
     process.exit(1);
 }
 
-console.log(`Exporting plugin: ${PLUGIN_ID}...`);
+console.log(`Exporting plugin: ${PLUGIN_ID} (${isSourceExport ? 'SOURCE' : 'COMPILED'})...`);
 
-// 1. Build the backend
-console.log('Building backend...');
-try {
-    execSync('pnpm run build:backend', { stdio: 'inherit', cwd: ROOT_DIR });
-} catch (e) {
-    console.error('Build failed.');
-    process.exit(1);
-}
+// 1. Build (if not source export)
+if (!isSourceExport) {
+    console.log('Building backend...');
+    try {
+        execSync('pnpm run build:backend', { stdio: 'inherit', cwd: ROOT_DIR });
+    } catch (e) {
+        console.error('Build failed.');
+        process.exit(1);
+    }
 
-if (!fs.existsSync(DIST_DIR)) {
-    console.error(`Plugin dist directory not found: ${DIST_DIR}`);
-    process.exit(1);
+    if (!fs.existsSync(DIST_DIR)) {
+        console.error(`Plugin dist directory not found: ${DIST_DIR}`);
+        process.exit(1);
+    }
 }
 
 // 2. Prepare export directory
@@ -52,7 +59,8 @@ if (!fs.existsSync(EXPORTS_DIR)) {
 const manifestPath = path.join(PLUGIN_DIR, 'jasper-plugin.json');
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
 const version = manifest.version || '0.0.0';
-const zipName = `${PLUGIN_ID}-${version}.zip`;
+const suffix = isSourceExport ? '-src' : '';
+const zipName = `${PLUGIN_ID}-${version}${suffix}.zip`;
 const zipPath = path.join(EXPORTS_DIR, zipName);
 
 // 4. Create temp directory for staging
@@ -64,27 +72,37 @@ fs.mkdirSync(tempDir);
 
 console.log(`Staging files for ${PLUGIN_ID} v${version}...`);
 
-// Copy manifest
-fs.copyFileSync(manifestPath, path.join(tempDir, 'jasper-plugin.json'));
-
-// Copy backend entry (index.js)
-const distEntry = path.join(DIST_DIR, 'index.js');
-if (fs.existsSync(distEntry)) {
-    fs.copyFileSync(distEntry, path.join(tempDir, 'index.js'));
+if (isSourceExport) {
+    // === SOURCE EXPORT ===
+    // Copy everything from src/plugins/<id> except node_modules or hidden files
+    fs.cpSync(PLUGIN_DIR, tempDir, {
+        recursive: true,
+        filter: (src) => !src.includes('node_modules') && !path.basename(src).startsWith('.')
+    });
 } else {
-    console.warn('Warning: No index.js found in dist.');
-}
+    // === COMPILED EXPORT ===
+    // Copy manifest
+    fs.copyFileSync(manifestPath, path.join(tempDir, 'jasper-plugin.json'));
 
-// Copy web directory
-const webDistDir = path.join(DIST_DIR, 'web');
-if (fs.existsSync(webDistDir)) {
-    fs.cpSync(webDistDir, path.join(tempDir, 'web'), { recursive: true });
-}
+    // Copy backend entry (index.js)
+    const distEntry = path.join(DIST_DIR, 'index.js');
+    if (fs.existsSync(distEntry)) {
+        fs.copyFileSync(distEntry, path.join(tempDir, 'index.js'));
+    } else {
+        console.warn('Warning: No index.js found in dist.');
+    }
 
-// Copy assets
-const assetsDir = path.join(PLUGIN_DIR, 'assets');
-if (fs.existsSync(assetsDir)) {
-    fs.cpSync(assetsDir, path.join(tempDir, 'assets'), { recursive: true });
+    // Copy web directory
+    const webDistDir = path.join(DIST_DIR, 'web');
+    if (fs.existsSync(webDistDir)) {
+        fs.cpSync(webDistDir, path.join(tempDir, 'web'), { recursive: true });
+    }
+
+    // Copy assets
+    const assetsDir = path.join(PLUGIN_DIR, 'assets');
+    if (fs.existsSync(assetsDir)) {
+        fs.cpSync(assetsDir, path.join(tempDir, 'assets'), { recursive: true });
+    }
 }
 
 // 5. Zip it up
