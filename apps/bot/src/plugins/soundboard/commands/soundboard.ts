@@ -288,9 +288,26 @@ async function handleAddCommand(interaction: ChatInputCommandInteraction, contex
 
         // Add to DB
         const soundService = new SoundService(context);
-        await soundService.addSound(name, emoji, uri, interaction.user.id);
+        const newSound = await soundService.addSound(name, emoji, uri, interaction.user.id);
 
         await interaction.editReply(`✅ Sound **${emoji} ${name}** added successfully!`);
+
+        // Public Announcement
+        const playButton = new ButtonBuilder()
+            .setCustomId(`soundboard_play_${newSound.id}`)
+            .setLabel('Play')
+            .setEmoji('▶️')
+            .setStyle(ButtonStyle.Success);
+
+        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(playButton);
+
+        if (interaction.channel && !interaction.channel.isDMBased() && interaction.channel.isTextBased()) {
+            await interaction.channel.send({
+                content: `🎉 **New Sound Added!**\n${emoji} **${name}** has been added to the soundboard by <@${interaction.user.id}>.`,
+                components: [row]
+            });
+        }
+
     } catch (error) {
         context.logger.error(`Failed to add sound: ${error}`);
         await interaction.editReply("❌ Failed to add sound. Please try again.");

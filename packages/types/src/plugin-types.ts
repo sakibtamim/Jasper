@@ -124,6 +124,9 @@ export interface PluginContext {
         title?: string;     // Display name for the audio
         requesterId: string; // User who triggered this
     }): Promise<void>;
+
+    // Schedule background tasks (automatically cleaned up on unload)
+    scheduleTask(intervalMs: number, task: () => void | Promise<void>): void;
 }
 
 // --- Plugin Definition ---

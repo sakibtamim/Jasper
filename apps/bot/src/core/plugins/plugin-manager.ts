@@ -51,6 +51,7 @@ const CORE_VERSION = packageJson.version;
 export class PluginManager {
     private plugins: Map<string, { plugin: Plugin, context: PluginContext, metadata: any, pluginDir: string }>;
     private pluginCommands: Map<string, string[]>; // Track commands registered by each plugin
+    private pluginIntervals: Map<string, Set<NodeJS.Timeout>>; // Track intervals registered by each plugin
     private context: PluginContext | null;
 
     private soundboardQueues: Map<string, {
@@ -63,6 +64,7 @@ export class PluginManager {
     constructor() {
         this.plugins = new Map();
         this.pluginCommands = new Map();
+        this.pluginIntervals = new Map();
         this.soundboardQueues = new Map();
         this.context = null;
     }
@@ -253,6 +255,10 @@ export class PluginManager {
                         this.processSoundboardQueue(voiceChannelId, guildId);
                     }
                 });
+            },
+            scheduleTask: (intervalMs, task) => {
+                // Base implementation - overridden by scoped context
+                logger.warn("[plugins] scheduleTask called on base context. This should not happen.");
             }
         };
         logger.info("[plugins] PluginManager initialized");
@@ -421,6 +427,21 @@ export class PluginManager {
                         const commands = this.pluginCommands.get(plugin.name) || [];
                         commands.push(command.data.name);
                         this.pluginCommands.set(plugin.name, commands);
+                    },
+                    scheduleTask: (intervalMs, task) => {
+                        const interval = setInterval(async () => {
+                            try {
+                                await task();
+                            } catch (error) {
+                                logger.error(`[plugin:${metadata.id}] Scheduled task failed: ${error}`);
+                            }
+                        }, intervalMs);
+
+                        if (!this.pluginIntervals.has(plugin.name)) {
+                            this.pluginIntervals.set(plugin.name, new Set());
+                        }
+                        this.pluginIntervals.get(plugin.name)!.add(interval);
+                        logger.debug(`[plugin:${metadata.id}] Scheduled task with interval ${intervalMs}ms`);
                     }
                 };
 
@@ -452,6 +473,16 @@ export class PluginManager {
                 }
             }
             this.pluginCommands.delete(name);
+
+            // Clear intervals
+            const intervals = this.pluginIntervals.get(name);
+            if (intervals) {
+                logger.info(`[plugins] Clearing ${intervals.size} scheduled tasks for ${name}`);
+                for (const interval of intervals) {
+                    clearInterval(interval);
+                }
+                this.pluginIntervals.delete(name);
+            }
 
             this.plugins.delete(name);
             logger.info(`[plugins] Unloaded plugin: ${name}`);
