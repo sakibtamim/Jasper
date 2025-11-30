@@ -130,14 +130,10 @@ export const registerRoutes = (context: PluginContext) => {
         };
     });
 
-    // POST /api/plugins/soundboard/play (Dashboard Preview)
-    server.post("/play", async (req, reply) => {
-        const body = req.body as { soundId: string; guildId?: string; voiceChannelId?: string };
-
-        // This is a placeholder for now. 
-        // Real implementation requires resolving the sound and playing it.
-        // We will implement the playback logic in services/playback.ts and call it here.
-
-        return { success: true, message: "Preview triggered (stub)" };
+    // DELETE /api/plugins/soundboard/data (Debug: Clear all data)
+    server.delete("/data", async (req, reply) => {
+        await db.plugin.set("sounds", []);
+        await db.plugin.set("plays", []);
+        return { success: true, message: "All data cleared" };
     });
 };

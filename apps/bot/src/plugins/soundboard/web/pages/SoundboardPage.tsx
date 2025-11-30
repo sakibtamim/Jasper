@@ -1,7 +1,7 @@
 import { React, useState, useEffect } from '@jasper/elements';
 import { Card, Button, Input, Loader, Badge } from '@jasper/ui';
 import { usePluginStorage } from '@jasper/hooks';
-import { Trash2, Play, Upload, Music } from 'lucide-react';
+import { Trash2, Upload, Music } from 'lucide-react';
 
 interface Sound {
     id: string;
@@ -108,19 +108,6 @@ export const SoundboardPage = () => {
         }
     };
 
-    const handlePreview = async (soundId: string) => {
-        try {
-            await fetch('/api/plugins/soundboard/play', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ soundId })
-            });
-            // Show toast or something?
-        } catch (err) {
-            console.error("Preview failed", err);
-        }
-    };
-
     if (loading && sounds.length === 0) {
         return (
             <div className="p-8 flex justify-center">
@@ -162,13 +149,6 @@ export const SoundboardPage = () => {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <button
-                                                onClick={() => handlePreview(sound.id)}
-                                                className="p-2 text-gray-500 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-full transition-colors"
-                                                title="Preview on Bot"
-                                            >
-                                                <Play className="w-4 h-4" />
-                                            </button>
                                             <button
                                                 onClick={() => handleDelete(sound.id)}
                                                 className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
