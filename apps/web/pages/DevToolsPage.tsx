@@ -251,7 +251,7 @@ export default function DevToolsPage() {
                                         </div>
                                         <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                                             <div className="text-sm text-gray-500 dark:text-gray-400">Audio Cache</div>
-                                            <div className="text-2xl font-bold text-gray-900 dark:text-white">{data.audioCacheFiles}</div>
+                                            <div className="text-2xl font-bold text-gray-900 dark:text-white">{data.audioMetadataCount}</div>
                                         </div>
                                     </div>
                                 )}
