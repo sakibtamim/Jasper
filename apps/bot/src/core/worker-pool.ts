@@ -21,6 +21,8 @@ function createBots(): WorkerState[] {
             intents: [
                 GatewayIntentBits.Guilds,
                 GatewayIntentBits.GuildVoiceStates,
+                GatewayIntentBits.GuildMessages,
+                GatewayIntentBits.MessageContent,
             ],
         });
 
