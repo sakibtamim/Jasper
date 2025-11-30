@@ -1,4 +1,4 @@
-import { React, useState, useEffect, ReactDOM } from '@jasper/elements';
+import { React, useState, useEffect } from '@jasper/elements';
 import { Card, Button, Input, Loader, Badge } from '@jasper/ui';
 import { usePluginStorage } from '@jasper/hooks';
 import { Trash2, Upload, Music, Play, AlertTriangle, Edit2, X } from 'lucide-react';
@@ -35,8 +35,6 @@ export const SoundboardPage = () => {
 
     // Edit State
     const [editingSound, setEditingSound] = useState<Sound | null>(null);
-    const [editName, setEditName] = useState('');
-    const [editEmoji, setEditEmoji] = useState('');
 
     const { upload } = usePluginStorage('soundboard');
 
@@ -64,40 +62,58 @@ export const SoundboardPage = () => {
         fetchData();
     }, []);
 
-    const handleAddSound = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!file || !name || !emoji) return;
+        if (!name || !emoji) return;
 
         setUploading(true);
         try {
-            // 1. Upload File
-            const uploadResult = await upload(file);
-            // uploadResult is an object: { success: boolean, uri: string, url: string }
-            // We need to extract the URI
+            if (editingSound) {
+                // UPDATE Mode
+                const res = await fetch(`/api/plugins/soundboard/sounds/${editingSound.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, emoji })
+                });
 
-            // 2. Create Sound
-            const res = await fetch('/api/plugins/soundboard/sounds', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name,
-                    emoji,
-                    fileUri: uploadResult.uri
-                })
-            });
+                if (!res.ok) throw new Error("Failed to update sound");
 
-            if (!res.ok) throw new Error("Failed to create sound");
+                // Reset to Add mode
+                setEditingSound(null);
+                setName('');
+                setEmoji('🔊');
+                setFile(null);
+            } else {
+                // CREATE Mode
+                if (!file) return; // File is required for new sounds
 
-            // Reset form
-            setName('');
-            setEmoji('🔊');
-            setFile(null);
+                // 1. Upload File
+                const uploadResult = await upload(file);
+
+                // 2. Create Sound
+                const res = await fetch('/api/plugins/soundboard/sounds', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name,
+                        emoji,
+                        fileUri: uploadResult.uri
+                    })
+                });
+
+                if (!res.ok) throw new Error("Failed to create sound");
+
+                // Reset form
+                setName('');
+                setEmoji('🔊');
+                setFile(null);
+            }
 
             // Refresh
             fetchData();
         } catch (err) {
-            console.error("Upload failed", err);
-            alert("Failed to add sound");
+            console.error("Operation failed", err);
+            alert(editingSound ? "Failed to update sound" : "Failed to add sound");
         } finally {
             setUploading(false);
         }
@@ -128,32 +144,16 @@ export const SoundboardPage = () => {
     const handleEdit = (sound: Sound) => {
         console.log("Editing sound:", sound);
         setEditingSound(sound);
-        setEditName(sound.name);
-        setEditEmoji(sound.emoji);
+        setName(sound.name);
+        setEmoji(sound.emoji);
+        setFile(null); // File update not supported yet
     };
 
-    const handleUpdateSound = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!editingSound || !editName || !editEmoji) return;
-
-        try {
-            const res = await fetch(`/api/plugins/soundboard/sounds/${editingSound.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: editName,
-                    emoji: editEmoji
-                })
-            });
-
-            if (!res.ok) throw new Error("Failed to update sound");
-
-            setEditingSound(null);
-            fetchData();
-        } catch (err) {
-            console.error("Update failed", err);
-            alert("Failed to update sound");
-        }
+    const handleCancelEdit = () => {
+        setEditingSound(null);
+        setName('');
+        setEmoji('🔊');
+        setFile(null);
     };
 
     const handlePreview = (soundId: string) => {
@@ -244,13 +244,22 @@ export const SoundboardPage = () => {
 
                 {/* Right Column: Add & Stats */}
                 <div className="space-y-6">
-                    {/* Add Sound Card */}
-                    <Card className="p-6">
+                    {/* Add/Edit Sound Card */}
+                    <Card className={`p-6 ${editingSound ? 'border-2 border-amber-500/50' : ''}`}>
                         <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                            <Upload className="w-5 h-5 text-blue-500" />
-                            Add New Sound
+                            {editingSound ? (
+                                <>
+                                    <Edit2 className="w-5 h-5 text-amber-500" />
+                                    Edit Sound
+                                </>
+                            ) : (
+                                <>
+                                    <Upload className="w-5 h-5 text-blue-500" />
+                                    Add New Sound
+                                </>
+                            )}
                         </h2>
-                        <form onSubmit={handleAddSound} className="space-y-4">
+                        <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
                                 <Input
@@ -271,24 +280,40 @@ export const SoundboardPage = () => {
                                     required
                                 />
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sound File</label>
-                                <input
-                                    type="file"
-                                    accept="audio/*"
-                                    onChange={(e) => setFile(e.target.files?.[0] || null)}
-                                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-300"
-                                    required
-                                />
-                                <p className="text-xs text-gray-500 mt-1">Max 10 seconds recommended.</p>
+
+                            {!editingSound && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sound File</label>
+                                    <input
+                                        type="file"
+                                        accept="audio/*"
+                                        onChange={(e) => setFile(e.target.files?.[0] || null)}
+                                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-300"
+                                        required={!editingSound}
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Max 10 seconds recommended.</p>
+                                </div>
+                            )}
+
+                            <div className="flex gap-2">
+                                {editingSound && (
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        className="flex-1"
+                                        onClick={handleCancelEdit}
+                                    >
+                                        Cancel
+                                    </Button>
+                                )}
+                                <Button
+                                    type="submit"
+                                    className="flex-1"
+                                    disabled={uploading}
+                                >
+                                    {uploading ? 'Saving...' : (editingSound ? 'Update Sound' : 'Add Sound')}
+                                </Button>
                             </div>
-                            <Button
-                                type="submit"
-                                className="w-full"
-                                disabled={uploading}
-                            >
-                                {uploading ? 'Uploading...' : 'Add Sound'}
-                            </Button>
                         </form>
                     </Card>
 
@@ -334,59 +359,7 @@ export const SoundboardPage = () => {
                 </audio>
             )}
 
-            {/* Edit Modal */}
-            {editingSound && ReactDOM.createPortal(
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
-                    <Card className="w-full max-w-md p-6 relative">
-                        <button
-                            onClick={() => setEditingSound(null)}
-                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-                        <h2 className="text-xl font-bold mb-4">Edit Sound</h2>
-                        <form onSubmit={handleUpdateSound} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
-                                <Input
-                                    value={editName}
-                                    onChange={(e) => setEditName(e.target.value)}
-                                    placeholder="e.g. Vine Boom"
-                                    maxLength={32}
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Emoji</label>
-                                <Input
-                                    value={editEmoji}
-                                    onChange={(e) => setEditEmoji(e.target.value)}
-                                    placeholder="🔊"
-                                    maxLength={4}
-                                    required
-                                />
-                            </div>
-                            <div className="flex gap-3 mt-6">
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    className="flex-1"
-                                    onClick={() => setEditingSound(null)}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    className="flex-1"
-                                >
-                                    Save Changes
-                                </Button>
-                            </div>
-                        </form>
-                    </Card>
-                </div>,
-                document.body
-            )}
+
         </div>
     );
 };

@@ -17,13 +17,19 @@ function createBots(): WorkerState[] {
     if (workers.length > 0) return workers;
 
     for (const botConfig of bots) {
+        const intents = [
+            GatewayIntentBits.Guilds,
+            GatewayIntentBits.GuildVoiceStates,
+        ];
+
+        // Only the controller needs message content/guild messages for plugins/commands
+        if (botConfig.role === 'controller') {
+            intents.push(GatewayIntentBits.GuildMessages);
+            intents.push(GatewayIntentBits.MessageContent);
+        }
+
         const client = new Client({
-            intents: [
-                GatewayIntentBits.Guilds,
-                GatewayIntentBits.GuildVoiceStates,
-                GatewayIntentBits.GuildMessages,
-                GatewayIntentBits.MessageContent,
-            ],
+            intents: intents,
         });
 
         workers.push({
