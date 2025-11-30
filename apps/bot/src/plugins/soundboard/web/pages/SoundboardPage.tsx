@@ -1,4 +1,4 @@
-import { React, useState, useEffect } from '@jasper/elements';
+import { React, useState, useEffect, ReactDOM } from '@jasper/elements';
 import { Card, Button, Input, Loader, Badge } from '@jasper/ui';
 import { usePluginStorage } from '@jasper/hooks';
 import { Trash2, Upload, Music, Play, AlertTriangle, Edit2, X } from 'lucide-react';
@@ -335,7 +335,7 @@ export const SoundboardPage = () => {
             )}
 
             {/* Edit Modal */}
-            {editingSound && (
+            {editingSound && ReactDOM.createPortal(
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
                     <Card className="w-full max-w-md p-6 relative">
                         <button
@@ -384,7 +384,8 @@ export const SoundboardPage = () => {
                             </div>
                         </form>
                     </Card>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
