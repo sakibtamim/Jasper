@@ -11,7 +11,8 @@ import {
     ModalBuilder,
     TextInputBuilder,
     TextInputStyle,
-    ModalSubmitInteraction
+    ModalSubmitInteraction,
+    MessageFlags
 } from "discord.js";
 import { PluginContext } from "@jasper/types";
 import { Sound } from "../types.js";
@@ -97,7 +98,7 @@ async function handleMenuCommand(interaction: ChatInputCommandInteraction, conte
     const voiceChannel = member?.voice.channel;
 
     if (!voiceChannel) {
-        await interaction.reply({ content: "🚫 You must be in a voice channel to use the soundboard!", ephemeral: true });
+        await interaction.reply({ content: "🚫 You must be in a voice channel to use the soundboard!", flags: MessageFlags.Ephemeral });
         return;
     }
 
@@ -105,16 +106,21 @@ async function handleMenuCommand(interaction: ChatInputCommandInteraction, conte
     const sounds = (await context.db.plugin.get("sounds") as Sound[]) || [];
 
     if (sounds.length === 0) {
-        await interaction.reply({ content: "🔕 No sounds available. Add some via the dashboard!", ephemeral: true });
+        await interaction.reply({ content: "🔕 No sounds available. Add some via the dashboard!", flags: MessageFlags.Ephemeral });
         return;
     }
 
-    const options = sounds.slice(0, 25).map(sound => ({
-        label: sound.name,
-        value: sound.id,
-        emoji: sound.emoji,
-        description: "Click to play"
-    }));
+    const options = sounds.slice(0, 25).map(sound => {
+        // Simple heuristic: if emoji is short and alphanumeric, it's likely invalid text (e.g. "abc")
+        // Unicode emojis are not alphanumeric. Custom emoji IDs are numeric but long.
+        const isValid = !/^[a-zA-Z0-9]{1,10}$/.test(sound.emoji);
+        return {
+            label: sound.name,
+            value: sound.id,
+            emoji: isValid ? sound.emoji : '🔊',
+            description: "Click to play"
+        };
+    });
 
     const row = new ActionRowBuilder<StringSelectMenuBuilder>()
         .addComponents(
@@ -127,7 +133,7 @@ async function handleMenuCommand(interaction: ChatInputCommandInteraction, conte
     const response = await interaction.reply({
         content: "🔊 **Jasper Soundboard**\nSelect a sound to play in your voice channel.",
         components: [row],
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
     });
 
     // Handle Interaction
@@ -168,12 +174,12 @@ async function handlePlayCommand(interaction: ChatInputCommandInteraction, conte
     const voiceChannel = member?.voice.channel;
 
     if (!voiceChannel) {
-        await interaction.reply({ content: "🚫 You must be in a voice channel to use the soundboard!", ephemeral: true });
+        await interaction.reply({ content: "🚫 You must be in a voice channel to use the soundboard!", flags: MessageFlags.Ephemeral });
         return;
     }
 
     // Defer reply as playback might take a moment
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     try {
         await playSoundboardClip(
@@ -201,7 +207,7 @@ async function handleUICommand(interaction: ChatInputCommandInteraction, context
     const sounds = (await context.db.plugin.get("sounds") as Sound[]) || [];
 
     if (sounds.length === 0) {
-        await interaction.reply({ content: "🔕 No sounds available.", ephemeral: true });
+        await interaction.reply({ content: "🔕 No sounds available.", flags: MessageFlags.Ephemeral });
         return;
     }
 
@@ -214,10 +220,15 @@ async function handleUICommand(interaction: ChatInputCommandInteraction, context
 
     for (let i = 0; i < topSounds.length; i++) {
         const sound = topSounds[i];
+
+        // Simple heuristic: if emoji is short and alphanumeric, it's likely invalid text (e.g. "abc")
+        const isValid = !/^[a-zA-Z0-9]{1,10}$/.test(sound.emoji);
+        const emojiToUse = isValid ? sound.emoji : '🔊';
+
         const button = new ButtonBuilder()
             .setCustomId(`soundboard_play_${sound.id}`)
             .setLabel(sound.name)
-            .setEmoji(sound.emoji)
+            .setEmoji(emojiToUse)
             .setStyle(ButtonStyle.Primary);
 
         currentRow.addComponents(button);
@@ -253,13 +264,13 @@ async function handleAddCommand(interaction: ChatInputCommandInteraction, contex
         await interaction.reply({
             content: "👋 **Add a New Sound**\n\nTo add a sound quickly with custom emojis, use the command arguments:\n`/soundboard add file:[upload] name:[name] emoji:[emoji]`\n\nOr click the button below to use the interactive wizard (Note: Custom emojis are harder to use here).",
             components: [row],
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
         });
         return;
     }
 
     // Process direct command usage
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     try {
         // Validate file size (max 2MB)
@@ -364,7 +375,7 @@ export const handleButtonInteraction = async (interaction: ButtonInteraction, co
     if (!interaction.customId.startsWith('soundboard_play_')) return;
 
     if (activeUsers.has(interaction.user.id)) {
-        await interaction.reply({ content: "⏳ Please wait for your previous sound to finish!", ephemeral: true });
+        await interaction.reply({ content: "⏳ Please wait for your previous sound to finish!", flags: MessageFlags.Ephemeral });
         return;
     }
 
@@ -373,14 +384,14 @@ export const handleButtonInteraction = async (interaction: ButtonInteraction, co
     const voiceChannel = member?.voice.channel;
 
     if (!voiceChannel) {
-        await interaction.reply({ content: "🚫 You must be in a voice channel!", ephemeral: true });
+        await interaction.reply({ content: "🚫 You must be in a voice channel!", flags: MessageFlags.Ephemeral });
         return;
     }
 
     activeUsers.add(interaction.user.id);
 
     // Defer update to acknowledge the button click immediately
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     try {
         await playSoundboardClip(
@@ -417,12 +428,12 @@ export const handleModalSubmit = async (interaction: ModalSubmitInteraction, con
 
     await interaction.reply({
         content: `✨ **Step 2/2**: Please upload the audio file for **${name}**.\nUpload the file in this channel and **mention me** (@${context.client.user?.username}).`,
-        ephemeral: true
+        flags: MessageFlags.Ephemeral
     });
 
     // Check if channel supports message collection
     if (!interaction.channel || !interaction.channel.isTextBased() || interaction.channel.isDMBased()) {
-        await interaction.followUp({ content: "❌ Cannot collect messages in this channel type.", ephemeral: true });
+        await interaction.followUp({ content: "❌ Cannot collect messages in this channel type.", flags: MessageFlags.Ephemeral });
         return;
     }
 
@@ -437,7 +448,7 @@ export const handleModalSubmit = async (interaction: ModalSubmitInteraction, con
 
         // Validate file size (max 2MB)
         if (attachment.size > 2 * 1024 * 1024) {
-            await interaction.followUp({ content: "❌ File too large. Maximum size is 2MB.", ephemeral: true });
+            await interaction.followUp({ content: "❌ File too large. Maximum size is 2MB.", flags: MessageFlags.Ephemeral });
             // Try to delete the large file message
             try { await m.delete(); } catch (e) { }
             return;
@@ -449,7 +460,7 @@ export const handleModalSubmit = async (interaction: ModalSubmitInteraction, con
         const hasValidExtension = validExtensions.some(ext => attachment.name.toLowerCase().endsWith(ext));
 
         if (!isAudioType && !hasValidExtension) {
-            await interaction.followUp({ content: `❌ Invalid file format. Supported formats: ${validExtensions.join(', ')}`, ephemeral: true });
+            await interaction.followUp({ content: `❌ Invalid file format. Supported formats: ${validExtensions.join(', ')}`, flags: MessageFlags.Ephemeral });
             try { await m.delete(); } catch (e) { }
             return;
         }
@@ -467,7 +478,7 @@ export const handleModalSubmit = async (interaction: ModalSubmitInteraction, con
             const soundService = new SoundService(context);
             await soundService.addSound(name, emoji, uri, interaction.user.id);
 
-            await interaction.followUp({ content: `✅ Sound **${emoji} ${name}** added successfully!`, ephemeral: true });
+            await interaction.followUp({ content: `✅ Sound **${emoji} ${name}** added successfully!`, flags: MessageFlags.Ephemeral });
 
             // Try to delete the user's message to keep chat clean
             try { await m.delete(); } catch (e) { }
@@ -477,13 +488,13 @@ export const handleModalSubmit = async (interaction: ModalSubmitInteraction, con
 
         } catch (error) {
             context.logger.error(`Failed to add sound via wizard: ${error}`);
-            await interaction.followUp({ content: "❌ Failed to save sound.", ephemeral: true });
+            await interaction.followUp({ content: "❌ Failed to save sound.", flags: MessageFlags.Ephemeral });
         }
     });
 
     collector.on('end', (collected: any, reason: string) => {
         if (reason === 'time' && collected.size === 0) {
-            interaction.followUp({ content: "❌ Timed out waiting for file upload.", ephemeral: true }).catch(() => { });
+            interaction.followUp({ content: "❌ Timed out waiting for file upload.", flags: MessageFlags.Ephemeral }).catch(() => { });
         }
     });
 };
