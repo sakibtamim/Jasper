@@ -14,7 +14,9 @@
         "plugin:scaffold": "tsx scripts/scaffold-plugin.ts",
         "plugin:validate": "tsx scripts/validate-plugin.ts",
         "plugin:export": "tsx scripts/export-plugin.ts",
-        "plugin:import": "tsx scripts/import-plugin.ts"
+        "plugin:import": "tsx scripts/import-plugin.ts",
+        "plugin:link": "tsx scripts/plugin-link.ts",
+        "plugin:unlink": "tsx scripts/plugin-unlink.ts"
     },
     "dependencies": {
         "@discordjs/voice": "^0.19.0",

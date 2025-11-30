@@ -258,6 +258,43 @@ We provide several scripts to help with plugin development:
 | `pnpm plugin:import <zip>` | Imports a plugin from a zip file. |
 
 ---
+ 
+ ## 🌳 Out-of-Tree Development
+ 
+ You can develop plugins in a separate repository and link them into the Jasper monorepo for testing.
+ 
+ ### Workflow 1: Local Linking (Recommended for Dev)
+ 
+ 1.  Create your plugin in a separate directory (e.g., `~/my-jasper-plugins/cool-plugin`).
+ 2.  Ensure it has a valid `jasper-plugin.json`.
+ 3.  Run the link command from the Jasper root:
+ 
+     ```bash
+     pnpm plugin:link ~/my-jasper-plugins/cool-plugin
+     ```
+ 
+ 4.  Start Jasper (`pnpm dev`). The plugin will be loaded.
+ 5.  To remove the link:
+ 
+     ```bash
+     pnpm plugin:unlink cool-plugin
+     ```
+ 
+ ### Workflow 2: Git Submodules (Recommended for Production/Teams)
+ 
+ If you want to include an external plugin in your deployment:
+ 
+ 1.  Add the plugin repository as a submodule in `apps/bot/src/plugins/`:
+ 
+     ```bash
+     cd apps/bot/src/plugins
+     git submodule add https://github.com/username/my-plugin.git
+     ```
+ 
+ 2.  Commit the submodule change.
+ 3.  The build system will treat it as a normal directory.
+ 
+ ---
 
 ## 📚 Reference Plugins
 

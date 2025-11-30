@@ -97,8 +97,8 @@ export class PluginManager {
         const entries = await fs.promises.readdir(PLUGINS_DIR, { withFileTypes: true });
 
         for (const entry of entries) {
-            // Strict Mode: Only load directories with jasper-plugin.json
-            if (!entry.isDirectory()) continue;
+            // Strict Mode: Only load directories or symlinks with jasper-plugin.json
+            if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
 
             const pluginDir = path.join(PLUGINS_DIR, entry.name);
             const metadataPath = path.join(pluginDir, "jasper-plugin.json");
