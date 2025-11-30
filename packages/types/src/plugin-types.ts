@@ -123,6 +123,7 @@ export interface PluginContext {
         audioPath: string;  // Absolute path to audio file
         title?: string;     // Display name for the audio
         requesterId: string; // User who triggered this
+        channelId?: string; // Text channel to send messages to
     }): Promise<void>;
 
     // Schedule background tasks (automatically cleaned up on unload)

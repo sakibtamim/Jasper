@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { Client } from "discord.js";
 import { FastifyInstance } from "fastify";
-import { joinVoiceChannel, createAudioPlayer, createAudioResource, StreamType, NoSubscriberBehavior, AudioPlayerStatus, VoiceConnectionStatus } from "@discordjs/voice";
+import { joinVoiceChannel, createAudioPlayer, createAudioResource, StreamType, NoSubscriberBehavior, AudioPlayerStatus, VoiceConnectionStatus, entersState } from "@discordjs/voice";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import logger from "../logger.js";
@@ -18,6 +18,7 @@ import { getQueue } from "../audio/queue-manager.js";
 import { Queue } from "@jasper/types";
 import semver from "semver";
 import { TEST_PLUGINS } from "../../config/plugins.js";
+import { getEntryMessage } from "../../config/afr-config.js";
 
 const execPromise = promisify(exec);
 
@@ -58,7 +59,8 @@ export class PluginManager {
         queue: Array<{ audioPath: string, title?: string, requesterId: string, resolve: () => void, reject: (err: any) => void }>,
         processing: boolean,
         connection?: import("@discordjs/voice").VoiceConnection,
-        timeout?: NodeJS.Timeout
+        timeout?: NodeJS.Timeout,
+        textChannelId?: string
     }>;
 
     constructor() {
@@ -171,8 +173,27 @@ export class PluginManager {
                     });
                     queueData.connection = connection;
 
-                    // Wait for connection
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                    // Wait for connection to be ready
+                    try {
+                        await entersState(connection, VoiceConnectionStatus.Ready, 5000);
+
+                        // Send Welcome Message
+                        if (queueData.textChannelId) {
+                            try {
+                                const textChannel = await worker.client.channels.fetch(queueData.textChannelId);
+                                if (textChannel && textChannel.isTextBased() && 'send' in textChannel) {
+                                    const message = getEntryMessage(worker.name);
+                                    await textChannel.send(message);
+                                }
+                            } catch (err) {
+                                logger.warn(`[plugins] Failed to send welcome message: ${err}`);
+                            }
+                        }
+                    } catch (error) {
+                        logger.error(`[plugins] Connection failed to become ready: ${error}`);
+                        connection.destroy();
+                        throw error;
+                    }
                 } else {
                     connection = queueData.connection;
                 }
@@ -238,13 +259,18 @@ export class PluginManager {
                 error: (msg: string) => logger.error(`[plugins] ${msg}`),
             },
             playAudio: async (params) => {
-                const { voiceChannelId, guildId, audioPath, title, requesterId } = params;
+                const { voiceChannelId, guildId, audioPath, title, requesterId, channelId } = params;
 
                 if (!this.soundboardQueues.has(voiceChannelId)) {
                     this.soundboardQueues.set(voiceChannelId, {
                         queue: [],
-                        processing: false
+                        processing: false,
+                        textChannelId: channelId
                     });
+                } else if (channelId) {
+                    // Update text channel if provided
+                    const q = this.soundboardQueues.get(voiceChannelId)!;
+                    q.textChannelId = channelId;
                 }
 
                 const queueData = this.soundboardQueues.get(voiceChannelId)!;

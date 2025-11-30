@@ -55,7 +55,8 @@ export async function playSoundboardClip(
             guildId,
             audioPath: fsPath,
             title: `${sound.emoji} ${sound.name}`,
-            requesterId: userId
+            requesterId: userId,
+            channelId: channelId
         });
 
         logger.info(`Played soundboard clip: ${sound.name}`);
