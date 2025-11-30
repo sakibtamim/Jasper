@@ -470,15 +470,16 @@ export default function DevToolsPage() {
 
                                         <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
                                             <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-4">Installed Plugins</h3>
-                                            {plugins.length === 0 ? (
+                                            {!data?.plugins || data.plugins.length === 0 ? (
                                                 <p className="text-gray-500 dark:text-gray-400">No plugins installed.</p>
                                             ) : (
                                                 <div className="grid gap-4">
-                                                    {plugins.map(plugin => (
+                                                    {data.plugins.map((plugin: any) => (
                                                         <div key={plugin.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
                                                             <div>
                                                                 <h4 className="font-medium text-gray-900 dark:text-white">{plugin.name} <span className="text-xs text-gray-500 ml-2">v{plugin.version}</span></h4>
                                                                 <p className="text-xs text-gray-500 dark:text-gray-400 font-mono mt-1">ID: {plugin.id}</p>
+                                                                {plugin.description && <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">{plugin.description}</p>}
                                                             </div>
                                                             <div className="flex items-center gap-2">
                                                                 {plugin.web?.entry && (

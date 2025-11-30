@@ -9,9 +9,24 @@ import logger from '../core/logger.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PLUGINS_DIR = path.resolve(__dirname, '../../plugins');
 
+import pluginManager from '../core/plugins/plugin-manager.js';
+
 export default async function pluginsManagementRoutes(server: FastifyInstance) {
     // Register multipart support
     server.register(multipart);
+
+    // List all installed plugins (backend & frontend)
+    server.get('/', async (request, reply) => {
+        const pluginsMap = pluginManager.getPlugins();
+        const pluginsList = Array.from(pluginsMap.values()).map(p => ({
+            id: p.metadata.id,
+            name: p.metadata.name,
+            version: p.metadata.version,
+            description: p.metadata.description,
+            web: p.metadata.web // Include web config to detect frontend plugins
+        }));
+        return { plugins: pluginsList };
+    });
 
     server.post('/install', async (request, reply) => {
         // 1. Authentication Check (P0)
