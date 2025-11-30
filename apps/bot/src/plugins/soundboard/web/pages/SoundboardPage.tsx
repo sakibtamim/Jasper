@@ -66,9 +66,8 @@ export const SoundboardPage = () => {
         try {
             // 1. Upload File
             const uploadResult = await upload(file);
-            // uploadResult is likely the filename or URI. 
-            // Based on media-gallery, it returns the filename/URI string.
-            // Let's assume it returns the URI string.
+            // uploadResult is an object: { success: boolean, uri: string, url: string }
+            // We need to extract the URI
 
             // 2. Create Sound
             const res = await fetch('/api/plugins/soundboard/sounds', {
@@ -77,7 +76,7 @@ export const SoundboardPage = () => {
                 body: JSON.stringify({
                     name,
                     emoji,
-                    fileUri: uploadResult
+                    fileUri: uploadResult.uri
                 })
             });
 

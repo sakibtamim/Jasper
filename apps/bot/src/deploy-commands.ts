@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { REST, Routes, RESTPostAPIChatInputApplicationCommandsJSONBody } from "discord.js";
+import { REST, Routes, RESTPostAPIChatInputApplicationCommandsJSONBody, Collection } from "discord.js";
 import { fileURLToPath } from "url";
 import logger from "./core/logger.js";
 import {
@@ -9,6 +9,7 @@ import {
   DISCORD_TOKEN,
   validateDeployConfig
 } from "./config/env.js";
+import pluginManager from "./core/plugins/plugin-manager.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,6 +31,35 @@ for (const file of commandFiles) {
   } else {
     logger.warn(`[commands] The command at ${filePath} is missing a required "data" or "execute" property.`);
   }
+}
+
+// --- Load Plugin Commands ---
+logger.info("[commands] Loading plugin commands...");
+
+// Mock Client & Server for PluginManager
+const mockClient = { commands: new Collection() } as any;
+const mockServer = {
+  register: async (fn: any) => await fn(mockServer),
+  get: () => { },
+  post: () => { },
+  delete: () => { },
+  patch: () => { },
+} as any;
+
+try {
+  pluginManager.init(mockClient, mockServer);
+  await pluginManager.loadPlugins();
+
+  mockClient.commands.forEach((cmd: any) => {
+    if (cmd.data) {
+      // Handle both Builders (toJSON) and plain objects
+      const cmdData = typeof cmd.data.toJSON === 'function' ? cmd.data.toJSON() : cmd.data;
+      commands.push(cmdData);
+      logger.info(`[commands] Included plugin command: /${cmdData.name}`);
+    }
+  });
+} catch (error) {
+  logger.error(`[commands] Failed to load plugin commands: ${error}`);
 }
 
 const rest = new REST({ version: "10" }).setToken(DISCORD_TOKEN);
