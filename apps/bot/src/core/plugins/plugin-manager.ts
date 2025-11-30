@@ -89,6 +89,8 @@ export class PluginManager {
             playAudio: async (params) => {
                 const { voiceChannelId, guildId, audioPath, title, requesterId } = params;
 
+                logger.debug(`[plugins] playAudio called for ${voiceChannelId}, checking paths...`);
+
                 // Check if file exists
                 if (!fs.existsSync(audioPath)) {
                     throw new Error(`Audio file not found: ${audioPath}`);
@@ -98,28 +100,36 @@ export class PluginManager {
                 const existingQueue = getQueue(voiceChannelId);
 
                 if (existingQueue) {
-                    // Queue exists - pause if playing, play sound, then resume
-                    const wasPlaying = existingQueue.player.state.status === AudioPlayerStatus.Playing;
+                    logger.debug(`[plugins] Found existing queue for ${voiceChannelId}, using separate temp player`);
 
-                    if (wasPlaying) {
-                        existingQueue.player.pause();
-                        logger.info(`[plugins] Paused music for soundboard in ${voiceChannelId}`);
-                    }
+                    // Create a separate temporary player for soundboard
+                    // This prevents interfering with the main player and its idle handlers
+                    const tempPlayer = createAudioPlayer({
+                        behaviors: { noSubscriber: NoSubscriberBehavior.Stop }
+                    });
 
-                    logger.info(`[plugins] Playing audio on existing queue in ${voiceChannelId}`);
+                    // Subscribe temp player to the existing connection
+                    // Discord allows multiple players on the same connection
+                    existingQueue.connection.subscribe(tempPlayer);
+
+                    logger.info(`[plugins] Playing soundboard on temporary player in ${voiceChannelId}`);
                     const resource = createAudioResource(fs.createReadStream(audioPath), {
                         inputType: StreamType.Arbitrary
                     });
-                    existingQueue.player.play(resource);
+                    tempPlayer.play(resource);
 
-                    // Resume when soundboard finishes
-                    if (wasPlaying) {
-                        existingQueue.player.once('idle', () => {
-                            existingQueue.player.unpause();
-                            logger.info(`[plugins] Resumed music after soundboard in ${voiceChannelId}`);
-                        });
-                    }
+                    // Clean up temp player when soundboard finishes
+                    tempPlayer.once('idle', () => {
+                        tempPlayer.stop();
+                        logger.info(`[plugins] Soundboard finished, temp player cleaned up in ${voiceChannelId}`);
+                    });
 
+                    tempPlayer.on('error', (error) => {
+                        logger.error(`[plugins] Temp player error: ${error.message}`);
+                        tempPlayer.stop();
+                    });
+
+                    logger.debug(`[plugins] Returning early from playAudio for ${voiceChannelId}, no temp connection created`);
                     return;
                 }
 
