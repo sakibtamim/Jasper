@@ -1,0 +1,189 @@
+/* Custom Font Import - must be first */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles */
+body {
+    font-family: 'Inter', sans-serif;
+    padding-top: 5rem;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+html,
+body {
+    overflow-x: hidden;
+}
+
+:root.dark {
+    color-scheme: dark;
+}
+
+/* Jasper-specific animations */
+.glow-primary {
+    box-shadow: 0 0 20px rgba(255, 106, 213, 0.5);
+}
+
+.glow-secondary {
+    box-shadow: 0 0 20px rgba(0, 229, 255, 0.5);
+}
+
+.hover-card {
+    transition: all 0.3s ease;
+}
+
+.hover-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+/* --- Ported from Legacy --- */
+
+/* Custom slider styles (standard properties) */
+input[type='range'] {
+    appearance: none;
+    width: 100%;
+    height: 8px;
+    border-radius: 5px;
+    background: #d1d5db; /* bg-gray-300 */
+    outline: none;
+    opacity: 0.7;
+    transition:
+        opacity 0.2s,
+        background 0.3s ease;
+}
+
+input[type='range']:hover {
+    opacity: 1;
+}
+
+input[type='range']::-webkit-slider-thumb {
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #2563eb; /* bg-blue-600 - will be overridden by tailwind */
+    cursor: pointer;
+    border: 4px solid #ffffff; /* border-white */
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+    transition: background 0.3s ease;
+}
+
+/* Firefox thumb style */
+input[type='range']::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #2563eb;
+    cursor: pointer;
+    border: 4px solid #ffffff;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+    transition: background 0.3s ease;
+}
+
+html.dark input[type='range'] {
+    background: #4b5563; /* dark:bg-gray-600 */
+}
+
+html.dark input[type='range']::-webkit-slider-thumb {
+    border-color: #1f2937; /* dark:border-gray-800 */
+}
+
+html.dark input[type='range']::-moz-range-thumb {
+    border-color: #1f2937; /* dark:border-gray-800 */
+}
+
+/* Tooltip */
+.tooltip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 280px;
+    background-color: #111827; /* bg-gray-900 */
+    color: #fff;
+    text-align: left;
+    border-radius: 6px;
+    padding: 8px 12px;
+    position: absolute;
+    z-index: 1000;
+    bottom: 150%;
+    left: 50%;
+    margin-left: -140px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 0.875rem;
+    font-weight: 500;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    white-space: normal;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
+html.dark .tooltip .tooltiptext {
+    background-color: #f9fafb; /* dark:bg-gray-50 */
+    color: #111827; /* dark:text-gray-900 */
+}
+
+/* Animations */
+@keyframes scaleOpen {
+    0% {
+        transform: scaleY(0);
+        opacity: 0;
+    }
+    100% {
+        transform: scaleY(1);
+        opacity: 1;
+    }
+}
+
+.animate-scaleOpen {
+    animation: scaleOpen 0.25s ease-out forwards;
+}
+
+/* Toast notifications */
+#toast-container {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.toast {
+    background: #111827;
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    font-size: 0.9rem;
+}
+.toast.success {
+    background: #0f766e;
+}
+.toast.error {
+    background: #991b1b;
+}
+.toast.info {
+    background: #2563eb;
+}
+.toast.hide {
+    opacity: 0;
+    transform: translateY(8px);
+    transition:
+        opacity 0.25s ease,
+        transform 0.25s ease;
+}

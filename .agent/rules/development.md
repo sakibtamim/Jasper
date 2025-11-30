@@ -7,7 +7,7 @@ trigger: model_decision
 ## Common Tasks
 
 ### Adding a New Command
-1. Create file in `src/commands/` (e.g., `mycommand.ts`)
+1. Create file in `apps/bot/src/commands/` (e.g., `mycommand.ts`)
 2. Use this boilerplate:
    ```typescript
    import { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.js";
@@ -22,18 +22,18 @@ trigger: model_decision
      },
    } satisfies Command;
    ```
-3. Run `npm run deploy:commands`
+3. Run `pnpm run deploy:commands`
 4. Restart the bot
 
 ### Modifying Audio Logic
-- Edit `src/core/music-player.ts` or sub-modules in `src/core/audio/`
-- Stream handler: `src/core/audio/stream-handler.ts` (yt-dlp integration)
+- Edit `apps/bot/src/core/music-player.ts` or sub-modules in `apps/bot/src/core/audio/`
+- Stream handler: `apps/bot/src/core/audio/stream-handler.ts` (yt-dlp integration)
 - Always use `workerPool.allocateWorker()` before creating queue
 - Always release workers with `workerPool.releaseWorker()` when done
 - Queue Map is keyed by `voiceChannelId` for multi-channel support
 
 ### Adding Database Models
-1. Add interface to `src/core/db/types.ts`
+1. Add interface to `apps/bot/src/core/db/types.ts`
 2. Add methods to `DatabaseAdapter` interface
 3. Implement in both `sqlite-adapter.ts` and `postgres-adapter.ts`
 4. Use proper TypeScript types for all fields
@@ -72,9 +72,9 @@ trigger: model_decision
 
 ### Running Tests
 ```bash
-npm test              # Run all tests
-npm run test:watch    # Watch mode
-npm run test:coverage # Coverage report
+pnpm test              # Run all tests (Turbo)
+pnpm run test:watch    # Watch mode
+pnpm run test:coverage # Coverage report
 ```
 
 ### Writing Tests
@@ -89,7 +89,7 @@ npm run test:coverage # Coverage report
 
 **"yt-dlp not found"**
 - Binary missing from root
-- Fix: `npm run postinstall` or manual download
+- Fix: `pnpm run postinstall` or manual download
 
 **Audio Stops / 403 Errors**
 - YouTube anti-bot measures
@@ -101,7 +101,7 @@ npm run test:coverage # Coverage report
 - Ensure all bots invited to server
 
 ### Logging
-- Use `src/core/logger.ts` instead of `console.log`
+- Use `apps/bot/src/core/logger.ts` instead of `console.log`
 - AFR decisions logged for debugging
 - Database queries logged in development
 - Web API requests logged with `fastify.log`
@@ -110,8 +110,8 @@ npm run test:coverage # Coverage report
 
 ### Building
 ```bash
-npm run build  # Compiles TypeScript to dist/
-npm start      # Runs compiled JavaScript
+pnpm run build  # Compiles all apps/packages via Turbo
+pnpm start      # Runs compiled JavaScript
 ```
 
 ### Environment
@@ -119,8 +119,23 @@ npm start      # Runs compiled JavaScript
 - Set `AFR_JASPER_WEIGHT` for production behavior
 - Ensure `ENCRYPTION_KEY` is 32+ characters
 - Use `BASE_URL` for OAuth redirect URI
+- Use `FRONTEND_URL` for React redirects
 
 ### Monitoring
 - Web dashboard at `/` shows bot status
 - `/api/status` endpoint for health checks
 - Check worker pool state with `/music-status` command
+
+## Agent Guidelines
+
+### File Updates
+- **.gemini/** and **.agent/rules/**: Always use command line tools (e.g., `cat`, `sed`) or full file rewrites to update these files. Do NOT use partial replacement tools.
+
+### Commit Practices
+- **Atomic Commits**: Prefer small, focused commits that address a single logical change.
+- **Descriptive Messages**: Write clear, concise commit messages explaining the "why" and "what".
+
+### Temporary Files
+- **Workspace Hygiene**: Never save temporary files (logs, diffs, review comments) in the root or source directories.
+- **Location**: Always use the `tmp/` directory, which is gitignored.
+- **Cleanup**: Delete temporary files when they are no longer needed.

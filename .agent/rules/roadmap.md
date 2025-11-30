@@ -5,6 +5,8 @@ trigger: model_decision
 # Improvement Roadmap
 
 ## Current Status
+- ✅ Monorepo architecture (Turborepo)
+- ✅ React-based Web Dashboard (Vite)
 - ✅ Multi-cat worker pool architecture
 - ✅ Web dashboard with OAuth authentication
 - ✅ Database abstraction (SQLite/Postgres)
@@ -71,7 +73,7 @@ trigger: model_decision
 5. Address review feedback promptly
 
 ## Next Steps
-1. Run `npm test` to establish baseline
+1. Run `pnpm test` to establish baseline
 2. Fix any immediate test failures
 3. Expand test coverage for critical paths
 4. Address high-priority security items

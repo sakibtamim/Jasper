@@ -1,0 +1,14 @@
+{
+    "extends": "@jasper/config/tsconfig.node.json",
+    "compilerOptions": {
+        "outDir": "dist",
+        "rootDir": "."
+    },
+    "include": [
+        "src/**/*",
+        "scripts/**/*"
+    ],
+    "exclude": [
+        "src/plugins/**/web"
+    ]
+}

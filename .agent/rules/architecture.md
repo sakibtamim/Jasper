@@ -13,14 +13,14 @@ trigger: always_on
 - Manages worker allocation and release
 
 ### Worker Bots
-Configuration in `src/config/bots.ts`:
+Configuration in `apps/bot/src/config/bots.ts`:
 - Dynamically loaded from environment variables ending in `_TOKEN`
 - Each worker can handle one voice channel at a time
 - Workers are reused if already in the requested channel
 - Automatically named based on env var (e.g., `MISTY_TOKEN` → "Misty")
 
 ### AFR (Automatic Feline Rotation)
-Configuration in `src/config/afr-config.ts`:
+Configuration in `apps/bot/src/config/afr-config.ts`:
 - **Jasper Weight**: Probability for Jasper selection (`AFR_JASPER_WEIGHT`, default 0.5)
   - `0.5` = 50% chance Jasper is selected when available
   - `1.0` = Always select Jasper when available
@@ -39,7 +39,7 @@ Each cat has personalized announcement messages:
 
 ## Audio System
 
-### Music Player (`src/core/music-player.ts`)
+### Music Player (`apps/bot/src/core/music-player.ts`)
 Facade that orchestrates:
 - Queue Manager: Per-channel queue state
 - Stream Handler: yt-dlp process spawning
@@ -60,7 +60,7 @@ Facade that orchestrates:
 
 ## Database System
 
-### Abstraction Layer (`src/core/db/types.ts`)
+### Abstraction Layer (`apps/bot/src/core/db/types.ts`)
 - `DatabaseAdapter` interface for database operations
 - Implementations: SQLite (`sqlite-adapter.ts`), PostgreSQL (`postgres-adapter.ts`)
 - Type-safe interfaces for all data models
@@ -73,23 +73,24 @@ Facade that orchestrates:
 
 ### Encryption
 - OAuth tokens encrypted at rest using AES-256-GCM
-- Encryption utility: `src/utils/encryption.ts`
+- Encryption utility: `apps/bot/src/utils/encryption.ts`
 - Key derivation using PBKDF2
 - Format: `salt:iv:authTag:encrypted`
 
 ## Web Dashboard
 
-### Backend (`src/api/server.ts`)
+### Backend (`apps/bot/src/api/server.ts`)
 - Fastify server with WebSocket support
 - Authentication via Discord OAuth
 - Session management with HTTP-only cookies
 - API endpoints for stats and monitoring
 
-### Frontend (`public/`)
-- Vanilla JS (no framework)
+### Frontend (`apps/web/`)
+- React 18 + Vite
 - Tailwind CSS for styling
 - Real-time status updates (polling)
 - Dark mode support
+- Plugin system support
 
 ### Authentication Flow
 1. User clicks "Login with Discord"
@@ -113,7 +114,7 @@ Facade that orchestrates:
 
 ## Error Handling
 
-### Custom Error Classes (`src/api/auth-errors.ts`)
+### Custom Error Classes (`apps/bot/src/api/auth-errors.ts`)
 - `DiscordAPIError`: Discord API failures
 - `DiscordOAuthError`: OAuth flow errors
 - `DatabaseAuthError`: Database operation failures

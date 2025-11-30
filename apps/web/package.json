@@ -1,0 +1,31 @@
+{
+    "name": "jasper-web",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "lint": "eslint ."
+    },
+    "dependencies": {
+        "@jasper/elements": "workspace:*",
+        "@jasper/ui": "workspace:*",
+        "lucide-react": "^0.555.0",
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1",
+        "react-router-dom": "^6.28.0"
+    },
+    "devDependencies": {
+        "@jasper/config": "workspace:*",
+        "@types/react": "^18.3.12",
+        "@types/react-dom": "^18.3.1",
+        "@vitejs/plugin-react": "^4.3.4",
+        "autoprefixer": "^10.4.22",
+        "postcss": "^8.5.6",
+        "tailwindcss": "^3.4.18",
+        "typescript": "^5.9.3",
+        "vite": "^6.0.3"
+    }
+}
