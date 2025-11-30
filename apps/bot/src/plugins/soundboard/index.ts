@@ -1,6 +1,7 @@
 import { PluginContext } from "@jasper/types";
 import { registerCommand, handleAutocomplete, handleButtonInteraction, handleModalSubmit } from "./commands/soundboard.js";
 import { registerRoutes } from "./routes.js";
+import { SoundService } from "./services/sound-service.js";
 import { Interaction } from "discord.js";
 
 let interactionHandler: (interaction: Interaction) => Promise<void>;
@@ -41,10 +42,12 @@ const soundboardPlugin = {
 async function cleanupOrphanedFiles(context: PluginContext) {
     try {
         const files = await context.storage.list();
-        const sounds = (await context.db.plugin.get("sounds") as any[]) || [];
+        const soundService = new SoundService(context);
+        const sounds = await soundService.getSounds();
+
+        // Part 1: Delete orphaned files (files in storage but not in DB)
         const soundFiles = new Set(sounds.map(s => {
             // Extract filename from URI if needed
-            // URI: storage://soundboard/filename.mp3 -> filename.mp3
             let filename = s.fileUri;
             if (filename.startsWith("storage://")) {
                 const parts = filename.split("/");
@@ -53,16 +56,33 @@ async function cleanupOrphanedFiles(context: PluginContext) {
             return filename;
         }));
 
-        let deletedCount = 0;
+        let deletedFilesCount = 0;
         for (const file of files) {
             if (!soundFiles.has(file)) {
                 await context.storage.delete(file);
-                deletedCount++;
+                deletedFilesCount++;
             }
         }
 
-        if (deletedCount > 0) {
-            context.logger.info(`Cleaned up ${deletedCount} orphaned soundboard files.`);
+        // Part 2: Delete orphaned DB entries (entries in DB but file missing in storage)
+        const storageFiles = new Set(files);
+        let deletedDbCount = 0;
+
+        for (const sound of sounds) {
+            let filename = sound.fileUri;
+            if (filename.startsWith("storage://")) {
+                const parts = filename.split("/");
+                filename = parts[parts.length - 1];
+            }
+
+            if (!storageFiles.has(filename)) {
+                await soundService.deleteSound(sound.id);
+                deletedDbCount++;
+            }
+        }
+
+        if (deletedFilesCount > 0 || deletedDbCount > 0) {
+            context.logger.info(`[Cleanup] Deleted ${deletedFilesCount} orphaned files and ${deletedDbCount} orphaned DB entries.`);
         }
     } catch (error) {
         context.logger.error(`Failed to cleanup orphaned files: ${error}`);
