@@ -1,4 +1,4 @@
-import { React, useState, useEffect, FormEvent } from '@jasper/elements';
+import { React, useState, useEffect, FormEvent, ReactRouterDOM } from '@jasper/elements';
 import { componentRegistry } from '../../../../../web/core/ComponentRegistry';
 import { Card, Button, Input } from '@jasper/ui';
 import { usePluginStorage } from '@jasper/hooks';
@@ -23,7 +23,7 @@ function GalleryWidget() {
         <Card className="p-4">
             <div className="flex justify-between items-center mb-4">
                 <h3 className="font-bold text-lg">Recent Media</h3>
-                <a href="/plugins/media-gallery" className="text-sm text-blue-500 hover:underline">View All</a>
+                <ReactRouterDOM.Link to="/plugins/media-gallery" className="text-sm text-blue-500 hover:underline">View All</ReactRouterDOM.Link>
             </div>
             <div className="grid grid-cols-3 gap-2">
                 {images.length > 0 ? (

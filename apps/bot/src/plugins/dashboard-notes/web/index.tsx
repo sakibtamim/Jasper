@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent } from '@jasper/elements';
+import { useState, useEffect, FormEvent, ReactRouterDOM } from '@jasper/elements';
 import { Card, Button, Input, Table, Badge, Loader } from '@jasper/ui';
 import { Trash2, Plus, Clipboard } from 'lucide-react';
 
@@ -51,33 +51,52 @@ const useNotes = () => {
 // --- Widget Component ---
 export const NotesWidget = () => {
     const { notes, loading } = useNotes();
+    const navigate = ReactRouterDOM.useNavigate();
 
     return (
-        <Card className="h-full flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold flex items-center gap-2">
-                    <Clipboard className="w-4 h-4" />
+        <Card className="h-full flex flex-col p-0 overflow-hidden">
+            <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/50">
+                <h3 className="font-semibold flex items-center gap-2 text-gray-900 dark:text-gray-100">
+                    <Clipboard className="w-4 h-4 text-blue-500" />
                     Quick Notes
                 </h3>
-                <Badge variant="info">{notes.length}</Badge>
+                <Badge variant="info" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-0">
+                    {notes.length}
+                </Badge>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-2 min-h-0">
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
                 {loading ? (
                     <div className="flex justify-center p-4"><Loader /></div>
                 ) : notes.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-4">No notes yet.</p>
+                    <div className="text-center py-6">
+                        <p className="text-sm text-gray-500 mb-2">No notes yet</p>
+                        <Button size="sm" variant="secondary" onClick={() => navigate('/plugins/dashboard-notes')}>
+                            Create Note
+                        </Button>
+                    </div>
                 ) : (
                     notes.slice(0, 3).map(note => (
-                        <div key={note.id} className="text-sm p-2 bg-gray-50 dark:bg-gray-800 rounded border border-gray-100 dark:border-gray-700">
-                            {note.content}
+                        <div
+                            key={note.id}
+                            className="text-sm p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                            onClick={() => navigate('/plugins/dashboard-notes')}
+                        >
+                            <p className="line-clamp-2 text-gray-700 dark:text-gray-300">{note.content}</p>
+                            <p className="text-xs text-gray-400 mt-2">
+                                {new Date(note.createdAt).toLocaleDateString()}
+                            </p>
                         </div>
                     ))
                 )}
             </div>
 
-            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                <Button variant="ghost" className="w-full text-sm" onClick={() => window.location.href = '/plugins/dashboard-notes'}>
+            <div className="p-3 bg-gray-50 dark:bg-gray-900/30 border-t border-gray-100 dark:border-gray-800">
+                <Button
+                    variant="ghost"
+                    className="w-full text-sm justify-center hover:bg-white dark:hover:bg-gray-800"
+                    onClick={() => navigate('/plugins/dashboard-notes')}
+                >
                     Manage Notes
                 </Button>
             </div>
