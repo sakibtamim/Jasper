@@ -139,7 +139,8 @@ await context.playAudio({
     guildId: "987654321",
     audioPath: "/absolute/path/to/audio.mp3",
     title: "🔊 Sound Effect",  // Optional
-    requesterId: userId
+    requesterId: userId,
+    channelId: "123456789" // Optional: Text channel ID for welcome messages
 });
 ```
 
@@ -148,7 +149,8 @@ await context.playAudio({
 - **New Connection**: 
   - Allocates a worker bot
   - Joins voice channel
-  - Waits 2 seconds for connection to stabilize
+  - Waits for `VoiceConnectionStatus.Ready` (max 5s) to ensure audio is heard
+  - Sends a personalized welcome message to the text channel (if `channelId` provided)
   - Detects audio duration using ffprobe
   - Plays audio
   - Auto-disconnects after duration + 1 second buffer

@@ -22,10 +22,17 @@ Opens a private (ephemeral) dropdown menu to select and play a sound. This is us
 Directly plays a sound.
 - **sound**: The name of the sound to play. Supports autocomplete search.
 
+### `/soundboard add`
+Adds a new sound to the soundboard.
+- **file**: The audio file to upload (MP3/WAV/OGG, max 10s).
+- **name**: The name of the sound (max 32 chars).
+- **emoji**: An emoji to represent the sound (optional, defaults to 🔊).
+
 ### `/soundboard ui`
 Creates a permanent "Soundboard" message in the channel with interactive buttons for the top 25 sounds.
 - Anyone in the voice channel can click these buttons to play sounds.
 - Buttons are rate-limited per user to prevent spam.
+- **Edit Mode**: Users can edit sound names and emojis directly from the web dashboard.
 
 ## Technical Details
 
