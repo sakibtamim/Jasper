@@ -17,6 +17,7 @@ import coreDataAccessor from "./core-data-accessor.js";
 import { getQueue } from "../audio/queue-manager.js";
 import { Queue } from "@jasper/types";
 import semver from "semver";
+import { TEST_PLUGINS } from "../../config/plugins.js";
 
 const execPromise = promisify(exec);
 
@@ -286,12 +287,7 @@ export class PluginManager {
         const entries = await fs.promises.readdir(PLUGINS_DIR, { withFileTypes: true });
 
         // Test plugins to disable in production by default
-        const TEST_PLUGINS = [
-            "advanced-hooks-test-plugin",
-            "db-test-plugin",
-            "dashboard-notes",
-            "media-gallery"
-        ];
+        // TEST_PLUGINS imported from config
 
         for (const entry of entries) {
             // Strict Mode: Only load directories or symlinks with jasper-plugin.json
@@ -581,12 +577,7 @@ export class PluginManager {
                         enabled = Array.from(this.plugins.values()).some(p => p.metadata.id === metadata.id);
                     }
 
-                    const isTestPlugin = [
-                        "advanced-hooks-test-plugin",
-                        "db-test-plugin",
-                        "dashboard-notes",
-                        "media-gallery"
-                    ].includes(metadata.id);
+                    const isTestPlugin = TEST_PLUGINS.includes(metadata.id);
 
                     statusList.push({
                         id: metadata.id,

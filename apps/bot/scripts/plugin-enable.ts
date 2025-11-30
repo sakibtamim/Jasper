@@ -4,17 +4,13 @@ import { fileURLToPath } from 'node:url';
 import inquirer from 'inquirer';
 import db from '../src/core/db/index.js';
 import { isProduction } from '../src/config/env.js';
+import { TEST_PLUGINS } from '../src/config/plugins.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PLUGINS_DIR = path.join(__dirname, '..', 'src', 'plugins');
 
-const TEST_PLUGINS = [
-    "advanced-hooks-test-plugin",
-    "db-test-plugin",
-    "dashboard-notes",
-    "media-gallery"
-];
+// TEST_PLUGINS imported from config
 
 async function enablePlugin() {
     try {
@@ -53,7 +49,7 @@ async function enablePlugin() {
                     });
                 }
             } catch (e) {
-                // Ignore
+                console.error(`Failed to process plugin metadata for ${entry.name}:`, e);
             }
         }
 
