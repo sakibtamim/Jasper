@@ -124,14 +124,15 @@ export const NotesPage = () => {
             </div>
 
             <Card className="mb-8">
-                <form onSubmit={handleSubmit} className="flex gap-4">
-                    <Input
-                        placeholder="Write a new note..."
-                        value={newNote}
-                        onChange={(e) => setNewNote(e.target.value)}
-                        className="flex-1"
-                    />
-                    <Button type="submit" variant="primary" disabled={!newNote.trim()}>
+                <form onSubmit={handleSubmit} className="flex gap-4 items-start">
+                    <div className="flex-1">
+                        <Input
+                            placeholder="Write a new note..."
+                            value={newNote}
+                            onChange={(e) => setNewNote(e.target.value)}
+                        />
+                    </div>
+                    <Button type="submit" variant="primary" disabled={!newNote.trim()} className="whitespace-nowrap shrink-0">
                         <Plus className="w-4 h-4 mr-2" />
                         Add Note
                     </Button>
@@ -145,9 +146,9 @@ export const NotesPage = () => {
                     <Table>
                         <thead>
                             <tr className="border-b border-gray-200 dark:border-gray-700">
-                                <th className="text-left p-3 font-semibold text-gray-700 dark:text-gray-300">Content</th>
-                                <th className="text-left w-48 p-3 font-semibold text-gray-700 dark:text-gray-300">Created At</th>
-                                <th className="text-right w-24 p-3 font-semibold text-gray-700 dark:text-gray-300">Actions</th>
+                                <th className="text-left p-3 font-semibold text-gray-900 dark:text-gray-100">Content</th>
+                                <th className="text-left w-48 p-3 font-semibold text-gray-900 dark:text-gray-100">Created At</th>
+                                <th className="text-right w-24 p-3 font-semibold text-gray-900 dark:text-gray-100">Actions</th>
                             </tr>
                         </thead>
                         <tbody>

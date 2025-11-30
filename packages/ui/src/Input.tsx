@@ -19,7 +19,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
                     ref={ref}
                     className={`
                         block w-full rounded-md border-gray-300 dark:border-gray-600 
-                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white 
+                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2
                         shadow-sm focus:border-brand-primary focus:ring-brand-primary sm:text-sm
                         disabled:opacity-50 disabled:bg-gray-100 dark:disabled:bg-gray-800
                         ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}
