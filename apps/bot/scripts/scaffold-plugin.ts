@@ -117,7 +117,7 @@ export default ${toPascalCase(id)}Plugin;
         const webDir = path.join(pluginDir, 'web');
         fs.mkdirSync(webDir);
 
-        const frontendContent = `import React from 'react';
+        const frontendContent = `import { useState } from '@jasper/elements';
 import { Card } from '@jasper/ui';
 
 export const PluginPage = () => {

@@ -106,8 +106,24 @@ export default MyPlugin;
 ---
 
 ## 🖥️ Frontend Development
+Plugins can extend the web dashboard using React components.
 
-The frontend entry point (default `web/index.tsx`) exports React components that are registered via the manifest.
+> [!IMPORTANT]
+> **CRITICAL: React Imports**
+> Plugins **MUST** import React and hooks from `@jasper/elements` instead of `react`. This ensures your plugin uses the same React instance as the host application.
+>
+> **✅ Correct:**
+> ```typescript
+> import { useState, useEffect } from '@jasper/elements';
+> ```
+>
+> **❌ Incorrect:**
+> ```typescript
+> import React, { useState } from 'react'; // DO NOT DO THIS
+> ```
+
+#### 1. Entry Point (`web/index.tsx`)
+The frontend entry point must export components that you want to register. It does **not** need a default export.
 
 ### Basic Structure
 

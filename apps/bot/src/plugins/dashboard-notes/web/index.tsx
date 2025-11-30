@@ -1,4 +1,4 @@
-import { useState, useEffect } from '@jasper/elements';
+import { useState, useEffect, FormEvent } from '@jasper/elements';
 import { Card, Button, Input, Table, Badge, Loader } from '@jasper/ui';
 import { Trash2, Plus, Clipboard } from 'lucide-react';
 
@@ -90,7 +90,7 @@ export const NotesPage = () => {
     const { notes, loading, addNote, deleteNote } = useNotes();
     const [newNote, setNewNote] = useState('');
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
         if (!newNote.trim()) return;
         addNote(newNote);
