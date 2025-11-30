@@ -1,10 +1,13 @@
 import { PluginContext } from "../../../core/plugins/plugin-interface.js";
 import { Sound, Play } from "../types.js";
 import { randomUUID } from "crypto";
-import musicPlayer from "../../../core/music-player.js";
+import { getQueue } from "../../../core/audio/queue-manager.js";
+import { createAudioResource, StreamType } from "@discordjs/voice";
+import fs from "fs";
 
 /**
- * Simple soundboard playback - enqueue the sound file like a regular song
+ * Ultra-simple soundboard playback - if queue exists, play sound directly on that worker
+ * This is the simplest possible implementation
  */
 export async function playSoundboardClip(
     context: PluginContext,
@@ -24,13 +27,12 @@ export async function playSoundboardClip(
         throw new Error("Sound not found");
     }
 
-    // 2. Resolve File Path
+    // 2. Validate and resolve file
     let fileUri = sound.fileUri;
 
-    // Validate it's a string
     if (typeof fileUri !== 'string') {
         logger.error(`Invalid fileUri type for sound ${soundId}: ${typeof fileUri}`);
-        throw new Error("Invalid sound data - please delete and re-upload");
+        throw new Error("Invalid sound data - please delete this sound and re-upload it");
     }
 
     // Extract filename if it's a storage:// URI
@@ -50,26 +52,31 @@ export async function playSoundboardClip(
         throw new Error("Sound file not found");
     }
 
-    // 3. Enqueue sound as a "song"
-    const soundAsSong = {
-        title: `${sound.emoji} ${sound.name}`,
-        url: fsPath,
-        requesterId: userId,
-        duration: 0, // Unknown duration
-        thumbnail: "", // No thumbnail
-        fromSearch: false,
-    };
-
-    try {
-        // Use the enqueue function from music player
-        await musicPlayer.enqueue(guildId, voiceChannelId, soundAsSong);
-        logger.info(`Enqueued sound: ${sound.name}`);
-    } catch (err) {
-        logger.error(`Failed to enqueue sound: ${err}`);
-        throw err;
+    if (!fs.existsSync(fsPath)) {
+        throw new Error("Sound file does not exist on disk");
     }
 
-    // 4. Log Stats
+    // 3. Get existing queue (user must already be in a voice channel with the bot)
+    const queue = getQueue(voiceChannelId);
+
+    if (!queue) {
+        throw new Error("No active music session. Please use /play first to start a session, then use /soundboard");
+    }
+
+    // 4. Play sound directly on the existing player
+    try {
+        const resource = createAudioResource(fs.createReadStream(fsPath), {
+            inputType: StreamType.Arbitrary
+        });
+
+        queue.player.play(resource);
+        logger.info(`Playing soundboard clip: ${sound.name} in ${voiceChannelId}`);
+    } catch (err) {
+        logger.error(`Failed to play sound: ${err}`);
+        throw new Error("Failed to play sound effect");
+    }
+
+    // 5. Log Stats
     const playRecord: Play = {
         id: randomUUID(),
         soundId: sound.id,
