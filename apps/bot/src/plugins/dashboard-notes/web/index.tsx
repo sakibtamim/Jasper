@@ -91,10 +91,10 @@ export const NotesWidget = () => {
                 )}
             </div>
 
-            <div className="p-3 bg-gray-50 dark:bg-gray-900/30 border-t border-gray-100 dark:border-gray-800">
+            <div className="p-3 border-t border-gray-100 dark:border-gray-800">
                 <Button
-                    variant="secondary"
-                    className="w-full text-sm justify-center"
+                    variant="ghost"
+                    className="w-full text-sm justify-center text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
                     onClick={() => navigate('/plugins/dashboard-notes')}
                 >
                     Manage Notes
