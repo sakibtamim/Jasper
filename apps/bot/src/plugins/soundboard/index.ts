@@ -1,4 +1,4 @@
-import { Plugin, PluginContext } from "../../core/plugins/plugin-interface.js";
+import { Plugin, PluginContext } from "@jasper/types";
 import { registerRoutes } from "./routes.js";
 import { registerCommand } from "./commands/soundboard.js";
 

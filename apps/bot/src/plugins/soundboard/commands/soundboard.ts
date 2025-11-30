@@ -1,5 +1,5 @@
 import { ChatInputCommandInteraction, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, StringSelectMenuBuilder } from "discord.js";
-import { PluginContext } from "../../../core/plugins/plugin-interface.js";
+import { PluginContext } from "@jasper/types";
 import { Sound } from "../types.js";
 import { playSoundboardClip } from "../services/playback.js";
 

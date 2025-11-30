@@ -1,4 +1,4 @@
-import { PluginContext } from "../../../core/plugins/plugin-interface.js";
+import { PluginContext } from "@jasper/types";
 import { Sound, Play } from "../types.js";
 import { randomUUID } from "crypto";
 
