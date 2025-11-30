@@ -1,18 +1,6 @@
-import { React, createContext, useContext, ReactNode } from '@jasper/elements';
+import { React, ReactNode } from '@jasper/elements';
 import { usePlugins } from '../hooks/usePlugins';
-import { PluginRegistryEntry } from '../services/pluginRegistry';
-
-interface PluginContextType {
-    plugins: PluginRegistryEntry[];
-    loading: boolean;
-    error: string | null;
-}
-
-const PluginContext = createContext<PluginContextType>({
-    plugins: [],
-    loading: true,
-    error: null
-});
+import { PluginContext, usePluginContext } from '@jasper/hooks';
 
 export function PluginProvider({ children }: { children: ReactNode }) {
     const { plugins, loading, error } = usePlugins();
@@ -24,6 +12,4 @@ export function PluginProvider({ children }: { children: ReactNode }) {
     );
 }
 
-export function usePluginContext() {
-    return useContext(PluginContext);
-}
+export { usePluginContext };

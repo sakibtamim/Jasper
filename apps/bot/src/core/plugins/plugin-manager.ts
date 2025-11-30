@@ -8,6 +8,7 @@ import workerPool from "../worker-pool.js";
 import { Plugin, PluginContext } from "./plugin-interface.js";
 import hookManager from "./hook-manager.js";
 import { ScopedPluginStore } from "./plugin-store.js";
+import { PluginStorage } from "./plugin-storage.js";
 import coreDataAccessor from "./core-data-accessor.js";
 import semver from "semver";
 
@@ -56,6 +57,7 @@ export class PluginManager {
                 plugin: new ScopedPluginStore("unknown"),
                 core: coreDataAccessor,
             },
+            storage: new PluginStorage("core"),
             logger: {
                 debug: (msg: string) => logger.debug(`[plugins] ${msg}`),
                 info: (msg: string) => logger.info(`[plugins] ${msg}`),
@@ -188,6 +190,7 @@ export class PluginManager {
                         plugin: new ScopedPluginStore(metadata.id), // Use ID for DB namespace
                         core: coreDataAccessor
                     },
+                    storage: new PluginStorage(metadata.id),
                     logger: {
                         debug: (msg: string) => logger.debug(`[${metadata.id}] ${msg}`),
                         info: (msg: string) => logger.info(`[${metadata.id}] ${msg}`),

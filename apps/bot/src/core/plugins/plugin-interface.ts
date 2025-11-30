@@ -3,6 +3,7 @@ import { FastifyInstance } from "fastify";
 import { WorkerState } from "../worker-pool.js";
 import { Queue, Song } from "../audio/queue-manager.js";
 import { SongStats, UserStats } from "../db/types.js";
+import { PluginStorage } from "./plugin-storage.js";
 
 // --- Hook Data Types ---
 
@@ -89,6 +90,9 @@ export interface PluginContext {
         plugin: PluginStore; // RW access to plugin's own data
         core: CoreDataAccessor; // RO access to core data
     };
+
+    // File Storage
+    storage: PluginStorage;
 
     // Hook subscription
     on<T = any>(hook: HookName, handler: HookCallback<T>): void;

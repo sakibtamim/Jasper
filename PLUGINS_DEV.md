@@ -102,6 +102,27 @@ export default MyPlugin;
 - **Database**: Use `context.db.plugin` for your plugin's data.
 - **Hooks**: Listen to events like `QUEUE_CREATE` or `POST_MUSIC_PLAY` using `context.on()`.
 - **API Routes**: Register routes on `context.server`. Routes are automatically namespaced to `/api/plugins/{pluginId}`.
+- **Storage**: Use `context.storage` to save and retrieve files.
+
+### Storage API
+Plugins have access to a namespaced, persistent storage directory.
+
+```typescript
+// Save a file (returns a URI like storage://my-plugin/image.png)
+const uri = await context.storage.save("image.png", buffer);
+
+// Get a file
+const buffer = await context.storage.get("image.png");
+
+// Delete a file
+await context.storage.delete("image.png");
+
+// List files
+const files = await context.storage.list();
+
+// Resolve URI to filesystem path and web URL
+const { fsPath, webUrl } = context.storage.resolve(uri);
+```
 
 ---
 
@@ -120,6 +141,12 @@ Plugins can extend the web dashboard using React components.
 > **❌ Incorrect:**
 > ```typescript
 > import React, { useState } from 'react'; // DO NOT DO THIS
+> ```
+>
+> **Shared Hooks**:
+> We provide a set of shared hooks in `@jasper/hooks` to interact with the core system.
+> ```typescript
+> import { useAuth, usePluginContext, usePluginStorage } from '@jasper/hooks';
 > ```
 
 #### 1. Entry Point (`web/index.tsx`)
@@ -272,3 +299,15 @@ Verifies the functionality of advanced lifecycle hooks.
     *   Demonstrates how to access the Fastify server instance and Worker state.
 
 
+
+### 4. Media Gallery (`media-gallery`)
+**Type**: Full-Stack (Storage API Demo)
+
+Demonstrates how to use the Extension Storage API to upload, view, and manage files.
+
+*   **Backend**: Minimal (just loads the plugin).
+*   **Frontend**:
+    *   Uses `usePluginStorage` hook from `@jasper/hooks`.
+    *   **Widget**: Displays the latest 3 uploaded images.
+    *   **Page**: Allows uploading new images and deleting existing ones.
+    *   Demonstrates how to handle file uploads and display images using the storage URL.

@@ -1,6 +1,7 @@
-import { React, createContext, useContext, useState, useEffect, ReactNode } from '@jasper/elements';
+import { React, useState, useEffect, ReactNode } from '@jasper/elements';
 import { fetchAuthStatus, apiClient } from '../services/client';
 import { useTheme } from '../hooks/useTheme';
+import { AuthContext, useAuth } from '@jasper/hooks';
 
 interface User {
     id: string;
@@ -8,19 +9,6 @@ interface User {
     avatar?: string;
     discriminator: string;
 }
-
-interface AppContextType {
-    user: User | null;
-    setUser: (user: User | null) => void;
-    loading: boolean;
-    theme: {
-        isDark: boolean;
-        toggleTheme: () => void;
-    };
-    api: typeof apiClient;
-}
-
-const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
@@ -56,30 +44,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <AppContext.Provider value={value}>
+        <AuthContext.Provider value={value}>
             {children}
-        </AppContext.Provider>
+        </AuthContext.Provider>
     );
 }
 
-export function useAuth() {
-    const context = useContext(AppContext);
-    if (context === undefined) {
-        throw new Error('useAuth must be used within an AppProvider');
-    }
-    return {
-        user: context.user,
-        setUser: context.setUser,
-        loading: context.loading,
-        isAuthenticated: !!context.user,
-        theme: context.theme
-    };
-}
+export { useAuth };
 
 export function useAppContext() {
-    const context = useContext(AppContext);
-    if (context === undefined) {
-        throw new Error('useAppContext must be used within an AppProvider');
-    }
-    return context;
+    // Legacy support or if we want to expose the raw context
+    // But useAuth is preferred
+    return useAuth();
 }

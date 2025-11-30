@@ -29,6 +29,9 @@ importers:
       '@fastify/static':
         specifier: ^8.3.0
         version: 8.3.0
+      '@jasper/hooks':
+        specifier: workspace:^
+        version: link:../../packages/hooks
       '@snazzah/davey':
         specifier: ^0.1.8
         version: 0.1.8
@@ -120,6 +123,9 @@ importers:
       '@jasper/elements':
         specifier: workspace:*
         version: link:../../packages/elements
+      '@jasper/hooks':
+        specifier: workspace:^
+        version: link:../../packages/hooks
       '@jasper/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -187,6 +193,25 @@ importers:
       '@types/react-dom':
         specifier: ^18.3.1
         version: 18.3.7(@types/react@18.3.27)
+
+  packages/hooks:
+    dependencies:
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+    devDependencies:
+      '@jasper/config':
+        specifier: workspace:*
+        version: link:../config
+      '@jasper/elements':
+        specifier: workspace:*
+        version: link:../elements
+      '@types/react':
+        specifier: ^18.2.0
+        version: 18.3.27
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
 
   packages/ui:
     dependencies:
