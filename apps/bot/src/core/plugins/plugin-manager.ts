@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "url";
 import { Client } from "discord.js";
 import { FastifyInstance } from "fastify";
-import { joinVoiceChannel, createAudioPlayer, createAudioResource, StreamType, NoSubscriberBehavior } from "@discordjs/voice";
+import { joinVoiceChannel, createAudioPlayer, createAudioResource, StreamType, NoSubscriberBehavior, AudioPlayerStatus } from "@discordjs/voice";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import logger from "../logger.js";
@@ -98,12 +98,28 @@ export class PluginManager {
                 const existingQueue = getQueue(voiceChannelId);
 
                 if (existingQueue) {
-                    // Queue exists - play directly on existing player
+                    // Queue exists - pause if playing, play sound, then resume
+                    const wasPlaying = existingQueue.player.state.status === AudioPlayerStatus.Playing;
+
+                    if (wasPlaying) {
+                        existingQueue.player.pause();
+                        logger.info(`[plugins] Paused music for soundboard in ${voiceChannelId}`);
+                    }
+
                     logger.info(`[plugins] Playing audio on existing queue in ${voiceChannelId}`);
                     const resource = createAudioResource(fs.createReadStream(audioPath), {
                         inputType: StreamType.Arbitrary
                     });
                     existingQueue.player.play(resource);
+
+                    // Resume when soundboard finishes
+                    if (wasPlaying) {
+                        existingQueue.player.once('idle', () => {
+                            existingQueue.player.unpause();
+                            logger.info(`[plugins] Resumed music after soundboard in ${voiceChannelId}`);
+                        });
+                    }
+
                     return;
                 }
 
@@ -153,12 +169,12 @@ export class PluginManager {
 
                     logger.info(`[plugins] Playing audio: ${title || audioPath}`);
 
-                    // Auto-cleanup after playback
+                    // Auto-cleanup after 1 minute
                     setTimeout(() => {
                         connection.destroy();
                         workerPool.releaseWorker(voiceChannelId);
                         logger.info(`[plugins] Cleaned up temporary audio connection for ${voiceChannelId}`);
-                    }, duration + 1000); // Duration + 1 second buffer
+                    }, 60000); // 1 minute
 
                     // Error handling
                     player.on('error', (error) => {
