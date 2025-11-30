@@ -8,6 +8,7 @@ const PLUGIN_ID = 'media-gallery';
 function GalleryWidget() {
     const { list, getUrl, loading } = usePluginStorage(PLUGIN_ID);
     const [images, setImages] = useState<string[]>([]);
+    const navigate = ReactRouterDOM.useNavigate();
 
     useEffect(() => {
         list().then(files => {
@@ -18,8 +19,6 @@ function GalleryWidget() {
     }, [list]);
 
     if (loading && images.length === 0) return <Card>Loading gallery...</Card>;
-
-    const navigate = ReactRouterDOM.useNavigate();
 
     return (
         <Card className="p-4">
