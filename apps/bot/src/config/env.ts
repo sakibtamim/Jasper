@@ -89,6 +89,7 @@ export const DISCORD_CLIENT_SECRET = getOptionalEnv("DISCORD_CLIENT_SECRET");
  */
 export const PORT = getOptionalNumber("PORT", 0); // 0 means web UI disabled
 export const BASE_URL = getOptionalEnv("BASE_URL", "http://localhost:3000");
+export const FRONTEND_URL = getOptionalEnv("FRONTEND_URL", process.env.NODE_ENV === "development" ? "http://localhost:5173" : "");
 
 /**
  * Security Configuration

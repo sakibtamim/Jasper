@@ -10,6 +10,7 @@ import {
     DISCORD_CLIENT_SECRET,
     ENCRYPTION_KEY,
     BASE_URL,
+    FRONTEND_URL,
     isProduction,
     validateAuthConfig
 } from '../config/env.js';
@@ -168,7 +169,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
                 expires: session.expiresAt,
             });
 
-            return reply.redirect('/');
+            return reply.redirect(FRONTEND_URL || '/');
         } catch (error) {
             let userMessage = 'Login failed';
 
