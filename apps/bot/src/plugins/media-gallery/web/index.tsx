@@ -1,5 +1,5 @@
 import { React, useState, useEffect, FormEvent, ReactRouterDOM } from '@jasper/elements';
-import { componentRegistry } from '../../../../../web/core/ComponentRegistry';
+
 import { Card, Button, Input } from '@jasper/ui';
 import { usePluginStorage } from '@jasper/hooks';
 
@@ -155,6 +155,4 @@ function GalleryPage() {
     );
 }
 
-// Register components
-componentRegistry.register(PLUGIN_ID, 'GalleryWidget', GalleryWidget);
-componentRegistry.register(PLUGIN_ID, 'GalleryPage', GalleryPage);
+export { GalleryWidget, GalleryPage };

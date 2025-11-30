@@ -23,6 +23,7 @@
         ],
         "navItems": [
             {
+                "id": "media-gallery-nav",
                 "label": "Media Gallery",
                 "href": "/plugins/media-gallery",
                 "icon": "Image"
