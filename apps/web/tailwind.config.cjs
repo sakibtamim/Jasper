@@ -3,7 +3,14 @@
 module.exports = {
     content: [
         "./index.html",
-        "./src/**/*.{js,ts,jsx,tsx}",
+        "./App.tsx",
+        "./main.tsx",
+        "./components/**/*.{js,ts,jsx,tsx}",
+        "./pages/**/*.{js,ts,jsx,tsx}",
+        "./context/**/*.{js,ts,jsx,tsx}",
+        "./hooks/**/*.{js,ts,jsx,tsx}",
+        "./services/**/*.{js,ts,jsx,tsx}",
+        "./core/**/*.{js,ts,jsx,tsx}",
         "../../packages/ui/src/**/*.{js,ts,jsx,tsx}",
         "../../apps/bot/src/plugins/**/*.{js,ts,jsx,tsx}",
     ],
