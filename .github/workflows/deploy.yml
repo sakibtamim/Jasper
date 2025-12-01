@@ -32,9 +32,9 @@ jobs:
 
       - name: Generate checksums
         run: |
-          find dist -type f -exec sha256sum {} \; | sort > dist-checksums.txt
-          find public -type f -exec sha256sum {} \; | sort >> dist-checksums.txt
-          sha256sum package.json pnpm-lock.yaml ecosystem.config.cjs >> dist-checksums.txt
+          find apps/bot/dist -type f -exec sha256sum {} \; | sort > dist-checksums.txt
+          find apps/web/dist -type f -exec sha256sum {} \; | sort >> dist-checksums.txt
+          sha256sum package.json pnpm-lock.yaml pnpm-workspace.yaml ecosystem.config.cjs >> dist-checksums.txt
           cat dist-checksums.txt
 
       - name: Deploy Commands
@@ -42,18 +42,19 @@ jobs:
         env:
           DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
           DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
-        run: pnpm run deploy:commands:prod
+        run: pnpm --filter jasper-bot run deploy:commands:prod
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: bot-build
           path: |
-            dist
-            public
-            scripts
+            apps/bot/dist
+            apps/bot/package.json
+            apps/web/dist
             package.json
-            package-lock.json
+            pnpm-lock.yaml
+            pnpm-workspace.yaml
             ecosystem.config.cjs
             dist-checksums.txt
 
@@ -84,9 +85,9 @@ jobs:
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             cd ${{ secrets.SSH_TARGET }}
-            pm2 stop jasper-bot || true
+            pm2 stop Jasper || true
             # Remove old deployment files but preserve .env and cache directories
-            rm -rf dist public scripts package.json package-lock.json ecosystem.config.cjs dist-checksums.txt
+            rm -rf apps dist public scripts package.json package-lock.json ecosystem.config.cjs dist-checksums.txt pnpm-workspace.yaml
 
       - name: Copy files to server
         uses: appleboy/scp-action@v1
@@ -96,7 +97,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
           target: ${{ secrets.SSH_TARGET }}
-          source: "dist,public,scripts,package.json,package-lock.json,ecosystem.config.cjs,dist-checksums.txt"
+          source: "apps,package.json,pnpm-lock.yaml,pnpm-workspace.yaml,ecosystem.config.cjs,dist-checksums.txt"
 
       - name: Verify deployment integrity
         uses: appleboy/ssh-action@v1
@@ -124,5 +125,5 @@ jobs:
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             cd ${{ secrets.SSH_TARGET }}
             pnpm install --prod --frozen-lockfile
-            pnpm run deploy:commands:prod
+            pnpm --filter jasper-bot run deploy:commands:prod
             pm2 startOrRestart ecosystem.config.cjs

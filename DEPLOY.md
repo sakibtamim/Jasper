@@ -6,14 +6,18 @@ This guide explains how to deploy the Jasper music bot using GitHub Actions and 
 
 The target server must have the following installed:
 
-1.  **Node.js**: Version 18 or higher (matching the project's requirement).
-    - **Important**: If using `nvm` to manage Node.js, ensure it's properly configured in your shell's `.bashrc` or `.bash_profile`.
-2.  **PM2**: Process manager for Node.js. Install globally:
+1.  **Node.js**: Version 20 or higher (matching the project's requirement).
+    -   **Important**: If using `nvm` to manage Node.js, ensure it's properly configured in your shell's `.bashrc` or `.bash_profile`.
+2.  **pnpm**: Package manager. Install globally:
+    ```bash
+    npm install -g pnpm
+    ```
+3.  **PM2**: Process manager for Node.js. Install globally:
     ```bash
     pnpm install -g pm2
     ```
-3.  **FFmpeg**: Required for music playback.
-4.  **yt-dlp**: Will be automatically downloaded during deployment.
+4.  **FFmpeg**: Required for music playback.
+5.  **yt-dlp**: Will be automatically downloaded during deployment.
 
 ## Server Setup
 
@@ -39,8 +43,9 @@ Configure the following secrets in your GitHub repository settings (Settings > S
 
 This file configures PM2 to manage the bot process. It uses the `.cjs` extension because the project uses ES modules (`"type": "module"` in package.json), but PM2 requires CommonJS format.
 
--   **Name**: `jasper-bot`
--   **Script**: `./apps/bot/dist/index.js` (The compiled entry point)
+-   **Name**: `Jasper`
+-   **Script**: `pnpm`
+-   **Args**: `start --filter bot`
 -   **Instances**: 1
 -   **Autorestart**: Enabled
 -   **Max Memory**: 1G (Restarts if memory usage exceeds 1GB)
@@ -55,16 +60,16 @@ The deployment is handled automatically by GitHub Actions when you push to the `
     -   Generates SHA256 checksums for:
         -   All files in `apps/bot/dist/` (compiled bot code)
         -   All files in `apps/web/dist/` (compiled frontend code)
-        -   Top-level config files (`package.json`, `pnpm-lock.yaml`, `ecosystem.config.cjs`)
-2.  **Upload**: The compiled `dist` folder, `public` folder (Web UI), `scripts`, configuration files, and checksums are uploaded as an artifact.
+        -   Top-level config files (`package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `ecosystem.config.cjs`)
+2.  **Upload**: The compiled `apps` folder, configuration files, and checksums are uploaded as an artifact.
 3.  **Deploy**:
     -   The artifact is downloaded and its integrity is verified using the checksums.
     -   The existing bot process is stopped via PM2 (if running).
     -   Old files are cleaned from the deployment directory.
-    -   Files are copied to the server via SCP.
+    -   Files are copied to the server via SCP, preserving the monorepo structure.
     -   The integrity of the copied files on the server is verified again.
     -   `pnpm install --prod --frozen-lockfile` is run on the server to install production dependencies (yt-dlp is downloaded here).
-    -   `pnpm run deploy:commands:prod` is run to register slash commands with Discord.
+    -   `pnpm --filter jasper-bot run deploy:commands:prod` is run to register slash commands with Discord.
     -   `pm2 startOrRestart ecosystem.config.cjs` is executed to start or reload the bot.
 
 ### Important Notes
