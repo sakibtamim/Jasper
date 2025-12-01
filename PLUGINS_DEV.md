@@ -7,7 +7,7 @@
 Jasper plugins allow you to extend the bot's functionality (Backend) and the dashboard's UI (Frontend). Plugins are located in `apps/bot/src/plugins/`.
 
 ### Prerequisites
-- Node.js & pnpm
+- Node.js v24+ & pnpm
 - Basic knowledge of TypeScript and React
 
 ### Directory Structure
@@ -73,7 +73,7 @@ The backend entry point (default `index.ts`) must export an object implementing 
 ### Basic Structure
 
 ```typescript
-import { Plugin, PluginContext } from "../../core/plugins/plugin-interface.js";
+import { Plugin, PluginContext } from "@jasper/types";
 
 const MyPlugin: Plugin = {
     name: "My Plugin",
@@ -188,6 +188,12 @@ Plugins can extend the web dashboard using React components.
 > import { useAuth, usePluginContext, usePluginStorage } from '@jasper/hooks';
 > ```
 
+### Plugin Loading & HMR
+The frontend uses a split loading strategy for development and production:
+
+- **Development (`usePlugins.dev.ts`)**: Uses Vite's `import.meta.glob` to load plugin source code directly. This enables Hot Module Replacement (HMR) for rapid development.
+- **Production (`usePlugins.prod.ts`)**: Loads pre-built IIFE bundles via dynamic `<script>` tags. Plugins must access shared dependencies (React, etc.) via global variables exposed on `window`.
+
 #### 1. Entry Point (`web/index.tsx`)
 The frontend entry point must export components that you want to register. It does **not** need a default export.
 
@@ -276,10 +282,10 @@ To package your plugin for distribution (creates a `.zip` file):
 
 ```bash
 # Export compiled plugin (for production)
-pnpm plugin:export my-plugin
+pnpm --filter jasper-bot run plugin:export my-plugin
 
 # Export source code (for sharing with devs)
-pnpm plugin:export my-plugin --src
+pnpm --filter jasper-bot run plugin:export my-plugin --src
 ```
 The zip file will be created in the `exports/` directory.
 
@@ -287,17 +293,17 @@ The zip file will be created in the `exports/` directory.
 
 ## 🧰 CLI Tools
 
-We provide several scripts to help with plugin development:
+We provide several scripts to help with plugin development. Run these from the root using `pnpm --filter jasper-bot run <command>` or from `apps/bot` directory.
 
 | Command | Description |
 | :--- | :--- |
-| `pnpm plugin:scaffold` | Interactive wizard to create a new plugin. |
-| `pnpm plugin:validate` | Checks your plugin for errors and missing files. |
-| `pnpm plugin:export <id>` | Packages your plugin into a `.zip` file. Use `--src` to export source code. |
-| `pnpm plugin:import <zip>` | Imports a plugin from a zip file. |
+| `plugin:scaffold` | Interactive wizard to create a new plugin. |
+| `plugin:validate` | Checks your plugin for errors and missing files. |
+| `plugin:export <id>` | Packages your plugin into a `.zip` file. Use `--src` to export source code. |
+| `plugin:import <zip>` | Imports a plugin from a zip file. |
 
 ---
- 
+
  ## 🌳 Out-of-Tree Development
  
  You can develop plugins in a separate repository and link them into the Jasper monorepo for testing.
@@ -309,14 +315,14 @@ We provide several scripts to help with plugin development:
  3.  Run the link command from the Jasper root:
  
      ```bash
-     pnpm plugin:link ~/my-jasper-plugins/cool-plugin
+     pnpm --filter jasper-bot run plugin:link ~/my-jasper-plugins/cool-plugin
      ```
  
  4.  Start Jasper (`pnpm dev`). The plugin will be loaded.
  5.  To remove the link:
  
      ```bash
-     pnpm plugin:unlink cool-plugin
+     pnpm --filter jasper-bot run plugin:unlink cool-plugin
      ```
  
  ### Workflow 2: Git Submodules (Recommended for Production/Teams)
@@ -407,7 +413,7 @@ Demonstrates how to use the Extension Storage API to upload, view, and manage fi
 ### Listing Plugins
 
 ```bash
-pnpm plugin:list
+pnpm --filter jasper-bot run plugin:list
 ```
 
 Shows all installed plugins with their enabled/disabled status.
@@ -416,10 +422,10 @@ Shows all installed plugins with their enabled/disabled status.
 
 ```bash
 # Enable a plugin
-pnpm plugin:enable
+pnpm --filter jasper-bot run plugin:enable
 
 # Disable a plugin
-pnpm plugin:disable
+pnpm --filter jasper-bot run plugin:disable
 ```
 
 ### Production Defaults
