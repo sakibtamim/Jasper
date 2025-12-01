@@ -134,5 +134,4 @@ jobs:
               corepack prepare pnpm@latest --activate
             fi
             pnpm install --prod --frozen-lockfile
-            pnpm --filter jasper-bot run deploy:commands:prod
             pm2 startOrRestart ecosystem.config.cjs

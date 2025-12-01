@@ -72,8 +72,8 @@ The deployment is handled automatically by GitHub Actions when you push to the `
     -   Files are copied to the server via SCP, preserving the monorepo structure.
     -   The integrity of the copied files on the server is verified again.
     -   `pnpm install --prod --frozen-lockfile` is run on the server to install production dependencies (yt-dlp is downloaded here).
-    -   `pnpm --filter jasper-bot run deploy:commands:prod` is run to register slash commands with Discord.
     -   `pm2 startOrRestart ecosystem.config.cjs` is executed to start or reload the bot.
+    -   **Note**: Discord slash commands are deployed during the build phase, not on the server.
 
 ### Important Notes
 
