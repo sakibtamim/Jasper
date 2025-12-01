@@ -126,6 +126,12 @@ jobs:
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
             cd ${{ secrets.SSH_TARGET }}
+            # Enable pnpm via corepack if not available
+            if ! command -v pnpm &> /dev/null; then
+              echo "pnpm not found, enabling via corepack..."
+              corepack enable
+              corepack prepare pnpm@latest --activate
+            fi
             pnpm install --prod --frozen-lockfile
             pnpm --filter jasper-bot run deploy:commands:prod
             pm2 startOrRestart ecosystem.config.cjs
