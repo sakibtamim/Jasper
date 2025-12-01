@@ -89,7 +89,8 @@ DATABASE_URL=postgresql://user:password@localhost:5432/jasper_db
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `PORT` | HTTP port for the web dashboard. Set to enable Web UI. | (disabled) |
-| `BASE_URL` | Public-facing URL of the application | `http://localhost:3000` |
+| `BASE_URL` | Public-facing URL of the application (Backend) | `http://localhost:3000` |
+| `FRONTEND_URL` | URL of the React Frontend (for redirects) | `http://localhost:5173` (dev) / `BASE_URL` (prod) |
 
 ## Authentication (Web UI)
 

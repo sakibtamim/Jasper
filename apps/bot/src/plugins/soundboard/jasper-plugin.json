@@ -1,0 +1,25 @@
+{
+    "id": "soundboard",
+    "name": "Jasper Soundboard",
+    "version": "1.0.0",
+    "description": "Play custom sound effects in voice channels.",
+    "entry": "index.ts",
+    "web": {
+        "entry": "web/index.tsx",
+        "navItems": [
+            {
+                "id": "soundboard-nav",
+                "label": "Soundboard",
+                "icon": "music-2",
+                "href": "/plugins/soundboard"
+            }
+        ],
+        "pages": [
+            {
+                "id": "soundboard-page",
+                "path": "/plugins/soundboard",
+                "component": "SoundboardPage"
+            }
+        ]
+    }
+}

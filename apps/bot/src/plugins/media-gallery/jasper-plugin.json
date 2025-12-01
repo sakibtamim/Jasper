@@ -1,0 +1,33 @@
+{
+    "id": "media-gallery",
+    "name": "Media Gallery",
+    "version": "1.0.0",
+    "description": "A sample plugin demonstrating the Extension Storage API.",
+    "entry": "index.ts",
+    "web": {
+        "entry": "web/index.tsx",
+        "widgets": [
+            {
+                "id": "gallery-widget",
+                "slot": "dashboard:main",
+                "component": "GalleryWidget",
+                "priority": 10
+            }
+        ],
+        "pages": [
+            {
+                "path": "/plugins/media-gallery",
+                "component": "GalleryPage",
+                "title": "Media Gallery"
+            }
+        ],
+        "navItems": [
+            {
+                "id": "media-gallery-nav",
+                "label": "Media Gallery",
+                "href": "/plugins/media-gallery",
+                "icon": "Image"
+            }
+        ]
+    }
+}

@@ -1,13 +1,14 @@
 module.exports = {
-    apps: [{
-        name: "jasper-bot",
-        script: "./dist/index.js",
-        instances: 1,
-        autorestart: true,
-        watch: false,
-        max_memory_restart: '1G',
-        env: {
-            NODE_ENV: "production",
+    apps: [
+        {
+            name: "Jasper",
+            script: "pnpm",
+            args: "start --filter bot",
+            cwd: "./",
+            interpreter: "none",
+            env: {
+                NODE_ENV: "production",
+            },
         },
-    }]
-}
+    ],
+};

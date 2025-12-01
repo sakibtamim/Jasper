@@ -1,59 +1,14 @@
 {
-  "name": "jasper-music-bot",
-  "version": "1.0.0",
-  "description": "Jasper – a Discord music bot themed after a big black Persian cat.",
-  "main": "src/index.js",
-  "type": "module",
+  "name": "jasper-monorepo",
+  "private": true,
   "scripts": {
-    "start": "node dist/index.js",
-    "dev": "tsx watch src/index.ts",
-    "build": "tsc && rsync -avm --include='*/' --include='*.json' --include='*.mp3' --exclude='*' src/plugins/ dist/plugins/",
-    "lint": "eslint src/**/*.ts",
-    "deploy:commands": "tsx src/deploy-commands.ts",
-    "deploy:commands:prod": "node dist/deploy-commands.js",
-    "prepare": "node ./scripts/prepare.js",
-    "postinstall": "node ./scripts/install-yt-dlp.js && node ./scripts/migrate-cache.js",
-    "test": "vitest",
-    "deploy": "git checkout master && git pull && git checkout deploy && git pull && git merge --ff-only master && git push && git checkout master"
-  },
-  "keywords": [
-    "discord",
-    "music",
-    "bot",
-    "jasper"
-  ],
-  "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "@discordjs/voice": "^0.19.0",
-    "@fastify/cookie": "^11.0.2",
-    "@fastify/oauth2": "^8.1.2",
-    "@fastify/static": "^8.3.0",
-    "@snazzah/davey": "^0.1.8",
-    "better-sqlite3": "^12.4.6",
-    "discord-api-types": "^0.37.83",
-    "discord.js": "^14.25.0",
-    "dotenv": "^16.4.5",
-    "fastify": "^5.6.2",
-    "ffmpeg-static": "^5.3.0",
-    "pg": "^8.16.3",
-    "semver": "^7.7.3",
-    "yt-search": "^2.13.1"
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^24.10.1",
-    "@types/pg": "^8.15.6",
-    "@types/semver": "^7.7.1",
-    "@types/ws": "^8.18.1",
-    "@types/yt-search": "^2.10.3",
-    "@vitest/coverage-v8": "^4.0.13",
-    "eslint": "^9.39.1",
-    "globals": "^16.5.0",
-    "tsx": "^4.20.6",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.47.0",
-    "vitest": "^4.0.13"
-  }
+    "turbo": "^2.3.0"
+  },
+  "packageManager": "pnpm@9.15.9+sha512.68046141893c66fad01c079231128e9afb89ef87e2691d69e4d40eee228988295fd4682181bae55b58418c3a253bde65a505ec7c5f9403ece5cc3cd37dcf2531"
 }

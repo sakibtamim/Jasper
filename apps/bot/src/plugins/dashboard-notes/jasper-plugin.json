@@ -1,0 +1,33 @@
+{
+    "id": "dashboard-notes",
+    "name": "Dashboard Notes",
+    "version": "1.0.0",
+    "description": "A full-stack plugin demonstrating CRUD operations and frontend integration.",
+    "entry": "index.ts",
+    "web": {
+        "entry": "web/index.tsx",
+        "navItems": [
+            {
+                "id": "notes-nav",
+                "label": "Notes",
+                "icon": "clipboard",
+                "href": "/plugins/dashboard-notes"
+            }
+        ],
+        "widgets": [
+            {
+                "id": "notes-widget",
+                "slot": "dashboard:main",
+                "component": "NotesWidget",
+                "order": 10
+            }
+        ],
+        "pages": [
+            {
+                "id": "notes-page",
+                "path": "/plugins/dashboard-notes",
+                "component": "NotesPage"
+            }
+        ]
+    }
+}

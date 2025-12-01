@@ -8,15 +8,35 @@ yt-dlp.exe
 
 # Ignore build output
 dist/
+public/dist-react/
 
 # Cache directories (not committed to version control)
-/cache/
+cache/
+.cache/
 
 # Database files (runtime data)
-/data/
+data/
+*.db
+*.db-shm
+*.db-wal
 
 # Ignore example artifacts used for AI context and training
 example-codes/
 
 # System Files
 .DS_Store
+exports/
+tmp/
+
+# Turborepo
+.turbo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# TS Build Info
+*.tsbuildinfo
