@@ -25,6 +25,8 @@ jobs:
           cache: 'pnpm'
 
       - name: Install Dependencies
+        env:
+          YT_DLP_SKIP_POSTINSTALL: 1
         run: pnpm install --frozen-lockfile
 
       - name: Build
