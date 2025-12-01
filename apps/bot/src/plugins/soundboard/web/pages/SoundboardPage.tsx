@@ -190,6 +190,12 @@ export const SoundboardPage = () => {
         return <span className="text-2xl">{emojiStr}</span>;
     };
 
+    const getSoundPlayCount = (soundId: string): number => {
+        if (!stats) return 0;
+        const topSound = stats.topSounds.find(s => s.soundId === soundId);
+        return topSound ? topSound.count : 0;
+    };
+
     if (loading && sounds.length === 0) {
         return (
             <div className="p-8 flex justify-center">
@@ -338,6 +344,14 @@ export const SoundboardPage = () => {
                                 {sound.name}
                             </h3>
 
+                            {/* Play count badge */}
+                            {stats && getSoundPlayCount(sound.id) > 0 && (
+                                <Badge variant="info" className="mt-1.5 text-xs">
+                                    <Play className="w-3 h-3 mr-1 inline" />
+                                    {getSoundPlayCount(sound.id)}
+                                </Badge>
+                            )}
+
                             <div className="mt-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 absolute inset-0 bg-white/90 dark:bg-gray-900/90 flex justify-center backdrop-blur-sm rounded-lg">
                                 <button
                                     onClick={() => handlePreview(sound.id)}
@@ -363,6 +377,33 @@ export const SoundboardPage = () => {
                             </div>
                         </Card>
                     ))}
+                </div>
+            )}
+
+            {/* Top Sounds Stats Card */}
+            {stats && stats.topSounds.length > 0 && (
+                <div className="mt-8">
+                    <Card className="p-6">
+                        <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                            <Music className="w-5 h-5 text-purple-500" />
+                            Top 5 Most Played Sounds
+                        </h2>
+                        <div className="space-y-3">
+                            {stats.topSounds.slice(0, 5).map((s, i) => (
+                                <div key={s.soundId} className="flex items-center justify-between text-sm">
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-gray-400 font-mono w-5 text-right">{i + 1}</span>
+                                        <span className="text-xl">{s.emoji}</span>
+                                        <span className="font-medium">{s.name}</span>
+                                    </div>
+                                    <Badge variant="info">
+                                        <Play className="w-3 h-3 mr-1 inline" />
+                                        {s.count}
+                                    </Badge>
+                                </div>
+                            ))}
+                        </div>
+                    </Card>
                 </div>
             )}
 
