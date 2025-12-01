@@ -9,6 +9,7 @@ import { ICacheStorage, CacheStats, CACHE_AUDIO_TTL_HOURS, CACHE_SEARCH_TTL_HOUR
 import { getDatabase } from '../db/index.js';
 import { getYtDlpPath } from '../audio/stream-handler.js';
 import { getBaseYtDlpArgs } from '../../utils/yt-dlp-helper.js';
+import cookieManager from '../cookies/cookie-manager.js';
 
 const CACHE_AUDIO_DIR = path.join(process.cwd(), 'cache', 'audio');
 
@@ -95,6 +96,8 @@ export class DatabaseCacheStorage implements ICacheStorage {
         }
     }
 
+
+
     async cacheAudioStream(url: string, videoId: string, searchTerms: string[]): Promise<Readable> {
         logger.info(`[cache] Audio cache miss, downloading: ${url}`);
 
@@ -102,6 +105,15 @@ export class DatabaseCacheStorage implements ICacheStorage {
         await fs.mkdir(CACHE_AUDIO_DIR, { recursive: true });
 
         const audioPath = path.join(CACHE_AUDIO_DIR, `${videoId}.webm`);
+
+        // Get best cookie for this download
+        const cookieData = await cookieManager.getBestCookiePath();
+        const cookiePath = cookieData?.path;
+        const cookieId = cookieData?.cookieId;
+
+        if (cookiePath) {
+            logger.debug(`[cache] Using cookie ${cookieId} for download`);
+        }
 
         // Create a PassThrough stream for immediate playback
         const passThrough = new PassThrough();
@@ -115,6 +127,11 @@ export class DatabaseCacheStorage implements ICacheStorage {
             '-q',
             url
         ];
+
+        if (cookiePath) {
+            args.push('--cookies', cookiePath);
+        }
+
         const ytDlpProcess = spawn(ytDlpPath, args);
 
         ytDlpProcess.stderr!.on('data', (data) => {
@@ -145,10 +162,22 @@ export class DatabaseCacheStorage implements ICacheStorage {
             if (code !== 0 && !hasError) {
                 logger.error(`[cache] yt-dlp exited with code ${code} for: ${url}`);
                 hasError = true;
+
+                if (cookieId) {
+                    // Assume failure if non-zero exit code
+                    // We could parse stderr to be more specific, but for now this is safe
+                    await cookieManager.reportUsage(cookieId, false);
+                }
+
                 await fs.unlink(audioPath).catch((err) => {
                     logger.warn(`[cache] Failed to delete partial file ${audioPath}: ${err.message}`);
                 });
             } else if (code === 0 && !hasError) {
+                // Success
+                if (cookieId) {
+                    await cookieManager.reportUsage(cookieId, true);
+                }
+
                 // Success: save metadata to database
                 try {
                     const db = getDatabase();
@@ -169,14 +198,29 @@ export class DatabaseCacheStorage implements ICacheStorage {
                     });
                 }
             }
+
+            // Cleanup cookie file
+            if (cookiePath) {
+                await cookieManager.cleanupCookieFile(cookiePath);
+            }
         });
 
         ytDlpProcess.on('error', async (err) => {
             logger.error(`[cache] yt-dlp error during caching: ${err.message}`);
             hasError = true;
+
+            if (cookieId) {
+                await cookieManager.reportUsage(cookieId, false);
+            }
+
             passThrough.destroy(err);
             fileStream.destroy();
             await fs.unlink(audioPath).catch(() => { });
+
+            // Cleanup cookie file
+            if (cookiePath) {
+                await cookieManager.cleanupCookieFile(cookiePath);
+            }
         });
 
         return passThrough;

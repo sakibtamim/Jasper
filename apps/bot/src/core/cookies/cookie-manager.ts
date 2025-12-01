@@ -27,9 +27,11 @@ export class CookieManager {
         try {
             const cookie = await db.getBestCookie();
             if (!cookie) {
+                logger.debug('[CookieManager] No active cookies found.');
                 return null;
             }
 
+            logger.debug(`[CookieManager] Found best cookie: ${cookie.id} (${cookie.name})`);
             const tempFilePath = await this.writeCookieToTempFile(cookie);
             return { path: tempFilePath, cookieId: cookie.id };
         } catch (error) {
@@ -68,6 +70,7 @@ export class CookieManager {
      */
     async reportUsage(cookieId: number, success: boolean): Promise<void> {
         try {
+            logger.debug(`[CookieManager] Reporting usage for cookie ${cookieId}: success=${success}`);
             await db.rotateCookieStats(cookieId, success);
         } catch (error) {
             logger.error(`[CookieManager] Failed to report usage for cookie ${cookieId}: ${error}`);
@@ -102,6 +105,12 @@ export class CookieManager {
             const cookiePath = cookieData?.path || null;
             const cookieId = cookieData?.cookieId;
 
+            if (cookiePath) {
+                logger.debug(`[CookieManager] Attempt ${attempt + 1}/${effectiveRetries + 1} using cookie ${cookieId}`);
+            } else {
+                logger.debug(`[CookieManager] Attempt ${attempt + 1}/${effectiveRetries + 1} without cookie`);
+            }
+
             // Avoid retrying the same cookie in the same operation loop if possible
             // (This requires getBestCookie to support excluding IDs, which it currently doesn't,
             // but we can at least track what we've used)
@@ -126,6 +135,7 @@ export class CookieManager {
                 return result;
             } catch (error: any) {
                 lastError = error;
+                logger.warn(`[CookieManager] Operation failed: ${error.message}`);
 
                 if (cookieId) {
                     // Check if error is related to auth

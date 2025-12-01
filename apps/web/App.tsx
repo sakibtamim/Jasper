@@ -1,4 +1,4 @@
-import { React, useEffect, useState } from '@jasper/elements';
+import { React } from '@jasper/elements';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import WorkersPage from './pages/WorkersPage';
@@ -12,13 +12,8 @@ import { AppProvider } from './context/AppContext';
 import { componentRegistry } from './core/ComponentRegistry';
 
 function PluginRoute({ pluginId, componentName }: { pluginId: string, componentName: string }) {
-    const [Component, setComponent] = useState<React.ComponentType<any> | null>(null);
-
-    useEffect(() => {
-        // Components should be registered by now since PluginProvider loads them
-        const Comp = componentRegistry.get(pluginId, componentName);
-        setComponent(Comp);
-    }, [pluginId, componentName]);
+    // Components are already registered by PluginProvider before rendering routes
+    const Component = componentRegistry.get(pluginId, componentName);
 
     if (!Component) return <div className="p-8 text-center text-gray-500">Component not found: {pluginId}:{componentName}</div>;
     return <Component />;
