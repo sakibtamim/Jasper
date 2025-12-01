@@ -133,5 +133,12 @@ jobs:
               corepack enable
               corepack prepare pnpm@latest --activate
             fi
+
+            # Ensure pm2 is installed
+            if ! command -v pm2 &> /dev/null; then
+              echo "pm2 not found, installing globally..."
+              pnpm add -g pm2
+            fi
+
             pnpm install --prod --frozen-lockfile
             pm2 startOrRestart ecosystem.config.cjs
