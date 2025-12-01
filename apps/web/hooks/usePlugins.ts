@@ -7,6 +7,10 @@ export function usePlugins() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // Glob all potential plugin entry points for dev mode
+    // @ts-ignore - Vite handles this
+    const pluginEntries = import.meta.glob('@plugins/*/web/index.{ts,tsx,js,jsx}');
+
     useEffect(() => {
         async function load() {
             try {
@@ -17,30 +21,45 @@ export function usePlugins() {
                 await Promise.all(registry.map(async (plugin) => {
                     if (plugin.web && plugin.web.entry) {
                         try {
-                            // Construct URL for the plugin entry point.
-                            // Plugin entry URL uses .js extension because plugins are built to ES modules
-                            // before deployment. See build-plugins.ts for the build process.
-                            // See PLUGINS_DEV.md "Frontend Asset Serving" for details on this URL structure.
-                            const entryUrl = `/plugins/${plugin.id}/web/index.js`;
+                            let module: any;
 
-                            console.log(`[PluginLoader] Loading ${plugin.id} from ${entryUrl}`);
+                            if (import.meta.env.DEV) {
+                                // Development: Load source directly via Vite HMR
+                                console.log(`[PluginLoader] Loading ${plugin.id} from source...`);
 
-                            // Load plugin script via script tag (IIFE)
-                            await new Promise<void>((resolve, reject) => {
-                                const script = document.createElement('script');
-                                script.src = entryUrl;
-                                script.onload = () => resolve();
-                                script.onerror = () => reject(new Error(`Failed to load script ${entryUrl}`));
-                                document.body.appendChild(script);
-                            });
+                                // Find matching entry
+                                const entryPath = Object.keys(pluginEntries).find(path =>
+                                    path.includes(`/${plugin.id}/web/index.`)
+                                );
 
-                            // Get the plugin module from the global variable
-                            // Name convention matches build-plugins.ts: JasperPlugin_{id_with_underscores}
-                            const varName = 'JasperPlugin_' + plugin.id.replace(/-/g, '_');
-                            const module = (window as any)[varName];
+                                if (!entryPath) {
+                                    throw new Error(`Source entry not found for plugin ${plugin.id}`);
+                                }
+
+                                const entryImport = pluginEntries[entryPath];
+                                if (typeof entryImport === 'function') {
+                                    module = await entryImport();
+                                }
+                            } else {
+                                // Production: Load built script via script tag
+                                const entryUrl = `/plugins/${plugin.id}/web/index.js`;
+                                console.log(`[PluginLoader] Loading ${plugin.id} from ${entryUrl}`);
+
+                                await new Promise<void>((resolve, reject) => {
+                                    const script = document.createElement('script');
+                                    script.src = entryUrl;
+                                    script.onload = () => resolve();
+                                    script.onerror = () => reject(new Error(`Failed to load script ${entryUrl}`));
+                                    document.body.appendChild(script);
+                                });
+
+                                // Get the plugin module from the global variable
+                                const varName = 'JasperPlugin_' + plugin.id.replace(/-/g, '_');
+                                module = (window as any)[varName];
+                            }
 
                             if (!module) {
-                                throw new Error(`Plugin module ${varName} not found in window object`);
+                                throw new Error(`Plugin module not found`);
                             }
 
                             // Register components from the imported module based on the manifest
