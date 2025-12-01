@@ -2,10 +2,8 @@ module.exports = {
     apps: [
         {
             name: "Jasper",
-            script: "pnpm",
-            args: "start --filter jasper-bot",
+            script: "./apps/bot/dist/index.js",
             cwd: "./",
-            interpreter: "none",
             env: {
                 NODE_ENV: "production",
             },

@@ -47,11 +47,8 @@ Configure the following secrets in your GitHub repository settings (Settings > S
 This file configures PM2 to manage the bot process. It uses the `.cjs` extension because the project uses ES modules (`"type": "module"` in package.json), but PM2 requires CommonJS format.
 
 -   **Name**: `Jasper`
--   **Script**: `pnpm`
--   **Args**: `start --filter bot`
--   **Instances**: 1
--   **Autorestart**: Enabled
--   **Max Memory**: 1G (Restarts if memory usage exceeds 1GB)
+-   **Script**: `./apps/bot/dist/index.js` (The compiled entry point)
+-   **Environment**: Production mode
 
 ## Deployment Process
 
