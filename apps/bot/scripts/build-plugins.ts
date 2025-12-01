@@ -50,15 +50,27 @@ async function buildPlugins() {
                         outDir: outDir,
                         emptyOutDir: true,
                         rollupOptions: {
-                            external: ['react', 'react-dom', 'react/jsx-runtime', 'react-router-dom', '@jasper/elements'],
+                            external: [
+                                'react',
+                                'react-dom',
+                                'react/jsx-runtime',
+                                'react-router-dom',
+                                '@jasper/elements',
+                                '@jasper/ui',
+                                '@jasper/hooks',
+                                'lucide-react'
+                            ],
                             output: {
                                 extend: true,
                                 globals: {
-                                    react: 'JasperElements.React',
+                                    'react': 'JasperElements.React',
                                     'react-dom': 'JasperElements.ReactDOM',
                                     'react/jsx-runtime': 'JasperElements.React',
                                     'react-router-dom': 'JasperElements.ReactRouterDOM',
-                                    '@jasper/elements': 'JasperElements'
+                                    '@jasper/elements': 'JasperElements',
+                                    '@jasper/ui': 'JasperUI',
+                                    '@jasper/hooks': 'JasperHooks',
+                                    'lucide-react': 'LucideReact'
                                 }
                             }
                         }
