@@ -393,7 +393,9 @@ export const SoundboardPage = () => {
                                 <div key={s.soundId} className="flex items-center justify-between text-sm">
                                     <div className="flex items-center gap-3">
                                         <span className="text-gray-400 font-mono w-5 text-right">{i + 1}</span>
-                                        <span className="text-xl">{s.emoji}</span>
+                                        <div className="w-6 h-6 flex items-center justify-center">
+                                            {renderEmoji(s.emoji)}
+                                        </div>
                                         <span className="font-medium">{s.name}</span>
                                     </div>
                                     <Badge variant="info">
