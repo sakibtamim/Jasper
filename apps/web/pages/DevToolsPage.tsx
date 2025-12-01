@@ -1,6 +1,7 @@
 import { React, useState, useEffect } from '@jasper/elements';
 import { usePluginContext } from '../context/PluginContext';
-import { Trash2, RefreshCw, Upload, HardDrive, Users, Clock, Database, BarChart2, Package } from 'lucide-react';
+import { Trash2, RefreshCw, Upload, HardDrive, Users, Clock, Database, BarChart2, Package, Cookie } from 'lucide-react';
+import { CookieManager } from '../src/components/devtools/CookieManager';
 
 import { useAuth } from '../context/AppContext';
 import { Lock } from 'lucide-react';
@@ -125,7 +126,7 @@ export default function DevToolsPage() {
     // Plugin Upload State
     const [uploading, setUploading] = useState(false);
 
-    const PROTECTED_TABS = ['users', 'sessions', 'cache', 'stats', 'plugins'];
+    const PROTECTED_TABS = ['users', 'sessions', 'cache', 'stats', 'plugins', 'cookies'];
 
     useEffect(() => {
         if (!authLoading) {
@@ -154,6 +155,7 @@ export default function DevToolsPage() {
                 case 'cache': endpoint = '/api/devtools/cache'; break; // Also needs audio cache
                 case 'stats': endpoint = '/api/devtools/stats/songs'; break; // Default to songs
                 case 'plugins': endpoint = '/api/devtools/plugins'; break;
+                case 'cookies': break; // Handled by component
                 default: break;
             }
 
@@ -271,6 +273,7 @@ export default function DevToolsPage() {
         { id: 'cache', label: 'Cache', icon: Database, protected: true },
         { id: 'stats', label: 'Stats', icon: BarChart2, protected: true },
         { id: 'plugins', label: 'Plugins', icon: Package, protected: true },
+        { id: 'cookies', label: 'Cookies', icon: Cookie, protected: true },
     ];
 
     return (
@@ -634,6 +637,10 @@ export default function DevToolsPage() {
                                             )}
                                         </div>
                                     </div>
+                                )}
+
+                                {activeTab === 'cookies' && (
+                                    <CookieManager />
                                 )}
                             </>
                         )}

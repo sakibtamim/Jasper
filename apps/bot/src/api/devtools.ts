@@ -256,6 +256,60 @@ const devtoolsRoutes: FastifyPluginAsync = async (fastify) => {
             reply.status(500).send({ error: 'Internal server error' });
         }
     });
+
+    // 7. Cookie Management
+    fastify.get('/api/devtools/cookies', async (_request, reply) => {
+        try {
+            const cookies = await db.getCookies();
+            reply.send({ cookies });
+        } catch (error) {
+            logger.error(`[api] Failed to get cookies: ${error}`);
+            reply.status(500).send({ error: 'Failed to get cookies' });
+        }
+    });
+
+    fastify.post<{ Body: { name: string, content: string } }>('/api/devtools/cookies', async (request, reply) => {
+        const { name, content } = request.body;
+        if (!name || !content) {
+            return reply.status(400).send({ error: 'Missing name or content' });
+        }
+
+        try {
+            await db.addCookie(name, content);
+            reply.send({ success: true });
+        } catch (error) {
+            logger.error(`[api] Failed to add cookie: ${error}`);
+            reply.status(500).send({ error: 'Failed to add cookie' });
+        }
+    });
+
+    fastify.delete<{ Params: { id: string } }>('/api/devtools/cookies/:id', async (request, reply) => {
+        const { id } = request.params;
+        try {
+            await db.deleteCookie(parseInt(id, 10));
+            reply.send({ success: true });
+        } catch (error) {
+            logger.error(`[api] Failed to delete cookie ${id}: ${error}`);
+            reply.status(500).send({ error: 'Failed to delete cookie' });
+        }
+    });
+
+    fastify.post<{ Params: { id: string }, Body: { enabled: boolean } }>('/api/devtools/cookies/:id/toggle', async (request, reply) => {
+        const { id } = request.params;
+        const { enabled } = request.body;
+
+        if (typeof enabled !== 'boolean') {
+            return reply.status(400).send({ error: 'Invalid body: enabled must be a boolean' });
+        }
+
+        try {
+            await db.updateCookie(parseInt(id, 10), { isActive: enabled });
+            reply.send({ success: true });
+        } catch (error) {
+            logger.error(`[api] Failed to toggle cookie ${id}: ${error}`);
+            reply.status(500).send({ error: 'Failed to toggle cookie' });
+        }
+    });
 };
 
 export default devtoolsRoutes;

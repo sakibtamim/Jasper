@@ -144,7 +144,29 @@ export interface IPluginMetaRepository {
     getAllPluginMeta(): Promise<Array<{ pluginId: string, enabled: boolean }>>;
 }
 
-export interface DatabaseAdapter extends IStatsRepository, ICacheRepository, IAuthRepository, IDevToolsRepository, IPluginRepository, IPluginMetaRepository {
+export interface YtDlpCookie {
+    id: number;
+    name: string;
+    content: string; // Encrypted
+    isActive: boolean;
+    successCount: number;
+    failureCount: number;
+    lastUsed?: Date;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export interface ICookieRepository {
+    addCookie(name: string, content: string): Promise<void>;
+    getCookies(): Promise<YtDlpCookie[]>;
+    getCookie(id: number): Promise<YtDlpCookie | null>;
+    updateCookie(id: number, updates: Partial<Omit<YtDlpCookie, 'id' | 'createdAt' | 'updatedAt'>>): Promise<void>;
+    deleteCookie(id: number): Promise<void>;
+    rotateCookieStats(id: number, success: boolean): Promise<void>;
+    getBestCookie(): Promise<YtDlpCookie | null>;
+}
+
+export interface DatabaseAdapter extends IStatsRepository, ICacheRepository, IAuthRepository, IDevToolsRepository, IPluginRepository, IPluginMetaRepository, ICookieRepository {
     init(): Promise<void>;
     close(): Promise<void>;
 }

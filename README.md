@@ -198,6 +198,11 @@ Cache statistics are logged on bot startup and during cleanup:
 
 🆕 **Jasper now tracks listening history and statistics!**
 
+### Troubleshooting
+
+- **yt-dlp Issues:** If you encounter "Sign in to confirm you’re not a bot" errors, please refer to our [Cookie Management & Troubleshooting Guide](./YT-DLP_TROUBLESHOOTING.md).
+- **Database:** Ensure your database (SQLite or Postgres) is correctly configured in `.env`.
+
 ### Supported Databases
 1.  **SQLite (Default):** Zero-configuration, stores data in `data/jasper.db`. Perfect for small servers and development.
 2.  **PostgreSQL:** Recommended for production and large servers.

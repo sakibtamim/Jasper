@@ -2,8 +2,8 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 import logger from '../logger.js';
-import { DatabaseAdapter, PlayRecord, SongStats, UserStats, User, Session } from './types.js';
-import { decrypt } from '../../utils/encryption.js';
+import { DatabaseAdapter, PlayRecord, SongStats, UserStats, User, Session, YtDlpCookie } from './types.js';
+import { decrypt, encrypt } from '../../utils/encryption.js';
 import { ENCRYPTION_KEY } from '../../config/env.js';
 
 export class SqliteAdapter implements DatabaseAdapter {
@@ -102,6 +102,18 @@ export class SqliteAdapter implements DatabaseAdapter {
         CREATE TABLE IF NOT EXISTS plugin_meta (
           plugin_id TEXT PRIMARY KEY,
           enabled BOOLEAN NOT NULL DEFAULT 1,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS yt_dlp_cookies (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          content TEXT NOT NULL,
+          is_active BOOLEAN NOT NULL DEFAULT 1,
+          success_count INTEGER NOT NULL DEFAULT 0,
+          failure_count INTEGER NOT NULL DEFAULT 0,
+          last_used DATETIME,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
       `);
@@ -804,11 +816,144 @@ export class SqliteAdapter implements DatabaseAdapter {
 
   async getAllPluginMeta(): Promise<Array<{ pluginId: string, enabled: boolean }>> {
     if (!this.db) throw new Error('Database not initialized');
-    const stmt = this.db.prepare('SELECT plugin_id as pluginId, enabled FROM plugin_meta');
-    const rows = stmt.all() as Array<{ pluginId: string, enabled: number }>;
+    const stmt = this.db.prepare('SELECT plugin_id, enabled FROM plugin_meta');
+    const rows = stmt.all() as { plugin_id: string, enabled: number }[];
     return rows.map(row => ({
-      pluginId: row.pluginId,
+      pluginId: row.plugin_id,
       enabled: row.enabled === 1
     }));
   }
+
+
+  // Cookie Repository Implementation
+  async addCookie(name: string, content: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    const encryptedContent = encrypt(content, ENCRYPTION_KEY);
+    const stmt = this.db.prepare(`
+      INSERT INTO yt_dlp_cookies (name, content, updated_at)
+      VALUES (?, ?, datetime('now'))
+    `);
+    stmt.run(name, encryptedContent);
+  }
+
+  async getCookies(): Promise<YtDlpCookie[]> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare('SELECT * FROM yt_dlp_cookies ORDER BY created_at DESC');
+    const rows = stmt.all() as any[];
+    return rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      content: decrypt(row.content, ENCRYPTION_KEY),
+      isActive: row.is_active === 1,
+      successCount: row.success_count,
+      failureCount: row.failure_count,
+      lastUsed: row.last_used ? new Date(row.last_used) : undefined,
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at)
+    }));
+  }
+
+  async getCookie(id: number): Promise<YtDlpCookie | null> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare('SELECT * FROM yt_dlp_cookies WHERE id = ?');
+    const row = stmt.get(id) as any;
+    if (!row) return null;
+    return {
+      id: row.id,
+      name: row.name,
+      content: decrypt(row.content, ENCRYPTION_KEY),
+      isActive: row.is_active === 1,
+      successCount: row.success_count,
+      failureCount: row.failure_count,
+      lastUsed: row.last_used ? new Date(row.last_used) : undefined,
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at)
+    };
+  }
+
+  async updateCookie(id: number, updates: Partial<Omit<YtDlpCookie, 'id' | 'createdAt' | 'updatedAt'>>): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const sets: string[] = [];
+    const values: any[] = [];
+
+    if (updates.name !== undefined) {
+      sets.push('name = ?');
+      values.push(updates.name);
+    }
+    if (updates.content !== undefined) {
+      sets.push('content = ?');
+      values.push(encrypt(updates.content, ENCRYPTION_KEY));
+    }
+    if (updates.isActive !== undefined) {
+      sets.push('is_active = ?');
+      values.push(updates.isActive ? 1 : 0);
+    }
+    if (updates.successCount !== undefined) {
+      sets.push('success_count = ?');
+      values.push(updates.successCount);
+    }
+    if (updates.failureCount !== undefined) {
+      sets.push('failure_count = ?');
+      values.push(updates.failureCount);
+    }
+    if (updates.lastUsed !== undefined) {
+      sets.push('last_used = ?');
+      values.push(updates.lastUsed.toISOString());
+    }
+
+    if (sets.length === 0) return;
+
+    sets.push("updated_at = datetime('now')");
+    values.push(id);
+
+    const stmt = this.db.prepare(`UPDATE yt_dlp_cookies SET ${sets.join(', ')} WHERE id = ?`);
+    stmt.run(...values);
+  }
+
+  async deleteCookie(id: number): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare('DELETE FROM yt_dlp_cookies WHERE id = ?');
+    stmt.run(id);
+  }
+
+  async rotateCookieStats(id: number, success: boolean): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+    const stmt = this.db.prepare(`
+      UPDATE yt_dlp_cookies 
+      SET 
+        success_count = success_count + ?,
+        failure_count = failure_count + ?,
+        last_used = datetime('now'),
+        updated_at = datetime('now')
+      WHERE id = ?
+    `);
+    stmt.run(success ? 1 : 0, success ? 0 : 1, id);
+  }
+
+  async getBestCookie(): Promise<YtDlpCookie | null> {
+    if (!this.db) throw new Error('Database not initialized');
+    // Prioritize active cookies with high success rate and low failure count
+    // Randomize slightly to avoid thundering herd on one cookie
+    const stmt = this.db.prepare(`
+      SELECT * FROM yt_dlp_cookies 
+      WHERE is_active = 1 
+      ORDER BY (CAST(success_count AS FLOAT) / (success_count + failure_count + 1)) DESC, last_used ASC
+      LIMIT 1
+    `);
+    const row = stmt.get() as any;
+    if (!row) return null;
+    return {
+      id: row.id,
+      name: row.name,
+      content: decrypt(row.content, ENCRYPTION_KEY),
+      isActive: row.is_active === 1,
+      successCount: row.success_count,
+      failureCount: row.failure_count,
+      lastUsed: row.last_used ? new Date(row.last_used) : undefined,
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at)
+    };
+  }
 }
+
