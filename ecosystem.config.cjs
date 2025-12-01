@@ -3,7 +3,7 @@ module.exports = {
         {
             name: "Jasper",
             script: "pnpm",
-            args: "start --filter bot",
+            args: "start --filter jasper-bot",
             cwd: "./",
             interpreter: "none",
             env: {
