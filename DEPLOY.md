@@ -6,7 +6,7 @@ This guide explains how to deploy the Jasper music bot using GitHub Actions and 
 
 The target server must have the following installed:
 
-1.  **Node.js**: Version 20 or higher (matching the project's requirement).
+1.  **Node.js**: Version 22 or higher (as specified in `.nvmrc`).
     -   **Important**: If using `nvm` to manage Node.js, ensure it's properly configured in your shell's `.bashrc` or `.bash_profile`.
 2.  **pnpm**: Package manager. Install globally:
     ```bash
