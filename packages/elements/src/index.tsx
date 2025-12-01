@@ -72,3 +72,4 @@ export const ReactDOMClient = {
 };
 export * from 'react-router-dom';
 export * as ReactRouterDOM from 'react-router-dom';
+export * as JSXRuntime from 'react/jsx-runtime';

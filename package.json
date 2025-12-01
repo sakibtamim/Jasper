@@ -5,7 +5,10 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
-    "clean": "turbo run clean"
+    "clean": "turbo run clean",
+    "prod:build": "turbo run build",
+    "prod:start": "PORT=3000 NODE_ENV=production node apps/bot/dist/index.js",
+    "prod:preview": "turbo run build && PORT=3000 NODE_ENV=production node apps/bot/dist/index.js"
   },
   "devDependencies": {
     "turbo": "^2.3.0"

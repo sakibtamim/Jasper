@@ -27,16 +27,28 @@ async function buildPlugins() {
         // Check for .ts or .js if .tsx doesn't exist
         const entry = [entryFile, path.join(webDir, 'index.ts'), path.join(webDir, 'index.js')].find(f => fs.existsSync(f));
 
+        // Copy jasper-plugin.json
+        const manifestPath = path.join(pluginDir, 'jasper-plugin.json');
+        if (fs.existsSync(manifestPath)) {
+            const distPluginDir = path.join(DIST_DIR, pluginId);
+            if (!fs.existsSync(distPluginDir)) {
+                fs.mkdirSync(distPluginDir, { recursive: true });
+            }
+            fs.copyFileSync(manifestPath, path.join(distPluginDir, 'jasper-plugin.json'));
+            console.log(`✅ Copied manifest for ${pluginId}`);
+        }
+
         if (entry) {
             console.log(`Building frontend for plugin: ${pluginId}`);
-
+            console.log(`Entry: ${entry}`);
+            // ... (rest of the build logic)
             const outDir = path.join(DIST_DIR, pluginId, 'web');
 
             try {
                 await build({
+                    mode: 'production',
                     configFile: false,
-                    root: webDir,
-                    plugins: [react()],
+                    plugins: [react({ jsxRuntime: 'classic' })],
                     define: {
                         'process.env.NODE_ENV': JSON.stringify('production')
                     },
@@ -65,7 +77,7 @@ async function buildPlugins() {
                                 globals: {
                                     'react': 'JasperElements.React',
                                     'react-dom': 'JasperElements.ReactDOM',
-                                    'react/jsx-runtime': 'JasperElements.React',
+                                    'react/jsx-runtime': 'JasperElements.JSXRuntime',
                                     'react-router-dom': 'JasperElements.ReactRouterDOM',
                                     '@jasper/elements': 'JasperElements',
                                     '@jasper/ui': 'JasperUI',
@@ -75,7 +87,6 @@ async function buildPlugins() {
                             }
                         }
                     },
-                    logLevel: 'info'
                 });
                 console.log(`✅ Built ${pluginId} frontend`);
             } catch (e) {

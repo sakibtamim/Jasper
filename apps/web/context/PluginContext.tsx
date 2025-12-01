@@ -1,5 +1,5 @@
 import { React, ReactNode } from '@jasper/elements';
-import { usePlugins } from '../hooks/usePlugins';
+import { usePlugins } from '@hooks/usePlugins';
 import { PluginContext, usePluginContext } from '@jasper/hooks';
 
 export function PluginProvider({ children }: { children: ReactNode }) {

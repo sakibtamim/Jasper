@@ -5,13 +5,16 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
     plugins: [react()],
     resolve: {
         alias: {
             '@plugins': path.resolve(__dirname, '../bot/src/plugins'),
             'react': path.resolve(__dirname, './node_modules/react'),
-            'react-dom': path.resolve(__dirname, './node_modules/react-dom')
+            'react-dom': path.resolve(__dirname, './node_modules/react-dom'),
+            '@hooks/usePlugins': mode === 'production'
+                ? path.resolve(__dirname, './hooks/usePlugins.prod.ts')
+                : path.resolve(__dirname, './hooks/usePlugins.dev.ts')
         }
     },
     publicDir: 'public/assets',
@@ -47,7 +50,7 @@ export default defineConfig({
         outDir: 'dist',
         emptyOutDir: true,
         rollupOptions: {
-            external: ['lucide-react']
+            // external: ['lucide-react'] // Do not externalize in main app
         }
     }
-});
+}));

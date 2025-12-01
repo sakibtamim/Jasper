@@ -78,11 +78,25 @@ The deployment is handled automatically by GitHub Actions when you push to the `
 -   **yt-dlp**: Skipped during CI build but downloaded on the server during production install.
 -   **Checksums**: SHA256 verification ensures deployment integrity at multiple stages.
 
-## Manual Commands (Troubleshooting)
+## Troubleshooting
 
-If you need to manually manage the bot on the server:
+### Node Version Mismatch
+If you encounter `ERR_DLOPEN_FAILED` related to `better-sqlite3`, ensure that the Node.js version used to run the bot matches the version used to build dependencies.
+- Recommended Node Version: **v24+**
+- If using `pnpm`, ensure it uses the same Node version as your runtime.
+- To rebuild native dependencies: `pnpm rebuild`
 
--   **Logs**: `pm2 logs jasper-bot`
+### Plugin Loading Issues
+- Ensure `apps/web/dist/index.html` exists.
+- Check that plugins are built correctly in `dist/plugins`.
+- Verify that shared dependencies (React, etc.) are exposed globally in `apps/web/main.tsx`.
+
+## Start Command
+To start the production server:
+```bash
+pnpm prod:start
+```
+Ensure `PORT` is set (default is 3000).
 -   **Restart**: `pm2 restart jasper-bot`
 -   **Stop**: `pm2 stop jasper-bot`
 -   **Status**: `pm2 status`

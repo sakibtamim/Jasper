@@ -2,7 +2,15 @@
     "extends": "@jasper/config/tsconfig.react.json",
     "compilerOptions": {
         "outDir": "dist",
-        "rootDir": "."
+        "rootDir": ".",
+        "paths": {
+            "@hooks/usePlugins": [
+                "./hooks/usePlugins.dev.ts"
+            ],
+            "@plugins/*": [
+                "../bot/src/plugins/*"
+            ]
+        }
     },
     "include": [
         "**/*"

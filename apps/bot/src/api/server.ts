@@ -372,7 +372,9 @@ server.get('/api/stats', async (request, _reply) => {
 });
 
 export async function startServer() {
+    logger.info(`[webui] Starting server on port ${PORT}...`);
     if (!PORT) {
+        logger.warn("[webui] PORT is not set or 0, skipping server start.");
         return;
     }
 
@@ -390,7 +392,7 @@ export async function startServer() {
         // Hook: SERVER_READY
         await hookManager.trigger('SERVER_READY', { server });
     } catch (err) {
-        server.log.error(err);
+        logger.error(`[webui] Failed to start server: ${err}`);
         process.exit(1);
     }
 }
