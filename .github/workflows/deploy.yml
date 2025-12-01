@@ -53,6 +53,7 @@ jobs:
           path: |
             apps/bot/dist
             apps/bot/package.json
+            apps/bot/scripts
             apps/web/dist
             package.json
             pnpm-lock.yaml
@@ -89,7 +90,7 @@ jobs:
             cd ${{ secrets.SSH_TARGET }}
             pm2 stop Jasper || true
             # Remove old deployment files but preserve .env and cache directories
-            rm -rf apps dist public scripts package.json package-lock.json ecosystem.config.cjs dist-checksums.txt pnpm-workspace.yaml
+            rm -rf apps dist public scripts package.json package-lock.json ecosystem.config.cjs dist-checksums.txt pnpm-workspace.yaml pnpm-lock.yaml
 
       - name: Copy files to server
         uses: appleboy/scp-action@v1
