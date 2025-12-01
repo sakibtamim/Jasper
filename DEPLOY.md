@@ -31,6 +31,8 @@ Configure the following secrets in your GitHub repository settings (Settings > S
 
 | Secret Name | Description |
 | :--- | :--- |
+| `DISCORD_TOKEN` | The Discord bot token for production command deployment. |
+| `DISCORD_CLIENT_ID` | The Discord application client ID for production command deployment. |
 | `SSH_HOST` | The IP address or hostname of your server. |
 | `SSH_USERNAME` | The SSH username. |
 | `SSH_KEY` | The SSH private key (contents of your `.pem` or `id_rsa` file). |
