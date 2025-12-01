@@ -36,9 +36,10 @@ export default defineConfig({
                 target: 'http://localhost:3000',
                 changeOrigin: true
             },
-            '/plugins': {
+            '/api/plugins': {
                 target: 'http://localhost:3000',
-                changeOrigin: true
+                changeOrigin: true,
+                rewrite: (path) => path.replace(/^\/api\/plugins/, '/plugins')
             }
         }
     },
