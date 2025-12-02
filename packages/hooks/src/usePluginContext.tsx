@@ -7,7 +7,7 @@ export interface PluginRegistryEntry {
     version: string;
     description?: string;
     web?: {
-        entry: string;
+        entry?: string;
         navItems?: any[];
         widgets?: any[];
         pages?: any[];

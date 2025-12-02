@@ -2,7 +2,7 @@ import { React, createContext, useContext, useState, useEffect, ReactNode } from
 
 // Define types locally since we can't easily import from apps/web
 // In a real scenario, these might be in a shared types package
-interface User {
+export interface User {
     id: string;
     username: string;
     avatar?: string;
