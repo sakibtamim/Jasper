@@ -180,6 +180,9 @@ const cookiePath = await context.writeCustomCookie(netscapeCookieString);
 ### Music Player Access
 Plugins can enqueue songs directly into the bot's music queue, optionally using a specific cookie:
 
+*   `context.music.enqueue(interaction, query, cookiePath?)`: Enqueues a song.
+*   `context.music.enqueuePlaylist(interaction, url, cookiePath?)`: Enqueues a playlist. `url` can be a URL or a `ytsearch:playlist:` query.
+
 ```typescript
 await context.music.enqueue(
     interaction, // Discord Interaction object

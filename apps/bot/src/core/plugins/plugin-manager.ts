@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "url";
-import { Client, REST, Routes } from "discord.js";
+import { Client, Collection, ChatInputCommandInteraction, REST, Routes } from "discord.js";
 import { FastifyInstance } from "fastify";
 import { joinVoiceChannel, createAudioPlayer, createAudioResource, StreamType, NoSubscriberBehavior, AudioPlayerStatus, VoiceConnectionStatus, entersState } from "@discordjs/voice";
 import logger from "../logger.js";
@@ -273,10 +273,13 @@ export class PluginManager {
                 return await cookieManager.writeCustomCookie(content);
             },
             music: {
-                enqueue: async (interaction, query, cookiePath) => {
+                enqueue: async (interaction: ChatInputCommandInteraction, query: string, cookiePath?: string) => {
                     await musicPlayer.enqueue(interaction, query, { cookiePath });
+                },
+                enqueuePlaylist: async (interaction: ChatInputCommandInteraction, url: string, options?: { cookiePath?: string; limit?: number }) => {
+                    await musicPlayer.enqueuePlaylist(interaction, url, options);
                 }
-            }
+            },
         };
         logger.info("[plugins] PluginManager initialized");
     }

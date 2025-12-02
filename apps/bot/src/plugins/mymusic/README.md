@@ -10,10 +10,22 @@ The **My Music** plugin brings a personalized music experience to Jasper. It all
 
 ## Commands
 
-### `/mymusic play [term] [profile]`
-Plays music using one of your stored cookie profiles.
-*   `term`: (Optional) Search term or URL. Defaults to "My Supermix" if omitted.
+### `/mymusic search [term] [profile]`
+Search for music using one of your stored cookie profiles.
+*   `term`: (Required) Search term or URL.
 *   `profile`: (Optional) Name of the cookie profile to use. Defaults to the most recently used one.
+*   `limit`: (Optional) Max songs to queue (default: 25, max: 50).
+
+### `/mymusic supermix [profile]`
+Plays your "My Supermix" (formerly "Your Mix") - a personalized endless mix of music you love and new discoveries.
+*   `profile`: (Optional) Name of the cookie profile to use.
+*   `limit`: (Optional) Max songs to queue (default: 25, max: 50).
+
+### `/mymusic mix [number] [profile]`
+Plays one of your numbered "My Mix" playlists (1-7).
+*   `number`: The mix number (1-7).
+*   `profile`: (Optional) Name of the cookie profile to use.
+*   `limit`: (Optional) Max songs to queue (default: 25, max: 50).
 
 ### `/mymusic cookie add [file] [name]`
 Adds a new cookie profile.

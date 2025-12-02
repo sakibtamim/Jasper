@@ -35,10 +35,24 @@ const MyMusicPlugin: Plugin = {
                 .setName("mymusic")
                 .setDescription("Personalized music commands")
                 .addSubcommand(sub =>
-                    sub.setName("play")
-                        .setDescription("Play music using your personalized cookie")
-                        .addStringOption(opt => opt.setName("term").setDescription("Search term or URL").setRequired(false))
+                    sub.setName("search")
+                        .setDescription("Search and play music using your personalized cookie")
+                        .addStringOption(opt => opt.setName("term").setDescription("Search term or URL").setRequired(true))
                         .addStringOption(opt => opt.setName("profile").setDescription("Cookie profile to use").setRequired(false))
+                        .addIntegerOption(opt => opt.setName("limit").setDescription("Max songs to queue (default: 25)").setRequired(false).setMinValue(1).setMaxValue(50))
+                )
+                .addSubcommand(sub =>
+                    sub.setName("supermix")
+                        .setDescription("Play your 'My Supermix' (formerly Your Mix)")
+                        .addStringOption(opt => opt.setName("profile").setDescription("Cookie profile to use").setRequired(false))
+                        .addIntegerOption(opt => opt.setName("limit").setDescription("Max songs to queue (default: 25)").setRequired(false).setMinValue(1).setMaxValue(50))
+                )
+                .addSubcommand(sub =>
+                    sub.setName("mix")
+                        .setDescription("Play one of your numbered 'My Mix' playlists")
+                        .addIntegerOption(opt => opt.setName("number").setDescription("Mix number (1-7)").setRequired(true).setMinValue(1).setMaxValue(7))
+                        .addStringOption(opt => opt.setName("profile").setDescription("Cookie profile to use").setRequired(false))
+                        .addIntegerOption(opt => opt.setName("limit").setDescription("Max songs to queue (default: 25)").setRequired(false).setMinValue(1).setMaxValue(50))
                 )
                 .addSubcommandGroup(group =>
                     group.setName("cookie")
@@ -63,8 +77,12 @@ const MyMusicPlugin: Plugin = {
                 const subcommand = interaction.options.getSubcommand();
                 const group = interaction.options.getSubcommandGroup();
 
-                if (subcommand === "play") {
-                    await handlePlay(interaction, context, getProfiles, saveProfiles);
+                if (subcommand === "search") {
+                    await handleSearch(interaction, context, getProfiles, saveProfiles);
+                } else if (subcommand === "supermix") {
+                    await handleSupermix(interaction, context, getProfiles, saveProfiles);
+                } else if (subcommand === "mix") {
+                    await handleMix(interaction, context, getProfiles, saveProfiles);
                 } else if (group === "cookie") {
                     if (subcommand === "add") {
                         await handleCookieAdd(interaction, context, getProfiles, saveProfiles);
@@ -88,6 +106,7 @@ const MyMusicPlugin: Plugin = {
 
             const user = req.user;
             if (!user) {
+                context.logger.warn(`[mymusic] Unauthorized access to /profiles. Headers: ${JSON.stringify(req.headers)}`);
                 return reply.status(401).send({ error: "Unauthorized" });
             }
 
@@ -162,14 +181,15 @@ const MyMusicPlugin: Plugin = {
 
 // --- Command Handlers ---
 
-async function handlePlay(
+async function handleSearch(
     interaction: ChatInputCommandInteraction,
     context: PluginContext,
     getProfiles: (userId: string) => Promise<CookieProfile[]>,
     saveProfiles: (userId: string, profiles: CookieProfile[]) => Promise<void>
 ) {
-    const term = interaction.options.getString("term");
+    const term = interaction.options.getString("term", true);
     const profileName = interaction.options.getString("profile");
+    const limit = interaction.options.getInteger("limit") || 25;
     const userId = interaction.user.id;
 
     const profiles = await getProfiles(userId);
@@ -212,33 +232,120 @@ async function handlePlay(
     profile.playCount++;
     await saveProfiles(userId, profiles);
 
-    // Determine query
-    // If no term provided, we might want to play "My Mix" or similar if supported.
-    // For now, let's require a term or default to "My Mix"
-    const query = term || "My Supermix";
-
     // Enqueue
-    // Note: context.music.enqueue handles the interaction reply/deferral logic? 
-    // Actually, looking at music-player.ts, enqueue does deferReply.
-    // But we are already in an interaction handler.
-    // If we reply here, enqueue might fail if it tries to reply again.
-    // music-player.ts: enqueue calls deferReply().
-    // So we should NOT reply here if we are calling enqueue.
-    // BUT, if we did reply above (errors), we returned.
-
-    // One catch: enqueue expects a fresh interaction to defer. 
-    // If we want to wrap it, we should probably let it handle the interaction.
-
     try {
-        await context.music.enqueue(interaction, query, cookiePath);
+        // If it looks like a playlist search (or default supermix), use playlist search
+        if (term.toLowerCase().includes("mix") || term.includes("list=")) {
+            // Use ytsearch:playlist to find a playlist if it's a search term
+            const query = term.includes("list=") ? term : `ytsearch1:playlist:${term}`;
+            await context.music.enqueuePlaylist(interaction, query, { cookiePath, limit });
+        } else {
+            // For single songs, we don't strictly need limit, but enqueue doesn't support it yet.
+            // If we want to support search results limit, we'd need to update enqueue too.
+            // For now, enqueue just plays the first result.
+            await context.music.enqueue(interaction, term, cookiePath);
+        }
     } catch (error) {
         context.logger.error(`Failed to enqueue: ${error}`);
-        // If enqueue failed before deferring, we might need to reply.
-        // If it failed after deferring, we need to editReply.
         if (!interaction.deferred && !interaction.replied) {
             await interaction.reply({ content: "❌ Failed to enqueue song.", ephemeral: true });
         } else {
             await interaction.editReply({ content: "❌ Failed to enqueue song." });
+        }
+    }
+}
+
+async function handleSupermix(
+    interaction: ChatInputCommandInteraction,
+    context: PluginContext,
+    getProfiles: (userId: string) => Promise<CookieProfile[]>,
+    saveProfiles: (userId: string, profiles: CookieProfile[]) => Promise<void>
+) {
+    const profileName = interaction.options.getString("profile");
+    const limit = interaction.options.getInteger("limit") || 25;
+    const userId = interaction.user.id;
+    const profiles = await getProfiles(userId);
+
+    if (profiles.length === 0) {
+        await interaction.reply({ content: "❌ You don't have any cookie profiles set up.", ephemeral: true });
+        return;
+    }
+
+    let profile = profileName ? profiles.find(p => p.name === profileName) : profiles.sort((a, b) => b.lastUsedAt - a.lastUsedAt)[0];
+    if (!profile) {
+        await interaction.reply({ content: `❌ Profile not found.`, ephemeral: true });
+        return;
+    }
+
+    let cookiePath: string;
+    try {
+        cookiePath = await context.writeCustomCookie(profile.content);
+    } catch (error) {
+        await interaction.reply({ content: "❌ Failed to process cookie.", ephemeral: true });
+        return;
+    }
+
+    profile.lastUsedAt = Date.now();
+    profile.playCount++;
+    await saveProfiles(userId, profiles);
+
+    try {
+        // Explicitly search for "My Supermix" playlist
+        await context.music.enqueuePlaylist(interaction, "ytsearch1:playlist:My Supermix", { cookiePath, limit });
+    } catch (error) {
+        context.logger.error(`Failed to enqueue supermix: ${error}`);
+        if (!interaction.deferred && !interaction.replied) {
+            await interaction.reply({ content: "❌ Failed to enqueue Supermix.", ephemeral: true });
+        } else {
+            await interaction.editReply({ content: "❌ Failed to enqueue Supermix." });
+        }
+    }
+}
+
+async function handleMix(
+    interaction: ChatInputCommandInteraction,
+    context: PluginContext,
+    getProfiles: (userId: string) => Promise<CookieProfile[]>,
+    saveProfiles: (userId: string, profiles: CookieProfile[]) => Promise<void>
+) {
+    const number = interaction.options.getInteger("number", true);
+    const profileName = interaction.options.getString("profile");
+    const limit = interaction.options.getInteger("limit") || 25;
+    const userId = interaction.user.id;
+    const profiles = await getProfiles(userId);
+
+    if (profiles.length === 0) {
+        await interaction.reply({ content: "❌ You don't have any cookie profiles set up.", ephemeral: true });
+        return;
+    }
+
+    let profile = profileName ? profiles.find(p => p.name === profileName) : profiles.sort((a, b) => b.lastUsedAt - a.lastUsedAt)[0];
+    if (!profile) {
+        await interaction.reply({ content: `❌ Profile not found.`, ephemeral: true });
+        return;
+    }
+
+    let cookiePath: string;
+    try {
+        cookiePath = await context.writeCustomCookie(profile.content);
+    } catch (error) {
+        await interaction.reply({ content: "❌ Failed to process cookie.", ephemeral: true });
+        return;
+    }
+
+    profile.lastUsedAt = Date.now();
+    profile.playCount++;
+    await saveProfiles(userId, profiles);
+
+    try {
+        // Explicitly search for "My Mix [N]" playlist
+        await context.music.enqueuePlaylist(interaction, `ytsearch1:playlist:My Mix ${number}`, { cookiePath, limit });
+    } catch (error) {
+        context.logger.error(`Failed to enqueue mix: ${error}`);
+        if (!interaction.deferred && !interaction.replied) {
+            await interaction.reply({ content: `❌ Failed to enqueue My Mix ${number}.`, ephemeral: true });
+        } else {
+            await interaction.editReply({ content: `❌ Failed to enqueue My Mix ${number}.` });
         }
     }
 }

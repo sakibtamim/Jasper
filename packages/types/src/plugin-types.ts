@@ -135,6 +135,7 @@ export interface PluginContext {
     // Music Player Access
     music: {
         enqueue(interaction: import("discord.js").ChatInputCommandInteraction, query: string, cookiePath?: string): Promise<void>;
+        enqueuePlaylist(interaction: any, url: string, options?: { cookiePath?: string; limit?: number }): Promise<void>;
     };
 }
 

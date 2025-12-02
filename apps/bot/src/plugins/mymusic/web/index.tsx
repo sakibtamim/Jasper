@@ -1,5 +1,5 @@
 import { React, useState, useEffect } from '@jasper/elements';
-import { Card, Button, Table, Input, Badge, Loader } from '@jasper/ui';
+import { Card, Button, Table, Input, Badge, Loader, AuthGuard } from '@jasper/ui';
 import { useAuth } from '@jasper/hooks';
 
 interface CookieProfile {
@@ -26,6 +26,8 @@ export const MyMusicSettingsWidget = () => {
             if (res.ok) {
                 const data = await res.json();
                 setProfiles(data.profiles);
+            } else if (res.status === 401) {
+                setError("Unauthorized: Please log in.");
             }
         } catch (e) {
             console.error("Failed to fetch profiles", e);
@@ -35,8 +37,10 @@ export const MyMusicSettingsWidget = () => {
     };
 
     useEffect(() => {
-        fetchProfiles();
-    }, []);
+        if (user) {
+            fetchProfiles();
+        }
+    }, [user]);
 
     const handleAdd = async () => {
         if (!newContent) {
@@ -75,86 +79,92 @@ export const MyMusicSettingsWidget = () => {
         }
     };
 
-    if (loading) return <Loader />;
-
     return (
-        <Card className="w-full">
-            <div className="flex justify-between items-center mb-6">
-                <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">My Music Profiles</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Manage your personal YouTube cookies for personalized playback.</p>
-                </div>
-                <Button onClick={() => setIsAdding(!isAdding)}>
-                    {isAdding ? 'Cancel' : 'Add Profile'}
-                </Button>
-            </div>
-
-            {error && (
-                <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-sm">
-                    {error}
-                </div>
-            )}
-
-            {isAdding && (
-                <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
+        <AuthGuard>
+            <Card className="w-full">
+                <div className="flex justify-between items-center mb-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Profile Name (Optional)</label>
-                        <Input
-                            value={newName}
-                            onChange={(e) => setNewName(e.target.value)}
-                            placeholder="e.g. My Premium Account"
-                        />
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">My Music Profiles</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Manage your personal YouTube cookies for personalized playback.</p>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Netscape Cookie Content</label>
-                        <textarea
-                            className="w-full h-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-brand-primary focus:border-brand-primary sm:text-sm"
-                            value={newContent}
-                            onChange={(e) => setNewContent(e.target.value)}
-                            placeholder="# Netscape HTTP Cookie File..."
-                        />
-                    </div>
-                    <div className="flex justify-end">
-                        <Button variant="primary" onClick={handleAdd}>Save Profile</Button>
-                    </div>
+                    <Button onClick={() => setIsAdding(!isAdding)}>
+                        {isAdding ? 'Cancel' : 'Add Profile'}
+                    </Button>
                 </div>
-            )}
 
-            {profiles.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                    No cookie profiles found. Add one to get started!
-                </div>
-            ) : (
-                <Table>
-                    <thead>
-                        <tr>
-                            <th className="text-left">Name</th>
-                            <th className="text-left">Plays</th>
-                            <th className="text-left">Last Used</th>
-                            <th className="text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {profiles.map(profile => (
-                            <tr key={profile.id}>
-                                <td className="font-medium text-gray-900 dark:text-white">{profile.name}</td>
-                                <td>
-                                    <Badge variant="info">{profile.playCount}</Badge>
-                                </td>
-                                <td className="text-gray-500">
-                                    {profile.lastUsedAt > 0 ? new Date(profile.lastUsedAt).toLocaleDateString() : 'Never'}
-                                </td>
-                                <td className="text-right">
-                                    <Button size="sm" variant="danger" onClick={() => handleDelete(profile.id)}>
-                                        Delete
-                                    </Button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </Table>
-            )}
-        </Card>
+                {error && (
+                    <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-sm">
+                        {error}
+                    </div>
+                )}
+
+                {loading ? (
+                    <Loader />
+                ) : (
+                    <>
+                        {isAdding && (
+                            <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Profile Name (Optional)</label>
+                                    <Input
+                                        value={newName}
+                                        onChange={(e) => setNewName(e.target.value)}
+                                        placeholder="e.g. My Premium Account"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Netscape Cookie Content</label>
+                                    <textarea
+                                        className="w-full h-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-brand-primary focus:border-brand-primary sm:text-sm"
+                                        value={newContent}
+                                        onChange={(e) => setNewContent(e.target.value)}
+                                        placeholder="# Netscape HTTP Cookie File..."
+                                    />
+                                </div>
+                                <div className="flex justify-end">
+                                    <Button variant="primary" onClick={handleAdd}>Save Profile</Button>
+                                </div>
+                            </div>
+                        )}
+
+                        {profiles.length === 0 ? (
+                            <div className="text-center py-8 text-gray-500">
+                                No cookie profiles found. Add one to get started!
+                            </div>
+                        ) : (
+                            <Table>
+                                <thead>
+                                    <tr>
+                                        <th className="text-left">Name</th>
+                                        <th className="text-left">Plays</th>
+                                        <th className="text-left">Last Used</th>
+                                        <th className="text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {profiles.map(profile => (
+                                        <tr key={profile.id}>
+                                            <td className="font-medium text-gray-900 dark:text-white">{profile.name}</td>
+                                            <td>
+                                                <Badge variant="info">{profile.playCount}</Badge>
+                                            </td>
+                                            <td className="text-gray-500">
+                                                {profile.lastUsedAt > 0 ? new Date(profile.lastUsedAt).toLocaleDateString() : 'Never'}
+                                            </td>
+                                            <td className="text-right">
+                                                <Button size="sm" variant="danger" onClick={() => handleDelete(profile.id)}>
+                                                    Delete
+                                                </Button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </Table>
+                        )}
+                    </>
+                )}
+            </Card>
+        </AuthGuard>
     );
 };
 
