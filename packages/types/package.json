@@ -1,5 +1,6 @@
 {
     "name": "@jasper/types",
+    "description": "Jasper Types - Shared TypeScript definitions for Jasper ecosystem. CSP-IP: Personal IP with company-backed engineering.",
     "version": "0.0.0",
     "private": true,
     "type": "module",

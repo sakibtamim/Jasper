@@ -1,6 +1,7 @@
 {
   "name": "jasper-monorepo",
   "private": true,
+  "description": "Jasper Monorepo - Robust Discord music bot with multi-client playback, caching, dashboards, and plugin support. CSP-IP: Personal IP with company-backed engineering.",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",

@@ -1,5 +1,6 @@
 {
     "name": "@jasper/elements",
+    "description": "Jasper Elements - Core React elements for Jasper ecosystem. CSP-IP: Personal IP with company-backed engineering.",
     "version": "0.0.0",
     "private": true,
     "main": "./src/index.tsx",

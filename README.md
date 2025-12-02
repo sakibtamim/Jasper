@@ -1,3 +1,5 @@
+![Jasper Header](./assets/banner/jasper_header_1200.png)
+
 # Jasper Music Bot 🐈‍⬛🎵
 
 Jasper is a robust Discord music bot themed after a big black Persian cat.
@@ -18,6 +20,31 @@ It uses **yt-dlp** (an external command-line tool) to stream high-quality audio,
   - **Database & Statistics:** 🆕 Tracks song plays, user activity, and global stats using SQLite (default) or PostgreSQL.
   - **Plugin System:** 🆕 Extend functionality with custom commands, hooks, and web routes. See [PLUGINS.md](PLUGINS.md).
   - **Web Dashboard:** Real-time monitoring of queues, workers, and statistics.
+
+## Sponsorship & Licensing
+
+This project is classified under the **Purrfect Universe Licensing Directive** as:
+
+**🟧 Company-Supported Personal IP (CSP-IP)**
+A category for employee-created projects that are:
+
+* Built by the employee as their personal intellectual property
+* Actively supported, enhanced, or resourced by **Purrfect Software Limited**
+* Strategically aligned with the broader **Purrfect Universe** ecosystem
+* Recognized as dual-heritage work belonging to the creator and the company
+
+Under this classification:
+
+* **Primary Author:** **Nazmus Sakib Tamim** The employee developer (repo owner, original creator & maintainer)
+* **Strategic Stewardship:** **Arafat Zahan** — Universe Architect & PU Founder
+* **Support:** **Purrfect Software Limited** — Engineering, DevOps & Infrastructure
+* **Usage Rights:** Community-friendly, zero-penalty experimentation encouraged
+* **Disclosure:** Reuse, forks, or derivative tools should mention this CSP-IP origin
+
+This ensures the project remains open, resilient, supported, and future-proof while preserving individual authorship and PU-aligned governance.
+
+![CSP-IP Certified](./assets/badges/cspip_psl_badge.svg)
+[![MIT License](./assets/badges/mit_shields_pu_mm.svg)](./LICENSE)
 
 ## Commands
 
@@ -392,3 +419,17 @@ YouTube frequently updates their website, which can break the downloader. Becaus
 ## License
 
 MIT
+
+### 🛡️ ICARO-42/B ORDINANCE — COMPLIANCE NOTICE
+
+This project is distributed under the MIT License — designed for maximum freedom, remixability, and interstellar interoperability.
+
+Under the Interstellar Code Appropriation & Redistribution Ordinance (ICARO-42/B),
+reuse, modification, and redistribution are fully permitted. Creative divergence is
+not a violation — it is an expected evolutionary pathway.
+
+If your fork, derivative, or remix contributes something meaningful to any corner
+of the universe, a small nod of acknowledgment helps maintain cosmic symmetry.
+Not required. Always appreciated.
+
+![ICARO-42/B Seal](./assets/seal/icaro-42_b-seal-512.png)

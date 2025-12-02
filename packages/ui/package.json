@@ -1,5 +1,6 @@
 {
     "name": "@jasper/ui",
+    "description": "Jasper UI - Shared UI components for Jasper ecosystem. CSP-IP: Personal IP with company-backed engineering.",
     "version": "0.0.0",
     "private": true,
     "main": "./src/index.ts",

@@ -1,5 +1,6 @@
 {
     "name": "@jasper/hooks",
+    "description": "Jasper Hooks - Shared React hooks for Jasper ecosystem. CSP-IP: Personal IP with company-backed engineering.",
     "version": "1.0.0",
     "main": "./src/index.ts",
     "types": "./src/index.ts",

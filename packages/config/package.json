@@ -1,5 +1,6 @@
 {
     "name": "@jasper/config",
+    "description": "Jasper Config - Shared configuration for Jasper ecosystem. CSP-IP: Personal IP with company-backed engineering.",
     "version": "0.0.0",
     "private": true,
     "files": [
