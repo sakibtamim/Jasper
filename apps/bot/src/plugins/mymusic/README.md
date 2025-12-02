@@ -15,6 +15,7 @@ Search for music using one of your stored cookie profiles.
 *   `term`: (Required) Search term or URL.
 *   `profile`: (Optional) Name of the cookie profile to use. Defaults to the most recently used one.
 *   `limit`: (Optional) Max songs to queue (default: 25, max: 50).
+*   `radio`: (Optional) Set to `True` to generate a "Mix" playlist based on the search result (e.g., "Mix: Song Name").
 
 ### `/mymusic supermix [profile]`
 Plays your "My Supermix" (formerly "Your Mix") - a personalized endless mix of music you love and new discoveries.

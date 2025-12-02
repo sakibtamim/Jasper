@@ -40,6 +40,7 @@ const MyMusicPlugin: Plugin = {
                         .addStringOption(opt => opt.setName("term").setDescription("Search term or URL").setRequired(true))
                         .addStringOption(opt => opt.setName("profile").setDescription("Cookie profile to use").setRequired(false))
                         .addIntegerOption(opt => opt.setName("limit").setDescription("Max songs to queue (default: 25)").setRequired(false).setMinValue(1).setMaxValue(50))
+                        .addBooleanOption(opt => opt.setName("radio").setDescription("Start a radio mix from the search result").setRequired(false))
                 )
                 .addSubcommand(sub =>
                     sub.setName("supermix")
@@ -190,6 +191,7 @@ async function handleSearch(
     const term = interaction.options.getString("term", true);
     const profileName = interaction.options.getString("profile");
     const limit = interaction.options.getInteger("limit") || 25;
+    const radio = interaction.options.getBoolean("radio") || false;
     const userId = interaction.user.id;
 
     const profiles = await getProfiles(userId);
@@ -234,8 +236,33 @@ async function handleSearch(
 
     // Enqueue
     try {
-        // If it looks like a playlist search (or default supermix), use playlist search
-        if (term.toLowerCase().includes("mix") || term.includes("list=")) {
+        // If radio mode is requested, or if it looks like a mix search
+        if (radio) {
+            // 1. Resolve the track to get ID
+            await interaction.deferReply();
+
+            const song = await context.music.resolve(term, cookiePath);
+            if (!song || !song.url) {
+                await interaction.editReply({ content: "❌ Could not find a video to start radio from." });
+                return;
+            }
+
+            // Extract ID from URL
+            // Typical URL: https://www.youtube.com/watch?v=VIDEO_ID
+            const idMatch = song.url.match(/(?:v=|\/)([0-9A-Za-z_-]{11})/);
+            if (!idMatch) {
+                await interaction.editReply({ content: "❌ Could not extract video ID to generate mix." });
+                return;
+            }
+            const videoId = idMatch[1];
+
+            // 2. Construct Mix URL
+            const mixUrl = `https://www.youtube.com/watch?v=${videoId}&list=RD${videoId}`;
+
+            // 3. Enqueue the mix
+            await context.music.enqueuePlaylist(interaction, mixUrl, { cookiePath, limit });
+
+        } else if (term.toLowerCase().includes("mix") || term.includes("list=")) {
             // Use ytsearch:playlist to find a playlist if it's a search term
             const query = term.includes("list=") ? term : `ytsearch1:playlist:${term}`;
             await context.music.enqueuePlaylist(interaction, query, { cookiePath, limit });
@@ -290,8 +317,8 @@ async function handleSupermix(
     await saveProfiles(userId, profiles);
 
     try {
-        // Explicitly search for "My Supermix" playlist
-        await context.music.enqueuePlaylist(interaction, "ytsearch1:playlist:My Supermix", { cookiePath, limit });
+        // Use :ytrec (YouTube Recommendations) for Supermix
+        await context.music.enqueuePlaylist(interaction, ":ytrec", { cookiePath, limit });
     } catch (error) {
         context.logger.error(`Failed to enqueue supermix: ${error}`);
         if (!interaction.deferred && !interaction.replied) {

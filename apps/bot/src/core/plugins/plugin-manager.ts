@@ -14,6 +14,7 @@ import coreDataAccessor from "./core-data-accessor.js";
 import { getQueue } from "../audio/queue-manager.js";
 import cookieManager from "../cookies/cookie-manager.js";
 import musicPlayer from "../music-player.js";
+import { resolveTrack } from "../audio/track-resolver.js";
 import semver from "semver";
 import { TEST_PLUGINS } from "../../config/plugins.js";
 import { getEntryMessage } from "../../config/afr-config.js";
@@ -278,6 +279,9 @@ export class PluginManager {
                 },
                 enqueuePlaylist: async (interaction: ChatInputCommandInteraction, url: string, options?: { cookiePath?: string; limit?: number }) => {
                     await musicPlayer.enqueuePlaylist(interaction, url, options);
+                },
+                resolve: async (query: string, cookiePath?: string) => {
+                    return await resolveTrack(query, cookiePath);
                 }
             },
         };

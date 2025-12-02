@@ -53,6 +53,8 @@ export function fetchVideoData(url: string, options?: FetchOptions): Promise<Vid
                 args.push("--cookies", cookiePath);
             }
 
+            logger.debug(`[stream-handler] Fetching video data: ${ytDlpPath} ${args.join(" ")}`);
+
             const process = spawn(ytDlpPath, args);
             let data = "";
             let error = "";
@@ -96,6 +98,8 @@ export function fetchPlaylistData(url: string, options?: FetchOptions): Promise<
             if (cookiePath) {
                 args.push("--cookies", cookiePath);
             }
+
+            logger.debug(`[stream-handler] Fetching video data: ${ytDlpPath} ${args.join(" ")}`);
 
             const process = spawn(ytDlpPath, args);
             let data = "";
@@ -165,6 +169,8 @@ export function createStreamProcess(url: string, cookiePath?: string): ChildProc
     if (cookiePath) {
         args.push("--cookies", cookiePath);
     }
+
+    logger.debug(`[stream-handler] Creating stream process: ${ytDlpPath} ${args.join(" ")}`);
 
     const process = spawn(ytDlpPath, args);
 
