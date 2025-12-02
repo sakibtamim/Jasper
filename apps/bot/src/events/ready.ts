@@ -5,7 +5,6 @@ export default {
   once: true,
   execute(client: Client) {
     client.user!.setPresence({
-      activities: [{ name: "cat jams | /play", type: ActivityType.Listening }],
       status: "online"
     });
   }
