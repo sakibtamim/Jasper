@@ -45,8 +45,11 @@ Under this classification:
 
 This ensures the project remains open, resilient, supported, and future-proof while preserving individual authorship and PU-aligned governance.
 
-![CSP-IP Certified](./assets/badges/cspip_psl_badge.svg)
-[![MIT License](./assets/badges/mit_shields_pu_mm.svg)](./LICENSE)
+<p align="center">
+  <img src="./assets/badges/mit_shields_pu_mm.svg" height="32" />
+  &nbsp;&nbsp;
+  <img src="./assets/badges/cspip_psl_badge.svg" height="32" />
+</p>
 
 ## Commands
 
