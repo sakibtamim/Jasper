@@ -34,9 +34,13 @@ export interface PlaylistData {
     [key: string]: any;
 }
 
-export function fetchVideoData(url: string): Promise<VideoData> {
-    return cookieManager.withCookieRetry(async (cookiePath) => {
-        return new Promise((resolve, reject) => {
+export interface FetchOptions {
+    cookiePath?: string;
+}
+
+export function fetchVideoData(url: string, options?: FetchOptions): Promise<VideoData> {
+    const run = async (cookiePath: string | null) => {
+        return new Promise<VideoData>((resolve, reject) => {
             const ytDlpPath = getYtDlpPath();
             // -J: Dump JSON metadata
             const args = [
@@ -69,12 +73,18 @@ export function fetchVideoData(url: string): Promise<VideoData> {
                 }
             });
         });
-    });
+    };
+
+    if (options?.cookiePath) {
+        return run(options.cookiePath);
+    }
+
+    return cookieManager.withCookieRetry(run);
 }
 
-export function fetchPlaylistData(url: string): Promise<PlaylistData> {
-    return cookieManager.withCookieRetry(async (cookiePath) => {
-        return new Promise((resolve, reject) => {
+export function fetchPlaylistData(url: string, options?: FetchOptions): Promise<PlaylistData> {
+    const run = async (cookiePath: string | null) => {
+        return new Promise<PlaylistData>((resolve, reject) => {
             const ytDlpPath = getYtDlpPath();
             const args = [
                 ...getBaseYtDlpArgs(),
@@ -107,10 +117,16 @@ export function fetchPlaylistData(url: string): Promise<PlaylistData> {
                 }
             });
         });
-    });
+    };
+
+    if (options?.cookiePath) {
+        return run(options.cookiePath);
+    }
+
+    return cookieManager.withCookieRetry(run);
 }
 
-export function createStreamProcess(url: string): ChildProcess {
+export function createStreamProcess(url: string, cookiePath?: string): ChildProcess {
     // Note: Stream process is long-running, so we can't easily wrap it in withCookieRetry 
     // in the same way as fetch calls. However, we can at least get the best cookie at start.
     // If it fails mid-stream, we can't easily retry without restarting playback.
@@ -145,6 +161,11 @@ export function createStreamProcess(url: string): ChildProcess {
         "-q",
         url
     ];
+
+    if (cookiePath) {
+        args.push("--cookies", cookiePath);
+    }
+
     const process = spawn(ytDlpPath, args);
 
     process.on("error", (err) => {

@@ -45,12 +45,17 @@ Every plugin requires a `jasper-plugin.json` file in its root.
         "href": "/plugins/my-plugin"
       }
     ],
-    "widgets": [
       {
         "id": "my-widget",
         "slot": "dashboard:main",
         "component": "MyWidget",
         "order": 10
+      },
+      {
+        "id": "my-settings",
+        "slot": "settings:main",
+        "component": "MySettingsWidget",
+        "order": 20
       }
     ],
     "pages": [
@@ -162,6 +167,26 @@ await context.playAudio({
 - Join/leave announcement sounds
 - Achievement notifications
 - Custom bot event sounds
+- Achievement notifications
+
+### Cookie Management API
+Plugins can manage per-user cookies (e.g., for personalized playback) using `context.writeCustomCookie()`:
+
+```typescript
+// Writes a cookie string to a temp file and returns the path
+const cookiePath = await context.writeCustomCookie(netscapeCookieString);
+```
+
+### Music Player Access
+Plugins can enqueue songs directly into the bot's music queue, optionally using a specific cookie:
+
+```typescript
+await context.music.enqueue(
+    interaction, // Discord Interaction object
+    "search term or url",
+    cookiePath   // Optional: Path to cookie file from writeCustomCookie
+);
+```
 
 ---
 

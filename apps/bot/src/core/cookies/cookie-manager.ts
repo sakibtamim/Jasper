@@ -53,6 +53,19 @@ export class CookieManager {
     }
 
     /**
+     * Writes a custom cookie string to a temporary file.
+     * Used by plugins to provide per-user cookies.
+     */
+    async writeCustomCookie(content: string): Promise<string> {
+        const tempDir = os.tmpdir();
+        const fileName = `yt-dlp-cookie-custom-${uuidv4()}.txt`;
+        const filePath = path.join(tempDir, fileName);
+
+        await fs.promises.writeFile(filePath, content, 'utf8');
+        return filePath;
+    }
+
+    /**
      * Cleans up a temporary cookie file.
      */
     async cleanupCookieFile(filePath: string): Promise<void> {

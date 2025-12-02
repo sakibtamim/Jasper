@@ -128,6 +128,14 @@ export interface PluginContext {
 
     // Schedule background tasks (automatically cleaned up on unload)
     scheduleTask(intervalMs: number, task: () => void | Promise<void>): void;
+
+    // Cookie Management
+    writeCustomCookie(content: string): Promise<string>;
+
+    // Music Player Access
+    music: {
+        enqueue(interaction: import("discord.js").ChatInputCommandInteraction, query: string, cookiePath?: string): Promise<void>;
+    };
 }
 
 // --- Plugin Definition ---

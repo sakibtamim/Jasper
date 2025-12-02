@@ -1,0 +1,33 @@
+{
+    "id": "mymusic",
+    "name": "My Music",
+    "version": "1.0.0",
+    "description": "Personalized music experience with per-user cookies.",
+    "entry": "index.ts",
+    "web": {
+        "entry": "web/index.tsx",
+        "navItems": [
+            {
+                "id": "mymusic-nav",
+                "label": "My Music",
+                "icon": "music",
+                "href": "/plugins/mymusic"
+            }
+        ],
+        "widgets": [
+            {
+                "id": "mymusic-settings-widget",
+                "slot": "settings:main",
+                "component": "MyMusicSettingsWidget",
+                "order": 20
+            }
+        ],
+        "pages": [
+            {
+                "id": "mymusic-page",
+                "path": "/plugins/mymusic",
+                "component": "MyMusicPage"
+            }
+        ]
+    }
+}

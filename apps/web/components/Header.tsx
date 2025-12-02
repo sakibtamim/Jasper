@@ -52,6 +52,7 @@ export default function Header() {
                         <NavLink to="/queues" icon="list-music">Queues</NavLink>
                         <NavLink to="/stats" icon="bar-chart-2">Stats</NavLink>
                         <NavLink to="/cache" icon="database">Cache</NavLink>
+                        <NavLink to="/settings" icon="settings">Settings</NavLink>
                         <NavLink to="/logs" icon="terminal">Logs</NavLink>
 
                         {/* Plugin Nav Items */}
@@ -144,6 +145,7 @@ export default function Header() {
                         <MobileNavLink to="/queues" icon="list-music" onClick={() => setIsMobileMenuOpen(false)}>Queues</MobileNavLink>
                         <MobileNavLink to="/stats" icon="bar-chart-2" onClick={() => setIsMobileMenuOpen(false)}>Stats</MobileNavLink>
                         <MobileNavLink to="/cache" icon="database" onClick={() => setIsMobileMenuOpen(false)}>Cache</MobileNavLink>
+                        <MobileNavLink to="/settings" icon="settings" onClick={() => setIsMobileMenuOpen(false)}>Settings</MobileNavLink>
                         <MobileNavLink to="/logs" icon="terminal" onClick={() => setIsMobileMenuOpen(false)}>Logs</MobileNavLink>
 
                         {pluginNavItems.map(item => (

@@ -311,6 +311,7 @@ async function ensureQueue(
 interface EnqueueOptions {
   position?: 'next' | 'end';
   skipCurrent?: boolean;
+  cookiePath?: string;
 }
 
 async function enqueue(interaction: ChatInputCommandInteraction, query: string, options: EnqueueOptions = {}): Promise<void> {
@@ -334,7 +335,7 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string, 
   await interaction.deferReply();
 
   try {
-    const track = await resolveTrack(query, interaction.user.id, interaction.user.tag);
+    const track = await resolveTrack(query, interaction.user.id, interaction.user.tag, options.cookiePath);
     const queue = await ensureQueue(interaction, voiceChannel, track);
     if (!queue) return;
 
@@ -348,6 +349,7 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string, 
 
     const songToAdd = {
       ...track,
+      cookiePath: options.cookiePath,
       requestedBy: interaction.user.tag,
       requesterId: interaction.user.id,
     };

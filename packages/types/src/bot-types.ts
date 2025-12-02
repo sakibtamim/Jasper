@@ -24,6 +24,7 @@ export interface Song {
     thumbnail?: string;
     fromCache?: boolean;
     startTime?: number;
+    cookiePath?: string;
 }
 
 export interface Queue {

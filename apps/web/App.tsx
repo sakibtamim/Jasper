@@ -7,6 +7,7 @@ import StatsPage from './pages/StatsPage';
 import CachePage from './pages/CachePage';
 import LogsPage from './pages/LogsPage';
 import DevToolsPage from './pages/DevToolsPage';
+import SettingsPage from './pages/SettingsPage';
 import { PluginProvider, usePluginContext } from './context/PluginContext';
 import { AppProvider } from './context/AppContext';
 import { componentRegistry } from './core/ComponentRegistry';
@@ -39,6 +40,7 @@ function AppContent() {
                 <Route path="stats" element={<StatsPage />} />
                 <Route path="cache" element={<CachePage />} />
                 <Route path="logs" element={<LogsPage />} />
+                <Route path="settings" element={<SettingsPage />} />
                 <Route path="devtools" element={<DevToolsPage />} />
 
                 {/* Plugin Routes */}

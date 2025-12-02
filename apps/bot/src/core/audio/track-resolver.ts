@@ -3,7 +3,7 @@ import ytSearch from "yt-search";
 import { isCacheEnabled, getCacheStorage } from "../cache-manager.js";
 import { Song } from "@jasper/types";
 
-export async function resolveTrack(query: string, requesterId?: string, requesterName?: string): Promise<Song> {
+export async function resolveTrack(query: string, requesterId?: string, requesterName?: string, cookiePath?: string): Promise<Song> {
     // Check search cache first
     if (isCacheEnabled() && !isUrl(query)) {
         const storage = getCacheStorage();
@@ -18,7 +18,7 @@ export async function resolveTrack(query: string, requesterId?: string, requeste
     // Feature 1: Direct URL support
     if (isUrl(query)) {
         try {
-            const videoData = await fetchVideoData(query);
+            const videoData = await fetchVideoData(query, { cookiePath });
             return {
                 title: videoData.title,
                 url: videoData.webpage_url || videoData.url,

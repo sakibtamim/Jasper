@@ -177,7 +177,7 @@ export async function playSong(queue: Queue): Promise<void> {
                 }
             } else {
                 // Cache storage not available, fallback to direct stream
-                const process = createStreamProcess(song.url);
+                const process = createStreamProcess(song.url, song.cookiePath);
                 if (!process.stdout) {
                     throw new Error('Failed to create yt-dlp process stdout');
                 }
@@ -185,7 +185,7 @@ export async function playSong(queue: Queue): Promise<void> {
             }
         } else {
             // Caching disabled: stream directly from yt-dlp
-            const process = createStreamProcess(song.url);
+            const process = createStreamProcess(song.url, song.cookiePath);
             if (!process.stdout) {
                 throw new Error('Failed to create yt-dlp process stdout');
             }

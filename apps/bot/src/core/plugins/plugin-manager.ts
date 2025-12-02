@@ -12,6 +12,8 @@ import { ScopedPluginStore } from "./plugin-store.js";
 import { PluginStorage } from "./plugin-storage.js";
 import coreDataAccessor from "./core-data-accessor.js";
 import { getQueue } from "../audio/queue-manager.js";
+import cookieManager from "../cookies/cookie-manager.js";
+import musicPlayer from "../music-player.js";
 import semver from "semver";
 import { TEST_PLUGINS } from "../../config/plugins.js";
 import { getEntryMessage } from "../../config/afr-config.js";
@@ -266,6 +268,14 @@ export class PluginManager {
             scheduleTask: (intervalMs, task) => {
                 // Base implementation - overridden by scoped context
                 logger.warn("[plugins] scheduleTask called on base context. This should not happen.");
+            },
+            writeCustomCookie: async (content: string) => {
+                return await cookieManager.writeCustomCookie(content);
+            },
+            music: {
+                enqueue: async (interaction, query, cookiePath) => {
+                    await musicPlayer.enqueue(interaction, query, { cookiePath });
+                }
             }
         };
         logger.info("[plugins] PluginManager initialized");
