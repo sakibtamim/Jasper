@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/jasper_header_1600.png" alt="Jasper — The Purrfect Discord Music & Utility Bot" width="100%">
+  <img src="./assets/banner/jasper_header_1200.png" alt="Jasper — The Purrfect Discord Music & Utility Bot" width="100%">
 </p>
 
 # Jasper Music Bot 🐈‍⬛🎵
