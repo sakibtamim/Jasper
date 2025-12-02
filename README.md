@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/banner/jasper_header_1200.png" alt="Jasper — The Purrfect Discord Music & Utility Bot" width="100%">
+  <img src="./assets/banner/jasper_header_1200.webp" alt="Jasper — The Purrfect Discord Music & Utility Bot" width="100%">
 </p>
 
 # Jasper Music Bot 🐈‍⬛🎵
@@ -439,5 +439,5 @@ of the universe, a small nod of acknowledgment helps maintain cosmic symmetry.
 Not required. Always appreciated.
 
 <p align="center">
-  <img src="./assets/seal/icaro-42_b-seal-512.png" width="25%" />
+  <img src="./assets/seal/icaro-42_b-seal-512.webp" width="25%" />
 </p>
