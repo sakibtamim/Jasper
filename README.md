@@ -438,4 +438,6 @@ If your fork, derivative, or remix contributes something meaningful to any corne
 of the universe, a small nod of acknowledgment helps maintain cosmic symmetry.
 Not required. Always appreciated.
 
-![ICARO-42/B Seal](./assets/seal/icaro-42_b-seal-512.png)
+<p align="center">
+  <img src="./assets/seal/icaro-42_b-seal-512.png" width="25%" />
+</p>
