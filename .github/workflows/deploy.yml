@@ -4,6 +4,23 @@ on:
   push:
     branches:
       - deploy
+    paths:
+      # Bot application
+      - 'apps/bot/**'
+      # Web dashboard
+      - 'apps/web/**'
+      # Shared packages
+      - 'packages/**'
+      # Root configuration
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'turbo.json'
+      - 'ecosystem.config.cjs'
+      # Node version
+      - '.nvmrc'
+      # Workflow itself
+      - '.github/workflows/deploy.yml'
 
 jobs:
   build:

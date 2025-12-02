@@ -3,6 +3,18 @@ name: Deploy Website to Pages
 on:
   push:
     branches: ["deploy"]
+    paths:
+      # Website app
+      - 'apps/website/**'
+      # Root configuration (affects all builds)
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'turbo.json'
+      # Node version
+      - '.nvmrc'
+      # Workflow itself
+      - '.github/workflows/deploy-website.yml'
   workflow_dispatch:
 
 permissions:
