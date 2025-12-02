@@ -158,24 +158,24 @@ const MyMusicPlugin: Plugin = {
                 .setDescription("Personalized music commands")
                 .addSubcommand(sub =>
                     sub.setName("search")
-                        .setDescription("Search and play music using your personalized cookie")
+                        .setDescription("Search for music and queue songs")
                         .addStringOption(opt => opt.setName("term").setDescription("Search term or URL").setRequired(true))
-                        .addStringOption(opt => opt.setName("profile").setDescription("Cookie profile to use").setRequired(false))
-                        .addIntegerOption(opt => opt.setName("limit").setDescription("Max songs to queue (default: 25)").setRequired(false).setMinValue(1).setMaxValue(50))
-                        .addBooleanOption(opt => opt.setName("radio").setDescription("Start a radio mix from the search result").setRequired(false))
+                        .addStringOption(opt => opt.setName("profile").setDescription("Cookie profile name").setRequired(false).setAutocomplete(true))
+                        .addIntegerOption(opt => opt.setName("limit").setDescription("Max songs to queue (default: 25, max: 50)").setRequired(false).setMinValue(1).setMaxValue(50))
+                        .addBooleanOption(opt => opt.setName("radio").setDescription("Generate a radio mix from the first result").setRequired(false))
                 )
                 .addSubcommand(sub =>
                     sub.setName("supermix")
                         .setDescription("Play your 'My Supermix' (formerly Your Mix)")
-                        .addStringOption(opt => opt.setName("profile").setDescription("Cookie profile to use").setRequired(false))
+                        .addStringOption(opt => opt.setName("profile").setDescription("Cookie profile to use").setRequired(false).setAutocomplete(true))
                         .addIntegerOption(opt => opt.setName("limit").setDescription("Max songs to queue (default: 25)").setRequired(false).setMinValue(1).setMaxValue(50))
                 )
                 .addSubcommand(sub =>
                     sub.setName("mix")
-                        .setDescription("Play one of your numbered 'My Mix' playlists")
+                        .setDescription("Play a numbered My Mix playlist (1-7)")
                         .addIntegerOption(opt => opt.setName("number").setDescription("Mix number (1-7)").setRequired(true).setMinValue(1).setMaxValue(7))
-                        .addStringOption(opt => opt.setName("profile").setDescription("Cookie profile to use").setRequired(false))
-                        .addIntegerOption(opt => opt.setName("limit").setDescription("Max songs to queue (default: 25)").setRequired(false).setMinValue(1).setMaxValue(50))
+                        .addStringOption(opt => opt.setName("profile").setDescription("Cookie profile name").setRequired(false).setAutocomplete(true))
+                        .addIntegerOption(opt => opt.setName("limit").setDescription("Max songs to queue (default: 25, max: 50)").setRequired(false).setMinValue(1).setMaxValue(50))
                 )
                 .addSubcommandGroup(group =>
                     group.setName("cookie")
@@ -214,6 +214,35 @@ const MyMusicPlugin: Plugin = {
                     } else if (subcommand === "delete") {
                         await handleCookieDelete(interaction, context, getProfiles, saveProfiles);
                     }
+                }
+            },
+            autocomplete: async (interaction: import("discord.js").AutocompleteInteraction) => {
+                const focusedOption = interaction.options.getFocused(true);
+
+                // Only autocomplete for profile fields
+                if (focusedOption.name !== 'profile') {
+                    return;
+                }
+
+                try {
+                    const userId = interaction.user.id;
+                    const profiles = await getProfiles(userId);
+
+                    // Filter profiles based on what user is typing
+                    const filtered = profiles
+                        .filter(p => p.name.toLowerCase().includes(focusedOption.value.toLowerCase()))
+                        .slice(0, 25); // Discord limits to 25 choices
+
+                    // Return profile names as choices
+                    await interaction.respond(
+                        filtered.map(p => ({
+                            name: `${p.name} (${p.playCount} plays, ${p.status === 'valid' ? '✓' : '⚠️'})`,
+                            value: p.name
+                        }))
+                    );
+                } catch (error) {
+                    context.logger.error(`Autocomplete error: ${error}`);
+                    await interaction.respond([]);
                 }
             }
         });
