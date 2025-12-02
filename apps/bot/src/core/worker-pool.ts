@@ -32,6 +32,10 @@ function createBots(): WorkerState[] {
             intents: intents,
         });
 
+        // Attach role to client for event handlers to access
+        // @ts-ignore - Injecting custom property
+        client.role = botConfig.role;
+
         workers.push({
             name: botConfig.name,
             client: client,
@@ -60,18 +64,8 @@ async function loginBots(): Promise<void> {
             await worker.client.login(worker.token);
             logger.info(`[${worker.name}] Logged in as ${worker.role}${worker.role === 'controller' ? ' (Leader)' : ''}`);
 
-            // Set initial presence for all bots
-            if (worker.role === 'worker') {
-                worker.client.user?.setPresence({
-                    activities: [{ name: "Waiting for tasks...", type: ActivityType.Custom }],
-                    status: "idle",
-                });
-            } else if (worker.role === 'controller') {
-                worker.client.user?.setPresence({
-                    activities: [{ name: "Managing the Heavenly Council", type: ActivityType.Custom }],
-                    status: "idle",
-                });
-            }
+            // Initial presence is now handled in ready.ts event
+
         } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : String(error);
             logger.error(`[workerpool] Failed to login ${worker.name}: ${msg}`);
@@ -259,7 +253,7 @@ function releaseWorker(voiceChannelId: string): void {
             // Reset Jasper's presence when idle
             worker.client.user?.setPresence({
                 activities: [{ name: "Managing the Heavenly Council", type: ActivityType.Custom }],
-                status: "idle",
+                status: "online",
             });
         }
     }
@@ -283,7 +277,7 @@ function releaseAllWorkers(): void {
         } else if (worker.role === 'controller') {
             worker.client.user?.setPresence({
                 activities: [{ name: "Managing the Heavenly Council", type: ActivityType.Custom }],
-                status: "idle",
+                status: "online",
             });
         }
     }
