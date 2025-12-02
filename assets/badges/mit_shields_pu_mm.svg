@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="120" height="28" role="img">
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="32" viewBox="0 0 120 32" role="img">
   <defs>
     <linearGradient id="badgeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" stop-color="#00C98A"/>
@@ -8,19 +8,20 @@
     <style>
       text {
         font-family: "Segoe UI", -apple-system, Ubuntu, sans-serif;
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 600;
+        dominant-baseline: middle;
       }
     </style>
   </defs>
 
-  <!-- left gray block -->
-  <rect width="55" height="28" rx="4" fill="#555"/>
+  <!-- Left gray block -->
+  <rect width="55" height="32" fill="#555"/>
 
-  <!-- right gradient block -->
-  <rect x="55" width="65" height="28" rx="4" fill="url(#badgeGrad)"/>
+  <!-- Right gradient block -->
+  <rect x="55" width="65" height="32" fill="url(#badgeGrad)"/>
 
-  <!-- text -->
-  <text x="28" y="19" text-anchor="middle" fill="#fff">license</text>
-  <text x="87" y="19" text-anchor="middle" fill="#fff">MIT</text>
+  <!-- Text (centered vertically now) -->
+  <text x="27.5" y="16" text-anchor="middle" fill="#fff">license</text>
+  <text x="87.5" y="16" text-anchor="middle" fill="#fff">MIT</text>
 </svg>
