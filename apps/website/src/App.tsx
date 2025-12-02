@@ -179,7 +179,7 @@ const DocTabs = () => {
                 <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Settings size={20} /> Environment Configuration</h3>
                 <p className="text-slate-400 text-sm mb-4">
                   Jasper uses a strict <code>.env</code> validation process on startup.
-                  Refer to <a href="#" className="text-[#00e5ff] hover:underline">ENV.md</a> for the full list.
+                  Refer to <a href="https://github.com/sakibtamim/Jasper/blob/master/ENV.md" className="text-[#00e5ff] hover:underline" target="_blank" rel="noopener noreferrer">ENV.md</a> for the full list.
                 </p>
                 <CodeBlock
                   label=".env"
@@ -199,7 +199,7 @@ DB_TYPE=sqlite
                 <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Server size={20} /> Deployment & CI/CD</h3>
                 <p className="text-slate-400 text-sm mb-4">
                   Production ready with PM2 and GitHub Actions.
-                  See <a href="#" className="text-[#00e5ff] hover:underline">DEPLOY.md</a>.
+                  See <a href="https://github.com/sakibtamim/Jasper/blob/master/DEPLOY.md" className="text-[#00e5ff] hover:underline" target="_blank" rel="noopener noreferrer">DEPLOY.md</a>.
                 </p>
                 <ul className="space-y-2 text-sm text-slate-300">
                   <li className="flex items-center gap-2"><Terminal size={14} className="text-green-400" /> <code>pnpm build</code> - Turbo-charged monorepo build</li>
@@ -228,7 +228,7 @@ DB_TYPE=sqlite
               <h3 className="text-xl font-bold text-white mb-2">The Plugin Architecture</h3>
               <p className="text-slate-400">
                 Jasper is an extensible platform. Plugins can add API routes, UI widgets, and database tables.
-                Read the <a href="#" className="text-[#00e5ff] hover:underline">Plugin Development Guide</a>.
+                Read the <a href="https://github.com/sakibtamim/Jasper/blob/master/PLUGINS_DEV.md" className="text-[#00e5ff] hover:underline" target="_blank" rel="noopener noreferrer">Plugin Development Guide</a>.
               </p>
             </div>
 
@@ -245,7 +245,7 @@ DB_TYPE=sqlite
     "entry": "web/index.tsx",
     "widgets": [
       {
-        "slot": "dashboard:main",
+        "slot": "dashboard:master",
         "component": "MyWidget"
       }
     ]
@@ -303,7 +303,7 @@ DB_TYPE=sqlite
                     <li>Paste and save. Jasper will rotate them automatically.</li>
                   </ol>
                   <div className="pt-2">
-                    <a href="#" className="text-red-400 hover:underline text-xs flex items-center gap-1">Read YT-DLP_TROUBLESHOOTING.md <ArrowRight size={10} /></a>
+                    <a href="https://github.com/sakibtamim/Jasper/blob/master/YT-DLP_TROUBLESHOOTING.md" className="text-red-400 hover:underline text-xs flex items-center gap-1" target="_blank" rel="noopener noreferrer">Read YT-DLP_TROUBLESHOOTING.md <ArrowRight size={10} /></a>
                   </div>
                 </div>
               </div>
@@ -339,8 +339,8 @@ DB_TYPE=sqlite
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-6 py-4 font-medium transition-all relative ${activeTab === tab.id
-                ? 'text-[#ff6ad5]'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              ? 'text-[#ff6ad5]'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
               }`}
           >
             <tab.icon size={18} />
@@ -387,7 +387,7 @@ export default function JasperLanding() {
             <a href="#docs" className="hover:text-[#00e5ff] transition-colors">Docs & Plugins</a>
           </div>
           <div className="flex gap-4">
-            <button className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full border border-slate-700 hover:border-slate-500 transition-colors text-sm">
+            <button className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full border border-slate-700 hover:border-slate-500 transition-colors text-sm" onClick={() => window.open('https://github.com/sakibtamim/Jasper', '_blank')}>
               <Github size={16} /> Star
             </button>
             <button className="bg-gradient-to-r from-[#ff6ad5] to-purple-600 text-white px-6 py-2 rounded-full font-bold text-sm hover:shadow-[0_0_20px_rgba(255,106,213,0.4)] transition-shadow">
@@ -613,10 +613,10 @@ export default function JasperLanding() {
           <span className="font-bold text-xl tracking-tighter text-white">JASPER</span>
         </div>
         <div className="flex justify-center gap-6 mb-8 text-slate-400 text-sm">
-          <a href="#" className="hover:text-white transition-colors">Documentation</a>
-          <a href="#" className="hover:text-white transition-colors">GitHub</a>
-          <a href="#" className="hover:text-white transition-colors">License</a>
-          <a href="#" className="hover:text-white transition-colors">Contributing</a>
+          <a href="https://github.com/sakibtamim/Jasper/blob/master/README.md" className="hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">Documentation</a>
+          <a href="https://github.com/sakibtamim/Jasper" className="hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a href="https://github.com/sakibtamim/Jasper/blob/master/LICENSE" className="hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">License</a>
+          <a href="https://github.com/sakibtamim/Jasper" className="hover:text-white transition-colors" target="_blank" rel="noopener noreferrer">Contributing</a>
         </div>
         <p className="text-slate-600 text-xs max-w-md mx-auto">
           Built with TypeScript, Node.js, and a lot of cat treats.
