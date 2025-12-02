@@ -54,7 +54,7 @@ interface CookieProfile {
     createdAt: number;
     lastUsedAt: number;
     playCount: number;
-    // TODO: Add uniqueTrackCount: number; (Phase 4)
+    uniqueTrackCount: number; // Phase D: Count of unique video IDs played
     // Phase C: Health tracking for cookie validation
     status: 'valid' | 'suspected_broken';
     lastError: string | null;
@@ -72,11 +72,81 @@ const MyMusicPlugin: Plugin = {
         // Storage key format: profiles:{userId}
         // Each user has an array of CookieProfile objects
         const getProfiles = async (userId: string): Promise<CookieProfile[]> => {
-            return (await context.db.plugin.get(`profiles:${userId}`)) || [];
+            const profiles = (await context.db.plugin.get(`profiles:${userId}`)) || [];
+
+            // Migration: Add uniqueTrackCount to old profiles
+            return profiles.map((p: CookieProfile) => ({
+                ...p,
+                uniqueTrackCount: p.uniqueTrackCount ?? 0
+            }));
         };
 
         const saveProfiles = async (userId: string, profiles: CookieProfile[]): Promise<void> => {
             await context.db.plugin.set(`profiles:${userId}`, profiles);
+        };
+
+        // Phase D: Track unique video IDs per profile
+        // Storage format: trackIds:{profileId} => Set<videoId>
+        const getTrackedIds = async (profileId: string): Promise<Set<string>> => {
+            const ids = await context.db.plugin.get(`trackIds:${profileId}`);
+            return new Set(ids || []);
+        };
+
+        const saveTrackedIds = async (profileId: string, ids: Set<string>): Promise<void> => {
+            await context.db.plugin.set(`trackIds:${profileId}`, Array.from(ids));
+        };
+
+        /**
+         * Updates unique track count for a profile based on newly played video IDs.
+         * Phase D: Telemetry - uniqueTrackCount tracking
+         */
+        const updateUniqueTrackCount = async (
+            userId: string,
+            profileId: string,
+            newVideoIds: string[]
+        ): Promise<number> => {
+            const trackedIds = await getTrackedIds(profileId);
+            const initialSize = trackedIds.size;
+
+            // Add new IDs to the set
+            newVideoIds.forEach(id => trackedIds.add(id));
+
+            const newUniqueCount = trackedIds.size - initialSize;
+
+            if (newUniqueCount > 0) {
+                // Save updated ID set
+                await saveTrackedIds(profileId, trackedIds);
+
+                // Update profile's uniqueTrackCount
+                const profiles = await getProfiles(userId);
+                const profile = profiles.find(p => p.id === profileId);
+                if (profile) {
+                    profile.uniqueTrackCount = trackedIds.size;
+                    await saveProfiles(userId, profiles);
+                }
+            }
+
+            return newUniqueCount;
+        };
+
+        // Phase D: Telemetry event types
+        type MyMusicEvent = {
+            type: 'MYMUSIC_PLAY_STARTED' | 'MYMUSIC_PLAY_FAILED';
+            userId: string;
+            profileName: string;
+            playType: 'search' | 'radio' | 'supermix' | 'mix' | 'unknown';
+            failureReason?: 'no_profile' | 'yt_dlp_error' | 'auth_error' | 'empty_mix' | 'unknown';
+        };
+
+        /**
+         * Log a MyMusic telemetry event with structured data.
+         */
+        const logTelemetryEvent = (event: MyMusicEvent): void => {
+            const sanitizedEvent = {
+                ...event,
+                userId: event.userId.substring(0, 8) + '...' // Anonymize user ID
+            };
+            context.logger.info(`[MyMusic:Telemetry] ${JSON.stringify(sanitizedEvent)}`);
         };
 
         // --- Slash Commands ---
@@ -131,11 +201,11 @@ const MyMusicPlugin: Plugin = {
                 const group = interaction.options.getSubcommandGroup();
 
                 if (subcommand === "search") {
-                    await handleSearch(interaction, context, getProfiles, saveProfiles);
+                    await handleSearch(interaction, context, getProfiles, saveProfiles, logTelemetryEvent);
                 } else if (subcommand === "supermix") {
-                    await handleSupermix(interaction, context, getProfiles, saveProfiles);
+                    await handleSupermix(interaction, context, getProfiles, saveProfiles, logTelemetryEvent);
                 } else if (subcommand === "mix") {
-                    await handleMix(interaction, context, getProfiles, saveProfiles);
+                    await handleMix(interaction, context, getProfiles, saveProfiles, logTelemetryEvent);
                 } else if (group === "cookie") {
                     if (subcommand === "add") {
                         await handleCookieAdd(interaction, context, getProfiles, saveProfiles);
@@ -173,6 +243,7 @@ const MyMusicPlugin: Plugin = {
                 createdAt: p.createdAt,
                 lastUsedAt: p.lastUsedAt,
                 playCount: p.playCount,
+                uniqueTrackCount: p.uniqueTrackCount,  // Phase D: Include unique track count
                 hasContent: !!p.content,
                 status: p.status,
                 lastError: p.lastError
@@ -203,6 +274,7 @@ const MyMusicPlugin: Plugin = {
                 createdAt: Date.now(),
                 lastUsedAt: 0,
                 playCount: 0,
+                uniqueTrackCount: 0,
                 status: 'valid',
                 lastError: null
             };
@@ -400,7 +472,8 @@ async function handleSearch(
     interaction: ChatInputCommandInteraction,
     context: PluginContext,
     getProfiles: (userId: string) => Promise<CookieProfile[]>,
-    saveProfiles: (userId: string, profiles: CookieProfile[]) => Promise<void>
+    saveProfiles: (userId: string, profiles: CookieProfile[]) => Promise<void>,
+    logTelemetryEvent: (event: { type: 'MYMUSIC_PLAY_STARTED' | 'MYMUSIC_PLAY_FAILED'; userId: string; profileName: string; playType: 'search' | 'radio' | 'supermix' | 'mix' | 'unknown'; failureReason?: 'no_profile' | 'yt_dlp_error' | 'auth_error' | 'empty_mix' | 'unknown' }) => void
 ) {
     const term = interaction.options.getString("term", true);
     const profileName = interaction.options.getString("profile");
@@ -411,6 +484,15 @@ async function handleSearch(
     const profiles = await getProfiles(userId);
 
     if (profiles.length === 0) {
+        // Phase D: Log telemetry for no profile error
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_FAILED',
+            userId,
+            profileName: 'none',
+            playType: radio ? 'radio' : 'search',
+            failureReason: 'no_profile'
+        });
+
         await interaction.reply({
             content: "❌ You don't have any cookie profiles set up. Use `/mymusic cookie add` to add one.",
             ephemeral: true
@@ -422,6 +504,14 @@ async function handleSearch(
     if (profileName) {
         profile = profiles.find(p => p.name === profileName);
         if (!profile) {
+            logTelemetryEvent({
+                type: 'MYMUSIC_PLAY_FAILED',
+                userId,
+                profileName: profileName || 'auto',
+                playType: radio ? 'radio' : 'search',
+                failureReason: 'no_profile'
+            });
+
             await interaction.reply({
                 content: `❌ Cookie profile "**${profileName}**" not found.`,
                 ephemeral: true
@@ -439,6 +529,20 @@ async function handleSearch(
         cookiePath = await context.writeCustomCookie(profile.content);
     } catch (error) {
         context.logger.error(`Failed to write custom cookie: ${error}`);
+
+        // Update profile health status
+        profile.status = 'suspected_broken';
+        profile.lastError = 'Failed to write cookie file';
+        await saveProfiles(userId, profiles);
+
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_FAILED',
+            userId,
+            profileName: profile.name,
+            playType: radio ? 'radio' : 'search',
+            failureReason: 'unknown'
+        });
+
         await interaction.reply({ content: "❌ Failed to process cookie.", ephemeral: true });
         return;
     }
@@ -464,11 +568,19 @@ async function handleSearch(
             context.music.resolve
         );
 
-        // Handle edge case: no results found (radio mode  only)
+        // Handle edge case: no results found (radio mode only)
         if (!result) {
             const errorMsg = radio
                 ? "❌ Could not find a video to start radio from. Try a different search term."
                 : "❌ No results found.";
+
+            logTelemetryEvent({
+                type: 'MYMUSIC_PLAY_FAILED',
+                userId,
+                profileName: profile.name,
+                playType: radio ? 'radio' : 'search',
+                failureReason: 'empty_mix'
+            });
 
             if (interaction.deferred) {
                 await interaction.editReply({ content: errorMsg });
@@ -482,6 +594,14 @@ async function handleSearch(
         const { url, type, videoId } = result;
         context.logger.info(`[MyMusic] ${type}: ${videoId ? `videoId=${videoId}` : url}`);
 
+        // Phase D: Log successful play start
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_STARTED',
+            userId,
+            profileName: profile.name,
+            playType: radio ? 'radio' : 'search'
+        });
+
         if (type === 'video') {
             await context.music.enqueue(interaction, url, cookiePath);
         } else {
@@ -490,6 +610,23 @@ async function handleSearch(
         }
     } catch (error) {
         context.logger.error(`Failed to enqueue: ${error}`);
+
+        // Update profile health if it looks like an auth error
+        const errorStr = String(error);
+        if (errorStr.includes('auth') || errorStr.includes('login') || errorStr.includes('401')) {
+            profile.status = 'suspected_broken';
+            profile.lastError = 'Authentication failed - cookie may be expired';
+            await saveProfiles(userId, profiles);
+        }
+
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_FAILED',
+            userId,
+            profileName: profile.name,
+            playType: radio ? 'radio' : 'search',
+            failureReason: errorStr.includes('auth') ? 'auth_error' : 'yt_dlp_error'
+        });
+
         if (!interaction.deferred && !interaction.replied) {
             await interaction.reply({ content: "❌ Failed to enqueue song.", ephemeral: true });
         } else {
@@ -502,7 +639,8 @@ async function handleSupermix(
     interaction: ChatInputCommandInteraction,
     context: PluginContext,
     getProfiles: (userId: string) => Promise<CookieProfile[]>,
-    saveProfiles: (userId: string, profiles: CookieProfile[]) => Promise<void>
+    saveProfiles: (userId: string, profiles: CookieProfile[]) => Promise<void>,
+    logTelemetryEvent: (event: { type: 'MYMUSIC_PLAY_STARTED' | 'MYMUSIC_PLAY_FAILED'; userId: string; profileName: string; playType: 'search' | 'radio' | 'supermix' | 'mix' | 'unknown'; failureReason?: 'no_profile' | 'yt_dlp_error' | 'auth_error' | 'empty_mix' | 'unknown' }) => void
 ) {
     const profileName = interaction.options.getString("profile");
     const limit = interaction.options.getInteger("limit") || 25;
@@ -510,12 +648,26 @@ async function handleSupermix(
     const profiles = await getProfiles(userId);
 
     if (profiles.length === 0) {
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_FAILED',
+            userId,
+            profileName: 'none',
+            playType: 'supermix',
+            failureReason: 'no_profile'
+        });
         await interaction.reply({ content: "❌ You don't have any cookie profiles set up.", ephemeral: true });
         return;
     }
 
     let profile = profileName ? profiles.find(p => p.name === profileName) : profiles.sort((a, b) => b.lastUsedAt - a.lastUsedAt)[0];
     if (!profile) {
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_FAILED',
+            userId,
+            profileName: profileName || 'none',
+            playType: 'supermix',
+            failureReason: 'no_profile'
+        });
         await interaction.reply({ content: `❌ Profile not found.`, ephemeral: true });
         return;
     }
@@ -524,6 +676,17 @@ async function handleSupermix(
     try {
         cookiePath = await context.writeCustomCookie(profile.content);
     } catch (error) {
+        profile.status = 'suspected_broken';
+        profile.lastError = 'Failed to write cookie file';
+        await saveProfiles(userId, profiles);
+
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_FAILED',
+            userId,
+            profileName: profile.name,
+            playType: 'supermix',
+            failureReason: 'unknown'
+        });
         await interaction.reply({ content: "❌ Failed to process cookie.", ephemeral: true });
         return;
     }
@@ -535,7 +698,7 @@ async function handleSupermix(
     try {
         // Phase B: Supermix uses RDMM playlist pattern
         // RDMM = YouTube Music Mix (personalized, requires authentication)
-        // ref: YT-DLP_ANALYSIS.md §3.2 - Mix Playlists
+        // ref: YT-DLP_ANALYSIS.md  §3.2 - Mix Playlists
         // 
         // Requirements for RDMM to work properly (ref: §6):
         // - LOGIN_INFO cookie (indicates logged-in status)
@@ -546,9 +709,33 @@ async function handleSupermix(
         // listening history and preferences in YouTube Music.
         const supermixUrl = 'https://www.youtube.com/playlist?list=RDMM';
         context.logger.info(`[MyMusic] Playing My Supermix: ${supermixUrl}`);
+
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_STARTED',
+            userId,
+            profileName: profile.name,
+            playType: 'supermix'
+        });
+
         await context.music.enqueuePlaylist(interaction, supermixUrl, { cookiePath, limit });
     } catch (error) {
         context.logger.error(`Failed to enqueue supermix: ${error}`);
+
+        const errorStr = String(error);
+        if (errorStr.includes('auth') || errorStr.includes('login') || errorStr.includes('401')) {
+            profile.status = 'suspected_broken';
+            profile.lastError = 'Authentication failed - cookie may be expired';
+            await saveProfiles(userId, profiles);
+        }
+
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_FAILED',
+            userId,
+            profileName: profile.name,
+            playType: 'supermix',
+            failureReason: errorStr.includes('auth') ? 'auth_error' : 'yt_dlp_error'
+        });
+
         if (!interaction.deferred && !interaction.replied) {
             await interaction.reply({ content: "❌ Failed to enqueue Supermix.", ephemeral: true });
         } else {
@@ -561,7 +748,8 @@ async function handleMix(
     interaction: ChatInputCommandInteraction,
     context: PluginContext,
     getProfiles: (userId: string) => Promise<CookieProfile[]>,
-    saveProfiles: (userId: string, profiles: CookieProfile[]) => Promise<void>
+    saveProfiles: (userId: string, profiles: CookieProfile[]) => Promise<void>,
+    logTelemetryEvent: (event: { type: 'MYMUSIC_PLAY_STARTED' | 'MYMUSIC_PLAY_FAILED'; userId: string; profileName: string; playType: 'search' | 'radio' | 'supermix' | 'mix' | 'unknown'; failureReason?: 'no_profile' | 'yt_dlp_error' | 'auth_error' | 'empty_mix' | 'unknown' }) => void
 ) {
     const number = interaction.options.getInteger("number", true);
     const profileName = interaction.options.getString("profile");
@@ -570,12 +758,26 @@ async function handleMix(
     const profiles = await getProfiles(userId);
 
     if (profiles.length === 0) {
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_FAILED',
+            userId,
+            profileName: 'none',
+            playType: 'mix',
+            failureReason: 'no_profile'
+        });
         await interaction.reply({ content: "❌ You don't have any cookie profiles set up.", ephemeral: true });
         return;
     }
 
     let profile = profileName ? profiles.find(p => p.name === profileName) : profiles.sort((a, b) => b.lastUsedAt - a.lastUsedAt)[0];
     if (!profile) {
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_FAILED',
+            userId,
+            profileName: profileName || 'none',
+            playType: 'mix',
+            failureReason: 'no_profile'
+        });
         await interaction.reply({ content: `❌ Profile not found.`, ephemeral: true });
         return;
     }
@@ -584,6 +786,17 @@ async function handleMix(
     try {
         cookiePath = await context.writeCustomCookie(profile.content);
     } catch (error) {
+        profile.status = 'suspected_broken';
+        profile.lastError = 'Failed to write cookie file';
+        await saveProfiles(userId, profiles);
+
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_FAILED',
+            userId,
+            profileName: profile.name,
+            playType: 'mix',
+            failureReason: 'unknown'
+        });
         await interaction.reply({ content: "❌ Failed to process cookie.", ephemeral: true });
         return;
     }
@@ -608,9 +821,33 @@ async function handleMix(
         // but not the specific numbered one the user requested.
         const mixQuery = `ytsearch1:My Mix ${number}`;
         context.logger.info(`[MyMusic] Searching for mix: ${mixQuery}`);
+
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_STARTED',
+            userId,
+            profileName: profile.name,
+            playType: 'mix'
+        });
+
         await context.music.enqueuePlaylist(interaction, mixQuery, { cookiePath, limit });
     } catch (error) {
         context.logger.error(`Failed to enqueue mix: ${error}`);
+
+        const errorStr = String(error);
+        if (errorStr.includes('auth') || errorStr.includes('login') || errorStr.includes('401')) {
+            profile.status = 'suspected_broken';
+            profile.lastError = 'Authentication failed - cookie may be expired';
+            await saveProfiles(userId, profiles);
+        }
+
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_FAILED',
+            userId,
+            profileName: profile.name,
+            playType: 'mix',
+            failureReason: errorStr.includes('auth') ? 'auth_error' : 'yt_dlp_error'
+        });
+
         if (!interaction.deferred && !interaction.replied) {
             await interaction.reply({ content: `❌ Failed to enqueue My Mix ${number}.`, ephemeral: true });
         } else {
@@ -673,6 +910,7 @@ async function handleCookieAdd(
         createdAt: Date.now(),
         lastUsedAt: 0,
         playCount: 0,
+        uniqueTrackCount: 0,
         status: validation.hasAuthCookies ? 'valid' : 'suspected_broken',
         lastError: null
     };
