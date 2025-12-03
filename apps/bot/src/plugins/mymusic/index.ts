@@ -134,7 +134,7 @@ const MyMusicPlugin: Plugin = {
             type: 'MYMUSIC_PLAY_STARTED' | 'MYMUSIC_PLAY_FAILED';
             userId: string;
             profileName: string;
-            playType: 'search' | 'radio' | 'supermix' | 'mix' | 'unknown';
+            playType: 'search' | 'radio' | 'supermix' | 'mix' | 'recommended' | 'feed' | 'unknown';
             failureReason?: 'no_profile' | 'yt_dlp_error' | 'auth_error' | 'empty_mix' | 'unknown';
         };
 
@@ -175,7 +175,19 @@ const MyMusicPlugin: Plugin = {
                         .setDescription("Play a numbered My Mix playlist (1-7)")
                         .addIntegerOption(opt => opt.setName("number").setDescription("Mix number (1-7)").setRequired(true).setMinValue(1).setMaxValue(7))
                         .addStringOption(opt => opt.setName("profile").setDescription("Cookie profile name").setRequired(false).setAutocomplete(true))
-                        .addIntegerOption(opt => opt.setName("limit").setDescription("Max songs to queue (default: 25, max: 50)").setRequired(false).setMinValue(1).setMaxValue(50))
+                        .addIntegerOption(opt => opt.setName("limit").setDescription("Max songs (default: 25, max: 50)").setRequired(false).setMinValue(1).setMaxValue(50))
+                )
+                .addSubcommand(sub =>
+                    sub.setName("recommended")
+                        .setDescription("Play your personalized recommended tracks")
+                        .addStringOption(opt => opt.setName("profile").setDescription("Cookie profile name").setRequired(false).setAutocomplete(true))
+                        .addIntegerOption(opt => opt.setName("limit").setDescription("Max songs (default: 25, max: 50)").setRequired(false).setMinValue(1).setMaxValue(50))
+                )
+                .addSubcommand(sub =>
+                    sub.setName("feed")
+                        .setDescription("[Debug] Test your personalized homepage feed")
+                        .addStringOption(opt => opt.setName("profile").setDescription("Cookie profile name").setRequired(false).setAutocomplete(true))
+                        .addIntegerOption(opt => opt.setName("limit").setDescription("Max songs (default: 25, max: 50)").setRequired(false).setMinValue(1).setMaxValue(50))
                 )
                 .addSubcommandGroup(group =>
                     group.setName("cookie")
@@ -206,6 +218,10 @@ const MyMusicPlugin: Plugin = {
                     await handleSupermix(interaction, context, getProfiles, saveProfiles, logTelemetryEvent);
                 } else if (subcommand === "mix") {
                     await handleMix(interaction, context, getProfiles, saveProfiles, logTelemetryEvent);
+                } else if (subcommand === "recommended") {
+                    await handleRecommended(interaction, context, getProfiles, saveProfiles, logTelemetryEvent);
+                } else if (subcommand === "feed") {
+                    await handleFeed(interaction, context, getProfiles, saveProfiles, logTelemetryEvent);
                 } else if (group === "cookie") {
                     if (subcommand === "add") {
                         await handleCookieAdd(interaction, context, getProfiles, saveProfiles);
@@ -910,6 +926,231 @@ async function handleMix(
         }
     }
 }
+
+// ============================================================================
+// PART 3: NEW COMMANDS - Recommended & Feed
+// ============================================================================
+
+/**
+ * Handler for /mymusic recommended
+ * Plays personalized recommended tracks using :ytrec feed
+ */
+async function handleRecommended(
+    interaction: ChatInputCommandInteraction,
+    context: PluginContext,
+    getProfiles: (userId: string) => Promise<CookieProfile[]>,
+    saveProfiles: (userId: string, profiles: CookieProfile[]) => Promise<void>,
+    logTelemetryEvent: (event: { type: 'MYMUSIC_PLAY_STARTED' | 'MYMUSIC_PLAY_FAILED'; userId: string; profileName: string; playType: 'search' | 'radio' | 'supermix' | 'mix' | 'recommended' | 'feed' | 'unknown'; failureReason?: 'no_profile' | 'yt_dlp_error' | 'auth_error' | 'empty_mix' | 'unknown' }) => void
+) {
+    const profileName = interaction.options.getString("profile");
+    const limit = interaction.options.getInteger("limit") || 25;
+    const userId = interaction.user.id;
+    const profiles = await getProfiles(userId);
+
+    if (profiles.length === 0) {
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_FAILED',
+            userId,
+            profileName: 'none',
+            playType: 'recommended',
+            failureReason: 'no_profile'
+        });
+        await interaction.reply({ content: "❌ You don't have any cookie profiles set up.", ephemeral: true });
+        return;
+    }
+
+    let profile = profileName ? profiles.find(p => p.name === profileName) : profiles.sort((a, b) => b.lastUsedAt - a.lastUsedAt)[0];
+    if (!profile) {
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_FAILED',
+            userId,
+            profileName: profileName || 'none',
+            playType: 'recommended',
+            failureReason: 'no_profile'
+        });
+        await interaction.reply({ content: `❌ Profile not found.`, ephemeral: true });
+        return;
+    }
+
+    let cookiePath: string;
+    try {
+        cookiePath = await context.writeCustomCookie(profile.content);
+    } catch (error) {
+        profile.status = 'suspected_broken';
+        profile.lastError = 'Failed to write cookie file';
+        await saveProfiles(userId, profiles);
+
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_FAILED',
+            userId,
+            profileName: profile.name,
+            playType: 'recommended',
+            failureReason: 'unknown'
+        });
+        await interaction.reply({ content: "❌ Failed to process cookie.", ephemeral: true });
+        return;
+    }
+
+    profile.lastUsedAt = Date.now();
+    profile.playCount++;
+    await saveProfiles(userId, profiles);
+
+    try {
+        // Part 3: Recommended Command
+        // Uses :ytrec (YouTube Recommended Feed) for personalized tracks
+        // ref: YT-DLP_ANALYSIS.md §2.3 - :ytrec feed extractor
+        //
+        // User-friendly command for playing recommended music based on
+        // listening history, liked videos, and subscriptions.
+        const recUrl = ':ytrec';
+        context.logger.info(`[MyMusic] Playing recommended tracks via :ytrec`);
+
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_STARTED',
+            userId,
+            profileName: profile.name,
+            playType: 'recommended'
+        });
+
+        await context.music.enqueuePlaylist(interaction, recUrl, { cookiePath, limit });
+    } catch (error) {
+        context.logger.error(`Failed to enqueue recommended: ${error}`);
+
+        const errorStr = String(error);
+        if (errorStr.includes('auth') || errorStr.includes('login') || errorStr.includes('401')) {
+            profile.status = 'suspected_broken';
+            profile.lastError = 'Authentication failed - cookie may be expired';
+            await saveProfiles(userId, profiles);
+        }
+
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_FAILED',
+            userId,
+            profileName: profile.name,
+            playType: 'recommended',
+            failureReason: errorStr.includes('auth') ? 'auth_error' : 'yt_dlp_error'
+        });
+
+        if (!interaction.deferred && !interaction.replied) {
+            await interaction.reply({ content: "❌ Failed to load recommended tracks.", ephemeral: true });
+        } else {
+            await interaction.editReply({ content: "❌ Failed to load recommended tracks." });
+        }
+    }
+}
+
+/**
+ * Handler for /mymusic feed
+ * Debug/test command for personalized homepage feed
+ */
+async function handleFeed(
+    interaction: ChatInputCommandInteraction,
+    context: PluginContext,
+    getProfiles: (userId: string) => Promise<CookieProfile[]>,
+    saveProfiles: (userId: string, profiles: CookieProfile[]) => Promise<void>,
+    logTelemetryEvent: (event: { type: 'MYMUSIC_PLAY_STARTED' | 'MYMUSIC_PLAY_FAILED'; userId: string; profileName: string; playType: 'search' | 'radio' | 'supermix' | 'mix' | 'recommended' | 'feed' | 'unknown'; failureReason?: 'no_profile' | 'yt_dlp_error' | 'auth_error' | 'empty_mix' | 'unknown' }) => void
+) {
+    const profileName = interaction.options.getString("profile");
+    const limit = interaction.options.getInteger("limit") || 25;
+    const userId = interaction.user.id;
+    const profiles = await getProfiles(userId);
+
+    if (profiles.length === 0) {
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_FAILED',
+            userId,
+            profileName: 'none',
+            playType: 'feed',
+            failureReason: 'no_profile'
+        });
+        await interaction.reply({ content: "❌ You don't have any cookie profiles set up.", ephemeral: true });
+        return;
+    }
+
+    let profile = profileName ? profiles.find(p => p.name === profileName) : profiles.sort((a, b) => b.lastUsedAt - a.lastUsedAt)[0];
+    if (!profile) {
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_FAILED',
+            userId,
+            profileName: profileName || 'none',
+            playType: 'feed',
+            failureReason: 'no_profile'
+        });
+        await interaction.reply({ content: `❌ Profile not found.`, ephemeral: true });
+        return;
+    }
+
+    let cookiePath: string;
+    try {
+        cookiePath = await context.writeCustomCookie(profile.content);
+    } catch (error) {
+        profile.status = 'suspected_broken';
+        profile.lastError = 'Failed to write cookie file';
+        await saveProfiles(userId, profiles);
+
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_FAILED',
+            userId,
+            profileName: profile.name,
+            playType: 'feed',
+            failureReason: 'unknown'
+        });
+        await interaction.reply({ content: "❌ Failed to process cookie.", ephemeral: true });
+        return;
+    }
+
+    profile.lastUsedAt = Date.now();
+    profile.playCount++;
+    await saveProfiles(userId, profiles);
+
+    try {
+        // Part 3: Feed Command (Debug/Testing)
+        // Uses :ytrec (YouTube Recommended Feed) for testing personalization
+        // ref: YT-DLP_ANALYSIS.md §2.3 - :ytrec feed extractor
+        //
+        // This is a testing-oriented command. Future enhancements could add
+        // support for :ytsubs (subscriptions), :ythistory, etc.
+        // TODO: Add feed type selection option
+        const feedUrl = ':ytrec';
+        context.logger.info(`[MyMusic:Feed] Testing feed URL: ${feedUrl}`);
+
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_STARTED',
+            userId,
+            profileName: profile.name,
+            playType: 'feed'
+        });
+
+        await context.music.enqueuePlaylist(interaction, feedUrl, { cookiePath, limit });
+    } catch (error) {
+        context.logger.error(`Failed to enqueue feed: ${error}`);
+
+        const errorStr = String(error);
+        if (errorStr.includes('auth') || errorStr.includes('login') || errorStr.includes('401')) {
+            profile.status = 'suspected_broken';
+            profile.lastError = 'Authentication failed - cookie may be expired';
+            await saveProfiles(userId, profiles);
+        }
+
+        logTelemetryEvent({
+            type: 'MYMUSIC_PLAY_FAILED',
+            userId,
+            profileName: profile.name,
+            playType: 'feed',
+            failureReason: errorStr.includes('auth') ? 'auth_error' : 'yt_dlp_error'
+        });
+
+        if (!interaction.deferred && !interaction.replied) {
+            await interaction.reply({ content: "❌ Failed to load feed.", ephemeral: true });
+        } else {
+            await interaction.editReply({ content: "❌ Failed to load feed." });
+        }
+    }
+}
+
+// ============================================================================
+// COOKIE MANAGEMENT HANDLERS
+// ============================================================================
 
 async function handleCookieAdd(
     interaction: ChatInputCommandInteraction,
