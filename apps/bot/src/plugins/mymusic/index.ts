@@ -3,45 +3,68 @@
  * 
  * Provides per-user YouTube cookie management for personalized playback features.
  * Uses YT-DLP extractors for search, mixes, and radio playlists.
+ * MyMusic Plugin for Jasper Bot
  * 
- * Ground Truth Specification: YT-DLP_ANALYSIS.md
- * 
- * @see YT-DLP_ANALYSIS.md - Complete technical reference for all YouTube/Music features
+ * Provides personalized YouTube Music playback using authenticated cookies.
  * 
  * === MANUAL VERIFICATION CHECKLIST ===
- * Run these tests when making changes to verify functionality:
  * 
- * 1. Basic Search (no radio):
+ * 1. Multi-Track Search (radio=false):
  *    `/mymusic search term:"lofi hip hop" limit:10 profile:<name>`
- *    - Should queue ~10 songs from search results
- *    - Verify profile stats update (playCount, lastUsedAt)
+ *    - ✅ Should queue 10 tracks (not just 1)
+ *    - ✅ Verify log shows "Got 10 entries"
  * 
- * 2. Radio Mode:
- *    `/mymusic search term:"jazz" radio:true profile:<name>`
- *    - Should resolve first result and generate RD* mix
- *    - Verify mix playlist is created
+ * 2. Radio Mode (radio=true):
+ *    `/mymusic search term:"jazz" radio:true limit:15 profile:<name>`
+ *    - ✅ Should resolve seed video
+ *    - ✅ Should queue 15 tracks from RD<videoId> mix
+ *    - ✅ Verify log shows mix URL construction
  * 
- * 3. Supermix:
+ * 3. Supermix (redesigned with :ytrec):
  *    `/mymusic supermix profile:<name> limit:20`
- *    - Should use RDMM playlist (My Supermix)
- *    - Requires valid, logged-in YouTube cookie
+ *    - ✅ Uses :ytrec (recommendations), NOT RDMM
+ *    - ✅ Should queue up to 20 recommended tracks
+ *    - ✅ Verify log shows ":ytrec"
  * 
- * 4. No Profile Error:
- *    `/mymusic search term:"test"`
- *    - Should show graceful error: "You don't have any cookie profiles"
- *    - Error should be ephemeral
+ * 4. Numbered Mix:
+ *    `/mymusic mix number:1 profile:<name> limit:15`
+ *    - ✅ Should use search→radio pattern for My Mix 1
+ *    - ✅ Should queue 15 tracks (not just 1)
+ *    - ✅ Gracefully handle non-existent mix numbers
  * 
- * 5. Malformed Cookie:
- *    `/mymusic cookie add file:<invalid.txt>`
- *    - Should show graceful error about invalid format
- *    - Should NOT accept completely empty files
+ * 5. Recommended:
+ *    `/mymusic recommended profile:<name> limit:25`
+ *    - ✅ Should queue 25 personalized tracks
+ *    - ✅ Uses same :ytrec as supermix
  * 
- * 6. Web Dashboard:
- *    - Navigate to MyMusic plugin page
- *    - Verify: can add profile (paste cookie content)
- *    - Verify: can delete profile
- *    - Verify: stats update after playing music (playCount, lastUsedAt)
- *    - Verify: NO cookie content visible in browser DevTools Network tab
+ * 6. Feed (Debug):
+ *    `/mymusic feed profile:<name>`
+ *    - ✅ Should queue default 25 tracks from feed
+ *    - ✅ Logs should show "[MyMusic:Feed]"
+ * 
+ * 7. Cookie Validation:
+ *    `/mymusic cookie add file:<valid.txt>`
+ *    - ✅ Valid cookies: status=valid
+ *    - ✅ Missing auth cookies (LOGIN_INFO/SAPISID): warning + status=suspected_broken
+ *    - ✅ Empty/malformed file: rejected with clear error
+ * 
+ * 8. Profile Autocomplete:
+ *    Start typing in profile field
+ *    - ✅ Shows profile names with play count
+ *    - ✅ Shows health status (✓ or ⚠️)
+ *    - ✅ Filters as you type
+ * 
+ * 9. Web Dashboard:
+ *    Open dashboard, navigate to MyMusic page
+ *    - ✅ Shows status/lastError fields
+ *    - ✅ Never exposes cookieContent in API response
+ *    - ✅ Network tab shows only safe metadata
+ * 
+ * 10. Telemetry:
+ *     Check server logs after commands
+ *     - ✅ [MyMusic:Telemetry] events logged
+ *     - ✅ User IDs anonymized (first 8 chars + ...)
+ *     - ✅ No raw cookie values in logs
  */
 
 import { Plugin, PluginContext } from "@jasper/types";

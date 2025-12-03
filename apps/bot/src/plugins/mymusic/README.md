@@ -15,28 +15,46 @@ Search YouTube and queue songs using your personalized cookie profile.
 *   `term`: (Required) Search term or direct YouTube/Music URL. Can be a video, playlist, or search query.
 *   `profile`: (Optional) Name of the cookie profile to use. Defaults to the most recently used one.
 *   `limit`: (Optional) Max songs to queue from search results or playlists (default: 25, max: 50).
-*   `radio`: (Optional) Set to `True` to generate a personalized "Mix" based on the first result (e.g., "Mix - Song Name").
+### `/mymusic search`
+Search for music and queue songs using your personalized cookie.
+- `term` (required): Search query or URL
+- `profile` (optional): Cookie profile to use (autocomplete enabled)
+- `limit` (optional): Maximum songs to queue (default: 25, max: 50)
+- `radio` (optional): Generate a radio mix from the first result
 
-**Examples:**
-- `/mymusic search term:"lofi hip hop" limit:15` - Queues ~15 lofi search results
-- `/mymusic search term:"jazz" radio:true limit:20` - Starts a jazz radio mix
-- `/mymusic search term:"https://www.youtube.com/watch?v=..."` - Plays a specific video
-- `/mymusic search term:"https://www.youtube.com/playlist?list=..."` - Queues a playlist
+**Behavior:**
+- Without `radio`: Queues up to N tracks from search results
+- With `radio=true`: Finds first video → generates RD<videoId> mix playlist
 
-### `/mymusic supermix [profile]`
-Plays your "My Supermix" - YouTube Music's personalized endless mix of songs tailored to your taste.
-*   `profile`: (Optional) Name of the cookie profile to use.
-*   `limit`: (Optional) Max songs to queue (default: 25, max: 50).
+### `/mymusic supermix`
+Play your personalized "My Supermix" (formerly Your Mix).
+- `profile` (optional): Cookie profile to use (autocomplete enabled)
+- `limit` (optional): Maximum songs to queue (default: 25, max: 50)
 
-**Note:** Uses YouTube Music's `RDMM` playlist. Requires a valid, logged-in YouTube cookie.
+**Note:** Uses YouTube Recommended Feed (:ytrec) for reliable personalization.
+Requires authenticated cookie (LOGIN_INFO + SAPISID).
 
-### `/mymusic mix [number] [profile]`
-Searches for one of your numbered "My Mix" playlists (1-7).
-*   `number`: The mix number (1-7).
-*   `profile`: (Optional) Name of the cookie profile to use.
-*   `limit`: (Optional) Max songs to queue (default: 25, max: 50).
+### `/mymusic mix`
+Play one of your numbered "My Mix" playlists (1-7).
+- `number` (required): Mix number (1-7)
+- `profile` (optional): Cookie profile to use (autocomplete enabled)
+- `limit` (optional): Maximum songs to queue (default: 25, max: 50)
 
-**Note:** These are user-specific playlists. Success depends on whether they appear in search results for your account.
+**Note:** Uses search-based heuristic since numbered mixes lack direct playlist IDs.
+
+### `/mymusic recommended`
+Play your personalized recommended tracks.
+- `profile` (optional): Cookie profile to use (autocomplete enabled)
+- `limit` (optional): Maximum songs to queue (default: 25, max: 50)
+
+**Note:** User-friendly command for recommendations based on your listening history.
+
+### `/mymusic feed`
+[Debug] Test your personalized homepage feed.
+- `profile` (optional): Cookie profile to use (autocomplete enabled)
+- `limit` (optional): Maximum songs to queue (default: 25, max: 50)
+
+**Note:** Testing command for debugging personalization. Same implementation as `recommended`.
 
 ### `/mymusic cookie add [file] [name]`
 Adds a new cookie profile.
@@ -65,15 +83,58 @@ To use this plugin, you need a YouTube cookie in Netscape format.
 4.  Copy the content of the exported file.
 5.  Use `/mymusic cookie add` or the Web Dashboard to save it.
 
-## How It Works
+## Technical Details
 
-This plugin uses YT-DLP (YouTube Download Plus) extractors to access YouTube and YouTube Music features:
+This plugin uses `yt-dlp` for YouTube/Music integration, supporting:
 
-- **Search**: Uses `ytsearch<N>:` prefix to return N search results
-- **Radio/Mix**: Creates personalized mixes using YouTube's `RD*` playlist patterns (e.g., `RD<video_id>`)
-- **Supermix**: Accesses your personalized YouTube Music mix via the `RDMM` playlist ID
-- **Cookie Authentication**: Your cookies provide access to personalized features, age-restricted content, and private playlists
+- **Search Patterns:** `ytsearchN:<query>` for N results (max 50, default 15)
+- **Feed Extractors:** `:ytrec` (recommendations), `:ytsubs`, `:ythistory`, `:ytfav`
+- **Mix Playlists:** RD<videoId> (video-based mixes)
+- **Authentication:** Netscape cookie format with LOGIN_INFO + SAPISID
+- **Multi-Track Queuing:** Core stream handler conditionally skips `--flat-playlist`
 
-For full technical details, see `YT-DLP_ANALYSIS.md`.
+### Cookie Requirements
+
+For personalized features to work, your cookie must include:
+- `LOGIN_INFO` - Indicates logged-in status
+- `SAPISID` or `__Secure-*PAPISID` - Authentication tokens
+- `SOCS=CAI` - Consent (auto-injected by core)
+
+The plugin validates cookies on upload and marks profiles as `suspected_broken` if critical cookies are missing.
+
+### Command Behavior
+
+**Search (`radio=false`):**
+- Uses `ytsearchN:<term>` where N = min(limit, 50)
+- Returns multiple video entries for queuing
+
+**Search (`radio=true`):**
+- Resolves first search result
+- Builds `https://www.youtube.com/watch?v=<id>&list=RD<id>` mix URL
+- Queues tracks from the generated mix playlist
+
+**Supermix:**
+- Uses `:ytrec` (YouTube Recommended Feed) instead of RDMM
+- RDMM playlists are unviewable; :ytrec provides reliable recommendations
+- Personalized based on watch history, likes, subscriptions
+
+**Mix (Numbered):**
+- Uses search→radio pattern: `ytsearch1:My Mix N` → RD<videoId>
+- Heuristic approach since numbered mixes lack direct playlist IDs
+
+**Recommended & Feed:**
+- Both use `:ytrec` for personalized tracks
+- `recommended` is user-facing, `feed` is for debugging
+
+### Profile Health Tracking
+
+Profiles have `status` and `lastError` fields:
+- `status: 'valid'` - Cookie passed validation
+- `status: 'suspected_broken'` - Missing auth cookies or auth failures
+- `lastError` - Human-readable error message
+
+Web dashboard displays health status without exposing cookie content.
+
+For complete technical specification, see `YT-DLP_ANALYSIS.md`.
 
 > **Security Note**: Your cookies contain sensitive session data. Do not share them with others. This plugin stores them securely in the bot's database and only uses them for your requests.
