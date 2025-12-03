@@ -622,10 +622,10 @@ async function handleSearch(
 
     // === YT-DLP Integration (ref: YT-DLP_ANALYSIS.md) ===
     try {
-        // Defer reply for radio mode since it needs resolution
-        if (radio) {
-            await interaction.deferReply();
-        }
+        // IMPORTANT: Defer reply BEFORE any async operations that might take time
+        // This prevents "InteractionAlreadyReplied" errors when buildSearchOrRadioUrl
+        // or enqueuePlaylist needs to respond to the user.
+        await interaction.deferReply();
 
         // Build search or radio URL using helper
         const result = await buildSearchOrRadioUrl(
