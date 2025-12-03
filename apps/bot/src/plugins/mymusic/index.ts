@@ -725,19 +725,22 @@ async function handleSupermix(
     await saveProfiles(userId, profiles);
 
     try {
-        // Phase B: Supermix uses RDMM playlist pattern
-        // RDMM = YouTube Music Mix (personalized, requires authentication)
-        // ref: YT-DLP_ANALYSIS.md  §3.2 - Mix Playlists
-        // 
-        // Requirements for RDMM to work properly (ref: §6):
+        // Part 2: Redesigned Supermix - Use Recommendations Instead of RDMM
+        // RDMM (YouTube Music Mix) playlists are unviewable and unreliable
+        // New approach: Use :ytrec (YouTube Recommended Feed) with authentication
+        // ref: YT-DLP_ANALYSIS.md §2.3 - :ytrec feed extractor
+        //
+        // :ytrec = YouTube Recommended Feed (personalized with cookies)
+        // Returns a flat list of recommended videos based on user's watch history,
+        // liked videos, and subscriptions. This provides a much more reliable
+        // personalized radio experience than RDMM.
+        //
+        // Requirements:
         // - LOGIN_INFO cookie (indicates logged-in status)
         // - SAPISID or __Secure-*PAPISID cookies (for auth)
-        // - SOCS=CAI cookie (consent, required for mix playlists - auto-injected by core)
-        //
-        // This playlist generates a personalized endless mix based on user's
-        // listening history and preferences in YouTube Music.
-        const supermixUrl = 'https://www.youtube.com/playlist?list=RDMM';
-        context.logger.info(`[MyMusic] Playing My Supermix: ${supermixUrl}`);
+        // - SOCS=CAI cookie (consent - auto-injected by core)
+        const recUrl = ':ytrec';
+        context.logger.info(`[MyMusic] Playing personalized recommendations via :ytrec`);
 
         logTelemetryEvent({
             type: 'MYMUSIC_PLAY_STARTED',
@@ -746,7 +749,7 @@ async function handleSupermix(
             playType: 'supermix'
         });
 
-        await context.music.enqueuePlaylist(interaction, supermixUrl, { cookiePath, limit });
+        await context.music.enqueuePlaylist(interaction, recUrl, { cookiePath, limit });
     } catch (error) {
         context.logger.error(`Failed to enqueue supermix: ${error}`);
 
@@ -835,21 +838,43 @@ async function handleMix(
     await saveProfiles(userId, profiles);
 
     try {
-        // Phase B: Numbered "My Mix" Playlists (1-7)
-        // These are user-specific auto-generated playlists that YouTube creates
-        // for personalized music discovery. There is no direct playlist ID pattern
-        // for numbered mixes in YT-DLP's implementation (ref: §3.2).
+        // Part 2: Fixed Mix - Use Search→Radio Pattern
+        // Numbered "My Mix" playlists (1-7) don't have reliable direct playlist IDs
+        // Strategy: Search for "My Mix N" → extract first video → build RD<videoId> mix
+        // ref: YT-DLP_ANALYSIS.md §3.2 - RD* mix patterns
         //
-        // Best-effort approach: Search for the playlist by name
-        // This is a heuristic and may not always work if:
-        // - The mix doesn't exist for the user's account
-        // - YouTube hasn't generated that mix yet
-        // - Search results don't surface it
-        //
-        // Alternative considered: Using RDMM would give *a* personalized mix
-        // but not the specific numbered one the user requested.
-        const mixQuery = `ytsearch1:My Mix ${number}`;
-        context.logger.info(`[MyMusic] Searching for mix: ${mixQuery}`);
+        // This is heuristic and may vary based on search results, but provides
+        // a consistent way to access numbered mix playlists using the radio pattern.
+        const searchTerm = `My Mix ${number}`;
+
+        // Defer reply since we need to resolve the video
+        await interaction.deferReply();
+
+        const result = await buildSearchOrRadioUrl(
+            searchTerm,
+            limit,
+            true, // radio=true to build RD<videoId> mix
+            cookiePath,
+            context.music.resolve
+        );
+
+        if (!result) {
+            logTelemetryEvent({
+                type: 'MYMUSIC_PLAY_FAILED',
+                userId,
+                profileName: profile.name,
+                playType: 'mix',
+                failureReason: 'empty_mix'
+            });
+
+            await interaction.editReply({
+                content: `❌ Could not find My Mix ${number}. It may not exist for your account yet.`
+            });
+            return;
+        }
+
+        const { url } = result;
+        context.logger.info(`[MyMusic] Playing My Mix ${number} via: ${url}`);
 
         logTelemetryEvent({
             type: 'MYMUSIC_PLAY_STARTED',
@@ -858,7 +883,8 @@ async function handleMix(
             playType: 'mix'
         });
 
-        await context.music.enqueuePlaylist(interaction, mixQuery, { cookiePath, limit });
+        // Use the interaction object directly since we already deferred
+        await context.music.enqueuePlaylist(interaction, url, { cookiePath, limit });
     } catch (error) {
         context.logger.error(`Failed to enqueue mix: ${error}`);
 
