@@ -88,35 +88,49 @@ export function fetchPlaylistData(url: string, options?: FetchOptions): Promise<
     const run = async (cookiePath: string | null) => {
         return new Promise<PlaylistData>((resolve, reject) => {
             const ytDlpPath = getYtDlpPath();
+
+            // Detect if this is a search/feed/mix URL that needs full extraction
+            // --flat-playlist only returns metadata, not actual video entries for these URLs
+            const needsFullExtraction =
+                url.startsWith('ytsearch') ||      // Search queries (e.g., ytsearch15:term)
+                url.startsWith('ytmsearch') ||     // Music search
+                url.startsWith(':yt') ||           // Feed extractors (:ytrec, :ytsubs, :ythistory, :ytfav)
+                url.includes('list=RD') ||         // Mix playlists (RD*, RDMM, RDAT, etc.)
+                url.includes('&list=RD');          // Mix playlists in video URLs
+
             const args = [
                 ...getBaseYtDlpArgs(),
-                "--flat-playlist",
-                "-J",
+                // Skip --flat-playlist for searches/feeds/mixes to get full entry details
+                // Keep --flat-playlist for regular playlists for better performance
+                ...(needsFullExtraction ? [] : ['--flat-playlist']),
+                '-J',
                 url
             ];
 
             if (cookiePath) {
-                args.push("--cookies", cookiePath);
+                args.push('--cookies', cookiePath);
             }
 
-            logger.debug(`[stream-handler] Fetching video data: ${ytDlpPath} ${args.join(" ")}`);
+            logger.debug(`[stream-handler] Fetching playlist: ${url} (flat=${!needsFullExtraction})`);
 
             const process = spawn(ytDlpPath, args);
-            let data = "";
-            let error = "";
+            let data = '';
+            let error = '';
 
-            process.stdout.on("data", (chunk) => (data += chunk));
-            process.stderr.on("data", (chunk) => (error += chunk));
+            process.stdout.on('data', (chunk) => (data += chunk));
+            process.stderr.on('data', (chunk) => (error += chunk));
 
-            process.on("close", (code) => {
+            process.on('close', (code) => {
                 if (code !== 0) {
                     reject(new Error(`yt-dlp failed: ${error}`));
                 } else {
                     try {
                         const parsed = JSON.parse(data);
+                        const entryCount = parsed.entries?.length || (parsed._type === 'playlist' ? 0 : 1);
+                        logger.debug(`[stream-handler] Got ${entryCount} entries from ${url}`);
                         resolve(parsed);
                     } catch (err) {
-                        reject(new Error("Failed to parse playlist JSON"));
+                        reject(new Error('Failed to parse playlist JSON'));
                     }
                 }
             });
