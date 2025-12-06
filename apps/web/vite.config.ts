@@ -17,34 +17,36 @@ export default defineConfig(({ mode }) => ({
           ? path.resolve(__dirname, "./hooks/usePlugins.prod.ts")
           : path.resolve(__dirname, "./hooks/usePlugins.dev.ts"),
     },
-  },
-  publicDir: "public/assets",
-  base: "/",
-  server: {
-    fs: {
-      allow: [
-        // Allow serving files from the project root
-        path.resolve(__dirname, "../.."),
-      ],
-    },
-    proxy: {
-      "/api": {
-        target: "http://localhost:3000",
-        changeOrigin: true,
+    publicDir: 'public',
+    base: '/',
+    server: {
+      fs: {
+        allow: [
+          // Allow serving files from the project root
+          path.resolve(__dirname, '../..'),
+          // Allow serving root assets
+          path.resolve(__dirname, '../../assets')
+        ]
       },
-      "/auth": {
-        target: "http://localhost:3000",
-        changeOrigin: true,
-      },
-      "/legacy": {
-        target: "http://localhost:3000",
-        changeOrigin: true,
-      },
-      "/api/plugins": {
-        target: "http://localhost:3000",
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/plugins/, "/plugins"),
-      },
+      proxy: {
+        '/api': {
+          target: 'http://localhost:3000',
+          changeOrigin: true
+        },
+        '/auth': {
+          target: 'http://localhost:3000',
+          changeOrigin: true
+        },
+        '/legacy': {
+          target: 'http://localhost:3000',
+          changeOrigin: true
+        },
+        '/api/plugins': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+          rewrite: (path: string) => path.replace(/^\/api\/plugins/, '/plugins')
+        }
+      }
     },
   },
   build: {

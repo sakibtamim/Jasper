@@ -33,21 +33,21 @@ export default function Header() {
     }
   }, [user, isDark, pluginNavItems]);
 
-  return (
-    <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 fixed top-0 left-0 right-0 z-50 h-20">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-20">
-          {/* Logo Container */}
-          <div className="flex items-center gap-3">
-            <img
-              src="/assets/images/jasper-logo.webp"
-              alt="Jasper Logo"
-              className="h-12 w-12 object-contain rounded-full border-2 border-brand-primary glow-primary"
-            />
-            <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
-              Jasper <span className="text-brand-primary">Dashboard</span>
-            </span>
-          </div>
+    return (
+        <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 fixed top-0 left-0 right-0 z-50 h-20">
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex justify-between items-center h-20">
+                    {/* Logo Container */}
+                    <div className="flex items-center gap-3">
+                        <img
+                            src="/assets/logo.webp"
+                            alt="Jasper Logo"
+                            className="h-12 w-12 object-contain rounded-full border-2 border-brand-primary glow-primary"
+                        />
+                        <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+                            Jasper <span className="text-brand-primary">Dashboard</span>
+                        </span>
+                    </div>
 
           {/* Desktop Nav */}
           <nav className="hidden lg:flex items-center space-x-1">
