@@ -383,10 +383,10 @@ export async function startServer() {
         logger.info(`[webui] Backend API server running at http://localhost:${PORT}`);
         if (isDevelopment) {
             logger.info(`[webui] React Dashboard: http://localhost:5173 (Vite dev server)`);
-            logger.info(`[webui] Legacy UI: http://localhost:5173/legacy/index.html (via Vite proxy)`);
+            logger.info(`[webui] Legacy UI: http://localhost:5173/legacy-dashboard.html (via Vite proxy)`);
         } else {
             logger.info(`[webui] React Dashboard: http://localhost:${PORT}`);
-            logger.info(`[webui] Legacy UI: http://localhost:${PORT}/legacy/index.html`);
+            logger.info(`[webui] Legacy UI: http://localhost:${PORT}/legacy-dashboard.html`);
         }
 
         // Hook: SERVER_READY
