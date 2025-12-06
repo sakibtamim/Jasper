@@ -17,13 +17,15 @@ export default defineConfig(({ mode }) => ({
                 : path.resolve(__dirname, './hooks/usePlugins.dev.ts')
         }
     },
-    publicDir: 'public/assets',
+    publicDir: 'public',
     base: '/',
     server: {
         fs: {
             allow: [
                 // Allow serving files from the project root
-                path.resolve(__dirname, '../..')
+                path.resolve(__dirname, '../..'),
+                // Allow serving root assets
+                path.resolve(__dirname, '../../assets')
             ]
         },
         proxy: {

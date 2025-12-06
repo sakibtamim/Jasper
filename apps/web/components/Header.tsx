@@ -37,7 +37,7 @@ export default function Header() {
                     {/* Logo Container */}
                     <div className="flex items-center gap-3">
                         <img
-                            src="/assets/images/jasper-logo.webp"
+                            src="/assets/logo.webp"
                             alt="Jasper Logo"
                             className="h-12 w-12 object-contain rounded-full border-2 border-brand-primary glow-primary"
                         />
