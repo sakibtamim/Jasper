@@ -4,19 +4,27 @@ import logger from "../logger.js";
 export async function validateInteraction(interaction: ChatInputCommandInteraction): Promise<VoiceBasedChannel | null> {
     const member = interaction.member;
     if (!(member instanceof GuildMember)) {
-        await interaction.reply({
-            content: "This command can only be used in a guild.",
-            ephemeral: true,
-        });
+        if (interaction.deferred || interaction.replied) {
+            await interaction.editReply({ content: "This command can only be used in a guild." });
+        } else {
+            await interaction.reply({
+                content: "This command can only be used in a guild.",
+                ephemeral: true,
+            });
+        }
         return null;
     }
 
     const voiceChannel = member.voice.channel;
     if (!voiceChannel) {
-        await interaction.reply({
-            content: "You must be in a voice channel.",
-            ephemeral: true,
-        });
+        if (interaction.deferred || interaction.replied) {
+            await interaction.editReply({ content: "You must be in a voice channel." });
+        } else {
+            await interaction.reply({
+                content: "You must be in a voice channel.",
+                ephemeral: true,
+            });
+        }
         return null;
     }
     return voiceChannel;

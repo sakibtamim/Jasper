@@ -333,7 +333,9 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string, 
     return;
   }
 
-  await interaction.deferReply();
+  if (!interaction.deferred && !interaction.replied) {
+    await interaction.deferReply();
+  }
 
   try {
     const track = await resolveTrack(query, interaction.user.id, interaction.user.tag, options.cookiePath);
@@ -402,6 +404,84 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string, 
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
     logger.error(`Enqueue error: ${msg} `);
+  }
+}
+
+export async function enqueueSongs(
+  interaction: ChatInputCommandInteraction,
+  songs: Song[],
+  options: EnqueueOptions = {}
+): Promise<void> {
+  const voiceChannel = await validateInteraction(interaction);
+  if (!voiceChannel) return;
+
+  const permissions = voiceChannel.permissionsFor(interaction.client.user!);
+  if (
+    !permissions ||
+    !permissions.has("Connect") ||
+    !permissions.has("Speak")
+  ) {
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.reply({
+        content: "I need permissions to play music!",
+        ephemeral: true,
+      });
+    } else {
+      await interaction.editReply({ content: "I need permissions to play music!" });
+    }
+    return;
+  }
+
+  if (!interaction.deferred && !interaction.replied) {
+    await interaction.deferReply();
+  }
+
+  try {
+    const queue = await ensureQueue(interaction, voiceChannel, null);
+    if (!queue) return;
+
+    if (queue.idleTimeout) {
+      clearTimeout(queue.idleTimeout);
+      queue.idleTimeout = null;
+      logger.info(
+        `Cleared idle timeout for ${queue.voiceChannelId} - new songs added`
+      );
+    }
+
+    // Add cookiePath and requester info to all songs
+    const songsToAdd = songs.map(song => ({
+      ...song,
+      cookiePath: options.cookiePath,
+      requestedBy: interaction.user.tag,
+      requesterId: interaction.user.id,
+    }));
+
+    if (options.position === 'next') {
+      // Insert after current song
+      queue.songs.splice(1, 0, ...songsToAdd);
+    } else {
+      queue.songs.push(...songsToAdd);
+    }
+
+    queue.stopping = false;
+
+    // If skipCurrent is true, we want to play the new song immediately.
+    if (options.skipCurrent && queue.nowPlaying) {
+      queue.player.stop();
+      await interaction.editReply({ content: `⏭️ **Skipping current song to play:** ${songs[0].title}` });
+      return;
+    }
+
+    if (queue.songs.length === songsToAdd.length && !queue.nowPlaying) {
+      await playSong(queue);
+      await interaction.editReply({ content: `✅ **Enqueued ${songs.length} tracks** and started playback.` });
+    } else {
+      await interaction.editReply({ content: `✅ **Enqueued ${songs.length} tracks**.` });
+    }
+
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    logger.error(`EnqueueSongs error: ${msg} `);
     await interaction.editReply(`❌ Error: ${msg} `);
   }
 }
@@ -423,7 +503,9 @@ async function enqueuePlaylist(interaction: ChatInputCommandInteraction, url: st
     return;
   }
 
-  await interaction.deferReply();
+  if (!interaction.deferred && !interaction.replied) {
+    await interaction.deferReply();
+  }
 
   try {
     const data = await fetchPlaylistData(url, { cookiePath: options.cookiePath });
