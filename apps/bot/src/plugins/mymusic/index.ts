@@ -69,17 +69,20 @@
 
 import { Plugin, PluginContext } from "@jasper/types";
 import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
+import { CookieManager } from './cookie-manager.js';
+import { DiscoveryEngine, DiscoveryTrack } from './discovery-engine.js';
+import { enqueueSongs } from '../../core/music-player.js';
 
 interface CookieProfile {
     id: string;
     name: string;
-    content: string; // Netscape format cookie content (never log this!)
+    content: string; // Canonical header string
+    format: 'header' | 'netscape'; // Track original format
     createdAt: number;
     lastUsedAt: number;
     playCount: number;
-    uniqueTrackCount: number; // Phase D: Count of unique video IDs played
-    // Phase C: Health tracking for cookie validation
-    status: 'valid' | 'suspected_broken';
+    uniqueTrackCount: number;
+    status: 'valid' | 'suspected_broken' | 'validation_pending';
     lastError: string | null;
 }
 
@@ -212,6 +215,12 @@ const MyMusicPlugin: Plugin = {
                         .addStringOption(opt => opt.setName("profile").setDescription("Cookie profile name").setRequired(false).setAutocomplete(true))
                         .addIntegerOption(opt => opt.setName("limit").setDescription("Max songs (default: 25, max: 50)").setRequired(false).setMinValue(1).setMaxValue(50))
                 )
+                .addSubcommand(sub =>
+                    sub.setName("history")
+                        .setDescription("Play songs from your watch history")
+                        .addStringOption(opt => opt.setName("profile").setDescription("Cookie profile to use").setAutocomplete(true))
+                        .addIntegerOption(opt => opt.setName("limit").setDescription("Number of songs (default: 25)").setMinValue(1).setMaxValue(50))
+                )
                 .addSubcommandGroup(group =>
                     group.setName("cookie")
                         .setDescription("Manage your cookies")
@@ -245,6 +254,8 @@ const MyMusicPlugin: Plugin = {
                     await handleRecommended(interaction, context, getProfiles, saveProfiles, logTelemetryEvent);
                 } else if (subcommand === "feed") {
                     await handleFeed(interaction, context, getProfiles, saveProfiles, logTelemetryEvent);
+                } else if (subcommand === "history") {
+                    await handleHistory(interaction, context, getProfiles, saveProfiles, logTelemetryEvent);
                 } else if (group === "cookie") {
                     if (subcommand === "add") {
                         await handleCookieAdd(interaction, context, getProfiles, saveProfiles);
@@ -335,15 +346,26 @@ const MyMusicPlugin: Plugin = {
                 return reply.status(409).send({ error: "Profile with this name already exists" });
             }
 
+            // Use CookieManager to normalize and validate
+            const validation = CookieManager.normalizeAndValidate(content);
+
+            if (!validation.valid) {
+                return reply.status(400).send({
+                    error: "Invalid cookie content",
+                    details: validation.error
+                });
+            }
+
             const newProfile: CookieProfile = {
                 id: Math.random().toString(36).substring(7),
                 name: profileName,
-                content,
+                content: validation.normalizedHeader,
+                format: validation.format,
                 createdAt: Date.now(),
                 lastUsedAt: 0,
                 playCount: 0,
                 uniqueTrackCount: 0,
-                status: 'valid',
+                status: 'validation_pending',
                 lastError: null
             };
 
@@ -378,161 +400,7 @@ const MyMusicPlugin: Plugin = {
     }
 };
 
-// --- Helper Functions ---
-
-/**
- * Extracts video ID from a YouTube URL using YT-DLP's canonical formats.
- * Supports: youtube.com/watch?v=ID, youtu.be/ID, music.youtube.com/watch?v=ID
- * 
- * @param url - YouTube video URL
- * @returns 11-character video ID or null if not found
- */
-function extractVideoIdFromUrl(url: string): string | null {
-    // Match patterns: v=ID, /ID (for youtu.be), watch?v=ID
-    const match = url.match(/(?:v=|\/|youtu\.be\/)([0-9A-Za-z_-]{11})/);
-    return match ? match[1] : null;
-}
-
-/**
- * Builds a search or radio URL based on user input.
- * 
- * Phase A: Search & Radio Behavior (ref: YT-DLP_ANALYSIS.md)
- * - Search: ytsearchN:<term> where N = min(limit, 50), default 15 (ref: §1.1)
- * - Radio: RD<video_id> mix playlist (ref: §3.2)
- * 
- * @param term - Search query or URL
- * @param limit - Requested song limit
- * @param radio - Whether to generate radio mix
- * @param cookiePath - Path to cookie file
- * @param musicResolver - Function to resolve search terms to video IDs
- * @returns Object with { url, type, videoId? }
- */
-async function buildSearchOrRadioUrl(
-    term: string,
-    limit: number,
-    radio: boolean,
-    cookiePath: string,
-    musicResolver: (query: string, cookiePath?: string) => Promise<{ url?: string } | null>
-): Promise<{ url: string; type: 'search' | 'radio' | 'playlist' | 'video'; videoId?: string } | null> {
-    // Check if term is a direct URL
-    const isUrl = term.startsWith("http://") || term.startsWith("https://") || term.startsWith("youtu");
-    const isPlaylistUrl = isUrl && (term.includes("list=") || term.includes("music.youtube.com/playlist"));
-
-    if (radio) {
-        // Radio mode: Create RD<video_id> mix from search result or URL
-        // ref: §3.2 - Video-based Mix pattern
-        let videoId: string | null = null;
-
-        if (isUrl) {
-            // Extract video ID from URL
-            videoId = extractVideoIdFromUrl(term);
-        }
-
-        if (!videoId) {
-            // Resolve search term to get first result
-            // This uses ytsearch1:<term> internally in the resolver
-            const song = await musicResolver(term, cookiePath);
-            if (!song || !song.url) {
-                return null; // No results found
-            }
-
-            // Extract ID from resolved song URL (canonical YouTube URL)
-            videoId = extractVideoIdFromUrl(song.url);
-            if (!videoId) {
-                return null; // Could not extract video ID
-            }
-        }
-
-        // Build video-based mix URL (ref: §3.2)
-        const mixUrl = `https://www.youtube.com/watch?v=${videoId}&list=RD${videoId}`;
-        return { url: mixUrl, type: 'radio', videoId };
-
-    } else if (isPlaylistUrl) {
-        // Direct playlist URL - pass through
-        return { url: term, type: 'playlist' };
-
-    } else if (isUrl) {
-        // Direct video URL - play single video
-        return { url: term, type: 'video' };
-
-    } else {
-        //  Search query using ytsearchN: prefix (ref: §1.1)
-        // Note: N should be min(limit, 50) with default 15
-        const searchCount = Math.min(limit || 15, 50);
-        const searchQuery = `ytsearch${searchCount}:${term}`;
-        return { url: searchQuery, type: 'search' };
-    }
-}
-
-/**
- * Validates Netscape format cookie content.
- * Phase C: Cookie Validation (ref: YT-DLP_ANALYSIS.md §6)
- * 
- * Checks:
- * - At least one cookie belongs to YouTube/Google domain
- * - Optional: Detects LOGIN_INFO and SAPISID variants for auth
- * 
- * @param content - Netscape format cookie content
- * @returns Validation result with warnings
- */
-function validateNetscapeCookie(content: string): {
-    valid: boolean;
-    error?: string;
-    warnings?: string[];
-    hasAuthCookies?: boolean;
-} {
-    if (!content || content.trim().length === 0) {
-        return { valid: false, error: "Cookie file is empty" };
-    }
-
-    const lines = content.split('\n').filter(line =>
-        line.trim() && !line.trim().startsWith('#')
-    );
-
-    if (lines.length === 0) {
-        return { valid: false, error: "No valid cookie entries found" };
-    }
-
-    // Check for YouTube/Google domains
-    const hasYouTubeDomain = lines.some(line =>
-        line.includes('.youtube.com') ||
-        line.includes('.google.com') ||
-        line.includes('.googlevideo.com')
-    );
-
-    if (!hasYouTubeDomain) {
-        return {
-            valid: false,
-            error: "No YouTube or Google cookies found. Please export cookies from youtube.com"
-        };
-    }
-
-    // Optional: Check for authentication cookies (ref: §6.1)
-    const warnings: string[] = [];
-    let hasAuthCookies = false;
-
-    const hasLoginInfo = content.includes('LOGIN_INFO');
-    const hasSapisid = content.includes('SAPISID') ||
-        content.includes('__Secure-1PAPISID') ||
-        content.includes('__Secure-3PAPISID');
-
-    if (hasLoginInfo && hasSapisid) {
-        hasAuthCookies = true;
-    } else {
-        if (!hasLoginInfo) {
-            warnings.push("Missing LOGIN_INFO cookie - personalized features may not work");
-        }
-        if (!hasSapisid) {
-            warnings.push("Missing SAPISID cookies - authentication may fail");
-        }
-    }
-
-    return {
-        valid: true,
-        warnings: warnings.length > 0 ? warnings : undefined,
-        hasAuthCookies
-    };
-}
+// --- Command Handlers ---
 
 // --- Command Handlers ---
 
@@ -591,14 +459,15 @@ async function handleSearch(
         profile = profiles.sort((a, b) => b.lastUsedAt - a.lastUsedAt)[0];
     }
 
-    // Write cookie to temp file
+    // Write cookie to temp file (Netscape format for yt-dlp)
     let cookiePath: string;
     try {
-        cookiePath = await context.writeCustomCookie(profile.content);
+        // Convert header to Netscape format for best yt-dlp compatibility
+        const netscapeContent = CookieManager.toNetscape(profile.content);
+        cookiePath = await context.writeCustomCookie(netscapeContent);
     } catch (error) {
         context.logger.error(`Failed to write custom cookie: ${error}`);
 
-        // Update profile health status
         profile.status = 'suspected_broken';
         profile.lastError = 'Failed to write cookie file';
         await saveProfiles(userId, profiles);
@@ -620,24 +489,19 @@ async function handleSearch(
     profile.playCount++;
     await saveProfiles(userId, profiles);
 
-    // === YT-DLP Integration (ref: YT-DLP_ANALYSIS.md) ===
     try {
-        // IMPORTANT: Defer reply BEFORE any async operations that might take time
-        // This prevents "InteractionAlreadyReplied" errors when buildSearchOrRadioUrl
-        // or enqueuePlaylist needs to respond to the user.
         await interaction.deferReply();
 
-        // Build search or radio URL using helper
-        const result = await buildSearchOrRadioUrl(
-            term,
-            limit,
-            radio,
-            cookiePath,
-            context.music.resolve
-        );
+        // Discovery
+        const result = await DiscoveryEngine.discoverSearch(term, limit, radio, profile.content, context.logger);
 
-        // Handle edge case: no results found (radio mode only)
-        if (!result) {
+        if (result.error) {
+            // Log error but try to proceed if we have IDs?
+            // If error is present, usually IDs are empty or partial.
+            context.logger.warn(`[MyMusic] Discovery warning: ${result.error}`);
+        }
+
+        if (result.tracks.length === 0) {
             const errorMsg = radio
                 ? "❌ Could not find a video to start radio from. Try a different search term."
                 : "❌ No results found.";
@@ -650,19 +514,12 @@ async function handleSearch(
                 failureReason: 'empty_mix'
             });
 
-            if (interaction.deferred) {
-                await interaction.editReply({ content: errorMsg });
-            } else {
-                await interaction.reply({ content: errorMsg, ephemeral: true });
-            }
+            await interaction.editReply({ content: errorMsg });
             return;
         }
 
-        // Log and enqueue based on type
-        const { url, type, videoId } = result;
-        context.logger.info(`[MyMusic] ${type}: ${videoId ? `videoId=${videoId}` : url}`);
+        context.logger.info(`[MyMusic] Discovered ${result.tracks.length} tracks via ${result.source}`);
 
-        // Phase D: Log successful play start
         logTelemetryEvent({
             type: 'MYMUSIC_PLAY_STARTED',
             userId,
@@ -670,16 +527,12 @@ async function handleSearch(
             playType: radio ? 'radio' : 'search'
         });
 
-        if (type === 'video') {
-            await context.music.enqueue(interaction, url, cookiePath);
-        } else {
-            // playlist, radio, or search - all use enqueuePlaylist
-            await context.music.enqueuePlaylist(interaction, url, { cookiePath, limit });
-        }
+        // Playback
+        await enqueueTracks(interaction, context, result.tracks, cookiePath, limit);
+
     } catch (error) {
         context.logger.error(`Failed to enqueue: ${error}`);
 
-        // Update profile health if it looks like an auth error
         const errorStr = String(error);
         if (errorStr.includes('auth') || errorStr.includes('login') || errorStr.includes('401')) {
             profile.status = 'suspected_broken';
@@ -740,9 +593,11 @@ async function handleSupermix(
         return;
     }
 
+    // Write cookie to temp file
     let cookiePath: string;
     try {
-        cookiePath = await context.writeCustomCookie(profile.content);
+        const netscapeContent = CookieManager.toNetscape(profile.content);
+        cookiePath = await context.writeCustomCookie(netscapeContent);
     } catch (error) {
         profile.status = 'suspected_broken';
         profile.lastError = 'Failed to write cookie file';
@@ -764,22 +619,23 @@ async function handleSupermix(
     await saveProfiles(userId, profiles);
 
     try {
-        // Part 2: Redesigned Supermix - Use Recommendations Instead of RDMM
-        // RDMM (YouTube Music Mix) playlists are unviewable and unreliable
-        // New approach: Use :ytrec (YouTube Recommended Feed) with authentication
-        // ref: YT-DLP_ANALYSIS.md §2.3 - :ytrec feed extractor
-        //
-        // :ytrec = YouTube Recommended Feed (personalized with cookies)
-        // Returns a flat list of recommended videos based on user's watch history,
-        // liked videos, and subscriptions. This provides a much more reliable
-        // personalized radio experience than RDMM.
-        //
-        // Requirements:
-        // - LOGIN_INFO cookie (indicates logged-in status)
-        // - SAPISID or __Secure-*PAPISID cookies (for auth)
-        // - SOCS=CAI cookie (consent - auto-injected by core)
-        const recUrl = ':ytrec';
-        context.logger.info(`[MyMusic] Playing personalized recommendations via :ytrec`);
+        await interaction.deferReply();
+
+        const result = await DiscoveryEngine.discoverSupermix(limit, profile.content, context.logger);
+
+        if (result.tracks.length === 0) {
+            logTelemetryEvent({
+                type: 'MYMUSIC_PLAY_FAILED',
+                userId,
+                profileName: profile.name,
+                playType: 'supermix',
+                failureReason: 'empty_mix'
+            });
+            await interaction.editReply({ content: "❌ Could not generate Supermix." });
+            return;
+        }
+
+        context.logger.info(`[MyMusic:Supermix] Discovered ${result.tracks.length} tracks via ${result.source}`);
 
         logTelemetryEvent({
             type: 'MYMUSIC_PLAY_STARTED',
@@ -788,7 +644,8 @@ async function handleSupermix(
             playType: 'supermix'
         });
 
-        await context.music.enqueuePlaylist(interaction, recUrl, { cookiePath, limit });
+        await enqueueTracks(interaction, context, result.tracks, cookiePath, limit);
+
     } catch (error) {
         context.logger.error(`Failed to enqueue supermix: ${error}`);
 
@@ -855,7 +712,8 @@ async function handleMix(
 
     let cookiePath: string;
     try {
-        cookiePath = await context.writeCustomCookie(profile.content);
+        const netscapeContent = CookieManager.toNetscape(profile.content);
+        cookiePath = await context.writeCustomCookie(netscapeContent);
     } catch (error) {
         profile.status = 'suspected_broken';
         profile.lastError = 'Failed to write cookie file';
@@ -877,27 +735,11 @@ async function handleMix(
     await saveProfiles(userId, profiles);
 
     try {
-        // Part 2: Fixed Mix - Use Search→Radio Pattern
-        // Numbered "My Mix" playlists (1-7) don't have reliable direct playlist IDs
-        // Strategy: Search for "My Mix N" → extract first video → build RD<videoId> mix
-        // ref: YT-DLP_ANALYSIS.md §3.2 - RD* mix patterns
-        //
-        // This is heuristic and may vary based on search results, but provides
-        // a consistent way to access numbered mix playlists using the radio pattern.
-        const searchTerm = `My Mix ${number}`;
-
-        // Defer reply since we need to resolve the video
         await interaction.deferReply();
 
-        const result = await buildSearchOrRadioUrl(
-            searchTerm,
-            limit,
-            true, // radio=true to build RD<videoId> mix
-            cookiePath,
-            context.music.resolve
-        );
+        const result = await DiscoveryEngine.discoverMix(number, limit, profile.content, context.logger);
 
-        if (!result) {
+        if (result.tracks.length === 0) {
             logTelemetryEvent({
                 type: 'MYMUSIC_PLAY_FAILED',
                 userId,
@@ -912,8 +754,7 @@ async function handleMix(
             return;
         }
 
-        const { url } = result;
-        context.logger.info(`[MyMusic] Playing My Mix ${number} via: ${url}`);
+        context.logger.info(`[MyMusic] Discovered ${result.tracks.length} tracks for Mix ${number} via ${result.source}`);
 
         logTelemetryEvent({
             type: 'MYMUSIC_PLAY_STARTED',
@@ -922,8 +763,8 @@ async function handleMix(
             playType: 'mix'
         });
 
-        // Use the interaction object directly since we already deferred
-        await context.music.enqueuePlaylist(interaction, url, { cookiePath, limit });
+        await enqueueTracks(interaction, context, result.tracks, cookiePath, limit);
+
     } catch (error) {
         context.logger.error(`Failed to enqueue mix: ${error}`);
 
@@ -997,7 +838,8 @@ async function handleRecommended(
 
     let cookiePath: string;
     try {
-        cookiePath = await context.writeCustomCookie(profile.content);
+        const netscapeContent = CookieManager.toNetscape(profile.content);
+        cookiePath = await context.writeCustomCookie(netscapeContent);
     } catch (error) {
         profile.status = 'suspected_broken';
         profile.lastError = 'Failed to write cookie file';
@@ -1019,14 +861,16 @@ async function handleRecommended(
     await saveProfiles(userId, profiles);
 
     try {
-        // Part 3: Recommended Command
-        // Uses :ytrec (YouTube Recommended Feed) for personalized tracks
-        // ref: YT-DLP_ANALYSIS.md §2.3 - :ytrec feed extractor
-        //
-        // User-friendly command for playing recommended music based on
-        // listening history, liked videos, and subscriptions.
-        const recUrl = ':ytrec';
-        context.logger.info(`[MyMusic] Playing recommended tracks via :ytrec`);
+        await interaction.deferReply();
+
+        const result = await DiscoveryEngine.discoverRecommended(limit, profile.content, context.logger);
+
+        if (result.tracks.length === 0) {
+            await interaction.editReply({ content: "❌ No results found." });
+            return;
+        }
+
+        context.logger.info(`[MyMusic:Search] Discovered ${result.tracks.length} tracks via ${result.source}`);
 
         logTelemetryEvent({
             type: 'MYMUSIC_PLAY_STARTED',
@@ -1035,7 +879,8 @@ async function handleRecommended(
             playType: 'recommended'
         });
 
-        await context.music.enqueuePlaylist(interaction, recUrl, { cookiePath, limit });
+        await enqueueTracks(interaction, context, result.tracks, cookiePath, limit);
+
     } catch (error) {
         context.logger.error(`Failed to enqueue recommended: ${error}`);
 
@@ -1062,114 +907,7 @@ async function handleRecommended(
     }
 }
 
-/**
- * Handler for /mymusic feed
- * Debug/test command for personalized homepage feed
- */
-async function handleFeed(
-    interaction: ChatInputCommandInteraction,
-    context: PluginContext,
-    getProfiles: (userId: string) => Promise<CookieProfile[]>,
-    saveProfiles: (userId: string, profiles: CookieProfile[]) => Promise<void>,
-    logTelemetryEvent: (event: { type: 'MYMUSIC_PLAY_STARTED' | 'MYMUSIC_PLAY_FAILED'; userId: string; profileName: string; playType: 'search' | 'radio' | 'supermix' | 'mix' | 'recommended' | 'feed' | 'unknown'; failureReason?: 'no_profile' | 'yt_dlp_error' | 'auth_error' | 'empty_mix' | 'unknown' }) => void
-) {
-    const profileName = interaction.options.getString("profile");
-    const limit = interaction.options.getInteger("limit") || 25;
-    const userId = interaction.user.id;
-    const profiles = await getProfiles(userId);
 
-    if (profiles.length === 0) {
-        logTelemetryEvent({
-            type: 'MYMUSIC_PLAY_FAILED',
-            userId,
-            profileName: 'none',
-            playType: 'feed',
-            failureReason: 'no_profile'
-        });
-        await interaction.reply({ content: "❌ You don't have any cookie profiles set up.", ephemeral: true });
-        return;
-    }
-
-    let profile = profileName ? profiles.find(p => p.name === profileName) : profiles.sort((a, b) => b.lastUsedAt - a.lastUsedAt)[0];
-    if (!profile) {
-        logTelemetryEvent({
-            type: 'MYMUSIC_PLAY_FAILED',
-            userId,
-            profileName: profileName || 'none',
-            playType: 'feed',
-            failureReason: 'no_profile'
-        });
-        await interaction.reply({ content: `❌ Profile not found.`, ephemeral: true });
-        return;
-    }
-
-    let cookiePath: string;
-    try {
-        cookiePath = await context.writeCustomCookie(profile.content);
-    } catch (error) {
-        profile.status = 'suspected_broken';
-        profile.lastError = 'Failed to write cookie file';
-        await saveProfiles(userId, profiles);
-
-        logTelemetryEvent({
-            type: 'MYMUSIC_PLAY_FAILED',
-            userId,
-            profileName: profile.name,
-            playType: 'feed',
-            failureReason: 'unknown'
-        });
-        await interaction.reply({ content: "❌ Failed to process cookie.", ephemeral: true });
-        return;
-    }
-
-    profile.lastUsedAt = Date.now();
-    profile.playCount++;
-    await saveProfiles(userId, profiles);
-
-    try {
-        // Part 3: Feed Command (Debug/Testing)
-        // Uses :ytrec (YouTube Recommended Feed) for testing personalization
-        // ref: YT-DLP_ANALYSIS.md §2.3 - :ytrec feed extractor
-        //
-        // This is a testing-oriented command. Future enhancements could add
-        // support for :ytsubs (subscriptions), :ythistory, etc.
-        // TODO: Add feed type selection option
-        const feedUrl = ':ytrec';
-        context.logger.info(`[MyMusic:Feed] Testing feed URL: ${feedUrl}`);
-
-        logTelemetryEvent({
-            type: 'MYMUSIC_PLAY_STARTED',
-            userId,
-            profileName: profile.name,
-            playType: 'feed'
-        });
-
-        await context.music.enqueuePlaylist(interaction, feedUrl, { cookiePath, limit });
-    } catch (error) {
-        context.logger.error(`Failed to enqueue feed: ${error}`);
-
-        const errorStr = String(error);
-        if (errorStr.includes('auth') || errorStr.includes('login') || errorStr.includes('401')) {
-            profile.status = 'suspected_broken';
-            profile.lastError = 'Authentication failed - cookie may be expired';
-            await saveProfiles(userId, profiles);
-        }
-
-        logTelemetryEvent({
-            type: 'MYMUSIC_PLAY_FAILED',
-            userId,
-            profileName: profile.name,
-            playType: 'feed',
-            failureReason: errorStr.includes('auth') ? 'auth_error' : 'yt_dlp_error'
-        });
-
-        if (!interaction.deferred && !interaction.replied) {
-            await interaction.reply({ content: "❌ Failed to load feed.", ephemeral: true });
-        } else {
-            await interaction.editReply({ content: "❌ Failed to load feed." });
-        }
-    }
-}
 
 // ============================================================================
 // COOKIE MANAGEMENT HANDLERS
@@ -1204,8 +942,8 @@ async function handleCookieAdd(
         return;
     }
 
-    // Phase C: Validate Netscape cookie format (ref: YT-DLP_ANALYSIS.md §6)
-    const validation = validateNetscapeCookie(content);
+    // Use CookieManager to normalize and validate
+    const validation = CookieManager.normalizeAndValidate(content);
 
     if (!validation.valid) {
         await interaction.reply({
@@ -1215,7 +953,7 @@ async function handleCookieAdd(
         return;
     }
 
-    // Warn about  missing auth cookies but still allow saving
+    // Warn about missing auth cookies but still allow saving
     let responseMessage = `✅ Added cookie profile "**${profileName}**"!`;
     if (validation.warnings && validation.warnings.length > 0) {
         responseMessage += `\n\n⚠️ **Warnings:**\n${validation.warnings.map(w => `• ${w}`).join('\n')}`;
@@ -1225,12 +963,13 @@ async function handleCookieAdd(
     const newProfile: CookieProfile = {
         id: Math.random().toString(36).substring(7),
         name: profileName,
-        content,
+        content: validation.normalizedHeader,
+        format: validation.format,
         createdAt: Date.now(),
         lastUsedAt: 0,
         playCount: 0,
         uniqueTrackCount: 0,
-        status: validation.hasAuthCookies ? 'valid' : 'suspected_broken',
+        status: 'validation_pending', // Set to pending until first use
         lastError: null
     };
 
@@ -1253,7 +992,10 @@ async function handleCookieList(
         return;
     }
 
-    const list = profiles.map(p => `- **${p.name}** (Used: ${p.playCount} times)`).join("\n");
+    const list = profiles.map(p => {
+        const statusIcon = p.status === 'valid' ? '✅' : p.status === 'suspected_broken' ? '⚠️' : '⏳';
+        return `- **${p.name}** ${statusIcon} (Used: ${p.playCount} times)${p.lastError ? `\n  - Error: ${p.lastError}` : ''}`;
+    }).join("\n");
     await interaction.reply({ content: `**Your Cookie Profiles:**\n${list}`, ephemeral: true });
 }
 
@@ -1279,4 +1021,168 @@ async function handleCookieDelete(
     await interaction.reply({ content: `✅ Deleted profile "**${name}**".`, ephemeral: true });
 }
 
+async function handleFeed(
+    interaction: ChatInputCommandInteraction,
+    context: PluginContext,
+    getProfiles: (userId: string) => Promise<CookieProfile[]>,
+    saveProfiles: (userId: string, profiles: CookieProfile[]) => Promise<void>,
+    logTelemetryEvent: (event: any) => void
+) {
+    await interaction.deferReply();
+    const profileName = interaction.options.getString("profile");
+    const limit = 25; // Default limit for feed
+
+    try {
+        const { profile, profiles } = await resolveProfile(interaction, getProfiles, profileName);
+        if (!profile) return; // resolveProfile handles the reply
+
+        let cookiePath: string;
+        try {
+            const netscapeContent = CookieManager.toNetscape(profile.content);
+            cookiePath = await context.writeCustomCookie(netscapeContent);
+        } catch (error) {
+            await interaction.editReply("❌ Failed to process cookie.");
+            return;
+        }
+
+        // Update stats
+        profile.lastUsedAt = Date.now();
+        profile.playCount = (profile.playCount || 0) + 1;
+        await saveProfiles(interaction.user.id, profiles);
+
+        logTelemetryEvent({
+            type: 'mymusic_feed',
+            userId: interaction.user.id,
+            profileId: profile.id
+        });
+
+        context.logger.info(`[MyMusic:Feed] Fetching feed for user ${interaction.user.id} using profile ${profile.name}`);
+
+        const result = await DiscoveryEngine.discoverRecommended(limit, profile.content, context.logger);
+
+        if (result.error) {
+            await interaction.editReply(`❌ Failed to fetch feed: ${result.error}`);
+            return;
+        }
+
+        if (result.tracks.length === 0) {
+            await interaction.editReply("⚠️ No tracks found in your feed.");
+            return;
+        }
+
+        await enqueueTracks(interaction, context, result.tracks, cookiePath, limit);
+
+    } catch (error) {
+        context.logger.error(`[MyMusic:Feed] Error: ${error}`);
+        await interaction.editReply("❌ An error occurred while fetching your feed.");
+    }
+}
+
+async function handleHistory(
+    interaction: ChatInputCommandInteraction,
+    context: PluginContext,
+    getProfiles: (userId: string) => Promise<CookieProfile[]>,
+    saveProfiles: (userId: string, profiles: CookieProfile[]) => Promise<void>,
+    logTelemetryEvent: (event: any) => void
+) {
+    await interaction.deferReply();
+    const profileName = interaction.options.getString("profile");
+    const limit = interaction.options.getInteger("limit") || 25;
+
+    try {
+        const { profile, profiles } = await resolveProfile(interaction, getProfiles, profileName);
+        if (!profile) return; // resolveProfile handles the reply
+
+        let cookiePath: string;
+        try {
+            const netscapeContent = CookieManager.toNetscape(profile.content);
+            cookiePath = await context.writeCustomCookie(netscapeContent);
+        } catch (error) {
+            await interaction.editReply("❌ Failed to process cookie.");
+            return;
+        }
+
+        // Update stats
+        profile.lastUsedAt = Date.now();
+        profile.playCount = (profile.playCount || 0) + 1;
+        await saveProfiles(interaction.user.id, profiles);
+
+        logTelemetryEvent({
+            type: 'mymusic_history',
+            userId: interaction.user.id,
+            profileId: profile.id
+        });
+
+        context.logger.info(`[MyMusic:History] Fetching history for user ${interaction.user.id} using profile ${profile.name}`);
+
+        const result = await DiscoveryEngine.discoverHistory(limit, profile.content, context.logger);
+
+        if (result.error) {
+            await interaction.editReply(`❌ Failed to fetch history: ${result.error}`);
+            return;
+        }
+
+        if (result.tracks.length === 0) {
+            await interaction.editReply("⚠️ No tracks found in your history.");
+            return;
+        }
+
+        await enqueueTracks(interaction, context, result.tracks, cookiePath, limit);
+
+    } catch (error) {
+        context.logger.error(`[MyMusic:History] Error: ${error}`);
+        await interaction.editReply("❌ An error occurred while fetching your history.");
+    }
+}
+
+async function resolveProfile(
+    interaction: ChatInputCommandInteraction,
+    getProfiles: (userId: string) => Promise<CookieProfile[]>,
+    profileName: string | null
+): Promise<{ profile: CookieProfile | null, profiles: CookieProfile[] }> {
+    const userId = interaction.user.id;
+    const profiles = await getProfiles(userId);
+
+    if (profiles.length === 0) {
+        await interaction.editReply("❌ You don't have any cookie profiles set up.");
+        return { profile: null, profiles };
+    }
+
+    let profile = profileName ? profiles.find(p => p.name === profileName) : profiles.sort((a, b) => b.lastUsedAt - a.lastUsedAt)[0];
+
+    if (!profile) {
+        await interaction.editReply("❌ Profile not found.");
+        return { profile: null, profiles };
+    }
+
+    return { profile, profiles };
+}
+
 export default MyMusicPlugin;
+
+/**
+ * Enqueues a list of tracks directly using the new enqueueSongs core method.
+ */
+async function enqueueTracks(
+    interaction: ChatInputCommandInteraction,
+    context: PluginContext,
+    tracks: DiscoveryTrack[],
+    cookiePath: string,
+    limit: number
+) {
+    if (tracks.length === 0) return;
+
+    // Convert DiscoveryTrack to Song
+    const songs = tracks.map(track => ({
+        title: track.title,
+        url: `https://www.youtube.com/watch?v=${track.id}`,
+        thumbnail: track.thumbnail,
+        durationInSec: track.duration || 0,
+        requestedBy: interaction.user.tag,
+        requesterId: interaction.user.id
+    }));
+
+    context.logger.info(`[MyMusic] Enqueuing ${songs.length} tracks directly`);
+
+    await enqueueSongs(interaction, songs, { cookiePath, limit });
+}
