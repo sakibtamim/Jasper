@@ -13,7 +13,9 @@ const SUPPORTED_AUDIO_EXTENSIONS = ['.mp3', '.ogg', '.wav', '.flac', '.m4a', '.w
 const SUPPORTED_AUDIO_CONTENT_TYPES = ['audio/', 'video/webm', 'video/ogg'];
 
 function isAudioFile(filename: string, contentType: string | null): boolean {
-    const ext = filename.toLowerCase().slice(filename.lastIndexOf('.'));
+    const lowerName = filename.toLowerCase();
+    const lastDotIndex = lowerName.lastIndexOf('.');
+    const ext = lastDotIndex === -1 ? '' : lowerName.slice(lastDotIndex);
     const hasValidExtension = SUPPORTED_AUDIO_EXTENSIONS.includes(ext);
     const hasValidContentType = contentType ? SUPPORTED_AUDIO_CONTENT_TYPES.some(type => contentType.startsWith(type)) : false;
     return hasValidExtension || hasValidContentType;
@@ -36,7 +38,7 @@ export function createPlayCommand(name: string, description: string, options: Pl
                 (option) =>
                     option
                         .setName("file")
-                        .setDescription("Audio file to play (mp3, ogg, wav, flac, m4a)")
+                        .setDescription("Audio file to play (mp3, ogg, wav, flac, m4a, webm, opus)")
                         .setRequired(false)
             ),
 
@@ -105,7 +107,18 @@ export function createPlayCommand(name: string, description: string, options: Pl
                 }
             }
 
-            await music.enqueue(interaction, query!, options);
+            // Defensive check: by this point, query should always be defined.
+            // If it's not, respond with an error and avoid calling enqueue with an invalid value.
+            if (!query) {
+                logger.error(`[commands] /${name}: Reached enqueue with empty query after validation.`, { suppressOnWebUI: true });
+                await interaction.reply({
+                    content: "❌ Something went wrong determining what to play. Please try again.",
+                    ephemeral: true,
+                });
+                return;
+            }
+
+            await music.enqueue(interaction, query, options);
 
             if (playlistWarning) {
                 await interaction.followUp({

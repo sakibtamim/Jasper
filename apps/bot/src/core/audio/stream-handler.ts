@@ -15,8 +15,12 @@ export function getYtDlpPath(): string {
     );
 }
 
+export function isYoutubeUrl(text: string): boolean {
+    return text.includes("youtube.com") || text.includes("youtu.be");
+}
+
 export function isUrl(text: string): boolean {
-    return text.includes("youtube.com") || text.includes("youtu.be") || text.includes("cdn.discordapp.com/attachments");
+    return isYoutubeUrl(text);
 }
 
 export function isAttachmentUrl(text: string): boolean {

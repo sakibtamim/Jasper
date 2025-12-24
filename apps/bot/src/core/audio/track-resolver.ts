@@ -5,6 +5,12 @@ import { Song } from "@jasper/types";
 
 /**
  * Resolve a file attachment to a Song object
+ * 
+ * NOTE: Discord CDN attachment URLs include authentication tokens and have
+ * expiration times (typically 24 hours). If a song with an attachment URL
+ * is queued for a long time, playback may fail when the URL expires.
+ * For best results, play attachment files immediately rather than queuing
+ * them in long playlists.
  */
 export function resolveAttachment(
     url: string,
