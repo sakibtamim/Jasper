@@ -6,7 +6,7 @@ import logger from "../logger.js";
 import workerPool from "../worker-pool.js";
 import hookManager from "../plugins/hook-manager.js";
 import { setVoiceStatus, getChannelName } from "../utils/voice-utils.js";
-import { createStreamProcess } from "./stream-handler.js";
+import { createStreamProcess, createDirectUrlStream } from "./stream-handler.js";
 import { createControlButtons, getAutoplayButton } from "../ui/player-controls.js";
 import { deleteQueue } from "./queue-manager.js";
 import { Queue, Song } from "@jasper/types";
@@ -154,12 +154,17 @@ export async function playSong(queue: Queue): Promise<void> {
     await hookManager.triggerAsync('PRE_MUSIC_PLAY', { queue, song });
 
     try {
-        logger.info(`[playback] Attempting to stream with yt-dlp: ${song.title}`);
+        logger.info(`[playback] Attempting to stream: ${song.title} (source: ${song.sourceType ?? 'youtube'})`);
 
         let audioSource: Readable;
 
-        // Check audio cache if enabled
-        if (isCacheEnabled()) {
+        // Handle file attachments (direct URL streaming)
+        if (song.sourceType === 'attachment') {
+            logger.info(`[playback] Streaming attachment file: ${song.title}`);
+            audioSource = await createDirectUrlStream(song.url);
+        }
+        // Check audio cache if enabled (for YouTube only)
+        else if (isCacheEnabled()) {
             const storage = getCacheStorage();
             if (storage) {
                 const videoId = extractVideoId(song.url);
