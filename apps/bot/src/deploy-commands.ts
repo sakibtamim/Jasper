@@ -7,9 +7,10 @@ import {
   DISCORD_CLIENT_ID,
   GUILD_ID,
   DISCORD_TOKEN,
-  validateDeployConfig
+  validateDeployConfig,
+  DB_TYPE,
+  DATABASE_URL
 } from "./config/env.js";
-import pluginManager from "./core/plugins/plugin-manager.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,37 +35,49 @@ for (const file of commandFiles) {
 }
 
 // --- Load Plugin Commands ---
-logger.info("[commands] Loading plugin commands...");
+// Skip plugin loading if:
+// 1. SKIP_PLUGINS env var is set
+// 2. DB_TYPE is postgres but DATABASE_URL is missing (would hang on DB connection)
+const skipPlugins = process.env.SKIP_PLUGINS === "true" || (DB_TYPE === "postgres" && !DATABASE_URL);
 
-// Mock Client & Server for PluginManager
-const mockClient = {
-  commands: new Collection(),
-  on: () => { },
-  off: () => { },
-  emit: () => { }
-} as any;
-const mockServer = {
-  register: async (fn: any) => await fn(mockServer),
-  get: () => { },
-  post: () => { },
-  delete: () => { },
-  patch: () => { },
-} as any;
+if (skipPlugins) {
+  logger.info("[commands] Skipping plugin command loading (SKIP_PLUGINS or missing DATABASE_URL)");
+} else {
+  logger.info("[commands] Loading plugin commands...");
 
-try {
-  pluginManager.init(mockClient, mockServer);
-  await pluginManager.loadPlugins();
+  // Dynamic import to avoid eager database initialization
+  const { default: pluginManager } = await import("./core/plugins/plugin-manager.js");
 
-  mockClient.commands.forEach((cmd: any) => {
-    if (cmd.data) {
-      // Handle both Builders (toJSON) and plain objects
-      const cmdData = typeof cmd.data.toJSON === 'function' ? cmd.data.toJSON() : cmd.data;
-      commands.push(cmdData);
-      logger.info(`[commands] Included plugin command: /${cmdData.name}`);
-    }
-  });
-} catch (error) {
-  logger.error(`[commands] Failed to load plugin commands: ${error}`);
+  // Mock Client & Server for PluginManager
+  const mockClient = {
+    commands: new Collection(),
+    on: () => { },
+    off: () => { },
+    emit: () => { }
+  } as any;
+  const mockServer = {
+    register: async (fn: any) => await fn(mockServer),
+    get: () => { },
+    post: () => { },
+    delete: () => { },
+    patch: () => { },
+  } as any;
+
+  try {
+    pluginManager.init(mockClient, mockServer);
+    await pluginManager.loadPlugins();
+
+    mockClient.commands.forEach((cmd: any) => {
+      if (cmd.data) {
+        // Handle both Builders (toJSON) and plain objects
+        const cmdData = typeof cmd.data.toJSON === 'function' ? cmd.data.toJSON() : cmd.data;
+        commands.push(cmdData);
+        logger.info(`[commands] Included plugin command: /${cmdData.name}`);
+      }
+    });
+  } catch (error) {
+    logger.error(`[commands] Failed to load plugin commands: ${error}`);
+  }
 }
 
 const rest = new REST({ version: "10" }).setToken(DISCORD_TOKEN);
@@ -77,7 +90,9 @@ const rest = new REST({ version: "10" }).setToken(DISCORD_TOKEN);
       { body: commands }
     ) as unknown[];
     logger.info(`[commands] Successfully reloaded ${data.length} application (/) commands.`);
+    process.exit(0);
   } catch (error) {
     logger.error(`[commands] ${error instanceof Error ? error.message : String(error)}`);
+    process.exit(1);
   }
 })();
