@@ -57,10 +57,10 @@ jobs:
           cat dist-checksums.txt
 
       - name: Deploy Commands
-        if: github.ref == 'refs/heads/main'
         env:
           DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
           DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
+          GUILD_ID: ${{ secrets.GUILD_ID }}
         run: pnpm --filter jasper-bot run deploy:commands:prod
 
       - name: Upload artifact
