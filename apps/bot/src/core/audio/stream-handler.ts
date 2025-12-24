@@ -24,7 +24,10 @@ export function isUrl(text: string): boolean {
 }
 
 export function isAttachmentUrl(text: string): boolean {
-    return text.includes("cdn.discordapp.com/attachments");
+    // Discord uses multiple domains for attachments
+    return text.includes("cdn.discordapp.com/attachments") ||
+        text.includes("media.discordapp.net/attachments") ||
+        text.includes("cdn.discord.com/attachments");
 }
 
 export interface VideoData {
