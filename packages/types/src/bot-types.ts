@@ -24,6 +24,7 @@ export interface Song {
     thumbnail?: string;
     fromCache?: boolean;
     startTime?: number;
+    sourceType?: 'youtube' | 'attachment' | 'direct';
 }
 
 export interface Queue {

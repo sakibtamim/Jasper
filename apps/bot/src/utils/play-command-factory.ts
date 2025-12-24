@@ -8,6 +8,19 @@ interface PlayCommandOptions {
     skipCurrent?: boolean;
 }
 
+// Supported audio file extensions for attachments
+const SUPPORTED_AUDIO_EXTENSIONS = ['.mp3', '.ogg', '.wav', '.flac', '.m4a', '.webm', '.opus'];
+const SUPPORTED_AUDIO_CONTENT_TYPES = ['audio/', 'video/webm', 'video/ogg'];
+
+function isAudioFile(filename: string, contentType: string | null): boolean {
+    const lowerName = filename.toLowerCase();
+    const lastDotIndex = lowerName.lastIndexOf('.');
+    const ext = lastDotIndex === -1 ? '' : lowerName.slice(lastDotIndex);
+    const hasValidExtension = SUPPORTED_AUDIO_EXTENSIONS.includes(ext);
+    const hasValidContentType = contentType ? SUPPORTED_AUDIO_CONTENT_TYPES.some(type => contentType.startsWith(type)) : false;
+    return hasValidExtension || hasValidContentType;
+}
+
 export function createPlayCommand(name: string, description: string, options: PlayCommandOptions = {}) {
     return {
         data: new SlashCommandBuilder()
@@ -18,8 +31,15 @@ export function createPlayCommand(name: string, description: string, options: Pl
                     option
                         .setName("query")
                         .setDescription("Search term or URL")
-                        .setRequired(true)
+                        .setRequired(false)
                         .setAutocomplete(true)
+            )
+            .addAttachmentOption(
+                (option) =>
+                    option
+                        .setName("file")
+                        .setDescription("Audio file to play (mp3, ogg, wav, flac, m4a, webm, opus)")
+                        .setRequired(false)
             ),
 
         async autocomplete(interaction: AutocompleteInteraction) {
@@ -43,22 +63,59 @@ export function createPlayCommand(name: string, description: string, options: Pl
         },
 
         async execute(interaction: ChatInputCommandInteraction) {
-            let query = interaction.options.getString("query", true);
+            const attachment = interaction.options.getAttachment("file");
+            let query = interaction.options.getString("query");
             let playlistWarning = null;
 
-            if (query.includes("list=") && (query.includes("youtube.com") || query.includes("youtu.be"))) {
-                try {
-                    const urlToParse = query.startsWith("http") ? query : `https://${query}`;
-                    const urlObj = new URL(urlToParse);
-                    urlObj.searchParams.delete("list");
-                    urlObj.searchParams.delete("index");
-                    urlObj.searchParams.delete("start_radio");
-                    query = urlObj.toString();
+            // Validate that at least one input is provided
+            if (!attachment && !query) {
+                await interaction.reply({
+                    content: "❌ Please provide either a search query/URL or an audio file attachment.",
+                    ephemeral: true,
+                });
+                return;
+            }
 
-                    playlistWarning = "⚠️ **I'm only playing the first song.**\nIf you want to queue the whole playlist, please use `/playlist`!";
-                } catch (error) {
-                    logger.warn(`Failed to parse/clean URL in /${name} command: ${error}`);
+            // If attachment is provided, validate and use it
+            if (attachment) {
+                if (!isAudioFile(attachment.name, attachment.contentType)) {
+                    await interaction.reply({
+                        content: `❌ The attached file \`${attachment.name}\` is not a supported audio format.\nSupported formats: ${SUPPORTED_AUDIO_EXTENSIONS.join(', ')}`,
+                        ephemeral: true,
+                    });
+                    return;
                 }
+
+                // Use attachment URL as the query
+                query = attachment.url;
+                logger.info(`[commands] /${name}: Playing from attachment: ${attachment.name}`);
+            } else if (query) {
+                // Handle playlist URL warning for YouTube links
+                if (query.includes("list=") && (query.includes("youtube.com") || query.includes("youtu.be"))) {
+                    try {
+                        const urlToParse = query.startsWith("http") ? query : `https://${query}`;
+                        const urlObj = new URL(urlToParse);
+                        urlObj.searchParams.delete("list");
+                        urlObj.searchParams.delete("index");
+                        urlObj.searchParams.delete("start_radio");
+                        query = urlObj.toString();
+
+                        playlistWarning = "⚠️ **I'm only playing the first song.**\nIf you want to queue the whole playlist, please use `/playlist`!";
+                    } catch (error) {
+                        logger.warn(`Failed to parse/clean URL in /${name} command: ${error}`);
+                    }
+                }
+            }
+
+            // Defensive check: by this point, query should always be defined.
+            // If it's not, respond with an error and avoid calling enqueue with an invalid value.
+            if (!query) {
+                logger.error(`[commands] /${name}: Reached enqueue with empty query after validation.`, { suppressOnWebUI: true });
+                await interaction.reply({
+                    content: "❌ Something went wrong determining what to play. Please try again.",
+                    ephemeral: true,
+                });
+                return;
             }
 
             await music.enqueue(interaction, query, options);
