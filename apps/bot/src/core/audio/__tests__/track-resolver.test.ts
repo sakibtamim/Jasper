@@ -8,6 +8,7 @@ import * as cacheManager from '../../cache-manager.js';
 vi.mock('../stream-handler.js', () => ({
     fetchVideoData: vi.fn(),
     isUrl: vi.fn(),
+    isAttachmentUrl: vi.fn().mockReturnValue(false),
 }));
 
 vi.mock('yt-search', () => ({
@@ -42,6 +43,7 @@ describe('resolveTrack', () => {
             durationInSec: 120,
             requestedBy: 'Unknown',
             thumbnail: 'thumb.jpg',
+            sourceType: 'youtube',
         });
     });
 
@@ -64,6 +66,7 @@ describe('resolveTrack', () => {
             durationInSec: 180,
             requestedBy: 'Unknown',
             thumbnail: 'thumb.jpg',
+            sourceType: 'youtube',
         });
     });
 

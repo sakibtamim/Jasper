@@ -1,4 +1,5 @@
 import { spawn, ChildProcess } from "child_process";
+import { Readable } from "stream";
 import { findYtDlpPath, getBaseYtDlpArgs } from "../../utils/yt-dlp-helper.js";
 import logger from "../logger.js";
 import cookieManager from "../cookies/cookie-manager.js";
@@ -15,7 +16,11 @@ export function getYtDlpPath(): string {
 }
 
 export function isUrl(text: string): boolean {
-    return text.includes("youtube.com") || text.includes("youtu.be");
+    return text.includes("youtube.com") || text.includes("youtu.be") || text.includes("cdn.discordapp.com/attachments");
+}
+
+export function isAttachmentUrl(text: string): boolean {
+    return text.includes("cdn.discordapp.com/attachments");
 }
 
 export interface VideoData {
@@ -152,4 +157,19 @@ export function createStreamProcess(url: string): ChildProcess {
     });
 
     return process;
+}
+
+/**
+ * Create a readable stream from a direct URL (like Discord CDN attachments)
+ */
+export async function createDirectUrlStream(url: string): Promise<Readable> {
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch audio file: ${response.statusText}`);
+    }
+    if (!response.body) {
+        throw new Error('Response body is empty');
+    }
+    // Convert web ReadableStream to Node.js Readable
+    return Readable.fromWeb(response.body as import('stream/web').ReadableStream);
 }
