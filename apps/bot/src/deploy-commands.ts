@@ -21,7 +21,7 @@ validateDeployConfig();
 const commands: RESTPostAPIChatInputApplicationCommandsJSONBody[] = [];
 const commandsPath = path.join(__dirname, "commands");
 // Support both .js (production) and .ts (development)
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith(".js") || file.endsWith(".ts"));
+const commandFiles = fs.readdirSync(commandsPath).filter(file => (file.endsWith(".js") || file.endsWith(".ts")) && !file.endsWith(".d.ts"));
 
 for (const file of commandFiles) {
   const filePath = path.join(commandsPath, file);
