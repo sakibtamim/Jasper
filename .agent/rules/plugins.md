@@ -1,41 +1,47 @@
----
-trigger: always_on
----
+
 
 # Plugin Development Rules
 
-> **Context**: These rules apply to the development of plugins for the Jasper platform.
+> **Context**: These rules apply to the AI Agent when creating, modifying, or managing plugins for Jasper.
 
-## Plugin Structure
-- **Manifest**: Every plugin MUST have a `jasper-plugin.json` file in its root.
-  - `id`: Lowercase, alphanumeric, dashes only.
-  - `name`: Display name.
-  - `version`: Semantic versioning.
-  - `entry`: Backend entry point (default: `index.js`).
-  - `web`: Frontend entry point (optional, e.g., `web/index.js`).
-- **Directory**: Plugins reside in `apps/bot/src/plugins/<id>/`.
+## 1. File Structure Enforcement
+- **Root**: All plugins must reside in `apps/bot/src/plugins/<id>/`.
+- **Manifest**: `jasper-plugin.json` is **MANDATORY**.
+    - Must contain `id` (kebab-case), `name`, `version`, `entry`.
+    - `id` must match the directory name.
+- **Backend Entry**: `index.ts` must export a default object complying with the `Plugin` interface.
+- **Files**:
+    - `web/index.tsx` (Frontend entry)
+    - `web/` (Frontend source)
 
-## Backend Development
-- **Entry Point**: Must export a default object implementing the `Plugin` interface.
-- **Context**: Use `PluginContext` for all interactions (logging, DB, hooks).
-- **Database**: Use `context.db.plugin` for plugin-specific data. Do NOT access the core database directly unless via `context.db.core` (read-only).
-- **Hooks**: Register hooks via `context.on(HookName, callback)`.
-  - `QUEUE_CREATE`: Triggered when a queue is created.
-  - `PRE_MUSIC_PLAY`: Triggered before a song plays.
-  - `POST_MUSIC_PLAY`: Triggered after a song plays.
-- **API Routes**: Register routes via `context.server`. All routes are automatically scoped to `/api/plugins/<id>`.
+## 2. Command Execution Actions
+- **ALWAYS** use the scoped pnpm command: `pnpm --filter jasper-bot run ...`
+- **NEVER** run `npm` or `yarn` commands directly inside a plugin folder.
+- **Scaffold**: Use `pnpm --filter jasper-bot run plugin:scaffold` to create new plugins if asked to "create a plugin".
 
-## Frontend Development
-- **Entry Point**: `web/index.tsx` (or `.js`).
-- **Registration**: Use `ComponentRegistry.register()` to map components to IDs.
-- **Slots**: Use `ExtensionSlot` to render widgets in the main UI.
-- **Styles**: Use Tailwind CSS. Avoid global CSS files; use CSS modules or Tailwind utility classes.
+## 3. Frontend Development Constraints
+- **Imports**:
+    - **MUST** import React hooks from `@jasper/elements`.
+    - **MUST** import Store hooks from `@jasper/hooks`.
+    - **NEVER** import from `react` or `react-dom` directly in plugin code.
+- **Components**:
+    - Use `@jasper/ui` for primitives (Button, Card, Input).
+    - Do not implement custom design systems; match the core look and feel.
 
-## Testing
-- **Unit Tests**: Place tests in `__tests__` directory within the plugin or core module.
-- **Integration Tests**: Verify plugin loads and unloads correctly using the test harness.
-- **Mocking**: Mock `PluginContext` for unit testing plugin logic.
+## 4. Workflows & Version Control
 
-## Build & Publish
-- **Build**: Run `turbo run build` to compile plugins.
-- **Export**: Run `pnpm run export-plugin <id>` to create a distributable `.zip`.
+### Out-of-Tree (Submodule) Strategy
+If the user asks to add an external or private plugin:
+1.  **DO NOT** clone it manually.
+2.  **USE** `git submodule add <url> apps/bot/src/plugins/<id>`.
+3.  This ensures the plugin is tracked strictly as a submodule.
+
+### Local Development (Symlink) Strategy
+If the user asks to work on a plugin located elsewhere on the disk:
+1.  **USE** `pnpm --filter jasper-bot run plugin:link <absolute-path>`.
+2.  **DO NOT** copy files manually.
+
+## 5. Coding Standards
+- **No Global Scope Pollution**: Do not attach to `global` or `window` (except for expected IIFE exports).
+- **Cleanup**: Always implement `onUnload` to clear intervals, listeners, and subscriptions.
+- **Async Safety**: Use `try/catch` blocks inside all hook callbacks (`onLoad`, `onUnload`, etc.).
