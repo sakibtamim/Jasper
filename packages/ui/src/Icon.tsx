@@ -3,7 +3,7 @@ import React from 'react';
 import * as LucideIcons from 'lucide-react';
 
 export interface IconProps extends React.SVGProps<SVGSVGElement> {
-    name: keyof typeof LucideIcons;
+    name: keyof typeof LucideIcons | string;
     size?: number | string;
 }
 
