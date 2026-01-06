@@ -65,23 +65,28 @@ When deploying Jasper, ensure your CI/CD pipeline initializes submodules:
 git submodule update --init --recursive
 ```
 
-### Workflow B: The "Local Symlink" (Recommended for Prototyping)
-Use this when you want to hack on a plugin that lives entirely outside the Jasper folder structure (e.g., `~/my-projects/cool-plugin`).
+### Workflow B: The "Local Symlink" (Recommended for Prototyping/External Repos)
+Use this when you want to hack on a plugin that lives entirely outside the Jasper folder structure (e.g., `../garage-band` or `~/my-projects/cool-plugin`).
 
 **Setup:**
 1.  Create your plugin directory anywhere on your machine.
-2.  Ensure it has a valid `jasper-plugin.json`.
+2.  **Initialize**: Run `pnpm init` inside it and `pnpm add -D react react-dom` (needed for local resolution).
 3.  **Link**:
     ```bash
     # From Jasper root
     pnpm --filter jasper-bot run plugin:link /path/to/your/plugin
     ```
     *This creates a symlink in `apps/bot/src/plugins/<id>`.*
+4.  **Vite Config**: Ensure `apps/web/vite.config.ts` has `server.fs.allow` including your external path and aliases for `@jasper/*`.
 
 **Development Loop:**
 - Run `pnpm dev`.
 - Edit files in your external directory.
 - Changes are reflected immediately via HMR.
+
+**Version Control:**
+- Commit the **symlink** in `Jasper`.
+- Commit the **source code** in your external plugin repo.
 
 **Cleanup:**
 ```bash
@@ -92,12 +97,12 @@ pnpm --filter jasper-bot run plugin:unlink <id>
 
 ## 📦 Dependency Management
 
-Plugins share the `node_modules` of the `jasper-bot` package.
+Plugins share the `node_modules` of the `jasper-bot` package at runtime.
 
 **Rules:**
-1.  **Do NOT** have a `package.json` in your plugin directory unless it is for development tooling only.
-2.  **Do NOT** install runtime dependencies specific to your plugin that conflict with the core.
-3.  If you need a library (e.g., `axios`, `date-fns`), check if it's already in `apps/bot/package.json`. If not, add it to the **monorepo root** or `apps/bot` (if you own the bot instance).
+1.  **In-Tree Plugins**: Do NOT have a `package.json`.
+2.  **Out-of-Tree Plugins**: MUST have a `package.json` with `react` and `react-dom` as dev dependencies for editor support and Vite resolution.
+3.  **Runtime Deps**: Do NOT install heavy runtime dependencies in the plugin unless necessary. Prefer adding them to the monorepo root if they are shared.
 
 ---
 
