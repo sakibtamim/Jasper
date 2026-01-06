@@ -14,7 +14,9 @@ export default defineConfig(({ mode }) => ({
             'react-dom': path.resolve(__dirname, './node_modules/react-dom'),
             '@hooks/usePlugins': mode === 'production'
                 ? path.resolve(__dirname, './hooks/usePlugins.prod.ts')
-                : path.resolve(__dirname, './hooks/usePlugins.dev.ts')
+                : path.resolve(__dirname, './hooks/usePlugins.dev.ts'),
+            '@jasper/elements': path.resolve(__dirname, '../../packages/elements/src'),
+            '@jasper/ui': path.resolve(__dirname, '../../packages/ui/src')
         }
     },
     publicDir: 'public/assets',
@@ -23,7 +25,8 @@ export default defineConfig(({ mode }) => ({
         fs: {
             allow: [
                 // Allow serving files from the project root
-                path.resolve(__dirname, '../..')
+                // Allow serving files from the project root and its parent (for out-of-tree plugins)
+                path.resolve(__dirname, '../../..')
             ]
         },
         proxy: {
