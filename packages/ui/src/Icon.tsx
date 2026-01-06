@@ -13,8 +13,8 @@ export const Icon = ({ name, size = 24, className, ...props }: IconProps) => {
     // The previous code used "music", "play", "plus".
     // Lucide exports "Music", "Play", "Plus".
 
-    // Simple helper to capitalize
-    const pascalName = (name.charAt(0).toUpperCase() + name.slice(1)) as keyof typeof LucideIcons;
+    // Simple helper to capitalize and handle kebab-case (e.g. arrow-up -> ArrowUp)
+    const pascalName = name.replace(/(^\w|-\w)/g, (c) => c.replace(/-/, "").toUpperCase()) as keyof typeof LucideIcons;
 
     const LucideIcon = LucideIcons[pascalName] as React.ElementType;
 

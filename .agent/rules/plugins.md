@@ -56,4 +56,4 @@ To allow Vite to serve files from outside the monorepo root, you **MUST** ensure
 - **No Global Scope Pollution**: Do not attach to `global` or `window` (except for expected IIFE exports).
 - **Cleanup**: Always implement `onUnload` to clear intervals, listeners, and subscriptions.
 - **Async Safety**: Use `try/catch` blocks inside all hook callbacks (`onLoad`, `onUnload`, etc.).
-- **Backend Imports**: For out-of-tree plugins, verify backend imports point to `../../Jasper/...` or use appropriate aliases if available.
+- **Backend Imports**: For out-of-tree plugins, backend imports to core packages may require relative paths (e.g., `../../jasper-repo/packages/some-package`). Ensure these paths are correct for your local setup. If available, prefer using TypeScript path aliases for a more stable solution.
