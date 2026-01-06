@@ -1,0 +1,40 @@
+name: "🏗️ Infrastructure"
+description: Tasks related to DevOps, CI/CD, or Project Config
+title: ""
+labels: ["type: infra"]
+body:
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: What infrastructure component is being changed?
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      value: |
+        - [ ] Component configured
+        - [ ] Verified locally
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation-brief
+    attributes:
+      label: Implementation Brief
+      description: Configuration details, scripts, or env vars needed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: qa-checklist
+    attributes:
+      label: QA Checklist
+      value: |
+        - [ ] Verify CI pipeline passes
+        - [ ] Verify local environment startup
+    validations:
+      required: true

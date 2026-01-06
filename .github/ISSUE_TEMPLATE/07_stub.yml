@@ -1,0 +1,18 @@
+name: "🌱 Stub / Idea"
+description: File an idea or placeholder for future work
+title: ""
+labels: ["type: stub"]
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context / Idea
+      description: capture the thought or requirement initially.
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes / Resources
+      description: Links, inspiration, or potential scope.

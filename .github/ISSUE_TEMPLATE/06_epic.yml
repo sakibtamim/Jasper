@@ -1,0 +1,30 @@
+name: "👑 Epic"
+description: Track large features or projects
+title: ""
+labels: ["type: epic"]
+body:
+  - type: textarea
+    id: overview
+    attributes:
+      label: Overview
+      description: High-level description of the initiative.
+    validations:
+      required: true
+
+  - type: textarea
+    id: roadmap
+    attributes:
+      label: Roadmap / Tracks
+      description: Breakdown of phases or tracks.
+      value: |
+        ### Phase 1: Foundation
+        - [ ] Task 1
+
+        ### Phase 2: Implementation
+        - [ ] Task 2
+
+  - type: textarea
+    id: child-issues
+    attributes:
+      label: Child Issues
+      description: Link to tracking issues.
