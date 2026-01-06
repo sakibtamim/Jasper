@@ -2,25 +2,25 @@ import db from "../db/index.js";
 import { PluginStore } from "@jasper/types";
 
 export class ScopedPluginStore implements PluginStore {
-    private pluginName: string;
+  private pluginName: string;
 
-    constructor(pluginName: string) {
-        this.pluginName = pluginName;
-    }
+  constructor(pluginName: string) {
+    this.pluginName = pluginName;
+  }
 
-    async get(key: string): Promise<any | null> {
-        return await db.getPluginData(this.pluginName, key);
-    }
+  async get(key: string): Promise<any | null> {
+    return await db.getPluginData(this.pluginName, key);
+  }
 
-    async set(key: string, value: any): Promise<void> {
-        await db.setPluginData(this.pluginName, key, value);
-    }
+  async set(key: string, value: any): Promise<void> {
+    await db.setPluginData(this.pluginName, key, value);
+  }
 
-    async delete(key: string): Promise<void> {
-        await db.deletePluginData(this.pluginName, key);
-    }
+  async delete(key: string): Promise<void> {
+    await db.deletePluginData(this.pluginName, key);
+  }
 
-    async clear(): Promise<void> {
-        await db.clearPluginData(this.pluginName);
-    }
+  async clear(): Promise<void> {
+    await db.clearPluginData(this.pluginName);
+  }
 }

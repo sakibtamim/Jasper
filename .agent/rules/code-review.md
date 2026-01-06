@@ -21,6 +21,7 @@ scripts/gh-pr-review-comments.sh <PR_NUMBER> <REVIEW_ID> --file review_comments.
 ```
 
 ### Method 2: Get Review ID from URL
+
 The review URL format is: `https://github.com/OWNER/REPO/pull/NUMBER#pullrequestreview-REVIEW_ID`
 
 ### Method 3: Get Latest Review ID via CLI
@@ -32,4 +33,4 @@ gh pr view PR_NUMBER --json reviews --jq '.reviews[-1].databaseId'
 ### Important Notes
 
 - **Always use the script** to ensure you get all comments and context.
-- Parse priority levels from comment body: `![critical]`, `![high]`, `![medium]` 
+- Parse priority levels from comment body: `![critical]`, `![high]`, `![medium]`

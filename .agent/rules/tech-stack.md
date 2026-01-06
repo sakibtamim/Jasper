@@ -5,6 +5,7 @@ trigger: always_on
 # 🛠️ Tech Stack & Workflow
 
 ## Core Stack
+
 - **Framework**: Next.js 15 (App Router).
 - **Language**: TypeScript (Strict Mode).
 - **Styling**: Tailwind CSS + `packages/ui` (Shadcn/Radix).
@@ -14,6 +15,7 @@ trigger: always_on
 - **AI Context**: Context7 MCP (Mandatory for documentation lookup).
 
 ## Key Workflows
+
 - **Dev Server**:
   - `pnpm dev` (Standard)
   - `pnpm dev:fresh` (Use when testing Auth/Redirects or ensuring clean port start).
@@ -24,6 +26,7 @@ trigger: always_on
 - **Linting**: `pnpm lint`.
 
 ## Critical Patterns
+
 - **Images**: MUST use `ImageWithFallback` from `@/components/ui/image-with-fallback`.
 - **Layout**: MUST use `Section`, `Container` from `@/components/ui/layout-system`.
 - **Fetching**: Use tRPC hooks (`trpc.example.useQuery`) in Client Components; `caller` in Server Components.

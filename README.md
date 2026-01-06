@@ -9,19 +9,19 @@ It uses **yt-dlp** (an external command-line tool) to stream high-quality audio,
 
 ## Features
 
-  - **Stable Streaming:** Uses `yt-dlp` to bypass 403 Forbidden errors and "Decipher" issues.
-  - **Slash Commands:** Modern, easy-to-use interface.
-  - **Reliable Search:** Uses `yt-search` for accurate video results.
-  - **Direct URL Support:** Plays YouTube links directly, skipping search.
-  - **Queue System:** View, skip, stop, and manage music queues per server.
-  - **Autoplay:** Automatically finds and plays related songs when the queue ends.
-  - **Voice Status Updates:** Updates the voice channel status to show the currently playing song.
-  - **Now Playing:** Shows rich embeds with video thumbnails, duration, and interactive controls.
-  - **Multi-Client Support:** "One Mind, Many Bodies" architecture allows multiple bots (Jasper + Workers) to play music simultaneously in different channels of the same server.
-  - **Automatic Feline Rotation (AFR):** 🆕 Smart, probabilistic bot selection with configurable Jasper presence and unique entry messages for each cat!
-  - **Database & Statistics:** 🆕 Tracks song plays, user activity, and global stats using SQLite (default) or PostgreSQL.
-  - **Plugin System:** 🆕 Extend functionality with custom commands, hooks, and web routes. See [PLUGINS.md](PLUGINS.md).
-  - **Web Dashboard:** Real-time monitoring of queues, workers, and statistics.
+- **Stable Streaming:** Uses `yt-dlp` to bypass 403 Forbidden errors and "Decipher" issues.
+- **Slash Commands:** Modern, easy-to-use interface.
+- **Reliable Search:** Uses `yt-search` for accurate video results.
+- **Direct URL Support:** Plays YouTube links directly, skipping search.
+- **Queue System:** View, skip, stop, and manage music queues per server.
+- **Autoplay:** Automatically finds and plays related songs when the queue ends.
+- **Voice Status Updates:** Updates the voice channel status to show the currently playing song.
+- **Now Playing:** Shows rich embeds with video thumbnails, duration, and interactive controls.
+- **Multi-Client Support:** "One Mind, Many Bodies" architecture allows multiple bots (Jasper + Workers) to play music simultaneously in different channels of the same server.
+- **Automatic Feline Rotation (AFR):** 🆕 Smart, probabilistic bot selection with configurable Jasper presence and unique entry messages for each cat!
+- **Database & Statistics:** 🆕 Tracks song plays, user activity, and global stats using SQLite (default) or PostgreSQL.
+- **Plugin System:** 🆕 Extend functionality with custom commands, hooks, and web routes. See [PLUGINS.md](PLUGINS.md).
+- **Web Dashboard:** Real-time monitoring of queues, workers, and statistics.
 
 ## Sponsorship & Licensing
 
@@ -30,18 +30,18 @@ This project is classified under the **Purrfect Universe Licensing Directive** a
 **🟧 Company-Supported Personal IP (CSP-IP)**
 A category for employee-created projects that are:
 
-* Built by the employee as their personal intellectual property
-* Actively supported, enhanced, or resourced by **Purrfect Software Limited**
-* Strategically aligned with the broader **Purrfect Universe** ecosystem
-* Recognized as dual-heritage work belonging to the creator and the company
+- Built by the employee as their personal intellectual property
+- Actively supported, enhanced, or resourced by **Purrfect Software Limited**
+- Strategically aligned with the broader **Purrfect Universe** ecosystem
+- Recognized as dual-heritage work belonging to the creator and the company
 
 Under this classification:
 
-* **Primary Author:** **Nazmus Sakib Tamim** The employee developer (repo owner, original creator & maintainer)
-* **Strategic Stewardship:** **Arafat Zahan** — Universe Architect & PU Founder
-* **Support:** **Purrfect Software Limited** — Engineering, DevOps & Infrastructure
-* **Usage Rights:** Community-friendly, zero-penalty experimentation encouraged
-* **Disclosure:** Reuse, forks, or derivative tools should mention this CSP-IP origin
+- **Primary Author:** **Nazmus Sakib Tamim** The employee developer (repo owner, original creator & maintainer)
+- **Strategic Stewardship:** **Arafat Zahan** — Universe Architect & PU Founder
+- **Support:** **Purrfect Software Limited** — Engineering, DevOps & Infrastructure
+- **Usage Rights:** Community-friendly, zero-penalty experimentation encouraged
+- **Disclosure:** Reuse, forks, or derivative tools should mention this CSP-IP origin
 
 This ensures the project remains open, resilient, supported, and future-proof while preserving individual authorship and PU-aligned governance.
 
@@ -51,37 +51,38 @@ This ensures the project remains open, resilient, supported, and future-proof wh
   <img src="./assets/badges/cspip_psl_badge.svg" height="32" alt="CSP-IP Certified" />
 </p>
 
-
 ## Commands
 
-| Command | Description |
-| :--- | :--- |
-| `/play <query>` | Play a song from YouTube or search by keywords. |
-| `/p <query>` | Alias for `/play`. |
-| `/playnext <query>` | Add a song to the top of the queue. |
-| `/playnow <query>` | Skip current song and play this immediately. |
-| `/playlist <url>` | Play a YouTube playlist. |
-| `/pl <url>` | Alias for `/playlist`. |
-| `/radio` | 🆕 Play random songs from the local cache. |
-| `/pause` | Pause the current song. |
-| `/resume` | Resume the paused song. |
-| `/skip` | Skip the current song. |
-| `/stop` | Stop playback and clear the queue. |
-| `/queue` | Show the current music queue. |
-| `/nowplaying` | Show the currently playing song. |
-| `/autoplay` | Toggle autoplay on/off. |
-| `/music-status` | Check the status of all music workers. |
-| `/cache-status` | View cache statistics and storage usage. |
+| Command               | Description                                     |
+| :-------------------- | :---------------------------------------------- |
+| `/play <query>`       | Play a song from YouTube or search by keywords. |
+| `/p <query>`          | Alias for `/play`.                              |
+| `/playnext <query>`   | Add a song to the top of the queue.             |
+| `/playnow <query>`    | Skip current song and play this immediately.    |
+| `/playlist <url>`     | Play a YouTube playlist.                        |
+| `/pl <url>`           | Alias for `/playlist`.                          |
+| `/radio`              | 🆕 Play random songs from the local cache.      |
+| `/pause`              | Pause the current song.                         |
+| `/resume`             | Resume the paused song.                         |
+| `/skip`               | Skip the current song.                          |
+| `/stop`               | Stop playback and clear the queue.              |
+| `/queue`              | Show the current music queue.                   |
+| `/nowplaying`         | Show the currently playing song.                |
+| `/autoplay`           | Toggle autoplay on/off.                         |
+| `/music-status`       | Check the status of all music workers.          |
+| `/cache-status`       | View cache statistics and storage usage.        |
 | `/catastrophic-reset` | Emergency command to reset all bots and queues. |
-| `/help` | Show this help message. |
+| `/help`               | Show this help message.                         |
 
 ## Multi-Client Architecture (Heavenly Council of Fur)
 
 Jasper supports a unique **Controller + Worker** architecture.
+
 - **Jasper (Controller):** The main bot you interact with via Slash Commands (`/play`, `/stop`).
 - **Workers (Misty, Tuki, etc.):** Additional bot accounts that handle the actual audio playback.
 
 **How it works:**
+
 1. You send a command to Jasper: `/play song`.
 2. With **Automatic Feline Rotation (AFR)**, Jasper has a 50% chance of joining your channel himself.
 3. The other 50% of the time, he'll summon a random **Worker Bot** (e.g., Misty or Tuki) to handle the music.
@@ -89,6 +90,7 @@ Jasper supports a unique **Controller + Worker** architecture.
 5. This allows multiple voice channels to have music simultaneously, all controlled via Jasper!
 
 ### Configuration
+
 To enable this, add tokens for your worker bots in the `.env` file:
 
 ```env
@@ -106,6 +108,7 @@ ANNOUNCE_CHANNEL_ID=...
 
 **Permissions:**
 Ensure ALL worker bots are invited to your server and have the following permissions in the voice channels:
+
 - `Connect`
 - `Speak`
 
@@ -116,6 +119,7 @@ Ensure ALL worker bots are invited to your server and have the following permiss
 ### What is AFR?
 
 Instead of always using Jasper or following a fixed order, AFR probabilistically selects which cat joins your voice channel:
+
 - **50% chance:** Jasper himself joins (default behavior)
 - **50% chance:** A random worker bot (Misty, Tuki, etc.) is selected
 - **Unique Entry Messages:** Each cat announces their arrival with personalized, randomized messages
@@ -130,6 +134,7 @@ AFR_JASPER_WEIGHT=0.5  # Default: 0.5 (50% chance)
 ```
 
 **Weight Options:**
+
 - `0.5` (default) - Balanced 50/50 split between Jasper and workers
 - `1.0` - Jasper always joins when available (classic behavior)
 - `0.0` - Workers always selected, Jasper never joins
@@ -138,6 +143,7 @@ AFR_JASPER_WEIGHT=0.5  # Default: 0.5 (50% chance)
 ### Entry Messages
 
 Each cat has their own personality:
+
 - **Jasper:** "🐾 **Jasper** has arrived, ready to drop some purrfect beats!"
 - **Misty:** "🌫️ **Misty** emerges from the fog to bless your ears!"
 - **Tuki:** "🔮 **Tuki** arrives with mystical melodies!"
@@ -153,10 +159,12 @@ Each cat has their own personality:
 ### What is the Caching System?
 
 The caching system stores:
+
 1. **Search Results**: YouTube search results for `/play` commands
 2. **Audio Files**: Downloaded audio files mapped to video IDs
 
 This means:
+
 - Repeated songs play **instantly** without re-downloading
 - **Reduced bandwidth** usage on your server
 - **Faster response times** for popular requests
@@ -165,6 +173,7 @@ This means:
 ### ⚡ Visual Feedback
 
 When a song is played from the cache, you'll see **double lightning bolts** (⚡⚡) in the response:
+
 - **Added to queue:** `⚡⚡ ✅ **Jasper** added to queue...`
 - **Now Playing:** `⚡⚡ ▶️ **Jasper** is now playing...`
 
@@ -187,12 +196,14 @@ CACHE_CLEANUP_INTERVAL_HOURS=1  # 1 hour (default)
 ### Performance Impact Analysis
 
 #### ✅ Benefits
+
 - **Bandwidth**: 90-95% reduction for repeated songs
 - **Response Time**: 2-5s faster for cached songs (no download wait)
 - **Reliability**: Works offline for cached songs if YouTube is down
 - **First Play**: No delay thanks to async write optimization (streams from memory while writing to disk)
 
 #### ⚠️ Tradeoffs
+
 - **Disk Space**: ~5-10MB per cached song (high quality)
   - Example: 100 cached songs ≈ 500MB-1GB
   - Automatically cleaned up based on TTL every hour (configurable)
@@ -201,26 +212,33 @@ CACHE_CLEANUP_INTERVAL_HOURS=1  # 1 hour (default)
 #### 📊 Recommended Settings by Use Case
 
 **Small Server (1-10 users):**
+
 ```env
 CACHE_AUDIO_TTL_HOURS=24    # 1 day
 ```
+
 Expected disk usage: 100-500MB
 
 **Medium Server (10-50 users):**
+
 ```env
 CACHE_AUDIO_TTL_HOURS=72    # 3 days (default)
 ```
+
 Expected disk usage: 500MB-2GB
 
 **Large Server (50+ users):**
+
 ```env
 CACHE_AUDIO_TTL_HOURS=168   # 7 days
 ```
+
 Expected disk usage: 2-5GB
 
 ### Monitoring
 
 Cache statistics are logged on bot startup and during cleanup:
+
 ```
 [Cache] Audio cache: 42 files, 387MB
 [Cache] Search cache: 156 entries
@@ -237,10 +255,12 @@ Cache statistics are logged on bot startup and during cleanup:
 - **Database:** Ensure your database (SQLite or Postgres) is correctly configured in `.env`.
 
 ### Supported Databases
+
 1.  **SQLite (Default):** Zero-configuration, stores data in `data/jasper.db`. Perfect for small servers and development.
 2.  **PostgreSQL:** Recommended for production and large servers.
 
 ### Configuration
+
 To use PostgreSQL, add these to your `.env` file:
 
 ```env
@@ -252,7 +272,9 @@ DATABASE_URL=postgresql://user:password@localhost:5432/jasper_db
 If `DB_TYPE` is not set or set to `sqlite`, it defaults to SQLite.
 
 ### Viewing Statistics
+
 Statistics are displayed on the **Web Dashboard** (see below).
+
 - **Top Songs:** Most played tracks.
 - **Top Listeners:** Users with the most playtime.
 - **Global Stats:** Total plays and duration across the server.
@@ -262,12 +284,14 @@ Statistics are displayed on the **Web Dashboard** (see below).
 🆕 **Jasper now includes a real-time Web UI** for monitoring the bot's status!
 
 ### Features
+
 - **Heavenly Council:** View status of all worker bots (Idle/Busy/Offline).
 - **Active Queues:** See what's playing in every channel.
 - **Cache Stats:** Monitor storage usage and cache hits.
 - **Activity Logs:** Real-time stream of bot activities.
 
 ### Enabling the Dashboard
+
 The Web UI is **opt-in**. To enable it, you must set the `PORT` environment variable in your `.env` file:
 
 ```env
@@ -278,17 +302,16 @@ PORT=3000
 Once enabled, start the bot and visit:
 👉 **http://localhost:3000** (or your server's IP)
 
-
 ## Tech Stack
 
-  - **Runtime:** Node.js (v18+)
-  - **Language:** TypeScript (strict mode)
-  - **Architecture:** Monorepo (Turborepo + pnpm/pnpm workspaces)
-  - **Bot Framework:** [discord.js](https://discord.js.org/) v14
-  - **Frontend:** React 18 + Vite + Tailwind CSS
-  - **Audio Engine:** `yt-dlp` (via child process) + `@discordjs/voice`
-  - **Search:** `yt-search`
-  - **Dev Tooling:** tsx, Turbo
+- **Runtime:** Node.js (v18+)
+- **Language:** TypeScript (strict mode)
+- **Architecture:** Monorepo (Turborepo + pnpm/pnpm workspaces)
+- **Bot Framework:** [discord.js](https://discord.js.org/) v14
+- **Frontend:** React 18 + Vite + Tailwind CSS
+- **Audio Engine:** `yt-dlp` (via child process) + `@discordjs/voice`
+- **Search:** `yt-search`
+- **Dev Tooling:** tsx, Turbo
 
 ## Prerequisites
 
@@ -298,7 +321,6 @@ Before installing, ensure you have:
     - **Note:** Node.js is also used by yt-dlp for JavaScript execution during YouTube extraction.
 2.  **FFmpeg** (The bot attempts to use a static binary, but having it installed globally is recommended).
 3.  **yt-dlp.exe** (Required for streaming).
-
 
 ## Installation
 
@@ -334,11 +356,14 @@ If the postinstall script cannot download yt-dlp (e.g., no network), you can sti
 
 1.  Go to the **[yt-dlp GitHub Releases](https://github.com/yt-dlp/yt-dlp/releases/latest)**.
 2.  Download the executable for your system:
-  * **Windows:** Download `yt-dlp.exe`.
-  * **Linux/Mac:** Download `yt-dlp` (and run `chmod +x yt-dlp`).
+
+- **Windows:** Download `yt-dlp.exe`.
+- **Linux/Mac:** Download `yt-dlp` (and run `chmod +x yt-dlp`).
+
 3.  **Place the file in the ROOT folder** of this project (the same folder where `package.json` is).
 
 **Folder Structure should look like this:**
+
 ```text
 Jasper/
 ├── apps/
@@ -391,11 +416,13 @@ pnpm run deploy:commands
 ### 7. Start the Bot
 
 **Development mode** (with hot-reloading):
+
 ```bash
 pnpm run dev
 ```
 
 **Production mode** (runs compiled JavaScript):
+
 ```bash
 pnpm start
 ```

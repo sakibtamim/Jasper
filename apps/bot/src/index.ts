@@ -1,5 +1,10 @@
 // Import env.ts first to ensure environment variables are loaded
-import { validateBotConfig, DISCORD_CLIENT_ID, GUILD_ID, DISCORD_TOKEN } from './config/env.js';
+import {
+  validateBotConfig,
+  DISCORD_CLIENT_ID,
+  GUILD_ID,
+  DISCORD_TOKEN,
+} from "./config/env.js";
 
 import fs from "node:fs";
 import path from "node:path";
@@ -13,7 +18,6 @@ import { sendAnnouncement } from "./core/announcer.js";
 import { startServer, server } from "./api/server.js";
 import pluginManager from "./core/plugins/plugin-manager.js";
 
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -26,13 +30,18 @@ process.on("SIGTERM", () => handleGracefulExit("SIGTERM"));
 
 // Global error handlers
 process.on("uncaughtException", (error) => {
-  logger.error(`[core] Uncaught Exception: ${error instanceof Error ? error.stack : String(error)}`);
-  handleGracefulExit("uncaughtException", error instanceof Error ? error : new Error(String(error)));
+  logger.error(
+    `[core] Uncaught Exception: ${error instanceof Error ? error.stack : String(error)}`,
+  );
+  handleGracefulExit(
+    "uncaughtException",
+    error instanceof Error ? error : new Error(String(error)),
+  );
 });
 
 process.on("unhandledRejection", (reason, promise) => {
   logger.error(`[core] Unhandled Rejection at: ${promise}, reason: ${reason}`);
-  // We don't exit on unhandledRejection to keep the bot running, 
+  // We don't exit on unhandledRejection to keep the bot running,
   // but we log it. If it's critical, uncaughtException might eventually trigger.
 });
 
@@ -54,9 +63,13 @@ process.on("unhandledRejection", (reason, promise) => {
   // Load commands
   const commandsPath = path.join(__dirname, "commands");
   // Support both .js (production) and .ts (development), but exclude .d.ts
-  const commandFiles = fs.readdirSync(commandsPath).filter(file =>
-    (file.endsWith(".js") || file.endsWith(".ts")) && !file.endsWith(".d.ts")
-  );
+  const commandFiles = fs
+    .readdirSync(commandsPath)
+    .filter(
+      (file) =>
+        (file.endsWith(".js") || file.endsWith(".ts")) &&
+        !file.endsWith(".d.ts"),
+    );
 
   for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);
@@ -66,7 +79,9 @@ process.on("unhandledRejection", (reason, promise) => {
       client.commands.set(command.data.name, command);
       logger.info(`[core] Loaded command /${command.data.name}`);
     } else {
-      logger.warn(`[core] The command at ${filePath} is missing a required "data" or "execute" property.`);
+      logger.warn(
+        `[core] The command at ${filePath} is missing a required "data" or "execute" property.`,
+      );
     }
   }
 
@@ -78,7 +93,9 @@ process.on("unhandledRejection", (reason, promise) => {
   startCacheCleanup();
 
   // 6. Startup Announcement
-  await sendAnnouncement("✅ **Jasper System Online**\nReady to serve the Heavenly Council of Fur.");
+  await sendAnnouncement(
+    "✅ **Jasper System Online**\nReady to serve the Heavenly Council of Fur.",
+  );
 
   // 7. Load Plugins (Must be before server starts)
   pluginManager.init(client, server);
@@ -90,24 +107,29 @@ process.on("unhandledRejection", (reason, promise) => {
       logger.info("[core] Deploying commands to Discord...");
       const commandsData = client.commands.map((cmd: any) => {
         // Handle both Builders (toJSON) and plain objects
-        return typeof cmd.data.toJSON === 'function' ? cmd.data.toJSON() : cmd.data;
+        return typeof cmd.data.toJSON === "function"
+          ? cmd.data.toJSON()
+          : cmd.data;
       });
 
       const rest = new REST({ version: "10" }).setToken(DISCORD_TOKEN);
 
       await rest.put(
         Routes.applicationGuildCommands(DISCORD_CLIENT_ID, GUILD_ID),
-        { body: commandsData }
+        { body: commandsData },
       );
-      logger.info(`[core] Successfully deployed ${commandsData.length} commands.`);
+      logger.info(
+        `[core] Successfully deployed ${commandsData.length} commands.`,
+      );
     } catch (error) {
       logger.error(`[core] Failed to deploy commands: ${error}`);
     }
   } else {
-    logger.warn("[core] Skipping command deployment: DISCORD_CLIENT_ID or GUILD_ID missing.");
+    logger.warn(
+      "[core] Skipping command deployment: DISCORD_CLIENT_ID or GUILD_ID missing.",
+    );
   }
 
   // 8. Start Web UI Server
   await startServer();
-
 })();

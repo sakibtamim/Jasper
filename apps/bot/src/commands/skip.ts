@@ -7,5 +7,5 @@ export default {
     .setDescription("Skip the current song"),
   async execute(interaction: ChatInputCommandInteraction) {
     await music.skip(interaction);
-  }
+  },
 };

@@ -16,20 +16,27 @@ A full-stack plugin that adds a customizable soundboard to Jasper. Users can upl
 ## Commands
 
 ### `/soundboard menu`
+
 Opens a private (ephemeral) dropdown menu to select and play a sound. This is useful for quickly browsing available sounds without disturbing the chat.
 
 ### `/soundboard play [sound]`
+
 Directly plays a sound.
+
 - **sound**: The name of the sound to play. Supports autocomplete search.
 
 ### `/soundboard add`
+
 Adds a new sound to the soundboard.
+
 - **file**: The audio file to upload (MP3/WAV/OGG, max 10s).
 - **name**: The name of the sound (max 32 chars).
 - **emoji**: An emoji to represent the sound (optional, defaults to 🔊).
 
 ### `/soundboard ui`
+
 Creates a permanent "Soundboard" message in the channel with interactive buttons for the top 25 sounds.
+
 - Anyone in the voice channel can click these buttons to play sounds.
 - Buttons are rate-limited per user to prevent spam.
 - **Edit Mode**: Users can edit sound names and emojis directly from the web dashboard.
@@ -37,6 +44,7 @@ Creates a permanent "Soundboard" message in the channel with interactive buttons
 ## Technical Details
 
 ### Architecture
+
 - **Backend**:
   - `index.ts`: Registers the plugin and global interaction handlers.
   - `commands/soundboard.ts`: Implements the slash command logic and button interaction handling.
@@ -46,12 +54,15 @@ Creates a permanent "Soundboard" message in the channel with interactive buttons
   - Uses `@jasper/hooks` to interact with the plugin storage and database.
 
 ### Data Storage
+
 - **Sounds**: Stored in the plugin's scoped database (`context.db.plugin`).
 - **Files**: Stored in the plugin's scoped storage directory (`context.storage`).
 - **Stats**: Tracks play counts to determine "top sounds" for the UI.
 
 ### Concurrency
+
 The plugin uses a **per-channel queue system** implemented in the core `PluginManager`.
+
 1. When a sound is requested, it is added to a queue for that voice channel.
 2. If the bot is already playing music, it pauses the music, creates a temporary connection for the sound, plays it, and then resumes the music.
 3. If multiple sounds are requested, they play one after another.

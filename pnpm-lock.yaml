@@ -17,6 +17,9 @@ importers:
       '@types/node':
         specifier: ^24.10.1
         version: 24.10.1
+      globals:
+        specifier: ^16.5.0
+        version: 16.5.0
       husky:
         specifier: ^9.1.7
         version: 9.1.7

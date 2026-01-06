@@ -7,5 +7,5 @@ export default {
     .setDescription("Pause the current song"),
   async execute(interaction: ChatInputCommandInteraction) {
     await music.pause(interaction);
-  }
+  },
 };
