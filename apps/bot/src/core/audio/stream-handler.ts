@@ -24,10 +24,15 @@ export function isUrl(text: string): boolean {
 }
 
 export function isAttachmentUrl(text: string): boolean {
-    // Discord uses multiple domains for attachments
+    // Discord uses multiple domains and paths for attachments
+    // Regular attachments: /attachments/
+    // Slash command attachments: /ephemeral-attachments/
     return text.includes("cdn.discordapp.com/attachments") ||
+        text.includes("cdn.discordapp.com/ephemeral-attachments") ||
         text.includes("media.discordapp.net/attachments") ||
-        text.includes("cdn.discord.com/attachments");
+        text.includes("media.discordapp.net/ephemeral-attachments") ||
+        text.includes("cdn.discord.com/attachments") ||
+        text.includes("cdn.discord.com/ephemeral-attachments");
 }
 
 export interface VideoData {
