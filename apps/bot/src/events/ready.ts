@@ -7,16 +7,20 @@ export default {
     // @ts-ignore - Accessed custom property injected in worker-pool
     const role = (client as any).role;
 
-    if (role === 'controller') {
+    if (role === "controller") {
       client.user!.setPresence({
-        activities: [{ name: "Managing the Heavenly Council", type: ActivityType.Custom }],
-        status: "online"
+        activities: [
+          { name: "Managing the Heavenly Council", type: ActivityType.Custom },
+        ],
+        status: "online",
       });
     } else {
       client.user!.setPresence({
-        activities: [{ name: "Waiting for tasks...", type: ActivityType.Custom }],
-        status: "idle"
+        activities: [
+          { name: "Waiting for tasks...", type: ActivityType.Custom },
+        ],
+        status: "idle",
       });
     }
-  }
+  },
 };

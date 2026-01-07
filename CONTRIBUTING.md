@@ -15,12 +15,14 @@ The best way to get started is to join our Discord server. It's where we discuss
 Jasper is a monorepo managed with `pnpm` and `turborepo`.
 
 1.  **Fork and Clone**
+
     ```bash
     git clone https://github.com/YOUR_USERNAME/Jasper.git
     cd Jasper
     ```
 
 2.  **Install Dependencies**
+
     ```bash
     pnpm install
     ```
@@ -50,6 +52,7 @@ See [PLUGINS_DEV.md](PLUGINS_DEV.md) for a detailed guide.
 ## 🐛 Reporting Bugs
 
 If you find a bug, please open an issue on GitHub. Include:
+
 - Steps to reproduce
 - Expected vs. actual behavior
 - Logs or screenshots

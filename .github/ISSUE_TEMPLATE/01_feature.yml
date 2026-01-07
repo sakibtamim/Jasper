@@ -1,0 +1,45 @@
+name: "🚀 Feature Request"
+description: Suggest a new feature or capability for the project
+title: ""
+labels: ["type: feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing a new feature! Please provide as much detail as possible.
+
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective & Preamble
+      description: What is the goal of this feature? What problem does it solve?
+      placeholder: Provide a clear, high-level summary.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: List the specific requirements that must be met for this feature to be considered complete.
+      value: |
+        - [ ] Criterion 1
+        - [ ] Criterion 2
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation-brief
+    attributes:
+      label: Implementation Brief
+      description: Technical details, architectural decisions, or proposed approach.
+      placeholder: Outline the technical plan here.
+
+  - type: textarea
+    id: qa-checklist
+    attributes:
+      label: QA Checklist
+      description: Steps to verify the feature works as expected.
+      value: |
+        - [ ] Manual test case 1
+        - [ ] Manual test case 2

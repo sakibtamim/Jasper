@@ -7,5 +7,5 @@ export default {
     .setDescription("Show the currently playing song"),
   async execute(interaction: ChatInputCommandInteraction) {
     await music.nowPlaying(interaction);
-  }
+  },
 };

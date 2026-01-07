@@ -1,10 +1,18 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-import fs from 'fs';
-import logger from '../logger.js';
-import { DatabaseAdapter, PlayRecord, SongStats, UserStats, User, Session, YtDlpCookie } from './types.js';
-import { decrypt, encrypt } from '../../utils/encryption.js';
-import { ENCRYPTION_KEY } from '../../config/env.js';
+import Database from "better-sqlite3";
+import path from "path";
+import fs from "fs";
+import logger from "../logger.js";
+import {
+  DatabaseAdapter,
+  PlayRecord,
+  SongStats,
+  UserStats,
+  User,
+  Session,
+  YtDlpCookie,
+} from "./types.js";
+import { decrypt, encrypt } from "../../utils/encryption.js";
+import { ENCRYPTION_KEY } from "../../config/env.js";
 
 export class SqliteAdapter implements DatabaseAdapter {
   private db: Database.Database | null = null;
@@ -12,17 +20,17 @@ export class SqliteAdapter implements DatabaseAdapter {
 
   constructor() {
     // Ensure data directory exists
-    const dataDir = path.join(process.cwd(), 'data');
+    const dataDir = path.join(process.cwd(), "data");
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
     }
-    this.dbPath = path.join(dataDir, 'jasper.db');
+    this.dbPath = path.join(dataDir, "jasper.db");
   }
 
   async init(): Promise<void> {
     try {
       this.db = new Database(this.dbPath);
-      this.db.pragma('journal_mode = WAL');
+      this.db.pragma("journal_mode = WAL");
 
       // Create tables
       this.db.exec(`
@@ -119,11 +127,13 @@ export class SqliteAdapter implements DatabaseAdapter {
       `);
 
       // Migration: Add thumbnail column if it doesn't exist
-      const tableInfo = this.db.pragma('table_info(plays)') as { name: string }[];
-      const hasThumbnail = tableInfo.some(col => col.name === 'thumbnail');
+      const tableInfo = this.db.pragma("table_info(plays)") as {
+        name: string;
+      }[];
+      const hasThumbnail = tableInfo.some((col) => col.name === "thumbnail");
       if (!hasThumbnail) {
-        this.db.exec('ALTER TABLE plays ADD COLUMN thumbnail TEXT');
-        logger.info('[db] Added thumbnail column to plays table');
+        this.db.exec("ALTER TABLE plays ADD COLUMN thumbnail TEXT");
+        logger.info("[db] Added thumbnail column to plays table");
       }
 
       // Create indexes for performance
@@ -151,7 +161,7 @@ export class SqliteAdapter implements DatabaseAdapter {
   }
 
   async trackPlay(record: PlayRecord): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) throw new Error("Database not initialized");
 
     const stmt = this.db.prepare(`
       INSERT INTO plays (user_id, guild_id, channel_id, bot_name, song_title, song_url, duration, thumbnail, played_at)
@@ -167,12 +177,12 @@ export class SqliteAdapter implements DatabaseAdapter {
       record.songUrl,
       record.duration,
       record.thumbnail || null,
-      record.playedAt.toISOString()
+      record.playedAt.toISOString(),
     );
   }
 
   async getTopSongs(limit: number = 10): Promise<SongStats[]> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) throw new Error("Database not initialized");
 
     const stmt = this.db.prepare(`
       SELECT 
@@ -198,14 +208,14 @@ export class SqliteAdapter implements DatabaseAdapter {
     }
 
     const rows = stmt.all(limit) as SongStatsRow[];
-    return rows.map(row => ({
+    return rows.map((row) => ({
       ...row,
-      lastPlayedAt: new Date(row.lastPlayedAt)
+      lastPlayedAt: new Date(row.lastPlayedAt),
     }));
   }
 
   async getTopUsers(limit: number = 10): Promise<UserStats[]> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) throw new Error("Database not initialized");
 
     const stmt = this.db.prepare(`
       SELECT 
@@ -227,14 +237,17 @@ export class SqliteAdapter implements DatabaseAdapter {
     }
 
     const rows = stmt.all(limit) as UserStatsRow[];
-    return rows.map(row => ({
+    return rows.map((row) => ({
       ...row,
-      lastPlayedAt: new Date(row.lastPlayedAt)
+      lastPlayedAt: new Date(row.lastPlayedAt),
     }));
   }
 
-  async getGlobalStats(): Promise<{ totalPlays: number; totalDuration: number }> {
-    if (!this.db) throw new Error('Database not initialized');
+  async getGlobalStats(): Promise<{
+    totalPlays: number;
+    totalDuration: number;
+  }> {
+    if (!this.db) throw new Error("Database not initialized");
 
     const stmt = this.db.prepare(`
       SELECT 
@@ -246,8 +259,10 @@ export class SqliteAdapter implements DatabaseAdapter {
     return stmt.get() as { totalPlays: number; totalDuration: number };
   }
 
-  async getCachedSearchResult(query: string): Promise<import('./types.js').CachedSearchResult | null> {
-    if (!this.db) throw new Error('Database not initialized');
+  async getCachedSearchResult(
+    query: string,
+  ): Promise<import("./types.js").CachedSearchResult | null> {
+    if (!this.db) throw new Error("Database not initialized");
 
     const stmt = this.db.prepare(`
       SELECT query, song_title as songTitle, song_url as songUrl, duration, thumbnail, cached_at as cachedAt, expires_at as expiresAt
@@ -255,7 +270,17 @@ export class SqliteAdapter implements DatabaseAdapter {
       WHERE query = ? AND expires_at > datetime('now')
     `);
 
-    const row = stmt.get(query) as { query: string; songTitle: string; songUrl: string; duration: number; thumbnail?: string; cachedAt: string; expiresAt: string } | undefined;
+    const row = stmt.get(query) as
+      | {
+          query: string;
+          songTitle: string;
+          songUrl: string;
+          duration: number;
+          thumbnail?: string;
+          cachedAt: string;
+          expiresAt: string;
+        }
+      | undefined;
     if (!row) return null;
 
     return {
@@ -269,10 +294,19 @@ export class SqliteAdapter implements DatabaseAdapter {
     };
   }
 
-  async setCachedSearchResult(query: string, songTitle: string, songUrl: string, duration: number, thumbnail: string | undefined, ttlHours: number): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+  async setCachedSearchResult(
+    query: string,
+    songTitle: string,
+    songUrl: string,
+    duration: number,
+    thumbnail: string | undefined,
+    ttlHours: number,
+  ): Promise<void> {
+    if (!this.db) throw new Error("Database not initialized");
 
-    const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000).toISOString();
+    const expiresAt = new Date(
+      Date.now() + ttlHours * 60 * 60 * 1000,
+    ).toISOString();
 
     const stmt = this.db.prepare(`
       INSERT OR REPLACE INTO search_cache (query, song_title, song_url, duration, thumbnail, expires_at)
@@ -282,8 +316,10 @@ export class SqliteAdapter implements DatabaseAdapter {
     stmt.run(query, songTitle, songUrl, duration, thumbnail, expiresAt);
   }
 
-  async getAudioMetadata(videoId: string): Promise<import('./types.js').AudioMetadata | null> {
-    if (!this.db) throw new Error('Database not initialized');
+  async getAudioMetadata(
+    videoId: string,
+  ): Promise<import("./types.js").AudioMetadata | null> {
+    if (!this.db) throw new Error("Database not initialized");
 
     const stmt = this.db.prepare(`
       SELECT video_id as videoId, title, url, duration, thumbnail, search_terms as searchTerms, cached_at as cachedAt, expires_at as expiresAt
@@ -291,7 +327,18 @@ export class SqliteAdapter implements DatabaseAdapter {
       WHERE video_id = ? AND expires_at > datetime('now')
     `);
 
-    const row = stmt.get(videoId) as { videoId: string; title: string; url: string; duration: number; thumbnail?: string; searchTerms: string; cachedAt: string; expiresAt: string } | undefined;
+    const row = stmt.get(videoId) as
+      | {
+          videoId: string;
+          title: string;
+          url: string;
+          duration: number;
+          thumbnail?: string;
+          searchTerms: string;
+          cachedAt: string;
+          expiresAt: string;
+        }
+      | undefined;
     if (!row) return null;
 
     return {
@@ -306,21 +353,41 @@ export class SqliteAdapter implements DatabaseAdapter {
     };
   }
 
-  async setAudioMetadata(videoId: string, title: string, url: string, duration: number, thumbnail: string | undefined, searchTerms: string[], ttlHours: number): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+  async setAudioMetadata(
+    videoId: string,
+    title: string,
+    url: string,
+    duration: number,
+    thumbnail: string | undefined,
+    searchTerms: string[],
+    ttlHours: number,
+  ): Promise<void> {
+    if (!this.db) throw new Error("Database not initialized");
 
-    const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000).toISOString();
+    const expiresAt = new Date(
+      Date.now() + ttlHours * 60 * 60 * 1000,
+    ).toISOString();
 
     const stmt = this.db.prepare(`
       INSERT OR REPLACE INTO audio_metadata (video_id, title, url, duration, thumbnail, search_terms, expires_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
-    stmt.run(videoId, title, url, duration, thumbnail, JSON.stringify(searchTerms), expiresAt);
+    stmt.run(
+      videoId,
+      title,
+      url,
+      duration,
+      thumbnail,
+      JSON.stringify(searchTerms),
+      expiresAt,
+    );
   }
 
-  async getRandomCachedSong(): Promise<import('./types.js').AudioMetadata | null> {
-    if (!this.db) throw new Error('Database not initialized');
+  async getRandomCachedSong(): Promise<
+    import("./types.js").AudioMetadata | null
+  > {
+    if (!this.db) throw new Error("Database not initialized");
 
     const stmt = this.db.prepare(`
       SELECT video_id as videoId, title, url, duration, thumbnail, search_terms as searchTerms, cached_at as cachedAt, expires_at as expiresAt
@@ -330,7 +397,18 @@ export class SqliteAdapter implements DatabaseAdapter {
       LIMIT 1
     `);
 
-    const row = stmt.get() as { videoId: string; title: string; url: string; duration: number; thumbnail?: string; searchTerms: string; cachedAt: string; expiresAt: string } | undefined;
+    const row = stmt.get() as
+      | {
+          videoId: string;
+          title: string;
+          url: string;
+          duration: number;
+          thumbnail?: string;
+          searchTerms: string;
+          cachedAt: string;
+          expiresAt: string;
+        }
+      | undefined;
     if (!row) return null;
 
     return {
@@ -346,24 +424,37 @@ export class SqliteAdapter implements DatabaseAdapter {
   }
 
   async cleanupExpiredCache(): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) throw new Error("Database not initialized");
 
-    const searchStmt = this.db.prepare(`DELETE FROM search_cache WHERE expires_at <= datetime('now')`);
-    const audioStmt = this.db.prepare(`DELETE FROM audio_metadata WHERE expires_at <= datetime('now')`);
+    const searchStmt = this.db.prepare(
+      `DELETE FROM search_cache WHERE expires_at <= datetime('now')`,
+    );
+    const audioStmt = this.db.prepare(
+      `DELETE FROM audio_metadata WHERE expires_at <= datetime('now')`,
+    );
 
     const searchDeleted = searchStmt.run().changes;
     const audioDeleted = audioStmt.run().changes;
 
     if (searchDeleted > 0 || audioDeleted > 0) {
-      logger.info(`[db] Cleaned up ${searchDeleted} expired search cache entries and ${audioDeleted} expired audio metadata entries`);
+      logger.info(
+        `[db] Cleaned up ${searchDeleted} expired search cache entries and ${audioDeleted} expired audio metadata entries`,
+      );
     }
   }
 
-  async getCacheStats(): Promise<{ searchCacheSize: number; audioMetadataCount: number }> {
-    if (!this.db) throw new Error('Database not initialized');
+  async getCacheStats(): Promise<{
+    searchCacheSize: number;
+    audioMetadataCount: number;
+  }> {
+    if (!this.db) throw new Error("Database not initialized");
 
-    const searchStmt = this.db.prepare(`SELECT COUNT(*) as count FROM search_cache WHERE expires_at > datetime('now')`);
-    const audioStmt = this.db.prepare(`SELECT COUNT(*) as count FROM audio_metadata WHERE expires_at > datetime('now')`);
+    const searchStmt = this.db.prepare(
+      `SELECT COUNT(*) as count FROM search_cache WHERE expires_at > datetime('now')`,
+    );
+    const audioStmt = this.db.prepare(
+      `SELECT COUNT(*) as count FROM audio_metadata WHERE expires_at > datetime('now')`,
+    );
 
     const searchCount = (searchStmt.get() as { count: number }).count;
     const audioCount = (audioStmt.get() as { count: number }).count;
@@ -374,8 +465,10 @@ export class SqliteAdapter implements DatabaseAdapter {
     };
   }
 
-  async getTopChannels(limit: number = 10): Promise<import('./types.js').ChannelStats[]> {
-    if (!this.db) throw new Error('Database not initialized');
+  async getTopChannels(
+    limit: number = 10,
+  ): Promise<import("./types.js").ChannelStats[]> {
+    if (!this.db) throw new Error("Database not initialized");
 
     const stmt = this.db.prepare(`
       SELECT 
@@ -390,11 +483,13 @@ export class SqliteAdapter implements DatabaseAdapter {
       LIMIT ?
     `);
 
-    return stmt.all(limit) as import('./types.js').ChannelStats[];
+    return stmt.all(limit) as import("./types.js").ChannelStats[];
   }
 
-  async getTopBots(limit: number = 10): Promise<import('./types.js').BotStats[]> {
-    if (!this.db) throw new Error('Database not initialized');
+  async getTopBots(
+    limit: number = 10,
+  ): Promise<import("./types.js").BotStats[]> {
+    if (!this.db) throw new Error("Database not initialized");
 
     const stmt = this.db.prepare(`
       SELECT 
@@ -406,11 +501,15 @@ export class SqliteAdapter implements DatabaseAdapter {
       LIMIT ?
     `);
 
-    return stmt.all(limit) as import('./types.js').BotStats[];
+    return stmt.all(limit) as import("./types.js").BotStats[];
   }
 
-  async trackCacheHit(entityId: string, entityName: string, entityType: 'user' | 'bot'): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+  async trackCacheHit(
+    entityId: string,
+    entityName: string,
+    entityType: "user" | "bot",
+  ): Promise<void> {
+    if (!this.db) throw new Error("Database not initialized");
 
     const stmt = this.db.prepare(`
       INSERT INTO cache_hits (entity_id, entity_name, entity_type)
@@ -420,8 +519,10 @@ export class SqliteAdapter implements DatabaseAdapter {
     stmt.run(entityId, entityName, entityType);
   }
 
-  async getTopCacheHits(limit: number = 10): Promise<import('./types.js').CacheHitStats[]> {
-    if (!this.db) throw new Error('Database not initialized');
+  async getTopCacheHits(
+    limit: number = 10,
+  ): Promise<import("./types.js").CacheHitStats[]> {
+    if (!this.db) throw new Error("Database not initialized");
 
     const stmt = this.db.prepare(`
       SELECT 
@@ -435,7 +536,7 @@ export class SqliteAdapter implements DatabaseAdapter {
       LIMIT ?
     `);
 
-    return stmt.all(limit) as import('./types.js').CacheHitStats[];
+    return stmt.all(limit) as import("./types.js").CacheHitStats[];
   }
 
   async close(): Promise<void> {
@@ -446,7 +547,7 @@ export class SqliteAdapter implements DatabaseAdapter {
   }
 
   async upsertUser(user: User): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) throw new Error("Database not initialized");
     const stmt = this.db.prepare(`
       INSERT INTO users (id, username, discriminator, avatar, access_token, refresh_token, expires_at, updated_at)
       VALUES (@id, @username, @discriminator, @avatar, @accessToken, @refreshToken, @expiresAt, datetime('now'))
@@ -462,12 +563,12 @@ export class SqliteAdapter implements DatabaseAdapter {
     stmt.run({
       ...user,
       avatar: user.avatar || null,
-      expiresAt: user.expiresAt.toISOString()
+      expiresAt: user.expiresAt.toISOString(),
     });
   }
 
   async createSession(session: Session): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) throw new Error("Database not initialized");
     const stmt = this.db.prepare(`
       INSERT INTO sessions (id, user_id, expires_at, created_at)
       VALUES (@id, @userId, @expiresAt, @createdAt)
@@ -475,12 +576,12 @@ export class SqliteAdapter implements DatabaseAdapter {
     stmt.run({
       ...session,
       expiresAt: session.expiresAt.toISOString(),
-      createdAt: session.createdAt.toISOString()
+      createdAt: session.createdAt.toISOString(),
     });
   }
 
   async getSession(sessionId: string): Promise<Session | null> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) throw new Error("Database not initialized");
     const stmt = this.db.prepare(`
       SELECT 
         id, 
@@ -504,18 +605,18 @@ export class SqliteAdapter implements DatabaseAdapter {
       id: row.id,
       userId: row.userId,
       expiresAt: new Date(row.expiresAt),
-      createdAt: new Date(row.createdAt)
+      createdAt: new Date(row.createdAt),
     };
   }
 
   async deleteSession(sessionId: string): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
-    const stmt = this.db.prepare('DELETE FROM sessions WHERE id = ?');
+    if (!this.db) throw new Error("Database not initialized");
+    const stmt = this.db.prepare("DELETE FROM sessions WHERE id = ?");
     stmt.run(sessionId);
   }
 
   async getUser(userId: string): Promise<User | null> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) throw new Error("Database not initialized");
     const stmt = this.db.prepare(`
       SELECT 
         id, username, discriminator, avatar, 
@@ -552,15 +653,18 @@ export class SqliteAdapter implements DatabaseAdapter {
       refreshToken: decrypt(row.refreshToken, ENCRYPTION_KEY),
       expiresAt: new Date(row.expiresAt),
       createdAt: new Date(row.createdAt),
-      updatedAt: new Date(row.updatedAt)
+      updatedAt: new Date(row.updatedAt),
     };
   }
 
   // DevTools methods
-  async getAllUsers(limit: number = 50, offset: number = 0): Promise<{ users: User[], total: number }> {
-    if (!this.db) throw new Error('Database not initialized');
+  async getAllUsers(
+    limit: number = 50,
+    offset: number = 0,
+  ): Promise<{ users: User[]; total: number }> {
+    if (!this.db) throw new Error("Database not initialized");
 
-    const countStmt = this.db.prepare('SELECT COUNT(*) as count FROM users');
+    const countStmt = this.db.prepare("SELECT COUNT(*) as count FROM users");
     const total = (countStmt.get() as { count: number }).count;
 
     const stmt = this.db.prepare(`
@@ -590,20 +694,28 @@ export class SqliteAdapter implements DatabaseAdapter {
 
     const rows = stmt.all(limit, offset) as UserRow[];
 
-    const users = rows.map(row => {
+    const users = rows.map((row) => {
       let accessToken = row.accessToken;
       let refreshToken = row.refreshToken;
       try {
-        accessToken = ENCRYPTION_KEY ? decrypt(row.accessToken, ENCRYPTION_KEY) : '[No Key]';
+        accessToken = ENCRYPTION_KEY
+          ? decrypt(row.accessToken, ENCRYPTION_KEY)
+          : "[No Key]";
       } catch (e) {
-        logger.warn(`[db-devtools] Failed to decrypt access token for user ${row.id}: ${e instanceof Error ? e.message : String(e)}`);
-        accessToken = '[Decryption Failed]';
+        logger.warn(
+          `[db-devtools] Failed to decrypt access token for user ${row.id}: ${e instanceof Error ? e.message : String(e)}`,
+        );
+        accessToken = "[Decryption Failed]";
       }
       try {
-        refreshToken = ENCRYPTION_KEY ? decrypt(row.refreshToken, ENCRYPTION_KEY) : '[No Key]';
+        refreshToken = ENCRYPTION_KEY
+          ? decrypt(row.refreshToken, ENCRYPTION_KEY)
+          : "[No Key]";
       } catch (e) {
-        logger.warn(`[db-devtools] Failed to decrypt refresh token for user ${row.id}: ${e instanceof Error ? e.message : String(e)}`);
-        refreshToken = '[Decryption Failed]';
+        logger.warn(
+          `[db-devtools] Failed to decrypt refresh token for user ${row.id}: ${e instanceof Error ? e.message : String(e)}`,
+        );
+        refreshToken = "[Decryption Failed]";
       }
 
       return {
@@ -615,23 +727,26 @@ export class SqliteAdapter implements DatabaseAdapter {
         refreshToken,
         expiresAt: new Date(row.expiresAt),
         createdAt: new Date(row.createdAt),
-        updatedAt: new Date(row.updatedAt)
-      }
+        updatedAt: new Date(row.updatedAt),
+      };
     });
 
     return { users, total };
   }
 
   async deleteUser(userId: string): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
-    const stmt = this.db.prepare('DELETE FROM users WHERE id = ?');
+    if (!this.db) throw new Error("Database not initialized");
+    const stmt = this.db.prepare("DELETE FROM users WHERE id = ?");
     stmt.run(userId);
   }
 
-  async getAllSessions(limit: number = 50, offset: number = 0): Promise<{ sessions: Session[], total: number }> {
-    if (!this.db) throw new Error('Database not initialized');
+  async getAllSessions(
+    limit: number = 50,
+    offset: number = 0,
+  ): Promise<{ sessions: Session[]; total: number }> {
+    if (!this.db) throw new Error("Database not initialized");
 
-    const countStmt = this.db.prepare('SELECT COUNT(*) as count FROM sessions');
+    const countStmt = this.db.prepare("SELECT COUNT(*) as count FROM sessions");
     const total = (countStmt.get() as { count: number }).count;
 
     const stmt = this.db.prepare(`
@@ -649,20 +764,28 @@ export class SqliteAdapter implements DatabaseAdapter {
     }
 
     const rows = stmt.all(limit, offset) as SessionRow[];
-    const sessions = rows.map(row => ({
+    const sessions = rows.map((row) => ({
       id: row.id,
       userId: row.userId,
       expiresAt: new Date(row.expiresAt),
-      createdAt: new Date(row.createdAt)
+      createdAt: new Date(row.createdAt),
     }));
 
     return { sessions, total };
   }
 
-  async getAllCacheEntries(limit: number = 50, offset: number = 0): Promise<{ entries: import('./types.js').CachedSearchResult[], total: number }> {
-    if (!this.db) throw new Error('Database not initialized');
+  async getAllCacheEntries(
+    limit: number = 50,
+    offset: number = 0,
+  ): Promise<{
+    entries: import("./types.js").CachedSearchResult[];
+    total: number;
+  }> {
+    if (!this.db) throw new Error("Database not initialized");
 
-    const countStmt = this.db.prepare('SELECT COUNT(*) as count FROM search_cache');
+    const countStmt = this.db.prepare(
+      "SELECT COUNT(*) as count FROM search_cache",
+    );
     const total = (countStmt.get() as { count: number }).count;
 
     const stmt = this.db.prepare(`
@@ -673,29 +796,34 @@ export class SqliteAdapter implements DatabaseAdapter {
     `);
 
     const rows = stmt.all(limit, offset) as any[];
-    const entries = rows.map(row => ({
+    const entries = rows.map((row) => ({
       query: row.query,
       songTitle: row.songTitle,
       songUrl: row.songUrl,
       duration: row.duration,
       thumbnail: row.thumbnail,
       cachedAt: new Date(row.cachedAt),
-      expiresAt: new Date(row.expiresAt)
+      expiresAt: new Date(row.expiresAt),
     }));
 
     return { entries, total };
   }
 
   async deleteCacheEntry(query: string): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
-    const stmt = this.db.prepare('DELETE FROM search_cache WHERE query = ?');
+    if (!this.db) throw new Error("Database not initialized");
+    const stmt = this.db.prepare("DELETE FROM search_cache WHERE query = ?");
     stmt.run(query);
   }
 
-  async getAllAudioCacheEntries(limit: number = 50, offset: number = 0): Promise<{ entries: import('./types.js').AudioMetadata[], total: number }> {
-    if (!this.db) throw new Error('Database not initialized');
+  async getAllAudioCacheEntries(
+    limit: number = 50,
+    offset: number = 0,
+  ): Promise<{ entries: import("./types.js").AudioMetadata[]; total: number }> {
+    if (!this.db) throw new Error("Database not initialized");
 
-    const countStmt = this.db.prepare('SELECT COUNT(*) as count FROM audio_metadata');
+    const countStmt = this.db.prepare(
+      "SELECT COUNT(*) as count FROM audio_metadata",
+    );
     const total = (countStmt.get() as { count: number }).count;
 
     const stmt = this.db.prepare(`
@@ -706,7 +834,7 @@ export class SqliteAdapter implements DatabaseAdapter {
     `);
 
     const rows = stmt.all(limit, offset) as any[];
-    const entries = rows.map(row => ({
+    const entries = rows.map((row) => ({
       videoId: row.videoId,
       title: row.title,
       url: row.url,
@@ -714,52 +842,61 @@ export class SqliteAdapter implements DatabaseAdapter {
       thumbnail: row.thumbnail,
       searchTerms: JSON.parse(row.searchTerms),
       cachedAt: new Date(row.cachedAt),
-      expiresAt: new Date(row.expiresAt)
+      expiresAt: new Date(row.expiresAt),
     }));
 
     return { entries, total };
   }
 
   async deleteAudioCacheEntry(videoId: string): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
-    const stmt = this.db.prepare('DELETE FROM audio_metadata WHERE video_id = ?');
+    if (!this.db) throw new Error("Database not initialized");
+    const stmt = this.db.prepare(
+      "DELETE FROM audio_metadata WHERE video_id = ?",
+    );
     stmt.run(videoId);
   }
 
-  async updateAudioThumbnail(videoId: string, thumbnail: string): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
-    const stmt = this.db.prepare('UPDATE audio_metadata SET thumbnail = ? WHERE video_id = ?');
+  async updateAudioThumbnail(
+    videoId: string,
+    thumbnail: string,
+  ): Promise<void> {
+    if (!this.db) throw new Error("Database not initialized");
+    const stmt = this.db.prepare(
+      "UPDATE audio_metadata SET thumbnail = ? WHERE video_id = ?",
+    );
     stmt.run(thumbnail, videoId);
   }
 
   async deletePlaysForSong(songUrl: string): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
-    const stmt = this.db.prepare('DELETE FROM plays WHERE song_url = ?');
+    if (!this.db) throw new Error("Database not initialized");
+    const stmt = this.db.prepare("DELETE FROM plays WHERE song_url = ?");
     stmt.run(songUrl);
   }
 
   async deletePlaysForUser(userId: string): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
-    const stmt = this.db.prepare('DELETE FROM plays WHERE user_id = ?');
+    if (!this.db) throw new Error("Database not initialized");
+    const stmt = this.db.prepare("DELETE FROM plays WHERE user_id = ?");
     stmt.run(userId);
   }
 
   async deletePlaysForChannel(channelId: string): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
-    const stmt = this.db.prepare('DELETE FROM plays WHERE channel_id = ?');
+    if (!this.db) throw new Error("Database not initialized");
+    const stmt = this.db.prepare("DELETE FROM plays WHERE channel_id = ?");
     stmt.run(channelId);
   }
 
   async deletePlaysForBot(botName: string): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
-    const stmt = this.db.prepare('DELETE FROM plays WHERE bot_name = ?');
+    if (!this.db) throw new Error("Database not initialized");
+    const stmt = this.db.prepare("DELETE FROM plays WHERE bot_name = ?");
     stmt.run(botName);
   }
 
   // Plugin Repository Implementation
   async getPluginData(pluginName: string, key: string): Promise<any | null> {
-    if (!this.db) throw new Error('Database not initialized');
-    const stmt = this.db.prepare('SELECT value FROM plugin_storage WHERE plugin_name = ? AND key = ?');
+    if (!this.db) throw new Error("Database not initialized");
+    const stmt = this.db.prepare(
+      "SELECT value FROM plugin_storage WHERE plugin_name = ? AND key = ?",
+    );
     const row = stmt.get(pluginName, key) as { value: string } | undefined;
     if (!row) return null;
     try {
@@ -769,8 +906,12 @@ export class SqliteAdapter implements DatabaseAdapter {
     }
   }
 
-  async setPluginData(pluginName: string, key: string, value: any): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+  async setPluginData(
+    pluginName: string,
+    key: string,
+    value: any,
+  ): Promise<void> {
+    if (!this.db) throw new Error("Database not initialized");
     const stmt = this.db.prepare(`
       INSERT INTO plugin_storage (plugin_name, key, value, updated_at)
       VALUES (?, ?, ?, datetime('now'))
@@ -782,28 +923,34 @@ export class SqliteAdapter implements DatabaseAdapter {
   }
 
   async deletePluginData(pluginName: string, key: string): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
-    const stmt = this.db.prepare('DELETE FROM plugin_storage WHERE plugin_name = ? AND key = ?');
+    if (!this.db) throw new Error("Database not initialized");
+    const stmt = this.db.prepare(
+      "DELETE FROM plugin_storage WHERE plugin_name = ? AND key = ?",
+    );
     stmt.run(pluginName, key);
   }
 
   async clearPluginData(pluginName: string): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
-    const stmt = this.db.prepare('DELETE FROM plugin_storage WHERE plugin_name = ?');
+    if (!this.db) throw new Error("Database not initialized");
+    const stmt = this.db.prepare(
+      "DELETE FROM plugin_storage WHERE plugin_name = ?",
+    );
     stmt.run(pluginName);
   }
 
   // Plugin Meta Implementation
   async isPluginEnabled(pluginId: string): Promise<boolean | null> {
-    if (!this.db) throw new Error('Database not initialized');
-    const stmt = this.db.prepare('SELECT enabled FROM plugin_meta WHERE plugin_id = ?');
+    if (!this.db) throw new Error("Database not initialized");
+    const stmt = this.db.prepare(
+      "SELECT enabled FROM plugin_meta WHERE plugin_id = ?",
+    );
     const row = stmt.get(pluginId) as { enabled: number } | undefined;
     if (!row) return null;
     return row.enabled === 1;
   }
 
   async setPluginEnabled(pluginId: string, enabled: boolean): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) throw new Error("Database not initialized");
     const stmt = this.db.prepare(`
       INSERT INTO plugin_meta (plugin_id, enabled, updated_at)
       VALUES (?, ?, datetime('now'))
@@ -814,20 +961,21 @@ export class SqliteAdapter implements DatabaseAdapter {
     stmt.run(pluginId, enabled ? 1 : 0);
   }
 
-  async getAllPluginMeta(): Promise<Array<{ pluginId: string, enabled: boolean }>> {
-    if (!this.db) throw new Error('Database not initialized');
-    const stmt = this.db.prepare('SELECT plugin_id, enabled FROM plugin_meta');
-    const rows = stmt.all() as { plugin_id: string, enabled: number }[];
-    return rows.map(row => ({
+  async getAllPluginMeta(): Promise<
+    Array<{ pluginId: string; enabled: boolean }>
+  > {
+    if (!this.db) throw new Error("Database not initialized");
+    const stmt = this.db.prepare("SELECT plugin_id, enabled FROM plugin_meta");
+    const rows = stmt.all() as { plugin_id: string; enabled: number }[];
+    return rows.map((row) => ({
       pluginId: row.plugin_id,
-      enabled: row.enabled === 1
+      enabled: row.enabled === 1,
     }));
   }
 
-
   // Cookie Repository Implementation
   async addCookie(name: string, content: string): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) throw new Error("Database not initialized");
     const encryptedContent = encrypt(content, ENCRYPTION_KEY);
     const stmt = this.db.prepare(`
       INSERT INTO yt_dlp_cookies (name, content, updated_at)
@@ -837,10 +985,12 @@ export class SqliteAdapter implements DatabaseAdapter {
   }
 
   async getCookies(): Promise<YtDlpCookie[]> {
-    if (!this.db) throw new Error('Database not initialized');
-    const stmt = this.db.prepare('SELECT * FROM yt_dlp_cookies ORDER BY created_at DESC');
+    if (!this.db) throw new Error("Database not initialized");
+    const stmt = this.db.prepare(
+      "SELECT * FROM yt_dlp_cookies ORDER BY created_at DESC",
+    );
     const rows = stmt.all() as any[];
-    return rows.map(row => ({
+    return rows.map((row) => ({
       id: row.id,
       name: row.name,
       content: decrypt(row.content, ENCRYPTION_KEY),
@@ -849,13 +999,13 @@ export class SqliteAdapter implements DatabaseAdapter {
       failureCount: row.failure_count,
       lastUsed: row.last_used ? new Date(row.last_used) : undefined,
       createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at)
+      updatedAt: new Date(row.updated_at),
     }));
   }
 
   async getCookie(id: number): Promise<YtDlpCookie | null> {
-    if (!this.db) throw new Error('Database not initialized');
-    const stmt = this.db.prepare('SELECT * FROM yt_dlp_cookies WHERE id = ?');
+    if (!this.db) throw new Error("Database not initialized");
+    const stmt = this.db.prepare("SELECT * FROM yt_dlp_cookies WHERE id = ?");
     const row = stmt.get(id) as any;
     if (!row) return null;
     return {
@@ -867,38 +1017,41 @@ export class SqliteAdapter implements DatabaseAdapter {
       failureCount: row.failure_count,
       lastUsed: row.last_used ? new Date(row.last_used) : undefined,
       createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at)
+      updatedAt: new Date(row.updated_at),
     };
   }
 
-  async updateCookie(id: number, updates: Partial<Omit<YtDlpCookie, 'id' | 'createdAt' | 'updatedAt'>>): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+  async updateCookie(
+    id: number,
+    updates: Partial<Omit<YtDlpCookie, "id" | "createdAt" | "updatedAt">>,
+  ): Promise<void> {
+    if (!this.db) throw new Error("Database not initialized");
 
     const sets: string[] = [];
     const values: any[] = [];
 
     if (updates.name !== undefined) {
-      sets.push('name = ?');
+      sets.push("name = ?");
       values.push(updates.name);
     }
     if (updates.content !== undefined) {
-      sets.push('content = ?');
+      sets.push("content = ?");
       values.push(encrypt(updates.content, ENCRYPTION_KEY));
     }
     if (updates.isActive !== undefined) {
-      sets.push('is_active = ?');
+      sets.push("is_active = ?");
       values.push(updates.isActive ? 1 : 0);
     }
     if (updates.successCount !== undefined) {
-      sets.push('success_count = ?');
+      sets.push("success_count = ?");
       values.push(updates.successCount);
     }
     if (updates.failureCount !== undefined) {
-      sets.push('failure_count = ?');
+      sets.push("failure_count = ?");
       values.push(updates.failureCount);
     }
     if (updates.lastUsed !== undefined) {
-      sets.push('last_used = ?');
+      sets.push("last_used = ?");
       values.push(updates.lastUsed.toISOString());
     }
 
@@ -907,18 +1060,20 @@ export class SqliteAdapter implements DatabaseAdapter {
     sets.push("updated_at = datetime('now')");
     values.push(id);
 
-    const stmt = this.db.prepare(`UPDATE yt_dlp_cookies SET ${sets.join(', ')} WHERE id = ?`);
+    const stmt = this.db.prepare(
+      `UPDATE yt_dlp_cookies SET ${sets.join(", ")} WHERE id = ?`,
+    );
     stmt.run(...values);
   }
 
   async deleteCookie(id: number): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
-    const stmt = this.db.prepare('DELETE FROM yt_dlp_cookies WHERE id = ?');
+    if (!this.db) throw new Error("Database not initialized");
+    const stmt = this.db.prepare("DELETE FROM yt_dlp_cookies WHERE id = ?");
     stmt.run(id);
   }
 
   async rotateCookieStats(id: number, success: boolean): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) throw new Error("Database not initialized");
     const stmt = this.db.prepare(`
       UPDATE yt_dlp_cookies 
       SET 
@@ -932,7 +1087,7 @@ export class SqliteAdapter implements DatabaseAdapter {
   }
 
   async getBestCookie(): Promise<YtDlpCookie | null> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) throw new Error("Database not initialized");
     // Prioritize active cookies with high success rate and low failure count
     // Randomize slightly to avoid thundering herd on one cookie
     const stmt = this.db.prepare(`
@@ -952,8 +1107,7 @@ export class SqliteAdapter implements DatabaseAdapter {
       failureCount: row.failure_count,
       lastUsed: row.last_used ? new Date(row.last_used) : undefined,
       createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at)
+      updatedAt: new Date(row.updated_at),
     };
   }
 }
-

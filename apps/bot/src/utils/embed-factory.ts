@@ -4,15 +4,15 @@ import config from "../config/config.js";
 const { botName, color, accentColor } = config;
 
 export function baseEmbed(): EmbedBuilder {
-  return new EmbedBuilder()
-    .setColor(color)
-    .setFooter({ text: botName });
+  return new EmbedBuilder().setColor(color).setFooter({ text: botName });
 }
 
 export function helpEmbed(): EmbedBuilder {
   return baseEmbed()
     .setTitle("Jasper Help")
-    .setDescription("Meow! I'm Jasper, your fluffy music companion. Here are my main commands:")
+    .setDescription(
+      "Meow! I'm Jasper, your fluffy music companion. Here are my main commands:",
+    )
     .addFields(
       { name: "/play <query>", value: "Play a YouTube URL or search keyword." },
       { name: "/pause", value: "Pause the current track." },
@@ -20,7 +20,7 @@ export function helpEmbed(): EmbedBuilder {
       { name: "/skip", value: "Skip the current track." },
       { name: "/stop", value: "Stop playback and clear the queue." },
       { name: "/queue", value: "Show the current music queue." },
-      { name: "/nowplaying", value: "Show what's currently playing." }
+      { name: "/nowplaying", value: "Show what's currently playing." },
     )
     .setColor(accentColor);
 }
@@ -33,7 +33,7 @@ export function songAddedEmbed(
   url: string,
   thumbnail: string | undefined,
   workerName: string,
-  devPrefix: string
+  devPrefix: string,
 ): EmbedBuilder {
   return baseEmbed()
     .setTitle(`${devPrefix}✅ Added to queue`)
@@ -50,7 +50,7 @@ export function nowPlayingEmbed(
   url: string,
   thumbnail: string | undefined,
   workerName: string,
-  devPrefix: string
+  devPrefix: string,
 ): EmbedBuilder {
   return baseEmbed()
     .setTitle(`${devPrefix}▶️ Now Playing`)
@@ -67,7 +67,7 @@ export function radioEmbed(
   url: string,
   thumbnail: string | undefined,
   botName: string,
-  devPrefix: string
+  devPrefix: string,
 ): EmbedBuilder {
   return baseEmbed()
     .setTitle(`${devPrefix}📻 Radio Mode`)
@@ -81,5 +81,5 @@ export default {
   helpEmbed,
   songAddedEmbed,
   nowPlayingEmbed,
-  radioEmbed
+  radioEmbed,
 };

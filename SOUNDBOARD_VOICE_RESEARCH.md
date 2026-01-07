@@ -35,6 +35,7 @@ existingQueue.connection.subscribe(tempPlayer); ← Replaces main player subscri
 ```
 
 **What Happens:**
+
 1. Main player is subscribed, playing music
 2. We call `connection.subscribe(tempPlayer)`
 3. **Discord.js unsubscribes the main player**
@@ -47,6 +48,7 @@ existingQueue.connection.subscribe(tempPlayer); ← Replaces main player subscri
 ## Solution Options
 
 ### Option 1: Pause/Resume with Player Switching (Recommended)
+
 **Complexity:** Low  
 **Audio Quality:** Good  
 **User Experience:** Interrupts music briefly
@@ -58,16 +60,16 @@ if (existingQueue) {
     if (wasPlaying) {
         existingQueue.player.pause();
     }
-    
+
     // 2. Create temp player
     const tempPlayer = createAudioPlayer({...});
-    
+
     // 3. Switch subscription (main player → temp player)
     existingQueue.connection.subscribe(tempPlayer);
-    
+
     // 4. Play soundboard
     tempPlayer.play(soundboardResource);
-    
+
     // 5. On soundboard finish: switch back and resume
     tempPlayer.once('idle', () => {
         existingQueue.connection.subscribe(existingQueue.player); // Re-subscribe main
@@ -80,18 +82,21 @@ if (existingQueue) {
 ```
 
 **Pros:**
+
 - Clean architecture
 - No complex mixing required
 - Reliable state management
 - Works with all audio formats
 
 **Cons:**
+
 - Brief silence during player switch (~50-100ms)
 - Music pauses completely
 
 ---
 
 ### Option 2: Real-time Audio Mixing with FFmpeg
+
 **Complexity:** High  
 **Audio Quality:** Excellent  
 **User Experience:** True simultaneous playback
@@ -100,41 +105,43 @@ if (existingQueue) {
 
 ```typescript
 if (existingQueue) {
-    // 1. Get current music stream
-    const musicStream = getCurrentMusicStream(existingQueue);
-    
-    // 2. Create soundboard stream
-    const soundboardStream = fs.createReadStream(audioPath);
-    
-    // 3. Mix streams using FFmpeg
-    const mixedStream = ffmpeg()
-        .input(musicStream)
-        .input(soundboardStream)
-        .complexFilter([
-            '[0:a]volume=0.7[music]',        // Lower music volume
-            '[1:a]volume=1.0[sfx]',          // Full soundboard volume
-            '[music][sfx]amix=inputs=2[out]' // Mix together
-        ])
-        .map('[out]')
-        .audioCodec('libopus')
-        .format('opus')
-        .pipe();
-    
-    // 4. Replace current resource with mixed stream
-    const mixedResource = createAudioResource(mixedStream, {
-        inputType: StreamType.OggOpus
-    });
-    existingQueue.player.play(mixedResource);
+  // 1. Get current music stream
+  const musicStream = getCurrentMusicStream(existingQueue);
+
+  // 2. Create soundboard stream
+  const soundboardStream = fs.createReadStream(audioPath);
+
+  // 3. Mix streams using FFmpeg
+  const mixedStream = ffmpeg()
+    .input(musicStream)
+    .input(soundboardStream)
+    .complexFilter([
+      "[0:a]volume=0.7[music]", // Lower music volume
+      "[1:a]volume=1.0[sfx]", // Full soundboard volume
+      "[music][sfx]amix=inputs=2[out]", // Mix together
+    ])
+    .map("[out]")
+    .audioCodec("libopus")
+    .format("opus")
+    .pipe();
+
+  // 4. Replace current resource with mixed stream
+  const mixedResource = createAudioResource(mixedStream, {
+    inputType: StreamType.OggOpus,
+  });
+  existingQueue.player.play(mixedResource);
 }
 ```
 
 **Pros:**
+
 - True simultaneous playback
 - Professional soundboard behavior
 - Can adjust relative volumes
 - No interruption to music
 
 **Cons:**
+
 - Very complex implementation
 - Requires managing music stream state
 - High CPU usage for real-time mixing
@@ -145,6 +152,7 @@ if (existingQueue) {
 ---
 
 ### Option 3: Store and Resume Position (Advanced Pause/Resume)
+
 **Complexity:** Medium-High  
 **Audio Quality:** Good  
 **User Experience:** Seamless resume
@@ -157,21 +165,21 @@ if (existingQueue) {
     const currentResource = existingQueue.player.state.resource;
     const playbackPosition = currentResource?.playbackDuration || 0;
     const currentSong = existingQueue.nowPlaying;
-    
+
     // 2. Pause and switch to temp player
     existingQueue.player.pause();
     const tempPlayer = createAudioPlayer({...});
     existingQueue.connection.subscribe(tempPlayer);
-    
+
     // 3. Play soundboard
     tempPlayer.play(soundboardResource);
-    
+
     // 4. On finish: recreate resource at exact position
     tempPlayer.once('idle', () => {
         // Recreate stream with seek to playback position
         const resumeStream = createStreamWithSeek(currentSong, playbackPosition);
         const resumeResource = createAudioResource(resumeStream);
-        
+
         // Switch back
         existingQueue.connection.subscribe(existingQueue.player);
         existingQueue.player.play(resumeResource);
@@ -180,11 +188,13 @@ if (existingQueue) {
 ```
 
 **Pros:**
+
 - Music resumes from exact position
 - Professional UX
 - Minimal disruption
 
 **Cons:**
+
 - Complex stream seeking logic
 - Doesn't work with all stream types (live, HLS, etc.)
 - Requires yt-dlp seek support
@@ -195,6 +205,7 @@ if (existingQueue) {
 ## Recommended Implementation: Option 1
 
 **Rationale:**
+
 - **Simple:** Minimal code changes, reuses existing patterns
 - **Reliable:** Well-tested pattern in Discord.js community
 - **Maintainable:** Clear state transitions, easy to debug
@@ -206,49 +217,50 @@ if (existingQueue) {
 
 ```typescript
 if (existingQueue) {
-    // Pause main player if playing
-    const wasPlaying = existingQueue.player.state.status === AudioPlayerStatus.Playing;
+  // Pause main player if playing
+  const wasPlaying =
+    existingQueue.player.state.status === AudioPlayerStatus.Playing;
+  if (wasPlaying) {
+    existingQueue.player.pause();
+    logger.info("[plugins] Paused music for soundboard");
+  }
+
+  // Create and subscribe temp player
+  const tempPlayer = createAudioPlayer({
+    behaviors: { noSubscriber: NoSubscriberBehavior.Stop },
+  });
+  existingQueue.connection.subscribe(tempPlayer); // Switch subscription
+
+  // Play soundboard
+  const resource = createAudioResource(fs.createReadStream(audioPath), {
+    inputType: StreamType.Arbitrary,
+  });
+  tempPlayer.play(resource);
+
+  // On soundboard finish: restore main player
+  tempPlayer.once("idle", () => {
+    // Re-subscribe main player
+    existingQueue.connection.subscribe(existingQueue.player);
+
+    // Resume if was playing
     if (wasPlaying) {
-        existingQueue.player.pause();
-        logger.info('[plugins] Paused music for soundboard');
+      existingQueue.player.unpause();
+      logger.info("[plugins] Resumed music after soundboard");
     }
-    
-    // Create and subscribe temp player
-    const tempPlayer = createAudioPlayer({
-        behaviors: { noSubscriber: NoSubscriberBehavior.Stop }
-    });
-    existingQueue.connection.subscribe(tempPlayer); // Switch subscription
-    
-    // Play soundboard
-    const resource = createAudioResource(fs.createReadStream(audioPath), {
-        inputType: StreamType.Arbitrary
-    });
-    tempPlayer.play(resource);
-    
-    // On soundboard finish: restore main player
-    tempPlayer.once('idle', () => {
-        // Re-subscribe main player
-        existingQueue.connection.subscribe(existingQueue.player);
-        
-        // Resume if was playing
-        if (wasPlaying) {
-            existingQueue.player.unpause();
-            logger.info('[plugins] Resumed music after soundboard');
-        }
-        
-        // Cleanup temp player
-        tempPlayer.stop();
-    });
-    
-    // Error handling
-    tempPlayer.on('error', (error) => {
-        logger.error(`[plugins] Soundboard error: ${error.message}`);
-        existingQueue.connection.subscribe(existingQueue.player);
-        if (wasPlaying) existingQueue.player.unpause();
-        tempPlayer.stop();
-    });
-    
-    return;
+
+    // Cleanup temp player
+    tempPlayer.stop();
+  });
+
+  // Error handling
+  tempPlayer.on("error", (error) => {
+    logger.error(`[plugins] Soundboard error: ${error.message}`);
+    existingQueue.connection.subscribe(existingQueue.player);
+    if (wasPlaying) existingQueue.player.unpause();
+    tempPlayer.stop();
+  });
+
+  return;
 }
 ```
 
@@ -281,6 +293,7 @@ setTimeout(() => cleanup(), duration + 1000);
 If `getAudioDuration` returns a very small value or negative (error case), the timeout becomes negative.
 
 **Fix:** Add validation:
+
 ```typescript
 const duration = await getAudioDuration(audioPath);
 const timeoutDuration = Math.max(duration + 1000, 5000); // Minimum 5s
@@ -294,6 +307,7 @@ setTimeout(() => cleanup(), timeoutDuration);
 **Recommended:** Implement **Option 1 (Pause/Resume with Player Switching)**
 
 This provides:
+
 - Clean soundboard behavior
 - Reliable music resume
 - Simple implementation

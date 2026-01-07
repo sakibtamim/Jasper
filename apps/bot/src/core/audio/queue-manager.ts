@@ -14,7 +14,7 @@ const queues = new Map<string, Queue>();
  * @returns {Queue|undefined}
  */
 export function getQueue(voiceChannelId: string): Queue | undefined {
-    return queues.get(voiceChannelId);
+  return queues.get(voiceChannelId);
 }
 
 /**
@@ -22,7 +22,7 @@ export function getQueue(voiceChannelId: string): Queue | undefined {
  * @returns {Map<string, Queue>}
  */
 export function getAllQueues(): Map<string, Queue> {
-    return queues;
+  return queues;
 }
 
 /**
@@ -31,7 +31,7 @@ export function getAllQueues(): Map<string, Queue> {
  * @param {Queue} queue
  */
 export function setQueue(voiceChannelId: string, queue: Queue): void {
-    queues.set(voiceChannelId, queue);
+  queues.set(voiceChannelId, queue);
 }
 
 /**
@@ -39,7 +39,7 @@ export function setQueue(voiceChannelId: string, queue: Queue): void {
  * @param {string} voiceChannelId
  */
 export function deleteQueue(voiceChannelId: string): void {
-    queues.delete(voiceChannelId);
+  queues.delete(voiceChannelId);
 }
 
 /**
@@ -48,53 +48,53 @@ export function deleteQueue(voiceChannelId: string): void {
  * @param {WorkerState} worker
  */
 export function cleanupWorkerOldQueues(worker: WorkerState): void {
-    // Find any queues that belong to this worker
-    for (const [channelId, queue] of queues.entries()) {
-        if (queue.worker.name === worker.name) {
-            logger.info(
-                `[cleanup] Found old queue for ${worker.name} in channel ${channelId}, cleaning up before reassignment`
-            );
+  // Find any queues that belong to this worker
+  for (const [channelId, queue] of queues.entries()) {
+    if (queue.worker.name === worker.name) {
+      logger.info(
+        `[cleanup] Found old queue for ${worker.name} in channel ${channelId}, cleaning up before reassignment`,
+      );
 
-            // Clear idle timeout
-            if (queue.idleTimeout) {
-                clearTimeout(queue.idleTimeout);
-            }
+      // Clear idle timeout
+      if (queue.idleTimeout) {
+        clearTimeout(queue.idleTimeout);
+      }
 
-            // Clear voice status
-            setVoiceStatus(worker.client, channelId, "");
+      // Clear voice status
+      setVoiceStatus(worker.client, channelId, "");
 
-            // Destroy connection
-            if (queue.connection) {
-                queue.connection.destroy();
-            }
+      // Destroy connection
+      if (queue.connection) {
+        queue.connection.destroy();
+      }
 
-            // Remove from map
-            queues.delete(channelId);
-        }
+      // Remove from map
+      queues.delete(channelId);
     }
+  }
 }
 
 export function clearAllQueues() {
-    logger.info(`[catastrophicreset] Clearing ${queues.size} active queues`);
+  logger.info(`[catastrophicreset] Clearing ${queues.size} active queues`);
 
-    for (const [channelId, queue] of queues.entries()) {
-        // Clear idle timeout
-        if (queue.idleTimeout) {
-            clearTimeout(queue.idleTimeout);
-        }
-
-        // Clear voice status
-        setVoiceStatus(queue.worker.client, channelId, "");
-
-        // Destroy connection
-        if (queue.connection) {
-            queue.connection.destroy();
-        }
-
-        // Release worker
-        workerPool.releaseWorker(channelId);
+  for (const [channelId, queue] of queues.entries()) {
+    // Clear idle timeout
+    if (queue.idleTimeout) {
+      clearTimeout(queue.idleTimeout);
     }
 
-    queues.clear();
-    logger.info("[catastrophicreset] All queues cleared");
+    // Clear voice status
+    setVoiceStatus(queue.worker.client, channelId, "");
+
+    // Destroy connection
+    if (queue.connection) {
+      queue.connection.destroy();
+    }
+
+    // Release worker
+    workerPool.releaseWorker(channelId);
+  }
+
+  queues.clear();
+  logger.info("[catastrophicreset] All queues cleared");
 }

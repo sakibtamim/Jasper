@@ -1,27 +1,26 @@
-import { Readable } from 'stream';
-import logger from './logger.js';
+import { Readable } from "stream";
+import logger from "./logger.js";
 import { Song } from "@jasper/types";
-import { DatabaseCacheStorage } from './cache/db-cache-storage.js';
+import { DatabaseCacheStorage } from "./cache/db-cache-storage.js";
 import {
-    CACHE_ENABLED,
-    CACHE_SEARCH_TTL_HOURS,
-    CACHE_AUDIO_TTL_HOURS,
-    CACHE_CLEANUP_INTERVAL_HOURS
-} from '../config/env.js';
+  CACHE_ENABLED,
+  CACHE_SEARCH_TTL_HOURS,
+  CACHE_AUDIO_TTL_HOURS,
+  CACHE_CLEANUP_INTERVAL_HOURS,
+} from "../config/env.js";
 
 // Re-export for backwards compatibility
 export {
-    CACHE_ENABLED,
-    CACHE_SEARCH_TTL_HOURS,
-    CACHE_AUDIO_TTL_HOURS,
-    CACHE_CLEANUP_INTERVAL_HOURS
+  CACHE_ENABLED,
+  CACHE_SEARCH_TTL_HOURS,
+  CACHE_AUDIO_TTL_HOURS,
+  CACHE_CLEANUP_INTERVAL_HOURS,
 };
 
-
 export interface CacheStats {
-    searchCacheSize: number;
-    audioCacheFiles: number;
-    audioCacheSizeMB: number;
+  searchCacheSize: number;
+  audioCacheFiles: number;
+  audioCacheSizeMB: number;
 }
 
 /**
@@ -29,23 +28,35 @@ export interface CacheStats {
  * This allows easy migration to database or cloud storage backends
  */
 export interface ICacheStorage {
-    // Search result caching
-    getCachedSearchResult(query: string, requesterId?: string, requesterName?: string): Promise<Song | null>;
-    setCachedSearchResult(query: string, song: Song): Promise<void>;
+  // Search result caching
+  getCachedSearchResult(
+    query: string,
+    requesterId?: string,
+    requesterName?: string,
+  ): Promise<Song | null>;
+  setCachedSearchResult(query: string, song: Song): Promise<void>;
 
-    // Audio file caching
-    getCachedAudioStream(videoId: string, requesterId?: string, requesterName?: string): Promise<Readable | null>;
-    cacheAudioStream(url: string, videoId: string, searchTerms: string[]): Promise<Readable>;
+  // Audio file caching
+  getCachedAudioStream(
+    videoId: string,
+    requesterId?: string,
+    requesterName?: string,
+  ): Promise<Readable | null>;
+  cacheAudioStream(
+    url: string,
+    videoId: string,
+    searchTerms: string[],
+  ): Promise<Readable>;
 
-    // Cleanup and stats
-    cleanupExpiredCache(): Promise<void>;
-    getCacheStats(): Promise<CacheStats>;
+  // Cleanup and stats
+  cleanupExpiredCache(): Promise<void>;
+  getCacheStats(): Promise<CacheStats>;
 
-    // Radio feature
-    getRandomCachedSong(): Promise<Song | null>;
+  // Radio feature
+  getRandomCachedSong(): Promise<Song | null>;
 
-    // Management
-    deleteCachedFile(videoId: string): Promise<boolean>;
+  // Management
+  deleteCachedFile(videoId: string): Promise<boolean>;
 }
 
 // Singleton instance
@@ -56,70 +67,76 @@ let cleanupInterval: NodeJS.Timeout | null = null;
  * Initialize cache directories and storage instance
  */
 export async function initializeCache(): Promise<void> {
-    if (!CACHE_ENABLED) {
-        logger.info('[cache] Caching is disabled');
-        return;
-    }
+  if (!CACHE_ENABLED) {
+    logger.info("[cache] Caching is disabled");
+    return;
+  }
 
-    try {
-        storageInstance = new DatabaseCacheStorage();
+  try {
+    storageInstance = new DatabaseCacheStorage();
 
-        const stats = await storageInstance.getCacheStats();
-        logger.info(`[cache] Initialized - Search: ${stats.searchCacheSize} entries, Audio: ${stats.audioCacheFiles} files (${stats.audioCacheSizeMB}MB)`);
-    } catch (error) {
-        logger.error(`[cache] Initialization failed: ${error instanceof Error ? error.message : String(error)}`);
-    }
+    const stats = await storageInstance.getCacheStats();
+    logger.info(
+      `[cache] Initialized - Search: ${stats.searchCacheSize} entries, Audio: ${stats.audioCacheFiles} files (${stats.audioCacheSizeMB}MB)`,
+    );
+  } catch (error) {
+    logger.error(
+      `[cache] Initialization failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 }
 
 /**
  * Start background cleanup task
  */
 export function startCacheCleanup(): void {
-    if (!CACHE_ENABLED || cleanupInterval) return;
+  if (!CACHE_ENABLED || cleanupInterval) return;
 
-    const intervalMs = CACHE_CLEANUP_INTERVAL_HOURS * 60 * 60 * 1000;
-    cleanupInterval = setInterval(async () => {
-        if (storageInstance) {
-            await storageInstance.cleanupExpiredCache();
-        }
-    }, intervalMs);
+  const intervalMs = CACHE_CLEANUP_INTERVAL_HOURS * 60 * 60 * 1000;
+  cleanupInterval = setInterval(async () => {
+    if (storageInstance) {
+      await storageInstance.cleanupExpiredCache();
+    }
+  }, intervalMs);
 
-    logger.info(`[cache] Cleanup task scheduled every ${CACHE_CLEANUP_INTERVAL_HOURS} hour(s)`);
+  logger.info(
+    `[cache] Cleanup task scheduled every ${CACHE_CLEANUP_INTERVAL_HOURS} hour(s)`,
+  );
 }
 
 /**
  * Stop background cleanup task
  */
 export function stopCacheCleanup(): void {
-    if (cleanupInterval) {
-        clearInterval(cleanupInterval);
-        cleanupInterval = null;
-    }
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval);
+    cleanupInterval = null;
+  }
 }
 
 /**
  * Get the cache storage instance
  */
 export function getCacheStorage(): ICacheStorage | null {
-    return storageInstance;
+  return storageInstance;
 }
 
 /**
  * Check if caching is enabled
  */
 export function isCacheEnabled(): boolean {
-    return CACHE_ENABLED && storageInstance !== null;
+  return CACHE_ENABLED && storageInstance !== null;
 }
 /**
  * Get cache statistics
  */
 export async function getCacheStats(): Promise<CacheStats> {
-    if (!storageInstance) {
-        return {
-            searchCacheSize: 0,
-            audioCacheFiles: 0,
-            audioCacheSizeMB: 0
-        };
-    }
-    return storageInstance.getCacheStats();
+  if (!storageInstance) {
+    return {
+      searchCacheSize: 0,
+      audioCacheFiles: 0,
+      audioCacheSizeMB: 0,
+    };
+  }
+  return storageInstance.getCacheStats();
 }

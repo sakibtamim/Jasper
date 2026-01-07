@@ -1,0 +1,42 @@
+name: "✨ Enhancement"
+description: Propose an improvement to an existing feature
+title: ""
+labels: ["type: enhancement"]
+body:
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: What are you improving and why?
+      placeholder: Describe the enhancement.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: What defines success for this enhancement?
+      value: |
+        - [ ] Improvement 1
+        - [ ] Improvement 2
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation-brief
+    attributes:
+      label: Implementation Brief
+      description: Technical details for the improvement.
+    validations:
+      required: true
+
+  - type: textarea
+    id: qa-checklist
+    attributes:
+      label: QA Checklist
+      value: |
+        - [ ] Verify no regression in X
+        - [ ] Verify improvement in Y
+    validations:
+      required: true

@@ -25,6 +25,7 @@ The plugin system is built on four main pillars:
 For detailed instructions on how to create, build, and publish plugins, please refer to the **[Plugin Development Guide](PLUGINS_DEV.md)**.
 
 It covers:
+
 - **Backend Development**: Hooks, Database, API Routes
 - **Frontend Development**: React Widgets, Pages, Navigation
 - **Full-Stack Integration**: Connecting Frontend and Backend
@@ -40,6 +41,7 @@ All plugins reside in the `apps/bot/src/plugins/` directory. Each plugin must be
 2.  `index.ts`: The entry point exporting the plugin object.
 
 **Example Structure:**
+
 ```text
 apps/bot/src/plugins/
   └── my-cool-plugin/
@@ -52,8 +54,5 @@ apps/bot/src/plugins/
 
 ## 📦 Available Plugins
 
-*   **Sample Plugin** (`sample-plugin`): A reference implementation demonstrating frontend widgets and pages.
-*   **Sound Effect Plugin** (`sound-effect-plugin`): Plays sound effects when bots join channels.
-
-
-
+- **Sample Plugin** (`sample-plugin`): A reference implementation demonstrating frontend widgets and pages.
+- **Sound Effect Plugin** (`sound-effect-plugin`): Plays sound effects when bots join channels.

@@ -7,5 +7,5 @@ export default {
     .setDescription("Show all available commands"),
   async execute(interaction: ChatInputCommandInteraction) {
     await interaction.reply({ embeds: [helpEmbed()] });
-  }
+  },
 };

@@ -7,5 +7,5 @@ export default {
     .setDescription("Stop the music and clear the queue"),
   async execute(interaction: ChatInputCommandInteraction) {
     await music.stop(interaction);
-  }
+  },
 };
