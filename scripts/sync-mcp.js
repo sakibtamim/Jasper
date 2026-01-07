@@ -122,16 +122,13 @@ function syncMcp() {
                 }
             }
 
-            // Ensure SSL Mode
-            serverConfig.args = serverConfig.args.map(arg => {
+            // Ensure SSL Mode Warning
+            serverConfig.args.forEach(arg => {
                 if ((arg.includes('postgres://') || arg.includes('postgresql://'))) {
-                    if (!arg.includes('?')) {
-                        return arg + '?sslmode=disable';
-                    } else if (!arg.includes('sslmode=')) {
-                        return arg + '&sslmode=disable';
+                    if (!arg.includes('sslmode')) {
+                        console.warn('   ⚠️ Warning: No sslmode specified in connection string. It is recommended for security.');
                     }
                 }
-                return arg;
             });
         }
 

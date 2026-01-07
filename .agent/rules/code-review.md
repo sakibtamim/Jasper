@@ -6,7 +6,7 @@ trigger: always_on
 
 ## Fetching PR Review Comments
 
-When addressing code review feedback, use the `scripts/gh-pr-review-comments.sh` script to fetch ALL inline comments from a specific review.
+When addressing code review feedback, use the `node scripts/gh-pr-review-comments.js` script to fetch ALL inline comments from a specific review.
 
 ### Method 1: Use the Helper Script (Recommended)
 
@@ -14,10 +14,10 @@ The project includes a helper script to fetch and format review comments.
 
 ```bash
 # Print all comments to stdout
-scripts/gh-pr-review-comments.sh <PR_NUMBER> <REVIEW_ID>
+node scripts/gh-pr-review-comments.js <PR_NUMBER> <REVIEW_ID>
 
 # Save to a file
-scripts/gh-pr-review-comments.sh <PR_NUMBER> <REVIEW_ID> --file review_comments.md
+node scripts/gh-pr-review-comments.js <PR_NUMBER> <REVIEW_ID> --file review_comments.md
 ```
 
 ### Method 2: Get Review ID from URL

@@ -36,7 +36,7 @@ node scripts/gh-pr-review-comments.js <PR_NUMBER> <REVIEW_ID>
 node scripts/gh-pr-review-comments.js <PR_NUMBER> --delta
 
 # Save to a file (REQUIRED)
-node scripts/gh-pr-review-comments.js <PR_NUMBER> --delta --file /tmp/new_feedback.md
+node scripts/gh-pr-review-comments.js <PR_NUMBER> --delta --file ./new_feedback.md
 ```
 
 ### IMPORTANT: ALWAYS use a temporary out of working tree location for the review comment files. NEVER COMMIT ANY review comment files to git, EVER!
@@ -55,11 +55,11 @@ NEVER. UNDER. ANY. CIRCUMSTANCES. IGNORE. ANY. ON. THE. POINTS. OF. THIS. FILE.
 
 ### Quick Find & Replace
 
-Use `sed` to replace text across files in a flash without opening editors.
+Use `perl` to replace text across files in a flash without opening editors.
 
 ```bash
-# Syntax: sed -i 's|old_text|new_text|g' filename
-sed -i 's|scripts/gh-pr-review-comments.sh|node scripts/gh-pr-review-comments.js|g' README.md
+# Syntax: perl -pi -e 's|old_text|new_text|g' filename
+perl -pi -e 's|scripts/gh-pr-review-comments.sh|node scripts/gh-pr-review-comments.js|g' README.md
 ```
 
 ### GitHub API Magic

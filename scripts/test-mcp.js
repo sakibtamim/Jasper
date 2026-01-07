@@ -92,28 +92,22 @@ function main() {
                 let dbUrl = process.env.DATABASE_URL || fileEnvVars.DATABASE_URL;
                 if (dbUrl) {
                     dbUrl = substitute(dbUrl, fileEnvVars);
-                    // Append SSL mode
-                    if (!dbUrl.includes('?')) {
-                        dbUrl += '?sslmode=disable';
-                    } else if (!dbUrl.includes('sslmode=')) {
-                        dbUrl += '&sslmode=disable';
+                    if (!dbUrl.includes('sslmode')) {
+                        console.warn('   ⚠️ Warning: No sslmode specified in DATABASE_URL. It is recommended for security.');
                     }
                     args = [...args, dbUrl];
-                    console.log('   (Injected DATABASE_URL from .env with sslmode=disable)');
+                    console.log('   (Injected DATABASE_URL from .env)');
                 } else {
                     console.warn('   ⚠️ Warning: No DATABASE_URL found. Inspector may fail.');
                 }
             } else {
-                // Ensure SSL Mode
-                args = args.map(arg => {
+                // Ensure SSL Mode is mentioned if not present
+                args.forEach(arg => {
                     if ((arg.includes('postgres://') || arg.includes('postgresql://'))) {
-                        if (!arg.includes('?')) {
-                            return arg + '?sslmode=disable';
-                        } else if (!arg.includes('sslmode=')) {
-                            return arg + '&sslmode=disable';
+                        if (!arg.includes('sslmode')) {
+                            console.warn('   ⚠️ Warning: No sslmode specified in connection string. It is recommended for security.');
                         }
                     }
-                    return arg;
                 });
             }
         }
