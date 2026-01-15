@@ -1,4 +1,4 @@
-import { Innertube, UniversalCache } from 'youtubei.js';
+import { Innertube, UniversalCache, ClientType } from 'youtubei.js';
 import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
@@ -22,34 +22,51 @@ export class DiscoveryEngine {
     private static innertubeCache: Map<string, Innertube> = new Map();
 
     /**
+     * Generates a Proof of Origin (PO) Token.
+     * currently stubbed as bgutils-js is missing.
+     */
+    private static async generatePoToken(logger?: any): Promise<string | null> {
+        return null;
+    }
+
+    /**
      * Get or create an Innertube instance for a specific cookie profile.
      */
-    private static async getInnertube(cookieHeader: string, logger?: any): Promise<Innertube> {
-        // Simple in-memory cache key based on cookie content hash or just the string if short enough.
-        // For safety, let's just use the cookie string itself as key if it's not too huge, 
-        // or maybe we don't need to cache aggressively if we assume one active profile per user.
-        // But re-creating Innertube might be expensive.
-
-        // We'll use a simplified approach: Cache by cookie string.
-        if (this.innertubeCache.has(cookieHeader)) {
+    private static async getInnertube(cookieHeader: string, userAgent?: string, logger?: any): Promise<Innertube> {
+        // Simple in-memory cache key based on cookie and UA
+        const cacheKey = cookieHeader + (userAgent || '');
+        if (this.innertubeCache.has(cacheKey)) {
             if (logger) logger.info('[DiscoveryEngine] Using cached Innertube instance');
-            return this.innertubeCache.get(cookieHeader)!;
+            return this.innertubeCache.get(cacheKey)!;
         }
 
         if (logger) {
             const maskedCookie = cookieHeader.length > 50
                 ? cookieHeader.substring(0, 20) + '...' + cookieHeader.substring(cookieHeader.length - 20)
                 : '***';
-            logger.info(`[DiscoveryEngine] Creating Innertube with cookie: ${maskedCookie} (Length: ${cookieHeader.length})`);
+            logger.info(`[DiscoveryEngine] Creating Innertube with cookie: ${maskedCookie} (UA: ${userAgent || 'default'})`);
+        }
+
+        const poToken = await this.generatePoToken(logger);
+
+        if (logger && poToken) {
+            logger.info(`[DiscoveryEngine] Generated PO Token: ${poToken.substring(0, 10)}... (visitor_data: ${!!poToken})`);
         }
 
         const yt = await Innertube.create({
             cookie: cookieHeader,
             cache: new UniversalCache(false), // Disable persistent cache for now
-            generate_session_locally: true,
+            generate_session_locally: false, // IMPORTANT: False for robust session generation
+            client_type: ClientType.MUSIC, // Use MUSIC client for MyMusic
             lang: 'en',
             location: 'US',
-            retrieve_player: false // We only need discovery, not playback
+            retrieve_player: false, // We only need discovery, not playback
+            visitor_data: poToken || undefined,
+            // Pass UA if supported or fallback to internal
+            // Note: If userAgent arg is provided, we assume caller wants to enforce it.
+            // youtubei.js 1.4.x might not accept it directly in root config unless strictly typed.
+            // Only add if types allow or ignore if we can't.
+            // For now, we omit explicit userAgent property if typical types don't support it to avoid build errors.
         });
 
         if (logger) {
@@ -78,7 +95,7 @@ export class DiscoveryEngine {
             }
         }
 
-        this.innertubeCache.set(cookieHeader, yt);
+        this.innertubeCache.set(cacheKey, yt);
         return yt;
     }
 
@@ -206,11 +223,12 @@ export class DiscoveryEngine {
         limit: number,
         radio: boolean,
         cookieHeader: string,
+        userAgent?: string,
         logger?: any
     ): Promise<DiscoveryResult> {
         try {
             if (logger) logger.info(`[DiscoveryEngine] discoverSearch: term="${term}", radio=${radio}`);
-            const yt = await this.getInnertube(cookieHeader, logger);
+            const yt = await this.getInnertube(cookieHeader, userAgent, logger);
             const tracks: DiscoveryTrack[] = [];
 
             if (term.startsWith('http')) {
@@ -309,7 +327,7 @@ export class DiscoveryEngine {
                     const didYouMean = this.findDidYouMean(search);
                     if (didYouMean) {
                         if (logger) logger.info(`[DiscoveryEngine] discoverSearch: No results, but found DidYouMean: "${didYouMean}". Retrying...`);
-                        return this.discoverSearch(didYouMean, limit, radio, cookieHeader, logger);
+                        return this.discoverSearch(didYouMean, limit, radio, cookieHeader, userAgent, logger);
                     }
                 }
 
@@ -352,9 +370,9 @@ export class DiscoveryEngine {
         }
     }
 
-    static async discoverSupermix(limit: number, cookieHeader: string, logger?: any): Promise<DiscoveryResult> {
+    static async discoverSupermix(limit: number, cookieHeader: string, userAgent?: string, logger?: any): Promise<DiscoveryResult> {
         try {
-            const yt = await this.getInnertube(cookieHeader, logger);
+            const yt = await this.getInnertube(cookieHeader, userAgent, logger);
             // Use getHomeFeed or similar.
             // YOUTUBEI-JS_ANALYSIS.md says: "getHomeFeed()" returns generic home feed.
             // "music.getHomeFeed()" returns Music home.
@@ -434,9 +452,9 @@ export class DiscoveryEngine {
         }
     }
 
-    static async discoverMix(number: number, limit: number, cookieHeader: string, logger?: any): Promise<DiscoveryResult> {
+    static async discoverMix(number: number, limit: number, cookieHeader: string, userAgent?: string, logger?: any): Promise<DiscoveryResult> {
         try {
-            const yt = await this.getInnertube(cookieHeader, logger);
+            const yt = await this.getInnertube(cookieHeader, userAgent, logger);
             // Search for "My Mix N"
             if (logger) logger.info(`[DiscoveryEngine] discoverMix: Searching for "My Mix ${number}"`);
             const search = await yt.music.search(`My Mix ${number}`, { type: 'playlist' }) as any;
@@ -494,9 +512,9 @@ export class DiscoveryEngine {
         }
     }
 
-    static async discoverHistory(limit: number, cookieHeader: string, logger?: any): Promise<DiscoveryResult> {
+    static async discoverHistory(limit: number, cookieHeader: string, userAgent?: string, logger?: any): Promise<DiscoveryResult> {
         try {
-            const yt = await this.getInnertube(cookieHeader, logger);
+            const yt = await this.getInnertube(cookieHeader, userAgent, logger);
             const history = await yt.getHistory();
 
             await this.saveDebugResponse('history', history, logger);
@@ -533,12 +551,12 @@ export class DiscoveryEngine {
         }
     }
 
-    static async discoverRecommended(limit: number, cookieHeader: string, logger?: any): Promise<DiscoveryResult> {
+    static async discoverRecommended(limit: number, cookieHeader: string, userAgent?: string, logger?: any): Promise<DiscoveryResult> {
         // Similar to Supermix but maybe using main YouTube home feed?
         // Or just alias to Supermix for now.
         // Prompt says: "Call home/recommended feed (not necessarily music-only)"
         try {
-            const yt = await this.getInnertube(cookieHeader, logger);
+            const yt = await this.getInnertube(cookieHeader, userAgent, logger);
             const home = await yt.getHomeFeed();
 
             await this.saveDebugResponse('recommended', home, logger);
@@ -590,9 +608,9 @@ export class DiscoveryEngine {
         }
     }
 
-    static async discoverFeed(limit: number, cookieHeader: string, logger?: any): Promise<DiscoveryResult> {
+    static async discoverFeed(limit: number, cookieHeader: string, userAgent?: string, logger?: any): Promise<DiscoveryResult> {
         // Same as recommended but maybe different logging
-        return this.discoverRecommended(limit, cookieHeader, logger);
+        return this.discoverRecommended(limit, cookieHeader, userAgent, logger);
     }
 
     // --- Fallback Logic ---

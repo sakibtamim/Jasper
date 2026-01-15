@@ -10,16 +10,8 @@
             {
                 "id": "mymusic-nav",
                 "label": "My Music",
-                "icon": "music",
+                "icon": "headphones",
                 "href": "/plugins/mymusic"
-            }
-        ],
-        "widgets": [
-            {
-                "id": "mymusic-settings-widget",
-                "slot": "settings:main",
-                "component": "MyMusicSettingsWidget",
-                "order": 20
             }
         ],
         "pages": [

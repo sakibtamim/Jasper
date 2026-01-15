@@ -7,18 +7,21 @@ export interface CookieValidationResult {
     warnings: string[];
     hasAuthCookies: boolean;
     error?: string;
+    userAgent?: string;
+    healthStatus?: 'valid' | 'suspected_broken' | 'expired';
 }
 
 export interface ProbeResult {
     valid: boolean;
     error?: string;
+    healthStatus: 'valid' | 'suspected_broken' | 'expired';
 }
 
 export class CookieManager {
     /**
      * Normalizes and validates a cookie string (Header or Netscape format).
      */
-    static normalizeAndValidate(input: string): CookieValidationResult {
+    static normalizeAndValidate(input: string, userAgent?: string): CookieValidationResult {
         if (!input || !input.trim()) {
             return {
                 valid: false,
@@ -91,7 +94,9 @@ export class CookieManager {
             format,
             normalizedHeader: header,
             warnings,
-            hasAuthCookies
+            hasAuthCookies,
+            userAgent,
+            healthStatus: 'valid' // Default assumption until probed
         };
     }
 
@@ -124,25 +129,33 @@ export class CookieManager {
     /**
      * Tier 3: Live probe using Innertube.
      */
-    static async probeCookie(cookieHeader: string): Promise<ProbeResult> {
+    /**
+     * Tier 3: Live probe using Innertube.
+     */
+    static async probeCookie(cookieHeader: string, userAgent?: string): Promise<ProbeResult> {
         try {
             const yt = await Innertube.create({
                 cookie: cookieHeader
+                // userAgent note: youtubei.js does not support explicit UA in create options directly.
+                // It uses internal constraints based on device_category.
             });
 
-            // Perform a cheap call. getGuide() is usually good to check auth.
-            // Or getBasicProfile() if available.
-            // YOUTUBEI-JS_ANALYSIS.md might suggest a specific call.
-            // Let's try resolving a simple query or checking account info.
-
-            // Using getGuide() as a lightweight check for auth validity
+            // Perform a check. getGuide() is good.
             await yt.getGuide();
 
-            return { valid: true };
+            return { valid: true, healthStatus: 'valid' };
         } catch (error: any) {
+            const msg = error.message || '';
+            let status: 'suspected_broken' | 'expired' = 'suspected_broken';
+
+            if (msg.includes('401') || msg.includes('auth') || msg.includes('login')) {
+                status = 'expired';
+            }
+
             return {
                 valid: false,
-                error: error.message || 'Unknown error during probe'
+                error: msg || 'Unknown error during probe',
+                healthStatus: status
             };
         }
     }

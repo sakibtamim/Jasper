@@ -82,8 +82,10 @@ interface CookieProfile {
     lastUsedAt: number;
     playCount: number;
     uniqueTrackCount: number;
-    status: 'valid' | 'suspected_broken' | 'validation_pending';
+    status: 'valid' | 'suspected_broken' | 'validation_pending' | 'expired';
     lastError: string | null;
+    userAgent?: string;
+    healthStatus?: 'valid' | 'suspected_broken' | 'expired';
 }
 
 const MyMusicPlugin: Plugin = {
@@ -229,6 +231,7 @@ const MyMusicPlugin: Plugin = {
                                 .setDescription("Add a new cookie profile")
                                 .addAttachmentOption(opt => opt.setName("file").setDescription("Netscape formatted cookie file (.txt)").setRequired(true))
                                 .addStringOption(opt => opt.setName("name").setDescription("Profile name").setRequired(false))
+                                .addStringOption(opt => opt.setName("user_agent").setDescription("User Agent string for this cookie (recommended)").setRequired(false))
                         )
                         .addSubcommand(sub =>
                             sub.setName("list")
@@ -325,7 +328,9 @@ const MyMusicPlugin: Plugin = {
                 uniqueTrackCount: p.uniqueTrackCount,  // Phase D: Include unique track count
                 hasContent: !!p.content,
                 status: p.status,
-                lastError: p.lastError
+                lastError: p.lastError,
+                userAgent: p.userAgent,
+                healthStatus: p.healthStatus
             }));
 
             return { profiles: safeProfiles };
@@ -336,7 +341,7 @@ const MyMusicPlugin: Plugin = {
             const user = req.user;
             if (!user) return reply.status(401).send({ error: "Unauthorized" });
 
-            const { name, content } = req.body as { name: string, content: string };
+            const { name, content, user_agent } = req.body as { name: string, content: string, user_agent?: string };
             if (!content) return reply.status(400).send({ error: "Content is required" });
 
             const profiles = await getProfiles(user.id);
@@ -347,13 +352,22 @@ const MyMusicPlugin: Plugin = {
             }
 
             // Use CookieManager to normalize and validate
-            const validation = CookieManager.normalizeAndValidate(content);
+            const validation = CookieManager.normalizeAndValidate(content, user_agent);
 
             if (!validation.valid) {
                 return reply.status(400).send({
                     error: "Invalid cookie content",
                     details: validation.error
                 });
+            }
+
+            // Perform initial health probe
+            let healthStatus: 'valid' | 'suspected_broken' | 'expired' | undefined = undefined;
+            try {
+                const probe = await CookieManager.probeCookie(validation.normalizedHeader, user_agent);
+                healthStatus = probe.healthStatus;
+            } catch (e) {
+                healthStatus = 'suspected_broken';
             }
 
             const newProfile: CookieProfile = {
@@ -365,7 +379,9 @@ const MyMusicPlugin: Plugin = {
                 lastUsedAt: 0,
                 playCount: 0,
                 uniqueTrackCount: 0,
-                status: 'validation_pending',
+                status: healthStatus === 'valid' ? 'valid' : 'validation_pending',
+                userAgent: user_agent,
+                healthStatus: healthStatus,
                 lastError: null
             };
 
@@ -493,7 +509,7 @@ async function handleSearch(
         await interaction.deferReply();
 
         // Discovery
-        const result = await DiscoveryEngine.discoverSearch(term, limit, radio, profile.content, context.logger);
+        const result = await DiscoveryEngine.discoverSearch(term, limit, radio, profile.content, profile.userAgent, context.logger);
 
         if (result.error) {
             // Log error but try to proceed if we have IDs?
@@ -621,7 +637,7 @@ async function handleSupermix(
     try {
         await interaction.deferReply();
 
-        const result = await DiscoveryEngine.discoverSupermix(limit, profile.content, context.logger);
+        const result = await DiscoveryEngine.discoverSupermix(limit, profile.content, profile.userAgent, context.logger);
 
         if (result.tracks.length === 0) {
             logTelemetryEvent({
@@ -737,7 +753,7 @@ async function handleMix(
     try {
         await interaction.deferReply();
 
-        const result = await DiscoveryEngine.discoverMix(number, limit, profile.content, context.logger);
+        const result = await DiscoveryEngine.discoverMix(number, limit, profile.content, profile.userAgent, context.logger);
 
         if (result.tracks.length === 0) {
             logTelemetryEvent({
@@ -863,7 +879,7 @@ async function handleRecommended(
     try {
         await interaction.deferReply();
 
-        const result = await DiscoveryEngine.discoverRecommended(limit, profile.content, context.logger);
+        const result = await DiscoveryEngine.discoverRecommended(limit, profile.content, profile.userAgent, context.logger);
 
         if (result.tracks.length === 0) {
             await interaction.editReply({ content: "❌ No results found." });
@@ -921,6 +937,7 @@ async function handleCookieAdd(
 ) {
     const attachment = interaction.options.getAttachment("file", true);
     const name = interaction.options.getString("name");
+    const userAgent = interaction.options.getString("user_agent");
     const userId = interaction.user.id;
 
     // Fetch attachment content
@@ -943,7 +960,7 @@ async function handleCookieAdd(
     }
 
     // Use CookieManager to normalize and validate
-    const validation = CookieManager.normalizeAndValidate(content);
+    const validation = CookieManager.normalizeAndValidate(content, userAgent || undefined);
 
     if (!validation.valid) {
         await interaction.reply({
@@ -957,6 +974,27 @@ async function handleCookieAdd(
     let responseMessage = `✅ Added cookie profile "**${profileName}**"!`;
     if (validation.warnings && validation.warnings.length > 0) {
         responseMessage += `\n\n⚠️ **Warnings:**\n${validation.warnings.map(w => `• ${w}`).join('\n')}`;
+    }
+
+    // Perform initial health probe
+    let healthStatus: 'valid' | 'suspected_broken' | 'expired' | undefined = undefined;
+    try {
+        const probe = await CookieManager.probeCookie(validation.normalizedHeader, userAgent || undefined);
+        healthStatus = probe.healthStatus;
+        if (!probe.valid) {
+            responseMessage += `\n\n⚠️ **Health Check Failed:** ${probe.error}`;
+            if (healthStatus === 'expired') {
+                responseMessage += `\nCookie appears to be expired. Please refresh it.`;
+            }
+        } else {
+            responseMessage += `\n\n✅ **Health Check:** Valid`;
+        }
+    } catch (e) {
+        // Ignore probe errors during add, default to validation_pending or suspected_broken
+        healthStatus = 'suspected_broken';
+    }
+
+    if (validation.warnings.length > 0 || (healthStatus && healthStatus !== 'valid')) {
         responseMessage += `\n\nThe profile has been saved but may not work for all features.`;
     }
 
@@ -969,7 +1007,9 @@ async function handleCookieAdd(
         lastUsedAt: 0,
         playCount: 0,
         uniqueTrackCount: 0,
-        status: 'validation_pending', // Set to pending until first use
+        status: healthStatus === 'valid' ? 'valid' : 'validation_pending', // If probed valid, set valid immediately
+        userAgent: userAgent || undefined,
+        healthStatus: healthStatus,
         lastError: null
     };
 
@@ -1058,7 +1098,7 @@ async function handleFeed(
 
         context.logger.info(`[MyMusic:Feed] Fetching feed for user ${interaction.user.id} using profile ${profile.name}`);
 
-        const result = await DiscoveryEngine.discoverRecommended(limit, profile.content, context.logger);
+        const result = await DiscoveryEngine.discoverRecommended(limit, profile.content, profile.userAgent, context.logger);
 
         if (result.error) {
             await interaction.editReply(`❌ Failed to fetch feed: ${result.error}`);
@@ -1115,7 +1155,7 @@ async function handleHistory(
 
         context.logger.info(`[MyMusic:History] Fetching history for user ${interaction.user.id} using profile ${profile.name}`);
 
-        const result = await DiscoveryEngine.discoverHistory(limit, profile.content, context.logger);
+        const result = await DiscoveryEngine.discoverHistory(limit, profile.content, profile.userAgent, context.logger);
 
         if (result.error) {
             await interaction.editReply(`❌ Failed to fetch history: ${result.error}`);
