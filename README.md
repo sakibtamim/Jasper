@@ -468,3 +468,7 @@ Not required. Always appreciated.
 <p align="center">
   <img src="./assets/seal/icaro-42_b-seal-512.webp" width="25%" />
 </p>
+
+
+## Standards
+Verified against Purrmission monorepo standards.
