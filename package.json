@@ -1,35 +1,36 @@
 {
-  "name": "jasper-monorepo",
-  "private": true,
-  "description": "Jasper Monorepo - Robust Discord music bot with multi-client playback, caching, dashboards, and plugin support. CSP-IP: Personal IP with company-backed engineering.",
-  "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "clean": "turbo run clean",
-    "prod:build": "turbo run build",
-    "prod:start": "PORT=3000 NODE_ENV=production node apps/bot/dist/index.js",
-    "prod:preview": "turbo run build && PORT=3000 NODE_ENV=production node apps/bot/dist/index.js",
-    "mcp:inspect": "node scripts/test-mcp.js",
-    "mcp:sync": "node scripts/sync-mcp.js",
-    "typecheck": "turbo run typecheck",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "format:plugins": "prettier --write \"apps/bot/src/plugins/**/*.{ts,tsx,md}\"",
-    "lint:plugins": "eslint \"apps/bot/src/plugins/**/*.{ts,tsx}\"",
-    "prepare": "husky"
-  },
-  "devDependencies": {
-    "@commitlint/cli": "^20.3.0",
-    "@commitlint/config-conventional": "^20.3.0",
-    "@types/node": "^24.10.1",
-    "globals": "^16.5.0",
-    "husky": "^9.1.7",
-    "kill-port": "^2.0.1",
-    "prettier": "^3.7.4",
-    "turbo": "^2.3.0"
-  },
-  "packageManager": "pnpm@9.15.9+sha512.68046141893c66fad01c079231128e9afb89ef87e2691d69e4d40eee228988295fd4682181bae55b58418c3a253bde65a505ec7c5f9403ece5cc3cd37dcf2531",
-  "engines": {
-    "node": ">=24.0.0"
-  }
+    "name": "jasper-monorepo",
+    "private": true,
+    "description": "Jasper Monorepo - Robust Discord music bot with multi-client playback, caching, dashboards, and plugin support. CSP-IP: Personal IP with company-backed engineering.",
+    "scripts": {
+        "build": "turbo run build",
+        "dev": "turbo run dev",
+        "lint": "turbo run lint",
+        "clean": "turbo run clean",
+        "prod:build": "turbo run build",
+        "prod:start": "PORT=3000 NODE_ENV=production node apps/bot/dist/index.js",
+        "prod:preview": "turbo run build && PORT=3000 NODE_ENV=production node apps/bot/dist/index.js",
+        "mcp:inspect": "node scripts/test-mcp.js",
+        "mcp:sync": "node scripts/sync-mcp.js",
+        "typecheck": "turbo run typecheck",
+        "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+        "format:plugins": "prettier --write \"apps/bot/src/plugins/**/*.{ts,tsx,md}\"",
+        "lint:plugins": "eslint \"apps/bot/src/plugins/**/*.{ts,tsx}\"",
+        "prepare": "husky"
+    },
+    "devDependencies": {
+        "@commitlint/cli": "^20.3.0",
+        "@commitlint/config-conventional": "^20.3.0",
+        "@trivago/prettier-plugin-sort-imports": "^6.0.2",
+        "@types/node": "^24.10.1",
+        "globals": "^16.5.0",
+        "husky": "^9.1.7",
+        "kill-port": "^2.0.1",
+        "prettier": "^3.7.4",
+        "turbo": "^2.3.0"
+    },
+    "packageManager": "pnpm@9.15.9+sha512.68046141893c66fad01c079231128e9afb89ef87e2691d69e4d40eee228988295fd4682181bae55b58418c3a253bde65a505ec7c5f9403ece5cc3cd37dcf2531",
+    "engines": {
+        "node": ">=24.0.0"
+    }
 }
