@@ -5,14 +5,14 @@ import path from "path";
 
 describe("SqliteAdapter", () => {
   let adapter: SqliteAdapter;
-  const testDbPath = path.join(process.cwd(), "data", "jasper.db");
+  const testDbPath = path.join(process.cwd(), "data", "test-jasper.db");
 
   beforeEach(async () => {
     // Clean up previous test DB if exists
     if (fs.existsSync(testDbPath)) {
       fs.unlinkSync(testDbPath);
     }
-    adapter = new SqliteAdapter();
+    adapter = new SqliteAdapter(testDbPath);
     await adapter.init();
   });
 

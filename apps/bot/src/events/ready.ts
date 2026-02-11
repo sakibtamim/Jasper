@@ -4,7 +4,7 @@ export default {
   name: Events.ClientReady,
   once: true,
   execute(client: Client) {
-    // @ts-ignore - Accessed custom property injected in worker-pool
+    // @ts-expect-error - Accessed custom property injected in worker-pool
     const role = (client as any).role;
 
     if (role === "controller") {

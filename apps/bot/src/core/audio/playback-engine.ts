@@ -412,7 +412,18 @@ export async function playSong(queue: Queue): Promise<void> {
           setVoiceStatus(queue.worker.client, queue.voiceChannelId, "");
           queue.songs = [];
           queue.player.stop();
-          if (queue.connection) queue.connection.destroy();
+          if (
+            queue.connection &&
+            queue.connection.state.status !== VoiceConnectionStatus.Destroyed
+          ) {
+            try {
+              queue.connection.destroy();
+            } catch (error) {
+              logger.warn(
+                `[PlaybackEngine] Failed to destroy connection: ${error}`,
+              );
+            }
+          }
           deleteQueue(queue.voiceChannelId);
           workerPool.releaseWorker(queue.voiceChannelId);
           collector.stop();
