@@ -16,7 +16,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "format:plugins": "prettier --write \"apps/bot/src/plugins/**/*.{ts,tsx,md}\"",
     "lint:plugins": "eslint \"apps/bot/src/plugins/**/*.{ts,tsx}\"",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.3.0",
