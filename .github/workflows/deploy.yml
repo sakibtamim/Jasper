@@ -6,21 +6,21 @@ on:
       - deploy
     paths:
       # Bot application
-      - 'apps/bot/**'
+      - "apps/bot/**"
       # Web dashboard
-      - 'apps/web/**'
+      - "apps/web/**"
       # Shared packages
-      - 'packages/**'
+      - "packages/**"
       # Root configuration
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - 'turbo.json'
-      - 'ecosystem.config.cjs'
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "turbo.json"
+      - "ecosystem.config.cjs"
       # Node version
-      - '.nvmrc'
+      - ".nvmrc"
       # Workflow itself
-      - '.github/workflows/deploy.yml'
+      - ".github/workflows/deploy.yml"
 
 jobs:
   build:
@@ -38,8 +38,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version-file: '.nvmrc'
-          cache: 'pnpm'
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
 
       - name: Install Dependencies
         env:
@@ -158,4 +158,7 @@ jobs:
             fi
 
             pnpm install --prod --frozen-lockfile
+
+            # Explicitly run postinstall for bot to trigger yt-dlp download
+            pnpm --filter jasper-bot run postinstall
             pm2 startOrRestart ecosystem.config.cjs

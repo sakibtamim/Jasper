@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable no-console */
 import https from 'https';
 import fs from 'fs';
 import path from 'path';
@@ -53,11 +54,14 @@ function findYtDlpPath() {
 }
 
 // Where to write the binary:
-// If we are in a monorepo (detected by turbo.json in root), install to monorepo root.
+// If we are in a monorepo (detected by turbo.json OR pnpm-workspace.yaml in root), install to monorepo root.
 // Otherwise, install to app root (standard behavior).
 let root = path.resolve(__dirname, '..');
 const monorepoRoot = path.resolve(__dirname, '../../..');
-if (fs.existsSync(path.join(monorepoRoot, 'turbo.json'))) {
+if (
+  fs.existsSync(path.join(monorepoRoot, 'turbo.json')) ||
+  fs.existsSync(path.join(monorepoRoot, 'pnpm-workspace.yaml'))
+) {
   console.log('Monorepo detected, installing to monorepo root');
   root = monorepoRoot;
 }
