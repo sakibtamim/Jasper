@@ -5,6 +5,19 @@ import * as trackResolver from "../track-resolver.js";
 import * as voiceUtils from "../../utils/voice-utils.js";
 import * as playbackEngine from "../playback-engine.js";
 
+// Mock DB because queue-manager or other dependencies might import it
+vi.mock("../../db/index.js", () => ({
+  default: {
+    trackPlay: vi.fn(),
+    getTopSongs: vi.fn(),
+    getTopUsers: vi.fn(),
+    getGlobalStats: vi.fn(),
+  },
+  getDatabase: () => ({
+    trackPlay: vi.fn(),
+  }),
+}));
+
 // Mocks
 vi.mock("../../utils/voice-utils.js", () => ({
   validateInteraction: vi.fn(),
@@ -72,8 +85,8 @@ vi.mock("discord.js", () => {
 
   return {
     GuildMember: MockGuildMember,
-    ActionRowBuilder: class {},
-    ButtonBuilder: class {},
+    ActionRowBuilder: class { },
+    ButtonBuilder: class { },
     EmbedBuilder: class {
       setColor() {
         return this;

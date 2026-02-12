@@ -17,6 +17,7 @@ vi.mock("discord.js", () => {
   MockClient.prototype.user = {
     setPresence: vi.fn(),
   };
+  MockClient.prototype.isReady = vi.fn().mockReturnValue(true);
 
   return {
     Client: MockClient,

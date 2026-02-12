@@ -3,6 +3,7 @@ import {
   createAudioPlayer,
   AudioPlayerStatus,
   NoSubscriberBehavior,
+  VoiceConnectionStatus,
 } from "@discordjs/voice";
 import {
   ActionRowBuilder,
@@ -285,8 +286,17 @@ async function createQueue(
           );
           // Clear voice status before disconnecting
           setVoiceStatus(queue.worker.client, queue.voiceChannelId, "");
-          if (queue.connection) {
-            queue.connection.destroy();
+          if (
+            queue.connection &&
+            queue.connection.state.status !== VoiceConnectionStatus.Destroyed
+          ) {
+            try {
+              queue.connection.destroy();
+            } catch (error) {
+              logger.warn(
+                `[MusicPlayer] Failed to destroy connection for ${queue.voiceChannelId}: ${error}`,
+              );
+            }
           }
           deleteQueue(queue.voiceChannelId);
         },
@@ -529,8 +539,7 @@ async function enqueuePlaylist(
 
     const truncatedMsg = truncated ? " (truncated to 50 for performance)" : "";
     await interaction.editReply(
-      `✅ **Added ${songsToAdd.length} songs** from playlist: **${
-        data.title || "YouTube Playlist"
+      `✅ **Added ${songsToAdd.length} songs** from playlist: **${data.title || "YouTube Playlist"
       }**${truncatedMsg}`,
     );
   } catch (error: unknown) {
@@ -701,8 +710,7 @@ async function showQueue(
 
   if (queue.nowPlaying) {
     lines.push(
-      `▶️ **Now:** [${queue.nowPlaying.title}](${
-        queue.nowPlaying.url
+      `▶️ **Now:** [${queue.nowPlaying.title}](${queue.nowPlaying.url
       }) — \`${formatDuration(queue.nowPlaying.durationInSec)}\``,
     );
   }

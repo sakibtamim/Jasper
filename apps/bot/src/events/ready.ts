@@ -4,8 +4,8 @@ export default {
   name: Events.ClientReady,
   once: true,
   execute(client: Client) {
-    // @ts-ignore - Accessed custom property injected in worker-pool
-    const role = (client as any).role;
+    // @ts-expect-error - Accessed custom property injected in worker-pool
+    const role = client.role;
 
     if (role === "controller") {
       client.user!.setPresence({

@@ -33,7 +33,7 @@ function createBots(): WorkerState[] {
     });
 
     // Attach role to client for event handlers to access
-    // @ts-ignore - Injecting custom property
+    // @ts-expect-error - Injecting custom property
     client.role = botConfig.role;
 
     workers.push({
@@ -186,8 +186,10 @@ function allocateWorker(
     return existing;
   }
 
-  // 2. Get all eligible (non-busy) workers
-  const eligibleWorkers = workers.filter((w) => !w.busy);
+  // 2. Get all eligible (non-busy and ready) workers
+  const eligibleWorkers = workers.filter(
+    (w) => !w.busy && w.client.isReady(),
+  );
 
   if (eligibleWorkers.length === 0) {
     // Everyone is busy

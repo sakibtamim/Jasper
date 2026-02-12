@@ -18,13 +18,14 @@ export class SqliteAdapter implements DatabaseAdapter {
   private db: Database.Database | null = null;
   private dbPath: string;
 
-  constructor() {
-    // Ensure data directory exists
-    const dataDir = path.join(process.cwd(), "data");
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
+  constructor(customPath?: string) {
+    this.dbPath = customPath || path.join(process.cwd(), "data", "jasper.db");
+
+    // Ensure directory exists
+    const dir = path.dirname(this.dbPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
-    this.dbPath = path.join(dataDir, "jasper.db");
   }
 
   async init(): Promise<void> {
@@ -272,14 +273,14 @@ export class SqliteAdapter implements DatabaseAdapter {
 
     const row = stmt.get(query) as
       | {
-          query: string;
-          songTitle: string;
-          songUrl: string;
-          duration: number;
-          thumbnail?: string;
-          cachedAt: string;
-          expiresAt: string;
-        }
+        query: string;
+        songTitle: string;
+        songUrl: string;
+        duration: number;
+        thumbnail?: string;
+        cachedAt: string;
+        expiresAt: string;
+      }
       | undefined;
     if (!row) return null;
 
@@ -329,15 +330,15 @@ export class SqliteAdapter implements DatabaseAdapter {
 
     const row = stmt.get(videoId) as
       | {
-          videoId: string;
-          title: string;
-          url: string;
-          duration: number;
-          thumbnail?: string;
-          searchTerms: string;
-          cachedAt: string;
-          expiresAt: string;
-        }
+        videoId: string;
+        title: string;
+        url: string;
+        duration: number;
+        thumbnail?: string;
+        searchTerms: string;
+        cachedAt: string;
+        expiresAt: string;
+      }
       | undefined;
     if (!row) return null;
 
@@ -399,15 +400,15 @@ export class SqliteAdapter implements DatabaseAdapter {
 
     const row = stmt.get() as
       | {
-          videoId: string;
-          title: string;
-          url: string;
-          duration: number;
-          thumbnail?: string;
-          searchTerms: string;
-          cachedAt: string;
-          expiresAt: string;
-        }
+        videoId: string;
+        title: string;
+        url: string;
+        duration: number;
+        thumbnail?: string;
+        searchTerms: string;
+        cachedAt: string;
+        expiresAt: string;
+      }
       | undefined;
     if (!row) return null;
 

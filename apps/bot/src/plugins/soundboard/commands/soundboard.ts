@@ -442,10 +442,14 @@ export const handleButtonInteraction = async (
   if (!interaction.customId.startsWith("soundboard_play_")) return;
 
   if (activeUsers.has(interaction.user.id)) {
-    await interaction.reply({
-      content: "⏳ Please wait for your previous sound to finish!",
-      flags: MessageFlags.Ephemeral,
-    });
+    try {
+      await interaction.reply({
+        content: "⏳ Please wait for your previous sound to finish!",
+        flags: MessageFlags.Ephemeral,
+      });
+    } catch (e) {
+      context.logger.warn(`[Soundboard] Failed to reply to interaction: ${e}`);
+    }
     return;
   }
 
@@ -454,17 +458,27 @@ export const handleButtonInteraction = async (
   const voiceChannel = member?.voice.channel;
 
   if (!voiceChannel) {
-    await interaction.reply({
-      content: "🚫 You must be in a voice channel!",
-      flags: MessageFlags.Ephemeral,
-    });
+    try {
+      await interaction.reply({
+        content: "🚫 You must be in a voice channel!",
+        flags: MessageFlags.Ephemeral,
+      });
+    } catch (e) {
+      context.logger.warn(`[Soundboard] Failed to send 'not in voice' reply: ${e}`);
+    }
     return;
   }
 
   activeUsers.add(interaction.user.id);
 
   // Defer update to acknowledge the button click immediately
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  try {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  } catch (err) {
+    activeUsers.delete(interaction.user.id);
+    context.logger.warn(`[Soundboard] Failed to defer reply: ${err}`);
+    return;
+  }
 
   try {
     await playSoundboardClip(
@@ -483,7 +497,11 @@ export const handleButtonInteraction = async (
     await interaction.editReply({ content: `🔊 Playing **${soundName}**` });
   } catch (err) {
     context.logger.error(`Playback failed: ${err}`);
-    await interaction.editReply({ content: "❌ Failed to play sound." });
+    try {
+      await interaction.editReply({ content: "❌ Failed to play sound." });
+    } catch (e) {
+      context.logger.warn(`[Soundboard] Failed to send error reply: ${e}`);
+    }
   } finally {
     // Add 1s buffer before allowing next click
     setTimeout(() => {
@@ -502,10 +520,15 @@ export const handleModalSubmit = async (
   const name = interaction.fields.getTextInputValue("sound_name");
   const emoji = interaction.fields.getTextInputValue("sound_emoji") || "🔊";
 
-  await interaction.reply({
-    content: `✨ **Step 2/2**: Please upload the audio file for **${name}**.\nUpload the file in this channel and **mention me** (@${context.client.user?.username}).`,
-    flags: MessageFlags.Ephemeral,
-  });
+  try {
+    await interaction.reply({
+      content: `✨ **Step 2/2**: Please upload the audio file for **${name}**.\nUpload the file in this channel and **mention me** (@${context.client.user?.username}).`,
+      flags: MessageFlags.Ephemeral,
+    });
+  } catch (e) {
+    context.logger.warn(`[Soundboard] Failed to reply to modal: ${e}`);
+    return;
+  }
 
   // Check if channel supports message collection
   if (
@@ -513,10 +536,14 @@ export const handleModalSubmit = async (
     !interaction.channel.isTextBased() ||
     interaction.channel.isDMBased()
   ) {
-    await interaction.followUp({
-      content: "❌ Cannot collect messages in this channel type.",
-      flags: MessageFlags.Ephemeral,
-    });
+    try {
+      await interaction.followUp({
+        content: "❌ Cannot collect messages in this channel type.",
+        flags: MessageFlags.Ephemeral,
+      });
+    } catch (e) {
+      context.logger.warn(`[Soundboard] Failed to send 'collection error' reply: ${e}`);
+    }
     return;
   }
 
@@ -545,7 +572,7 @@ export const handleModalSubmit = async (
       // Try to delete the large file message
       try {
         await m.delete();
-      } catch (e) {}
+      } catch (e) { }
       return;
     }
 
@@ -563,7 +590,7 @@ export const handleModalSubmit = async (
       });
       try {
         await m.delete();
-      } catch (e) {}
+      } catch (e) { }
       return;
     }
 
@@ -590,7 +617,7 @@ export const handleModalSubmit = async (
       // Try to delete the user's message to keep chat clean
       try {
         await m.delete();
-      } catch (e) {}
+      } catch (e) { }
 
       // Stop collector
       collector.stop("success");
@@ -610,7 +637,7 @@ export const handleModalSubmit = async (
           content: "❌ Timed out waiting for file upload.",
           flags: MessageFlags.Ephemeral,
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   });
 };
