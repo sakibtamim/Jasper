@@ -448,7 +448,7 @@ export const handleButtonInteraction = async (
         flags: MessageFlags.Ephemeral,
       });
     } catch (e) {
-      // Ignore if already replied/deferred
+      context.logger.warn(`[Soundboard] Failed to reply to interaction: ${e}`);
     }
     return;
   }
@@ -464,7 +464,7 @@ export const handleButtonInteraction = async (
         flags: MessageFlags.Ephemeral,
       });
     } catch (e) {
-      // Ignore
+      context.logger.warn(`[Soundboard] Failed to send 'not in voice' reply: ${e}`);
     }
     return;
   }
@@ -475,6 +475,7 @@ export const handleButtonInteraction = async (
   try {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
   } catch (err) {
+    activeUsers.delete(interaction.user.id);
     context.logger.warn(`[Soundboard] Failed to defer reply: ${err}`);
     return;
   }
@@ -499,7 +500,7 @@ export const handleButtonInteraction = async (
     try {
       await interaction.editReply({ content: "❌ Failed to play sound." });
     } catch (e) {
-      // Ignore
+      context.logger.warn(`[Soundboard] Failed to send error reply: ${e}`);
     }
   } finally {
     // Add 1s buffer before allowing next click
@@ -541,7 +542,7 @@ export const handleModalSubmit = async (
         flags: MessageFlags.Ephemeral,
       });
     } catch (e) {
-      // Ignore
+      context.logger.warn(`[Soundboard] Failed to send 'collection error' reply: ${e}`);
     }
     return;
   }

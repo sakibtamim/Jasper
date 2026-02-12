@@ -2,6 +2,7 @@ import {
   createAudioResource,
   StreamType,
   AudioPlayerStatus,
+  VoiceConnectionStatus,
 } from "@discordjs/voice";
 import {
   ActionRowBuilder,

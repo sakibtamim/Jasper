@@ -1,7 +1,7 @@
 import { spawnSync } from "child_process";
 import path from "path";
 import fs from "fs";
-import { fileURLToPath } from "url";
+
 import { YT_DLP_JS_RUNTIME, YT_DLP_PLAYER_CLIENT } from "../config/env.js";
 
 

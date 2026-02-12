@@ -8,6 +8,11 @@ describe("SqliteAdapter", () => {
   const testDbPath = path.join(process.cwd(), "data", "test-jasper.db");
 
   beforeEach(async () => {
+    const dir = path.dirname(testDbPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
     // Clean up previous test DB if exists
     if (fs.existsSync(testDbPath)) {
       fs.unlinkSync(testDbPath);

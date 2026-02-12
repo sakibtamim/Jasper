@@ -5,7 +5,7 @@ export default {
   once: true,
   execute(client: Client) {
     // @ts-expect-error - Accessed custom property injected in worker-pool
-    const role = (client as any).role;
+    const role = client.role;
 
     if (role === "controller") {
       client.user!.setPresence({

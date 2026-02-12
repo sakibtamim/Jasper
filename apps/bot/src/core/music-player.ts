@@ -3,6 +3,7 @@ import {
   createAudioPlayer,
   AudioPlayerStatus,
   NoSubscriberBehavior,
+  VoiceConnectionStatus,
 } from "@discordjs/voice";
 import {
   ActionRowBuilder,

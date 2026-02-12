@@ -19,15 +19,12 @@ export class SqliteAdapter implements DatabaseAdapter {
   private dbPath: string;
 
   constructor(customPath?: string) {
-    if (customPath) {
-      this.dbPath = customPath;
-    } else {
-      // Ensure data directory exists
-      const dataDir = path.join(process.cwd(), "data");
-      if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir, { recursive: true });
-      }
-      this.dbPath = path.join(dataDir, "jasper.db");
+    this.dbPath = customPath || path.join(process.cwd(), "data", "jasper.db");
+
+    // Ensure directory exists
+    const dir = path.dirname(this.dbPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
   }
 
