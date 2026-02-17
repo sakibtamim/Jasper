@@ -346,6 +346,8 @@ pnpm install
 This bot **requires** the `yt-dlp` executable to function.
 
 - When you run `pnpm install`, the postinstall script will attempt to automatically download the **latest** yt-dlp binary for your platform and place it in the project root.
+- It detects the root directory by looking for `turbo.json` or `pnpm-workspace.yaml`.
+- In production, this is explicitly triggered via `pnpm run postinstall` during deployment.
 - If you prefer to manage the binary manually (or you're offline), you can skip the automatic download by setting the `YT_DLP_SKIP_POSTINSTALL` environment variable before running `pnpm install`:
 
 ```bash
@@ -373,7 +375,7 @@ Jasper/
 ├── node_modules/
 ├── .env
 ├── package.json
-├── turbo.json
+├── turbo.json (or pnpm-workspace.yaml)
 └── yt-dlp.exe        <-- MUST BE HERE (Root)
 ```
 
