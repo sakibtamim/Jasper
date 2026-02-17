@@ -59,8 +59,9 @@ function findYtDlpPath() {
 let root = path.resolve(__dirname, '..');
 const monorepoRoot = path.resolve(__dirname, '../../..');
 if (
-  fs.existsSync(path.join(monorepoRoot, 'turbo.json')) ||
-  fs.existsSync(path.join(monorepoRoot, 'pnpm-workspace.yaml'))
+  ['turbo.json', 'pnpm-workspace.yaml'].some((file) =>
+    fs.existsSync(path.join(monorepoRoot, file))
+  )
 ) {
   console.log('Monorepo detected, installing to monorepo root');
   root = monorepoRoot;
