@@ -128,6 +128,7 @@ export interface ICacheRepository {
     entityType: "user" | "bot",
   ): Promise<void>;
   getTopCacheHits(limit?: number): Promise<CacheHitStats[]>;
+  getAllCachedVideoIds(): Promise<string[]>;
 }
 
 export interface IAuthRepository {
@@ -203,15 +204,14 @@ export interface ICookieRepository {
   getBestCookie(): Promise<YtDlpCookie | null>;
 }
 
-export interface DatabaseAdapter
-  extends
-    IStatsRepository,
-    ICacheRepository,
-    IAuthRepository,
-    IDevToolsRepository,
-    IPluginRepository,
-    IPluginMetaRepository,
-    ICookieRepository {
+export interface DatabaseAdapter extends
+  IStatsRepository,
+  ICacheRepository,
+  IAuthRepository,
+  IDevToolsRepository,
+  IPluginRepository,
+  IPluginMetaRepository,
+  ICookieRepository {
   init(): Promise<void>;
   close(): Promise<void>;
 }

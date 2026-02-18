@@ -20,16 +20,46 @@ export function isYoutubeUrl(text: string): boolean {
 }
 
 export function isUrl(text: string): boolean {
-  return isYoutubeUrl(text);
+  try {
+    new URL(text);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function isAttachmentUrl(text: string): boolean {
-  // Discord uses multiple domains for attachments
-  return (
+  // Check for Discord attachment domains
+  if (
     text.includes("cdn.discordapp.com/attachments") ||
     text.includes("media.discordapp.net/attachments") ||
     text.includes("cdn.discord.com/attachments")
-  );
+  ) {
+    return true;
+  }
+
+  // Also check for direct file extensions if it is a valid URL
+  if (isUrl(text)) {
+    try {
+      const url = new URL(text);
+      const pathname = url.pathname.toLowerCase();
+      // Common audio extensions
+      const AUDIO_EXTENSIONS = [
+        ".mp3",
+        ".wav",
+        ".ogg",
+        ".flac",
+        ".m4a",
+        ".webm",
+        ".opus",
+      ];
+      return AUDIO_EXTENSIONS.some((ext) => pathname.endsWith(ext));
+    } catch {
+      return false;
+    }
+  }
+
+  return false;
 }
 
 export interface VideoData {

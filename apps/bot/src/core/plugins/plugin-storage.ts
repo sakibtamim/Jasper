@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url";
 import { IPluginStorage } from "@jasper/types";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// apps/bot/src/core/plugins/plugin-storage.ts -> apps/bot/data/plugins
-const STORAGE_ROOT = path.resolve(__dirname, "../../../../data/plugins");
+// Use process.cwd() to ensure we target the persistent volume mounted at root
+const STORAGE_ROOT = path.join(process.cwd(), "data", "plugins");
 
 export class PluginStorage implements IPluginStorage {
   private pluginId: string;

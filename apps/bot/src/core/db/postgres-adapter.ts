@@ -490,6 +490,16 @@ export class PostgresAdapter implements DatabaseAdapter {
     return result.rows as import("./types.js").CacheHitStats[];
   }
 
+  async getAllCachedVideoIds(): Promise<string[]> {
+    if (!this.pool) throw new Error("Database not initialized");
+
+    const result = await this.pool.query(
+      `SELECT video_id as "videoId" FROM audio_metadata`,
+    );
+
+    return result.rows.map((row) => row.videoId);
+  }
+
   async close(): Promise<void> {
     if (this.pool) {
       await this.pool.end();

@@ -36,9 +36,10 @@ const soundboardPlugin = {
     context.client.on("interactionCreate", interactionHandler);
 
     // Schedule cleanup task (every 1 hour)
-    context.scheduleTask(60 * 60 * 1000, async () => {
-      await cleanupOrphanedFiles(context);
-    });
+    // DISABLED: This is dangerous if storage is temporarily inaccessible
+    // context.scheduleTask(60 * 60 * 1000, async () => {
+    //   await cleanupOrphanedFiles(context);
+    // });
   },
   onUnload: async (context: PluginContext) => {
     if (interactionHandler) {
@@ -55,6 +56,13 @@ async function cleanupOrphanedFiles(context: PluginContext) {
     const files = await context.storage.list();
     const soundService = new SoundService(context);
     const sounds = await soundService.getSounds();
+
+    if (files.length === 0 && sounds.length > 0) {
+      context.logger.warn(
+        "[Cleanup] Storage appears empty but DB has sounds. Aborting cleanup to prevent data loss.",
+      );
+      return;
+    }
 
     // Part 1: Delete orphaned files (files in storage but not in DB)
     const soundFiles = new Set(

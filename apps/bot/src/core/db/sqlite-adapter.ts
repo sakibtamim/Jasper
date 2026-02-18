@@ -540,6 +540,17 @@ export class SqliteAdapter implements DatabaseAdapter {
     return stmt.all(limit) as import("./types.js").CacheHitStats[];
   }
 
+  async getAllCachedVideoIds(): Promise<string[]> {
+    if (!this.db) throw new Error("Database not initialized");
+
+    const stmt = this.db.prepare(
+      `SELECT video_id as videoId FROM audio_metadata`,
+    );
+
+    const rows = stmt.all() as { videoId: string }[];
+    return rows.map((row) => row.videoId);
+  }
+
   async close(): Promise<void> {
     if (this.db) {
       this.db.close();

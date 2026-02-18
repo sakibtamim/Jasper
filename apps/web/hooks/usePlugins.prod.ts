@@ -21,8 +21,6 @@ export function usePlugins() {
           registry.map(async (plugin) => {
             if (plugin.web && plugin.web.entry) {
               try {
-                let module: any;
-
                 // Production: Load built script via script tag
                 const entryUrl = `/plugins/${plugin.id}/web/index.js`;
                 console.log(
@@ -40,7 +38,7 @@ export function usePlugins() {
 
                 // Get the plugin module from the global variable
                 const varName = "JasperPlugin_" + plugin.id.replace(/-/g, "_");
-                module = (window as any)[varName];
+                const module = (window as any)[varName];
 
                 if (!module) {
                   throw new Error(`Plugin module not found`);
