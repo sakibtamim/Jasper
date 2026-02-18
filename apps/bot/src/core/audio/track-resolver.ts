@@ -61,8 +61,17 @@ export async function resolveTrack(
     }
   }
 
-  // Feature 1: Direct URL support (YouTube)
+  // Feature 1: Direct URL support (YouTube & Generic Files)
   if (isUrl(query)) {
+    // If it's NOT a YouTube URL, treat it as a direct file/stream
+    if (!query.includes("youtube.com") && !query.includes("youtu.be")) {
+      const urlParts = query.split("/");
+      const filename =
+        urlParts[urlParts.length - 1].split("?")[0] || "Direct Stream";
+      return resolveAttachment(query, filename, requesterId, requesterName);
+    }
+
+    // It IS a YouTube URL, proceed with yt-dlp fetch
     try {
       const videoData = await fetchVideoData(query);
       return {
