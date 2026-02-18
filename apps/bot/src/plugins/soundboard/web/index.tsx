@@ -1,3 +1,3 @@
-import { SoundboardPage } from './pages/SoundboardPage';
+import { SoundboardPage } from "./pages/SoundboardPage";
 
 export { SoundboardPage };

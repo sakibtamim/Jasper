@@ -1,98 +1,108 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import readline from 'node:readline';
-import { fileURLToPath } from 'node:url';
+import fs from "node:fs";
+import path from "node:path";
+import readline from "node:readline";
+import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PLUGINS_DIR = path.resolve(__dirname, '../src/plugins');
+const PLUGINS_DIR = path.resolve(__dirname, "../src/plugins");
 
 const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
+  input: process.stdin,
+  output: process.stdout,
 });
 
 const question = (query: string): Promise<string> => {
-    return new Promise((resolve) => {
-        rl.question(query, (answer) => {
-            resolve(answer.trim());
-        });
+  return new Promise((resolve) => {
+    rl.question(query, (answer) => {
+      resolve(answer.trim());
     });
+  });
 };
 
 async function main() {
-    console.log('🚀 Jasper Plugin Scaffolder\n');
+  console.log("🚀 Jasper Plugin Scaffolder\n");
 
-    // 1. Get Plugin ID
-    let id = '';
-    while (!id) {
-        id = await question('Plugin ID (kebab-case, e.g. my-cool-plugin): ');
-        if (!/^[a-z0-9-]+$/.test(id)) {
-            console.log('❌ Invalid ID. Use lowercase letters, numbers, and dashes only.');
-            id = '';
-        } else if (fs.existsSync(path.join(PLUGINS_DIR, id))) {
-            console.log('❌ Plugin with this ID already exists.');
-            id = '';
-        }
+  // 1. Get Plugin ID
+  let id = "";
+  while (!id) {
+    id = await question("Plugin ID (kebab-case, e.g. my-cool-plugin): ");
+    if (!/^[a-z0-9-]+$/.test(id)) {
+      console.log(
+        "❌ Invalid ID. Use lowercase letters, numbers, and dashes only.",
+      );
+      id = "";
+    } else if (fs.existsSync(path.join(PLUGINS_DIR, id))) {
+      console.log("❌ Plugin with this ID already exists.");
+      id = "";
     }
+  }
 
-    // 2. Get Metadata
-    const name = await question('Plugin Name (e.g. My Cool Plugin): ') || id;
-    const description = await question('Description: ') || 'A Jasper plugin';
-    const author = await question('Author: ') || '';
+  // 2. Get Metadata
+  const name = (await question("Plugin Name (e.g. My Cool Plugin): ")) || id;
+  const description = (await question("Description: ")) || "A Jasper plugin";
+  const author = (await question("Author: ")) || "";
 
-    // 3. Features
-    console.log('\nSelect features (y/n):');
-    const hasBackend = (await question('Include Backend (index.ts)? [Y/n]: ')).toLowerCase() !== 'n';
-    const hasFrontend = (await question('Include Frontend (web/index.tsx)? [Y/n]: ')).toLowerCase() !== 'n';
+  // 3. Features
+  console.log("\nSelect features (y/n):");
+  const hasBackend =
+    (await question("Include Backend (index.ts)? [Y/n]: ")).toLowerCase() !==
+    "n";
+  const hasFrontend =
+    (
+      await question("Include Frontend (web/index.tsx)? [Y/n]: ")
+    ).toLowerCase() !== "n";
 
-    if (!hasBackend && !hasFrontend) {
-        console.log('❌ You must select at least one feature.');
-        process.exit(1);
-    }
+  if (!hasBackend && !hasFrontend) {
+    console.log("❌ You must select at least one feature.");
+    process.exit(1);
+  }
 
-    const pluginDir = path.join(PLUGINS_DIR, id);
-    fs.mkdirSync(pluginDir, { recursive: true });
+  const pluginDir = path.join(PLUGINS_DIR, id);
+  fs.mkdirSync(pluginDir, { recursive: true });
 
-    // 4. Create Manifest
-    const manifest: any = {
-        id,
-        name,
-        version: '1.0.0',
-        description,
-        author,
-        jasperVersion: '^1.0.0'
+  // 4. Create Manifest
+  const manifest: any = {
+    id,
+    name,
+    version: "1.0.0",
+    description,
+    author,
+    jasperVersion: "^1.0.0",
+  };
+
+  if (hasBackend) {
+    manifest.entry = "index.ts";
+  }
+
+  if (hasFrontend) {
+    manifest.web = {
+      entry: "web/index.tsx",
+      navItems: [
+        {
+          id: `${id}-nav`,
+          label: name,
+          icon: "package",
+          href: `/plugins/${id}`,
+        },
+      ],
+      pages: [
+        {
+          id: `${id}-page`,
+          path: `/plugins/${id}`,
+          component: "PluginPage",
+        },
+      ],
     };
+  }
 
-    if (hasBackend) {
-        manifest.entry = 'index.ts';
-    }
+  fs.writeFileSync(
+    path.join(pluginDir, "jasper-plugin.json"),
+    JSON.stringify(manifest, null, 4),
+  );
 
-    if (hasFrontend) {
-        manifest.web = {
-            entry: 'web/index.tsx',
-            navItems: [
-                {
-                    id: `${id}-nav`,
-                    label: name,
-                    icon: 'package',
-                    href: `/plugins/${id}`
-                }
-            ],
-            pages: [
-                {
-                    id: `${id}-page`,
-                    path: `/plugins/${id}`,
-                    component: 'PluginPage'
-                }
-            ]
-        };
-    }
-
-    fs.writeFileSync(path.join(pluginDir, 'jasper-plugin.json'), JSON.stringify(manifest, null, 4));
-
-    // 5. Create Backend Entry
-    if (hasBackend) {
-        const backendContent = `import { Plugin, PluginContext } from "../../core/plugins/plugin-interface.js";
+  // 5. Create Backend Entry
+  if (hasBackend) {
+    const backendContent = `import { Plugin, PluginContext } from "../../core/plugins/plugin-interface.js";
 
 const ${toPascalCase(id)}Plugin: Plugin = {
     name: "${name}",
@@ -109,15 +119,15 @@ const ${toPascalCase(id)}Plugin: Plugin = {
 
 export default ${toPascalCase(id)}Plugin;
 `;
-        fs.writeFileSync(path.join(pluginDir, 'index.ts'), backendContent);
-    }
+    fs.writeFileSync(path.join(pluginDir, "index.ts"), backendContent);
+  }
 
-    // 6. Create Frontend Entry
-    if (hasFrontend) {
-        const webDir = path.join(pluginDir, 'web');
-        fs.mkdirSync(webDir);
+  // 6. Create Frontend Entry
+  if (hasFrontend) {
+    const webDir = path.join(pluginDir, "web");
+    fs.mkdirSync(webDir);
 
-        const frontendContent = `import { useState } from '@jasper/elements';
+    const frontendContent = `import { useState } from '@jasper/elements';
 import { Card } from '@jasper/ui';
 
 export const PluginPage = () => {
@@ -131,19 +141,19 @@ export const PluginPage = () => {
     );
 };
 `;
-        fs.writeFileSync(path.join(webDir, 'index.tsx'), frontendContent);
-    }
+    fs.writeFileSync(path.join(webDir, "index.tsx"), frontendContent);
+  }
 
-    console.log(`\n✅ Plugin created at apps/bot/src/plugins/${id}`);
-    rl.close();
+  console.log(`\n✅ Plugin created at apps/bot/src/plugins/${id}`);
+  rl.close();
 }
 
 function toPascalCase(str: string) {
-    return str.replace(/(^\w|-\w)/g, clearAndUpper);
+  return str.replace(/(^\w|-\w)/g, clearAndUpper);
 }
 
 function clearAndUpper(text: string) {
-    return text.replace(/-/, "").toUpperCase();
+  return text.replace(/-/, "").toUpperCase();
 }
 
 main().catch(console.error);

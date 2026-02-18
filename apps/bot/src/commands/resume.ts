@@ -7,5 +7,5 @@ export default {
     .setDescription("Resume the current song"),
   async execute(interaction: ChatInputCommandInteraction) {
     await music.resume(interaction);
-  }
+  },
 };

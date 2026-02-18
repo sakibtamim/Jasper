@@ -5,6 +5,7 @@ trigger: model_decision
 # Improvement Roadmap
 
 ## Current Status
+
 - ✅ Monorepo architecture (Turborepo)
 - ✅ React-based Web Dashboard (Vite)
 - ✅ Multi-cat worker pool architecture
@@ -16,6 +17,7 @@ trigger: model_decision
 - ⚠️ Test coverage needs expansion
 
 ## Testing Infrastructure (High Priority)
+
 **Goal**: Increase confidence in refactoring and new features
 
 - [ ] Expand unit tests for `QueueManager` (critical state management)
@@ -26,6 +28,7 @@ trigger: model_decision
 - [ ] Test error handling paths
 
 ## Code Quality
+
 **Goal**: Reduce complexity and improve maintainability
 
 - [ ] Review `music-player.ts` facade pattern
@@ -35,6 +38,7 @@ trigger: model_decision
 - [ ] Consider extracting large files into smaller modules
 
 ## Security Enhancements
+
 **Goal**: Ensure production-ready security
 
 - [x] Encrypt OAuth tokens at rest
@@ -45,6 +49,7 @@ trigger: model_decision
 - [ ] Add security headers to web server
 
 ## Feature Enhancements
+
 **Goal**: Improve user experience
 
 - [ ] Role-based access control (RBAC) for web dashboard
@@ -55,6 +60,7 @@ trigger: model_decision
 - [ ] Audio equalizer/filters
 
 ## Performance Optimizations
+
 **Goal**: Handle larger scale deployments
 
 - [ ] Optimize database queries (add indexes)
@@ -64,6 +70,7 @@ trigger: model_decision
 - [ ] Add connection pooling for PostgreSQL
 
 ## Development Process
+
 **Strategy**: Atomic commits, verify after each change
 
 1. Fix one thing at a time
@@ -73,6 +80,7 @@ trigger: model_decision
 5. Address review feedback promptly
 
 ## Next Steps
+
 1. Run `pnpm test` to establish baseline
 2. Fix any immediate test failures
 3. Expand test coverage for critical paths

@@ -4,19 +4,23 @@ export default {
   name: Events.ClientReady,
   once: true,
   execute(client: Client) {
-    // @ts-ignore - Accessed custom property injected in worker-pool
-    const role = (client as any).role;
+    // @ts-expect-error - Accessed custom property injected in worker-pool
+    const role = client.role;
 
-    if (role === 'controller') {
+    if (role === "controller") {
       client.user!.setPresence({
-        activities: [{ name: "Managing the Heavenly Council", type: ActivityType.Custom }],
-        status: "online"
+        activities: [
+          { name: "Managing the Heavenly Council", type: ActivityType.Custom },
+        ],
+        status: "online",
       });
     } else {
       client.user!.setPresence({
-        activities: [{ name: "Waiting for tasks...", type: ActivityType.Custom }],
-        status: "idle"
+        activities: [
+          { name: "Waiting for tasks...", type: ActivityType.Custom },
+        ],
+        status: "idle",
       });
     }
-  }
+  },
 };

@@ -1,0 +1,18 @@
+name: "📚 Documentation"
+description: Improvements or additions to documentation
+title: ""
+labels: ["type: docs"]
+body:
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What documentation is missing or needs updating?
+    validations:
+      required: true
+
+  - type: textarea
+    id: changes
+    attributes:
+      label: Proposed Changes
+      description: List the files or sections to be updated.

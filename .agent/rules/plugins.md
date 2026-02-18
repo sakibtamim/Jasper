@@ -25,8 +25,19 @@
 - **Components**:
     - Use `@jasper/ui` for primitives (Button, `Icon`, Card, Input).
     - Do not implement custom design systems; match the core look and feel.
+- **Registration**: Use `ComponentRegistry.register()` to map components to IDs.
+- **Slots**: Use `ExtensionSlot` to render widgets in the main UI.
 
-## 4. Out-of-Tree Development Workflow (External Repos)
+## 4. Backend Development
+- **Context**: Use `PluginContext` for all interactions (logging, DB, hooks).
+- **Database**: Use `context.db.plugin` for plugin-specific data. Do NOT access the core database directly unless via `context.db.core` (read-only).
+- **Hooks**: Register hooks via `context.on(HookName, callback)`.
+  - `QUEUE_CREATE`: Triggered when a queue is created.
+  - `PRE_MUSIC_PLAY`: Triggered before a song plays.
+  - `POST_MUSIC_PLAY`: Triggered after a song plays.
+- **API Routes**: Register routes via `context.server`. All routes are automatically scoped to `/api/plugins/<id>`.
+
+## 5. Out-of-Tree Development Workflow (External Repos)
 > **Goal**: Develop a plugin in a separate git repository (e.g., `../my-plugin`) while running it inside Jasper.
 
 ### Phase 1: Infrastructure Setup
@@ -52,8 +63,16 @@ To allow Vite to serve files from outside the monorepo root, you **MUST** ensure
 2.  **Plugin Repo**: Commit the actual source code (`index.ts`, `web/`, `package.json`).
 3.  **Push**: Push the plugin repo to its own remote (e.g., `purrfectsoft/jasper-plugin-<id>`).
 
-## 5. Coding Standards
+## 6. Coding Standards
 - **No Global Scope Pollution**: Do not attach to `global` or `window` (except for expected IIFE exports).
 - **Cleanup**: Always implement `onUnload` to clear intervals, listeners, and subscriptions.
 - **Async Safety**: Use `try/catch` blocks inside all hook callbacks (`onLoad`, `onUnload`, etc.).
-- **Backend Imports**: For out-of-tree plugins, backend imports to core packages may require relative paths (e.g., `../../jasper-repo/packages/some-package`). Ensure these paths are correct for your local setup. If available, prefer using TypeScript path aliases for a more stable solution.
+
+## 7. Testing (Reference)
+- **Unit Tests**: Place tests in `__tests__` directory within the plugin or core module.
+- **Integration Tests**: Verify plugin loads and unloads correctly using the test harness.
+- **Mocking**: Mock `PluginContext` for unit testing plugin logic.
+
+## 8. Build & Publish (Reference)
+- **Build**: Run `turbo run build` to compile plugins.
+- **Export**: Run `pnpm run export-plugin <id>` to create a distributable `.zip`.

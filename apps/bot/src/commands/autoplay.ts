@@ -7,5 +7,5 @@ export default {
     .setDescription("Toggle autoplay to keep the music going!"),
   async execute(interaction: ChatInputCommandInteraction) {
     await music.toggleAutoplay(interaction);
-  }
+  },
 };

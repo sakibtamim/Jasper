@@ -1,11 +1,16 @@
-
 import {
   joinVoiceChannel,
   createAudioPlayer,
   AudioPlayerStatus,
   NoSubscriberBehavior,
+  VoiceConnectionStatus,
 } from "@discordjs/voice";
-import { ActionRowBuilder, ChatInputCommandInteraction, VoiceBasedChannel, GuildMember } from "discord.js";
+import {
+  ActionRowBuilder,
+  ChatInputCommandInteraction,
+  VoiceBasedChannel,
+  GuildMember,
+} from "discord.js";
 import logger from "./logger.js";
 import workerPool from "./worker-pool.js";
 import { WorkerState } from "@jasper/types";
@@ -28,30 +33,35 @@ import {
 } from "./audio/queue-manager.js";
 import { Queue, Song } from "@jasper/types";
 
-import { resolveTrack } from './audio/track-resolver.js';
-import { songAddedEmbed } from '../utils/embed-factory.js';
-import { getDevPrefix } from '../utils/dev-mode.js';
+import { resolveTrack } from "./audio/track-resolver.js";
+import { songAddedEmbed } from "../utils/embed-factory.js";
+import { getDevPrefix } from "../utils/dev-mode.js";
+
+import { fetchPlaylistData } from "./audio/stream-handler.js";
 
 import {
-  fetchPlaylistData,
-} from "./audio/stream-handler.js";
-
-import { playSong, handleAutoplay, handleRadio } from "./audio/playback-engine.js";
+  playSong,
+  handleAutoplay,
+  handleRadio,
+} from "./audio/playback-engine.js";
 import { getAutoplayButton } from "./ui/player-controls.js";
 import { getEntryMessage } from "../config/afr-config.js";
 
-
 // --- Helpers ---
 
-async function assignWorker(interaction: ChatInputCommandInteraction, voiceChannel: VoiceBasedChannel, isNewConnection: boolean): Promise<WorkerState | null> {
+async function assignWorker(
+  interaction: ChatInputCommandInteraction,
+  voiceChannel: VoiceBasedChannel,
+  isNewConnection: boolean,
+): Promise<WorkerState | null> {
   // Allocate a worker
   const worker = workerPool.allocateWorker(
     interaction.guild!.id,
-    voiceChannel.id
+    voiceChannel.id,
   );
   if (!worker) {
     await interaction.editReply(
-      "🚫 **All members of the Heavenly Council of Fur are currently busy!** Please try again later."
+      "🚫 **All members of the Heavenly Council of Fur are currently busy!** Please try again later.",
     );
     return null;
   }
@@ -69,31 +79,43 @@ async function assignWorker(interaction: ChatInputCommandInteraction, voiceChann
       !workerPermissions.has("Speak")
     ) {
       await interaction.editReply(
-        `🚫 **${worker.name}** does not have permissions to join your channel!`
+        `🚫 **${worker.name}** does not have permissions to join your channel!`,
       );
       workerPool.releaseWorker(voiceChannel.id);
       return null;
     }
   } catch {
     await interaction.editReply(
-      `🚫 **${worker.name}** cannot access this channel (Is it invited to the server?).`
+      `🚫 **${worker.name}** cannot access this channel (Is it invited to the server?).`,
     );
     workerPool.releaseWorker(voiceChannel.id);
     return null;
   }
 
   // Show entry message only for NEW worker connections, not reused ones
-  if (isNewConnection && interaction.channel && interaction.channel.isTextBased() && !interaction.channel.isDMBased()) {
+  if (
+    isNewConnection &&
+    interaction.channel &&
+    interaction.channel.isTextBased() &&
+    !interaction.channel.isDMBased()
+  ) {
     const entryMessage = getEntryMessage(worker.name);
     await interaction.channel
       .send(entryMessage)
-      .catch((error: unknown) => logger.warn(`[afr] Failed to send entry message: ${error instanceof Error ? error.message : String(error)}`));
+      .catch((error: unknown) =>
+        logger.warn(
+          `[afr] Failed to send entry message: ${error instanceof Error ? error.message : String(error)}`,
+        ),
+      );
   }
 
   return worker;
 }
 
-async function validateAndCleanupQueue(interaction: ChatInputCommandInteraction, voiceChannelId: string): Promise<Queue | null> {
+async function validateAndCleanupQueue(
+  interaction: ChatInputCommandInteraction,
+  voiceChannelId: string,
+): Promise<Queue | null> {
   const queue = getQueue(voiceChannelId);
 
   if (!queue) return null;
@@ -102,15 +124,15 @@ async function validateAndCleanupQueue(interaction: ChatInputCommandInteraction,
   if (queue.voiceChannelId !== voiceChannelId) {
     const oldChannelName = await getChannelName(
       queue.worker.client,
-      queue.voiceChannelId
+      queue.voiceChannelId,
     );
     const newChannelName = await getChannelName(
       interaction.client,
-      voiceChannelId
+      voiceChannelId,
     );
 
     logger.info(
-      `User switched channels from ${oldChannelName} (${queue.voiceChannelId}) to ${newChannelName} (${voiceChannelId}), cleaning up old queue`
+      `User switched channels from ${oldChannelName} (${queue.voiceChannelId}) to ${newChannelName} (${voiceChannelId}), cleaning up old queue`,
     );
 
     // Clear old connection
@@ -126,7 +148,11 @@ async function validateAndCleanupQueue(interaction: ChatInputCommandInteraction,
   return queue;
 }
 
-async function createQueue(interaction: ChatInputCommandInteraction, worker: WorkerState, _track: Song | null): Promise<Queue> {
+async function createQueue(
+  interaction: ChatInputCommandInteraction,
+  worker: WorkerState,
+  _track: Song | null,
+): Promise<Queue> {
   const member = interaction.member;
   if (!(member instanceof GuildMember)) {
     throw new Error("This command can only be used in a guild.");
@@ -202,54 +228,80 @@ async function createQueue(interaction: ChatInputCommandInteraction, worker: Wor
       setVoiceStatus(
         queue.worker.client,
         queue.voiceChannelId,
-        "[IDLE] Ready to Meow"
+        "[IDLE] Ready to Meow",
       );
 
       // Release worker immediately for reuse, but keep connection alive for 5 minutes
       workerPool.releaseWorker(queue.voiceChannelId);
 
       // Send enhanced queue finished message
-      if (queue.textChannel && queue.textChannel.isTextBased() && !queue.textChannel.isDMBased()) {
+      if (
+        queue.textChannel &&
+        queue.textChannel.isTextBased() &&
+        !queue.textChannel.isDMBased()
+      ) {
         try {
           const channel = await queue.worker.client.channels.fetch(
-            queue.voiceChannelId
+            queue.voiceChannelId,
           );
-          const channelName = channel && 'name' in channel ? (channel as { name: string }).name : "the voice channel";
+          const channelName =
+            channel && "name" in channel
+              ? (channel as { name: string }).name
+              : "the voice channel";
           queue.textChannel
             .send(
-              `🎶 **${queue.worker.name}** has finished the queue in **${channelName}**! Staying connected for 5 more minutes.`
+              `🎶 **${queue.worker.name}** has finished the queue in **${channelName}**! Staying connected for 5 more minutes.`,
             )
             .catch((err: unknown) =>
-              logger.warn(`Failed to send finished message: ${err instanceof Error ? err.message : String(err)} `)
+              logger.warn(
+                `Failed to send finished message: ${err instanceof Error ? err.message : String(err)} `,
+              ),
             );
         } catch (err: unknown) {
           logger.warn(
-            `Failed to fetch channel for finished message: ${err instanceof Error ? err.message : String(err)} `
+            `Failed to fetch channel for finished message: ${err instanceof Error ? err.message : String(err)} `,
           );
-          if (queue.textChannel.isTextBased() && !queue.textChannel.isDMBased()) {
+          if (
+            queue.textChannel.isTextBased() &&
+            !queue.textChannel.isDMBased()
+          ) {
             queue.textChannel
               .send(
-                `🎶 **${queue.worker.name}** has finished the queue! Staying connected for 5 more minutes.`
+                `🎶 **${queue.worker.name}** has finished the queue! Staying connected for 5 more minutes.`,
               )
               .catch((err: unknown) =>
-                logger.warn(`Failed to send finished message: ${err instanceof Error ? err.message : String(err)} `)
+                logger.warn(
+                  `Failed to send finished message: ${err instanceof Error ? err.message : String(err)} `,
+                ),
               );
           }
         }
       }
 
       // Set 5-minute idle timeout before disconnecting
-      queue.idleTimeout = setTimeout(() => {
-        logger.info(
-          `Disconnecting from ${queue.voiceChannelId} after 5 minutes of idle time`
-        );
-        // Clear voice status before disconnecting
-        setVoiceStatus(queue.worker.client, queue.voiceChannelId, "");
-        if (queue.connection) {
-          queue.connection.destroy();
-        }
-        deleteQueue(queue.voiceChannelId);
-      }, 5 * 60 * 1000); // 5 minutes
+      queue.idleTimeout = setTimeout(
+        () => {
+          logger.info(
+            `Disconnecting from ${queue.voiceChannelId} after 5 minutes of idle time`,
+          );
+          // Clear voice status before disconnecting
+          setVoiceStatus(queue.worker.client, queue.voiceChannelId, "");
+          if (
+            queue.connection &&
+            queue.connection.state.status !== VoiceConnectionStatus.Destroyed
+          ) {
+            try {
+              queue.connection.destroy();
+            } catch (error) {
+              logger.warn(
+                `[MusicPlayer] Failed to destroy connection for ${queue.voiceChannelId}: ${error}`,
+              );
+            }
+          }
+          deleteQueue(queue.voiceChannelId);
+        },
+        5 * 60 * 1000,
+      ); // 5 minutes
     }
   });
 
@@ -264,19 +316,24 @@ async function createQueue(interaction: ChatInputCommandInteraction, worker: Wor
   setQueue(voiceChannel.id, queue);
 
   // Hook: QUEUE_CREATE (Sync to allow plugins to play intro sounds)
-  await hookManager.triggerSync('QUEUE_CREATE', { queue, worker });
+  await hookManager.triggerSync("QUEUE_CREATE", { queue, worker });
 
   return queue;
 }
 
-
-
-async function reacquireIdleWorker(interaction: ChatInputCommandInteraction, queue: Queue): Promise<boolean> {
+async function reacquireIdleWorker(
+  interaction: ChatInputCommandInteraction,
+  queue: Queue,
+): Promise<boolean> {
   if (queue.idleTimeout) {
     // First, check if the worker was stolen for another task.
     if (queue.worker.busy) {
-      logger.error(`[Worker Conflict] Worker ${queue.worker.name} for channel ${queue.voiceChannelId} was reassigned while idle.`);
-      await interaction.editReply('🚫 **Bot Conflict!** The bot for this channel was assigned another task while idle. Please use `/stop` and try again.');
+      logger.error(
+        `[Worker Conflict] Worker ${queue.worker.name} for channel ${queue.voiceChannelId} was reassigned while idle.`,
+      );
+      await interaction.editReply(
+        "🚫 **Bot Conflict!** The bot for this channel was assigned another task while idle. Please use `/stop` and try again.",
+      );
       return false;
     }
     // Re-acquire the worker for this queue by marking it as busy.
@@ -288,7 +345,7 @@ async function reacquireIdleWorker(interaction: ChatInputCommandInteraction, que
 async function ensureQueue(
   interaction: ChatInputCommandInteraction,
   voiceChannel: VoiceBasedChannel,
-  track: Song | null
+  track: Song | null,
 ): Promise<Queue | null> {
   let queue = await validateAndCleanupQueue(interaction, voiceChannel.id);
 
@@ -309,11 +366,15 @@ async function ensureQueue(
 // --- Exported Functions ---
 
 interface EnqueueOptions {
-  position?: 'next' | 'end';
+  position?: "next" | "end";
   skipCurrent?: boolean;
 }
 
-async function enqueue(interaction: ChatInputCommandInteraction, query: string, options: EnqueueOptions = {}): Promise<void> {
+async function enqueue(
+  interaction: ChatInputCommandInteraction,
+  query: string,
+  options: EnqueueOptions = {},
+): Promise<void> {
   const voiceChannel = await validateInteraction(interaction);
   if (!voiceChannel) return;
 
@@ -334,7 +395,11 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string, 
   await interaction.deferReply();
 
   try {
-    const track = await resolveTrack(query, interaction.user.id, interaction.user.tag);
+    const track = await resolveTrack(
+      query,
+      interaction.user.id,
+      interaction.user.tag,
+    );
     const queue = await ensureQueue(interaction, voiceChannel, track);
     if (!queue) return;
 
@@ -342,7 +407,7 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string, 
       clearTimeout(queue.idleTimeout);
       queue.idleTimeout = null;
       logger.info(
-        `Cleared idle timeout for ${queue.voiceChannelId} - new song added`
+        `Cleared idle timeout for ${queue.voiceChannelId} - new song added`,
       );
     }
 
@@ -352,7 +417,7 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string, 
       requesterId: interaction.user.id,
     };
 
-    if (options.position === 'next') {
+    if (options.position === "next") {
       // splice(1, 0, item) inserts at index 1 for non-empty arrays, or index 0 for empty arrays
       queue.songs.splice(1, 0, songToAdd);
     } else {
@@ -366,7 +431,7 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string, 
     //   queue.voiceChannelId
     // );
 
-    const prefix = track.fromCache ? '⚡⚡ ' : '';
+    const prefix = track.fromCache ? "⚡⚡ " : "";
     const devPrefix = getDevPrefix();
 
     const embed = songAddedEmbed(
@@ -374,7 +439,7 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string, 
       track.url,
       track.thumbnail,
       queue.worker.name,
-      `${prefix}${devPrefix}`
+      `${prefix}${devPrefix}`,
     );
 
     // If skipCurrent is true, we want to play the new song immediately.
@@ -382,7 +447,9 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string, 
     // If something was playing, we skip it.
     if (options.skipCurrent && queue.nowPlaying) {
       queue.player.stop(); // This triggers Idle event, which plays the next song (which we just inserted at index 1)
-      await interaction.editReply({ content: `⏭️ **Skipping current song to play:** ${track.title}` });
+      await interaction.editReply({
+        content: `⏭️ **Skipping current song to play:** ${track.title}`,
+      });
       return;
     }
 
@@ -390,8 +457,11 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string, 
       await playSong(queue);
       await interaction.editReply({ embeds: [embed] });
     } else {
-      if (options.position === 'next') {
-        await interaction.editReply({ content: `✅ **Queued next:** ${track.title}`, embeds: [] });
+      if (options.position === "next") {
+        await interaction.editReply({
+          content: `✅ **Queued next:** ${track.title}`,
+          embeds: [],
+        });
       } else {
         await interaction.editReply({ embeds: [embed] });
       }
@@ -403,7 +473,10 @@ async function enqueue(interaction: ChatInputCommandInteraction, query: string, 
   }
 }
 
-async function enqueuePlaylist(interaction: ChatInputCommandInteraction, url: string): Promise<void> {
+async function enqueuePlaylist(
+  interaction: ChatInputCommandInteraction,
+  url: string,
+): Promise<void> {
   const voiceChannel = await validateInteraction(interaction);
   if (!voiceChannel) return;
 
@@ -431,7 +504,7 @@ async function enqueuePlaylist(interaction: ChatInputCommandInteraction, url: st
       entries = entries.slice(0, 50);
       truncated = true;
       logger.info(
-        `Truncated autogenerated playlist '${data.title}' to 50 songs.`
+        `Truncated autogenerated playlist '${data.title}' to 50 songs.`,
       );
     }
 
@@ -454,7 +527,7 @@ async function enqueuePlaylist(interaction: ChatInputCommandInteraction, url: st
       clearTimeout(queue.idleTimeout);
       queue.idleTimeout = null;
       logger.info(
-        `Cleared idle timeout for ${queue.voiceChannelId} - playlist added`
+        `Cleared idle timeout for ${queue.voiceChannelId} - playlist added`,
       );
     }
 
@@ -467,7 +540,7 @@ async function enqueuePlaylist(interaction: ChatInputCommandInteraction, url: st
     const truncatedMsg = truncated ? " (truncated to 50 for performance)" : "";
     await interaction.editReply(
       `✅ **Added ${songsToAdd.length} songs** from playlist: **${data.title || "YouTube Playlist"
-      }**${truncatedMsg}`
+      }**${truncatedMsg}`,
     );
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
@@ -477,7 +550,7 @@ async function enqueuePlaylist(interaction: ChatInputCommandInteraction, url: st
 }
 
 async function toggleAutoplay(
-  interaction: ChatInputCommandInteraction
+  interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const voiceChannel = (interaction.member as GuildMember).voice.channel;
   if (!voiceChannel) {
@@ -521,7 +594,7 @@ async function toggleAutoplay(
   }
 
   await interaction.reply(
-    `🔄 **Autoplay is now ${queue.autoplay ? "ENABLED" : "DISABLED"}**`
+    `🔄 **Autoplay is now ${queue.autoplay ? "ENABLED" : "DISABLED"}**`,
   );
 }
 
@@ -553,7 +626,7 @@ async function stop(interaction: ChatInputCommandInteraction): Promise<void> {
   }
   const channelName = await getChannelName(
     queue.worker.client,
-    queue.voiceChannelId
+    queue.voiceChannelId,
   );
   queue.songs = [];
   queue.stopping = true;
@@ -566,7 +639,7 @@ async function stop(interaction: ChatInputCommandInteraction): Promise<void> {
   deleteQueue(queue.voiceChannelId);
   workerPool.releaseWorker(queue.voiceChannelId);
   await interaction.reply(
-    `⏹️ **${queue.worker.name}** stopped playback in **#${channelName}** and cleared the queue.`
+    `⏹️ **${queue.worker.name}** stopped playback in **#${channelName}** and cleared the queue.`,
   );
 }
 
@@ -583,16 +656,16 @@ async function pause(interaction: ChatInputCommandInteraction): Promise<void> {
   }
   const channelName = await getChannelName(
     queue.worker.client,
-    queue.voiceChannelId
+    queue.voiceChannelId,
   );
   queue.player.pause();
   setVoiceStatus(
     queue.worker.client,
     queue.voiceChannelId,
-    `[PAUSED] ${queue.nowPlaying.title}`
+    `[PAUSED] ${queue.nowPlaying.title}`,
   );
   await interaction.reply(
-    `⏸️ **${queue.worker.name}** paused in **#${channelName}**.`
+    `⏸️ **${queue.worker.name}** paused in **#${channelName}**.`,
   );
 }
 
@@ -609,20 +682,22 @@ async function resume(interaction: ChatInputCommandInteraction): Promise<void> {
   }
   const channelName = await getChannelName(
     queue.worker.client,
-    queue.voiceChannelId
+    queue.voiceChannelId,
   );
   queue.player.unpause();
   setVoiceStatus(
     queue.worker.client,
     queue.voiceChannelId,
-    `[Playing] ${queue.nowPlaying.title}`
+    `[Playing] ${queue.nowPlaying.title}`,
   );
   await interaction.reply(
-    `▶️ **${queue.worker.name}** resumed in **#${channelName}**.`
+    `▶️ **${queue.worker.name}** resumed in **#${channelName}**.`,
   );
 }
 
-async function showQueue(interaction: ChatInputCommandInteraction): Promise<void> {
+async function showQueue(
+  interaction: ChatInputCommandInteraction,
+): Promise<void> {
   const voiceChannel = await validateInteraction(interaction);
   if (!voiceChannel) return;
   const queue = getQueue(voiceChannel.id);
@@ -636,7 +711,7 @@ async function showQueue(interaction: ChatInputCommandInteraction): Promise<void
   if (queue.nowPlaying) {
     lines.push(
       `▶️ **Now:** [${queue.nowPlaying.title}](${queue.nowPlaying.url
-      }) — \`${formatDuration(queue.nowPlaying.durationInSec)}\``
+      }) — \`${formatDuration(queue.nowPlaying.durationInSec)}\``,
     );
   }
 
@@ -647,8 +722,8 @@ async function showQueue(interaction: ChatInputCommandInteraction): Promise<void
     upcoming.slice(0, 10).forEach((song, index) => {
       lines.push(
         `${index + 1}. [${song.title}](${song.url}) — \`${formatDuration(
-          song.durationInSec
-        )}\` • requested by **${song.requestedBy}**`
+          song.durationInSec,
+        )}\` • requested by **${song.requestedBy}**`,
       );
     });
     if (upcoming.length > 10) {
@@ -659,7 +734,9 @@ async function showQueue(interaction: ChatInputCommandInteraction): Promise<void
   await interaction.reply({ content: lines.join("\n") });
 }
 
-async function nowPlaying(interaction: ChatInputCommandInteraction): Promise<void> {
+async function nowPlaying(
+  interaction: ChatInputCommandInteraction,
+): Promise<void> {
   const voiceChannel = await validateInteraction(interaction);
   if (!voiceChannel) return;
   const queue = getQueue(voiceChannel.id);
@@ -668,11 +745,13 @@ async function nowPlaying(interaction: ChatInputCommandInteraction): Promise<voi
     return;
   }
   await interaction.reply(
-    `▶️ **Now playing:** [${queue.nowPlaying.title}](${queue.nowPlaying.url})`
+    `▶️ **Now playing:** [${queue.nowPlaying.title}](${queue.nowPlaying.url})`,
   );
 }
 
-async function startRadio(interaction: ChatInputCommandInteraction): Promise<void> {
+async function startRadio(
+  interaction: ChatInputCommandInteraction,
+): Promise<void> {
   const voiceChannel = await validateInteraction(interaction);
   if (!voiceChannel) return;
 
@@ -726,10 +805,10 @@ async function startRadio(interaction: ChatInputCommandInteraction): Promise<voi
     } else {
       const channelName = await getChannelName(
         queue.worker.client,
-        queue.voiceChannelId
+        queue.voiceChannelId,
       );
       await interaction.editReply(
-        `📻 **Radio Mode Enabled** for **#${channelName}**! Random cached songs will play after the current queue.`
+        `📻 **Radio Mode Enabled** for **#${channelName}**! Random cached songs will play after the current queue.`,
       );
     }
   } catch (error: unknown) {

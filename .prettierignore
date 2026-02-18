@@ -1,0 +1,6 @@
+node_modules
+dist
+.next
+.turbo
+apps/bot/src/plugins/garage-band
+coverage

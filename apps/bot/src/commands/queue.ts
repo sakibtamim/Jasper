@@ -7,5 +7,5 @@ export default {
     .setDescription("Show the current music queue"),
   async execute(interaction: ChatInputCommandInteraction) {
     await music.showQueue(interaction);
-  }
+  },
 };

@@ -7,20 +7,25 @@ trigger: always_on
 ## Multi-Cat Worker Pool System
 
 ### Controller Bot (Jasper)
+
 - Handles all slash commands
 - Routes requests to available worker bots
 - Never handles audio playback directly
 - Manages worker allocation and release
 
 ### Worker Bots
+
 Configuration in `apps/bot/src/config/bots.ts`:
+
 - Dynamically loaded from environment variables ending in `_TOKEN`
 - Each worker can handle one voice channel at a time
 - Workers are reused if already in the requested channel
 - Automatically named based on env var (e.g., `MISTY_TOKEN` → "Misty")
 
 ### AFR (Automatic Feline Rotation)
+
 Configuration in `apps/bot/src/config/afr-config.ts`:
+
 - **Jasper Weight**: Probability for Jasper selection (`AFR_JASPER_WEIGHT`, default 0.5)
   - `0.5` = 50% chance Jasper is selected when available
   - `1.0` = Always select Jasper when available
@@ -32,7 +37,9 @@ Configuration in `apps/bot/src/config/afr-config.ts`:
   4. Return null if all workers busy
 
 ### Entry Messages
+
 Each cat has personalized announcement messages:
+
 - Jasper: 5 variants
 - HCoF members (Misty, Tuki, Jafreen): 3 variants each
 - Generic fallback: 4 variants for other workers
@@ -40,19 +47,23 @@ Each cat has personalized announcement messages:
 ## Audio System
 
 ### Music Player (`apps/bot/src/core/music-player.ts`)
+
 Facade that orchestrates:
+
 - Queue Manager: Per-channel queue state
 - Stream Handler: yt-dlp process spawning
 - Playback Engine: AudioPlayer and event handling
 - Player Controls: Interactive button components
 
 ### Queue Management
+
 - Keyed by `voiceChannelId` (not `guildId`)
 - Supports multiple channels per guild
 - Thread-safe state management
 - Automatic cleanup on playback end
 
 ### Stream Handler
+
 - Spawns `yt-dlp` as child process
 - Handles metadata fetching
 - Supports both search and direct URLs
@@ -61,17 +72,20 @@ Facade that orchestrates:
 ## Database System
 
 ### Abstraction Layer (`apps/bot/src/core/db/types.ts`)
+
 - `DatabaseAdapter` interface for database operations
 - Implementations: SQLite (`sqlite-adapter.ts`), PostgreSQL (`postgres-adapter.ts`)
 - Type-safe interfaces for all data models
 
 ### Data Models
+
 - **PlayRecord**: Track playback history
 - **User**: Discord OAuth user data (encrypted tokens)
 - **Session**: HTTP-only cookie sessions
 - **CacheMetadata**: Audio file cache tracking
 
 ### Encryption
+
 - OAuth tokens encrypted at rest using AES-256-GCM
 - Encryption utility: `apps/bot/src/utils/encryption.ts`
 - Key derivation using PBKDF2
@@ -80,12 +94,14 @@ Facade that orchestrates:
 ## Web Dashboard
 
 ### Backend (`apps/bot/src/api/server.ts`)
+
 - Fastify server with WebSocket support
 - Authentication via Discord OAuth
 - Session management with HTTP-only cookies
 - API endpoints for stats and monitoring
 
 ### Frontend (`apps/web/`)
+
 - React 18 + Vite
 - Tailwind CSS for styling
 - Real-time status updates (polling)
@@ -93,6 +109,7 @@ Facade that orchestrates:
 - Plugin system support
 
 ### Authentication Flow
+
 1. User clicks "Login with Discord"
 2. OAuth redirects to Discord
 3. Callback receives tokens
@@ -103,22 +120,26 @@ Facade that orchestrates:
 ## Type Safety
 
 ### Custom Type Definitions
+
 - `Command` interface for slash commands
 - `Queue` and `Song` interfaces for playback
 - `WorkerState` interface for pool management
 - `BotConfig` interface for multi-bot setup
 
 ### Module Augmentation
+
 - Extends Discord.js `Client` with typed `commands` property
 - Extends Fastify `Request` with typed `user` property
 
 ## Error Handling
 
 ### Custom Error Classes (`apps/bot/src/api/auth-errors.ts`)
+
 - `DiscordAPIError`: Discord API failures
 - `DiscordOAuthError`: OAuth flow errors
 - `DatabaseAuthError`: Database operation failures
 
 ### Type Guards
+
 - Runtime validation for Discord API responses
 - Type-safe error narrowing with `instanceof`

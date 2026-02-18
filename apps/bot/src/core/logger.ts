@@ -27,7 +27,7 @@ function addLog(level: string, msg: string, options: LogOptions = {}) {
     level,
     timestamp: new Date().toISOString(),
     module,
-    message
+    message,
   };
 
   // Keep console output as string for terminal readability
@@ -45,10 +45,14 @@ function addLog(level: string, msg: string, options: LogOptions = {}) {
 }
 
 const chalkLike = {
-  debug: (msg: string, options?: LogOptions): void => addLog('debug', msg, options),
-  info: (msg: string, options?: LogOptions): void => addLog('info', msg, options),
-  warn: (msg: string, options?: LogOptions): void => addLog('warn', msg, options),
-  error: (msg: string, options?: LogOptions): void => addLog('error', msg, options)
+  debug: (msg: string, options?: LogOptions): void =>
+    addLog("debug", msg, options),
+  info: (msg: string, options?: LogOptions): void =>
+    addLog("info", msg, options),
+  warn: (msg: string, options?: LogOptions): void =>
+    addLog("warn", msg, options),
+  error: (msg: string, options?: LogOptions): void =>
+    addLog("error", msg, options),
 };
 
 export function getRecentLogs(): LogEntry[] {

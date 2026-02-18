@@ -1,17 +1,17 @@
-import { React, HTMLAttributes } from '@jasper/elements';
+import { React, HTMLAttributes } from "@jasper/elements";
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
-    children: React.ReactNode;
-    className?: string;
+  children: React.ReactNode;
+  className?: string;
 }
 
-export function Card({ children, className = '', ...props }: CardProps) {
-    return (
-        <div
-            className={`bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700 ${className}`}
-            {...props}
-        >
-            {children}
-        </div>
-    );
+export function Card({ children, className = "", ...props }: CardProps) {
+  return (
+    <div
+      className={`bg-white dark:bg-gray-800 shadow-sm rounded-lg border border-gray-200 dark:border-gray-700 ${className}`}
+      {...props}
+    >
+      {children}
+    </div>
+  );
 }

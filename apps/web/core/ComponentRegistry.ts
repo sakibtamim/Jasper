@@ -1,39 +1,46 @@
-import { React } from '@jasper/elements';
+import { React } from "@jasper/elements";
 
 export type ComponentMap = Map<string, React.ComponentType<unknown>>;
 
 class ComponentRegistry {
-    private components: ComponentMap = new Map();
+  private components: ComponentMap = new Map();
 
-    /**
-     * Register a component from a plugin.
-     * @param pluginId The ID of the plugin.
-     * @param componentName The name of the component (must match manifest).
-     * @param component The React component.
-     */
-    register(pluginId: string, componentName: string, component: React.ComponentType<unknown>) {
-        const key = `${pluginId}:${componentName}`;
-        this.components.set(key, component);
-        console.log(`[ComponentRegistry] Registered ${key}`);
-    }
+  /**
+   * Register a component from a plugin.
+   * @param pluginId The ID of the plugin.
+   * @param componentName The name of the component (must match manifest).
+   * @param component The React component.
+   */
+  register(
+    pluginId: string,
+    componentName: string,
+    component: React.ComponentType<unknown>,
+  ) {
+    const key = `${pluginId}:${componentName}`;
+    this.components.set(key, component);
+    console.log(`[ComponentRegistry] Registered ${key}`);
+  }
 
-    /**
-     * Get a component by plugin ID and component name.
-     * @param pluginId The ID of the plugin.
-     * @param componentName The name of the component.
-     */
-    get(pluginId: string, componentName: string): React.ComponentType<unknown> | null {
-        const key = `${pluginId}:${componentName}`;
-        return this.components.get(key) || null;
-    }
+  /**
+   * Get a component by plugin ID and component name.
+   * @param pluginId The ID of the plugin.
+   * @param componentName The name of the component.
+   */
+  get(
+    pluginId: string,
+    componentName: string,
+  ): React.ComponentType<unknown> | null {
+    const key = `${pluginId}:${componentName}`;
+    return this.components.get(key) || null;
+  }
 
-    /**
-     * Get a component by its full key (pluginId:componentName).
-     * @param key The full key.
-     */
-    getByKey(key: string): React.ComponentType<unknown> | null {
-        return this.components.get(key) || null;
-    }
+  /**
+   * Get a component by its full key (pluginId:componentName).
+   * @param key The full key.
+   */
+  getByKey(key: string): React.ComponentType<unknown> | null {
+    return this.components.get(key) || null;
+  }
 }
 
 // Singleton instance

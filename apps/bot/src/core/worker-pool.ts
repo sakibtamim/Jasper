@@ -14,41 +14,41 @@ const workers: WorkerState[] = [];
  * @returns {WorkerState[]}
  */
 function createBots(): WorkerState[] {
-    if (workers.length > 0) return workers;
+  if (workers.length > 0) return workers;
 
-    for (const botConfig of bots) {
-        const intents = [
-            GatewayIntentBits.Guilds,
-            GatewayIntentBits.GuildVoiceStates,
-        ];
+  for (const botConfig of bots) {
+    const intents = [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildVoiceStates,
+    ];
 
-        // Only the controller needs message content/guild messages for plugins/commands
-        if (botConfig.role === 'controller') {
-            intents.push(GatewayIntentBits.GuildMessages);
-            intents.push(GatewayIntentBits.MessageContent);
-        }
-
-        const client = new Client({
-            intents: intents,
-        });
-
-        // Attach role to client for event handlers to access
-        // @ts-ignore - Injecting custom property
-        client.role = botConfig.role;
-
-        workers.push({
-            name: botConfig.name,
-            client: client,
-            role: botConfig.role,
-            token: botConfig.token,
-            busy: false,
-            guildId: null,
-            voiceChannelId: null,
-        });
+    // Only the controller needs message content/guild messages for plugins/commands
+    if (botConfig.role === "controller") {
+      intents.push(GatewayIntentBits.GuildMessages);
+      intents.push(GatewayIntentBits.MessageContent);
     }
 
-    logger.info(`[workerpool] Initialized ${workers.length} bots.`);
-    return workers;
+    const client = new Client({
+      intents: intents,
+    });
+
+    // Attach role to client for event handlers to access
+    // @ts-expect-error - Injecting custom property
+    client.role = botConfig.role;
+
+    workers.push({
+      name: botConfig.name,
+      client: client,
+      role: botConfig.role,
+      token: botConfig.token,
+      busy: false,
+      guildId: null,
+      voiceChannelId: null,
+    });
+  }
+
+  logger.info(`[workerpool] Initialized ${workers.length} bots.`);
+  return workers;
 }
 
 /**
@@ -56,22 +56,23 @@ function createBots(): WorkerState[] {
  * @returns {Promise<void>}
  */
 async function loginBots(): Promise<void> {
-    const loginPromises = workers.map(async (worker) => {
-        try {
-            // Load events for this worker
-            await loadEvents(worker.client, worker.name);
+  const loginPromises = workers.map(async (worker) => {
+    try {
+      // Load events for this worker
+      await loadEvents(worker.client, worker.name);
 
-            await worker.client.login(worker.token);
-            logger.info(`[${worker.name}] Logged in as ${worker.role}${worker.role === 'controller' ? ' (Leader)' : ''}`);
+      await worker.client.login(worker.token);
+      logger.info(
+        `[${worker.name}] Logged in as ${worker.role}${worker.role === "controller" ? " (Leader)" : ""}`,
+      );
 
-            // Initial presence is now handled in ready.ts event
-
-        } catch (error: unknown) {
-            const msg = error instanceof Error ? error.message : String(error);
-            logger.error(`[workerpool] Failed to login ${worker.name}: ${msg}`);
-        }
-    });
-    await Promise.all(loginPromises);
+      // Initial presence is now handled in ready.ts event
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      logger.error(`[workerpool] Failed to login ${worker.name}: ${msg}`);
+    }
+  });
+  await Promise.all(loginPromises);
 }
 
 /**
@@ -79,7 +80,7 @@ async function loginBots(): Promise<void> {
  * @returns {WorkerState|undefined}
  */
 function getController(): WorkerState | undefined {
-    return workers.find((w) => w.role === "controller");
+  return workers.find((w) => w.role === "controller");
 }
 
 /**
@@ -88,76 +89,79 @@ function getController(): WorkerState | undefined {
  * @param {string} voiceChannelId
  * @returns {WorkerState|null}
  */
-function findWorkerByVoiceChannel(guildId: string, voiceChannelId: string): WorkerState | null {
-    return (
-        workers.find(
-            (w) => w.guildId === guildId && w.voiceChannelId === voiceChannelId
-        ) || null
-    );
+function findWorkerByVoiceChannel(
+  guildId: string,
+  voiceChannelId: string,
+): WorkerState | null {
+  return (
+    workers.find(
+      (w) => w.guildId === guildId && w.voiceChannelId === voiceChannelId,
+    ) || null
+  );
 }
 
 /**
  * Select a feline using AFR (Automatic Feline Rotation) logic.
- * 
+ *
  * AFR Selection Rules:
  * 1. If Jasper is eligible:
  *    - With JASPER_WEIGHT probability: select Jasper
  *    - Otherwise: randomly select from eligible non-Jasper workers
  * 2. If Jasper is not eligible:
  *    - Randomly select from eligible workers
- * 
+ *
  * @param {WorkerState[]} eligibleWorkers - List of workers that are not busy
  * @returns {WorkerState} - The selected worker
  */
 function selectFelineWithAFR(eligibleWorkers: WorkerState[]): WorkerState {
-    // Single-pass partition: separate Jasper from other workers
-    let jasper: WorkerState | undefined;
-    const nonJasperWorkers: WorkerState[] = [];
+  // Single-pass partition: separate Jasper from other workers
+  let jasper: WorkerState | undefined;
+  const nonJasperWorkers: WorkerState[] = [];
 
-    for (const worker of eligibleWorkers) {
-        if (worker.role === "controller") {
-            jasper = worker;
-        } else {
-            nonJasperWorkers.push(worker);
-        }
+  for (const worker of eligibleWorkers) {
+    if (worker.role === "controller") {
+      jasper = worker;
+    } else {
+      nonJasperWorkers.push(worker);
     }
+  }
 
-    if (!jasper) {
-        // Jasper not available, randomly select from eligible workers
-        const randomIndex = Math.floor(Math.random() * eligibleWorkers.length);
-        const selected = eligibleWorkers[randomIndex];
-        logger.info(
-            `[afr] Jasper not eligible. Randomly selected ${selected.name} from ${eligibleWorkers.length} eligible workers.`
-        );
-        return selected;
-    }
-
-    // Jasper is eligible
-    const roll = Math.random();
-
-    if (roll < JASPER_WEIGHT) {
-        // Select Jasper
-        logger.info(
-            `[afr] Jasper selected (roll: ${roll.toFixed(3)}, weight: ${JASPER_WEIGHT})`
-        );
-        return jasper;
-    }
-
-    // roll >= JASPER_WEIGHT, try to select a non-Jasper worker
-    if (nonJasperWorkers.length === 0) {
-        // No other workers available, fallback to Jasper
-        logger.info(
-            `[afr] No other workers available, selecting Jasper as fallback (roll: ${roll.toFixed(3)}, weight: ${JASPER_WEIGHT})`
-        );
-        return jasper;
-    }
-
-    const randomIndex = Math.floor(Math.random() * nonJasperWorkers.length);
-    const selected = nonJasperWorkers[randomIndex];
+  if (!jasper) {
+    // Jasper not available, randomly select from eligible workers
+    const randomIndex = Math.floor(Math.random() * eligibleWorkers.length);
+    const selected = eligibleWorkers[randomIndex];
     logger.info(
-        `[afr] Non-Jasper worker selected: ${selected.name} (roll: ${roll.toFixed(3)}, weight: ${JASPER_WEIGHT})`
+      `[afr] Jasper not eligible. Randomly selected ${selected.name} from ${eligibleWorkers.length} eligible workers.`,
     );
     return selected;
+  }
+
+  // Jasper is eligible
+  const roll = Math.random();
+
+  if (roll < JASPER_WEIGHT) {
+    // Select Jasper
+    logger.info(
+      `[afr] Jasper selected (roll: ${roll.toFixed(3)}, weight: ${JASPER_WEIGHT})`,
+    );
+    return jasper;
+  }
+
+  // roll >= JASPER_WEIGHT, try to select a non-Jasper worker
+  if (nonJasperWorkers.length === 0) {
+    // No other workers available, fallback to Jasper
+    logger.info(
+      `[afr] No other workers available, selecting Jasper as fallback (roll: ${roll.toFixed(3)}, weight: ${JASPER_WEIGHT})`,
+    );
+    return jasper;
+  }
+
+  const randomIndex = Math.floor(Math.random() * nonJasperWorkers.length);
+  const selected = nonJasperWorkers[randomIndex];
+  logger.info(
+    `[afr] Non-Jasper worker selected: ${selected.name} (roll: ${roll.toFixed(3)}, weight: ${JASPER_WEIGHT})`,
+  );
+  return selected;
 }
 
 /**
@@ -169,32 +173,37 @@ function selectFelineWithAFR(eligibleWorkers: WorkerState[]): WorkerState {
  * @param {string} voiceChannelId
  * @returns {WorkerState|null}
  */
-function allocateWorker(guildId: string, voiceChannelId: string): WorkerState | null {
-    // 1. Check if someone is already in the channel (reuse connection)
-    const existing = findWorkerByVoiceChannel(guildId, voiceChannelId);
-    if (existing) {
-        logger.info(
-            `[workerpool] Reusing ${existing.name} already in channel ${voiceChannelId}`
-        );
-        return existing;
-    }
+function allocateWorker(
+  guildId: string,
+  voiceChannelId: string,
+): WorkerState | null {
+  // 1. Check if someone is already in the channel (reuse connection)
+  const existing = findWorkerByVoiceChannel(guildId, voiceChannelId);
+  if (existing) {
+    logger.info(
+      `[workerpool] Reusing ${existing.name} already in channel ${voiceChannelId}`,
+    );
+    return existing;
+  }
 
-    // 2. Get all eligible (non-busy) workers
-    const eligibleWorkers = workers.filter((w) => !w.busy);
+  // 2. Get all eligible (non-busy and ready) workers
+  const eligibleWorkers = workers.filter(
+    (w) => !w.busy && w.client.isReady(),
+  );
 
-    if (eligibleWorkers.length === 0) {
-        // Everyone is busy
-        logger.warn("[workerpool] All workers are busy, cannot allocate");
-        return null;
-    }
+  if (eligibleWorkers.length === 0) {
+    // Everyone is busy
+    logger.warn("[workerpool] All workers are busy, cannot allocate");
+    return null;
+  }
 
-    // 3. Use AFR to select a worker
-    const selected = selectFelineWithAFR(eligibleWorkers);
+  // 3. Use AFR to select a worker
+  const selected = selectFelineWithAFR(eligibleWorkers);
 
-    // CRITICAL: Mark as busy immediately to prevent race conditions
-    setWorkerBusy(selected, guildId, voiceChannelId);
+  // CRITICAL: Mark as busy immediately to prevent race conditions
+  setWorkerBusy(selected, guildId, voiceChannelId);
 
-    return selected;
+  return selected;
 }
 
 /**
@@ -203,30 +212,36 @@ function allocateWorker(guildId: string, voiceChannelId: string): WorkerState | 
  * @param {string} guildId
  * @param {string} voiceChannelId
  */
-function setWorkerBusy(worker: WorkerState, guildId: string, voiceChannelId: string): void {
-    worker.busy = true;
-    worker.guildId = guildId;
-    worker.voiceChannelId = voiceChannelId;
-    logger.info(
-        `[workerpool] ${worker.name} assigned to guild ${guildId} channel ${voiceChannelId}`
-    );
+function setWorkerBusy(
+  worker: WorkerState,
+  guildId: string,
+  voiceChannelId: string,
+): void {
+  worker.busy = true;
+  worker.guildId = guildId;
+  worker.voiceChannelId = voiceChannelId;
+  logger.info(
+    `[workerpool] ${worker.name} assigned to guild ${guildId} channel ${voiceChannelId}`,
+  );
 
-    // Update worker presence to reflect busy status
-    if (worker.role === 'worker') {
-        worker.client.user?.setPresence({
-            activities: [{ name: "Playing music...", type: ActivityType.Custom }],
-            status: "online",
-        });
-    } else if (worker.role === 'controller') {
-        // Jasper gets a special status when busy
-        worker.client.user?.setPresence({
-            activities: [{ name: "Conducting the orchestra", type: ActivityType.Custom }],
-            status: "online",
-        });
-    }
+  // Update worker presence to reflect busy status
+  if (worker.role === "worker") {
+    worker.client.user?.setPresence({
+      activities: [{ name: "Playing music...", type: ActivityType.Custom }],
+      status: "online",
+    });
+  } else if (worker.role === "controller") {
+    // Jasper gets a special status when busy
+    worker.client.user?.setPresence({
+      activities: [
+        { name: "Conducting the orchestra", type: ActivityType.Custom },
+      ],
+      status: "online",
+    });
+  }
 
-    // Hook: WORKER_ASSIGNED
-    hookManager.trigger('WORKER_ASSIGNED', { worker, guildId, voiceChannelId });
+  // Hook: WORKER_ASSIGNED
+  hookManager.trigger("WORKER_ASSIGNED", { worker, guildId, voiceChannelId });
 }
 
 /**
@@ -234,64 +249,72 @@ function setWorkerBusy(worker: WorkerState, guildId: string, voiceChannelId: str
  * @param {string} voiceChannelId
  */
 function releaseWorker(voiceChannelId: string): void {
-    const worker = workers.find((w) => w.voiceChannelId === voiceChannelId);
-    if (worker) {
-        logger.info(
-            `[workerpool] ${worker.name} released from channel ${voiceChannelId}`
-        );
-        worker.busy = false;
-        worker.guildId = null;
-        worker.voiceChannelId = null;
+  const worker = workers.find((w) => w.voiceChannelId === voiceChannelId);
+  if (worker) {
+    logger.info(
+      `[workerpool] ${worker.name} released from channel ${voiceChannelId}`,
+    );
+    worker.busy = false;
+    worker.guildId = null;
+    worker.voiceChannelId = null;
 
-        // Reset worker presence to idle status
-        if (worker.role === 'worker') {
-            worker.client.user?.setPresence({
-                activities: [{ name: "Waiting for tasks...", type: ActivityType.Custom }],
-                status: "idle",
-            });
-        } else if (worker.role === 'controller') {
-            // Reset Jasper's presence when idle
-            worker.client.user?.setPresence({
-                activities: [{ name: "Managing the Heavenly Council", type: ActivityType.Custom }],
-                status: "online",
-            });
-        }
+    // Reset worker presence to idle status
+    if (worker.role === "worker") {
+      worker.client.user?.setPresence({
+        activities: [
+          { name: "Waiting for tasks...", type: ActivityType.Custom },
+        ],
+        status: "idle",
+      });
+    } else if (worker.role === "controller") {
+      // Reset Jasper's presence when idle
+      worker.client.user?.setPresence({
+        activities: [
+          { name: "Managing the Heavenly Council", type: ActivityType.Custom },
+        ],
+        status: "online",
+      });
     }
+  }
 }
 
 /**
  * Release all workers to idle state
  */
 function releaseAllWorkers(): void {
-    for (const worker of workers) {
-        worker.busy = false;
-        worker.guildId = null;
-        worker.voiceChannelId = null;
+  for (const worker of workers) {
+    worker.busy = false;
+    worker.guildId = null;
+    worker.voiceChannelId = null;
 
-        // Reset each worker's presence to idle status
-        if (worker.role === 'worker') {
-            worker.client.user?.setPresence({
-                activities: [{ name: "Waiting for tasks...", type: ActivityType.Custom }],
-                status: "idle",
-            });
-        } else if (worker.role === 'controller') {
-            worker.client.user?.setPresence({
-                activities: [{ name: "Managing the Heavenly Council", type: ActivityType.Custom }],
-                status: "online",
-            });
-        }
+    // Reset each worker's presence to idle status
+    if (worker.role === "worker") {
+      worker.client.user?.setPresence({
+        activities: [
+          { name: "Waiting for tasks...", type: ActivityType.Custom },
+        ],
+        status: "idle",
+      });
+    } else if (worker.role === "controller") {
+      worker.client.user?.setPresence({
+        activities: [
+          { name: "Managing the Heavenly Council", type: ActivityType.Custom },
+        ],
+        status: "online",
+      });
     }
-    logger.info("[workerpool] All workers released to idle state");
+  }
+  logger.info("[workerpool] All workers released to idle state");
 }
 
 export default {
-    createBots,
-    loginBots,
-    getController,
-    allocateWorker,
-    findWorkerByVoiceChannel,
-    setWorkerBusy,
-    releaseWorker,
-    getWorkers: (): WorkerState[] => [...workers], // Return a copy for inspection
-    releaseAllWorkers,
+  createBots,
+  loginBots,
+  getController,
+  allocateWorker,
+  findWorkerByVoiceChannel,
+  setWorkerBusy,
+  releaseWorker,
+  getWorkers: (): WorkerState[] => [...workers], // Return a copy for inspection
+  releaseAllWorkers,
 };
