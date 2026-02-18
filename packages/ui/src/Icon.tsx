@@ -1,25 +1,61 @@
-
-import React from 'react';
-import * as LucideIcons from 'lucide-react';
+import { React } from "@jasper/elements";
+import {
+    Music,
+    Play,
+    Plus,
+    Trash,
+    Search,
+    Menu,
+    X,
+    ChevronDown,
+    ChevronUp,
+    Settings,
+    LogOut,
+    User,
+    Volume2,
+    SkipForward,
+    SkipBack,
+    Pause,
+    Repeat,
+    Shuffle
+} from "lucide-react";
 
 export interface IconProps extends React.SVGProps<SVGSVGElement> {
-    name: keyof typeof LucideIcons | string;
+    name: string;
     size?: number | string;
 }
 
+const ICON_MAP: Record<string, React.ElementType> = {
+    music: Music,
+    play: Play,
+    plus: Plus,
+    trash: Trash,
+    search: Search,
+    menu: Menu,
+    x: X,
+    'chevron-down': ChevronDown,
+    'chevron-up': ChevronUp,
+    settings: Settings,
+    logout: LogOut,
+    user: User,
+    volume: Volume2,
+    next: SkipForward,
+    prev: SkipBack,
+    pause: Pause,
+    repeat: Repeat,
+    shuffle: Shuffle
+};
+
 export const Icon = ({ name, size = 24, className, ...props }: IconProps) => {
-    // Lucide imports are typically PascalCase, but users might pass lowercase "music"
-    // We should try to handle case insensitivity or expect PascalCase.
-    // The previous code used "music", "play", "plus".
-    // Lucide exports "Music", "Play", "Plus".
+    // Normalize: lowercase
+    const normalizedName = name.toLowerCase();
 
-    // Simple helper to capitalize and handle kebab-case (e.g. arrow-up -> ArrowUp)
-    const pascalName = name.replace(/(^\w|-\w)/g, (c) => c.replace(/-/, "").toUpperCase()) as keyof typeof LucideIcons;
-
-    const LucideIcon = LucideIcons[pascalName] as React.ElementType;
+    const LucideIcon = ICON_MAP[normalizedName];
 
     if (!LucideIcon) {
-        console.warn(`Icon "${name}" not found`);
+        if (process.env.NODE_ENV === 'development') {
+            console.warn(`Icon "${name}" not found in ICON_MAP`);
+        }
         return null;
     }
 

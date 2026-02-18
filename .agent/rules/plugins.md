@@ -1,3 +1,7 @@
+---
+trigger: always_on
+---
+
 # Plugin Development Rules
 
 > **Context**: These rules apply to the AI Agent when creating, modifying, or managing plugins for Jasper.
@@ -38,19 +42,23 @@
 - **API Routes**: Register routes via `context.server`. All routes are automatically scoped to `/api/plugins/<id>`.
 
 ## 5. Out-of-Tree Development Workflow (External Repos)
-> **Goal**: Develop a plugin in a separate git repository (e.g., `../my-plugin`) while running it inside Jasper.
+> **Goal**: Develop a plugin in a separate git repository.
 
-### Phase 1: Infrastructure Setup
-1.  **Directory**: Create the plugin directory *outside* the Jasper repo (e.g., `../<plugin-id>`).
-2.  **Git**: Initialize `git` in that external directory immediately.
-3.  **Link**: Run `pnpm --filter jasper-bot run plugin:link <absolute-path-to-plugin>`.
-    - This creates a symlink in `apps/bot/src/plugins/<id>`.
+### Workflow A: Shared Plugins (Submodules) - **RECOMMENDED**
+Use this for plugins that will be shared with the team.
+1.  **Add Submodule**: `git submodule add <url> apps/bot/src/plugins/<id>`
+2.  **Commit**: Commit the `.gitmodules` change in the Jasper repo.
+3.  **Develop**: Work inside the submodule directory.
+
+### Workflow B: Local Prototyping (Symlinks)
+Use this *only* for local experiments. **DO NOT COMMIT SYMLINKS**.
+1.  **Link**: `pnpm --filter jasper-bot run plugin:link <path>`
+2.  **Gitignore**: Ensure the symlink is added to `.gitignore` (or just don't commit it).
 
 ### Phase 2: Monorepo Configuration (Critical)
-To allow Vite to serve files from outside the monorepo root, you **MUST** ensure `apps/web/vite.config.ts` is configured correctly:
-1.  **FS Allow**: Add `path.resolve(__dirname, '../../..')` to `server.fs.allow` to permit serving sibling directories.
-2.  **Aliases**: Ensure `@jasper/elements` and `@jasper/ui` aliases point to `../../packages/<pkg>/src` (not just `node_modules`).
-    - *Why?* External files won't find `node_modules` in their parent chain. Explicit aliases force Vite to resolve correctly.
+To allow Vite to serve files from outside the monorepo root (for symlinked plugins), you **may** need to configure `apps/web/vite.config.ts`.
+> [!WARNING]
+> Only enable broad FS access in `vite.config.ts` if absolutely necessary for local development. Do not commit unsafe FS allow lists if possible.
 
 ### Phase 3: External Dependencies
 1.  **Initialize**: Run `pnpm init` in the external plugin directory to create a `package.json`.

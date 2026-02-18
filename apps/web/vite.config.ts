@@ -26,9 +26,9 @@ export default defineConfig(({ mode }) => ({
     fs: {
       allow: [
         // Allow serving files from the project root
-        // Allow serving files from the project root and its parent (for out-of-tree plugins)
-        path.resolve(__dirname, "../../.."),
-        path.resolve(__dirname, '../../assets')
+        path.resolve(__dirname, "../.."),
+        // Allow serving root assets
+        path.resolve(__dirname, "../../assets"),
       ],
     },
     proxy: {

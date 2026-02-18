@@ -85,7 +85,8 @@ Use this when you want to hack on a plugin that lives entirely outside the Jaspe
 - Changes are reflected immediately via HMR.
 
 **Version Control:**
-- Commit the **symlink** in `Jasper`.
+**Version Control:**
+- Do **not** commit the symlink in `Jasper`; treat it as a local-only development link.
 - Commit the **source code** in your external plugin repo.
 
 **Cleanup:**
