@@ -32,37 +32,37 @@ Every plugin requires a `jasper-plugin.json` file in its root.
 
 ```json
 {
-  "id": "my-plugin",
-  "name": "My Plugin",
-  "version": "1.0.0",
-  "description": "A description of my plugin",
-  "entry": "index.ts",
-  "web": {
-    "entry": "web/index.tsx",
-    "navItems": [
-      {
-        "id": "my-nav",
-        "label": "My Plugin",
-        "icon": "activity",
-        "href": "/plugins/my-plugin"
-      }
-    ],
-    "widgets": [
-      {
-        "id": "my-widget",
-        "slot": "dashboard:main",
-        "component": "MyWidget",
-        "order": 10
-      }
-    ],
-    "pages": [
-      {
-        "id": "my-page",
-        "path": "/plugins/my-plugin",
-        "component": "MyPage"
-      }
-    ]
-  }
+    "id": "my-plugin",
+    "name": "My Plugin",
+    "version": "1.0.0",
+    "description": "A description of my plugin",
+    "entry": "index.ts",
+    "web": {
+        "entry": "web/index.tsx",
+        "navItems": [
+            {
+                "id": "my-nav",
+                "label": "My Plugin",
+                "icon": "activity",
+                "href": "/plugins/my-plugin"
+            }
+        ],
+        "widgets": [
+            {
+                "id": "my-widget",
+                "slot": "dashboard:main",
+                "component": "MyWidget",
+                "order": 10
+            }
+        ],
+        "pages": [
+            {
+                "id": "my-page",
+                "path": "/plugins/my-plugin",
+                "component": "MyPage"
+            }
+        ]
+    }
 }
 ```
 
@@ -75,29 +75,29 @@ The backend entry point (default `index.ts`) must export an object implementing 
 ### Basic Structure
 
 ```typescript
-import { Plugin, PluginContext } from "@jasper/types";
+import { Plugin, PluginContext } from '@jasper/types';
 
 const MyPlugin: Plugin = {
-  name: "My Plugin",
-  version: "1.0.0",
+    name: 'My Plugin',
+    version: '1.0.0',
 
-  onLoad: async (context: PluginContext) => {
-    context.logger.info("My Plugin loaded!");
+    onLoad: async (context: PluginContext) => {
+        context.logger.info('My Plugin loaded!');
 
-    // Register an API route
-    context.server.get("/hello", async (req, reply) => {
-      return { message: "Hello from backend!" };
-    });
+        // Register an API route
+        context.server.get('/hello', async (req, reply) => {
+            return { message: 'Hello from backend!' };
+        });
 
-    context.registerCommand({
-      data: { name: "hello", description: "Say hello" },
-      execute: async (interaction) => await interaction.reply("Hello!"),
-    });
-  },
+        context.registerCommand({
+            data: { name: 'hello', description: 'Say hello' },
+            execute: async (interaction) => await interaction.reply('Hello!'),
+        });
+    },
 
-  onUnload: async (context: PluginContext) => {
-    context.logger.info("My Plugin unloaded!");
-  },
+    onUnload: async (context: PluginContext) => {
+        context.logger.info('My Plugin unloaded!');
+    },
 };
 
 export default MyPlugin;
@@ -117,13 +117,13 @@ Plugins have access to a namespaced, persistent storage directory.
 
 ```typescript
 // Save a file (returns a URI like storage://my-plugin/image.png)
-const uri = await context.storage.save("image.png", buffer);
+const uri = await context.storage.save('image.png', buffer);
 
 // Get a file
-const buffer = await context.storage.get("image.png");
+const buffer = await context.storage.get('image.png');
 
 // Delete a file
-await context.storage.delete("image.png");
+await context.storage.delete('image.png');
 
 // List files
 const files = await context.storage.list();
@@ -138,12 +138,12 @@ Plugins can play audio files in voice channels using `context.playAudio()`:
 
 ```typescript
 await context.playAudio({
-  voiceChannelId: "123456789",
-  guildId: "987654321",
-  audioPath: "/absolute/path/to/audio.mp3",
-  title: "🔊 Sound Effect", // Optional
-  requesterId: userId,
-  channelId: "123456789", // Optional: Text channel ID for welcome messages
+    voiceChannelId: '123456789',
+    guildId: '987654321',
+    audioPath: '/absolute/path/to/audio.mp3',
+    title: '🔊 Sound Effect', // Optional
+    requesterId: userId,
+    channelId: '123456789', // Optional: Text channel ID for welcome messages
 });
 ```
 
@@ -151,13 +151,13 @@ await context.playAudio({
 
 - **Existing Queue**: If bot is already in the channel, plays audio directly on existing player
 - **New Connection**:
-  - Allocates a worker bot
-  - Joins voice channel
-  - Waits for `VoiceConnectionStatus.Ready` (max 5s) to ensure audio is heard
-  - Sends a personalized welcome message to the text channel (if `channelId` provided)
-  - Detects audio duration using ffprobe
-  - Plays audio
-  - Auto-disconnects after duration + 1 second buffer
+    - Allocates a worker bot
+    - Joins voice channel
+    - Waits for `VoiceConnectionStatus.Ready` (max 5s) to ensure audio is heard
+    - Sends a personalized welcome message to the text channel (if `channelId` provided)
+    - Detects audio duration using ffprobe
+    - Plays audio
+    - Auto-disconnects after duration + 1 second buffer
 - **Error Handling**: Automatically cleans up resources on error
 - **Requirements**: Requires `ffprobe` in PATH for duration detection (falls back to 10s default)
 
@@ -181,20 +181,22 @@ Plugins can extend the web dashboard using React components.
 > **✅ Correct:**
 >
 > ```typescript
-> import { useState, useEffect } from "@jasper/elements";
+> import { useEffect, useState } from '@jasper/elements';
 > ```
 >
 > **❌ Incorrect:**
 >
 > ```typescript
-> import React, { useState } from "react"; // DO NOT DO THIS
+> import React, { useState } from 'react';
+>
+> // DO NOT DO THIS
 > ```
 >
 > **Shared Hooks**:
 > We provide a set of shared hooks in `@jasper/hooks` to interact with the core system.
 >
 > ```typescript
-> import { useAuth, usePluginContext, usePluginStorage } from "@jasper/hooks";
+> import { useAuth, usePluginContext, usePluginStorage } from '@jasper/hooks';
 > ```
 
 ### Plugin Loading & HMR
@@ -211,23 +213,24 @@ The frontend entry point must export components that you want to register. It do
 ### Basic Structure
 
 ```tsx
-import React from "react";
-import { Card, Button } from "@jasper/ui";
+import React from 'react';
+
+import { Button, Card } from '@jasper/ui';
 
 // Component for the dashboard widget
 export const MyWidget = () => (
-  <Card>
-    <h3>My Widget</h3>
-    <Button onClick={() => alert("Clicked!")}>Click Me</Button>
-  </Card>
+    <Card>
+        <h3>My Widget</h3>
+        <Button onClick={() => alert('Clicked!')}>Click Me</Button>
+    </Card>
 );
 
 // Component for the full page
 export const MyPage = () => (
-  <div className="p-6">
-    <h1>My Plugin Page</h1>
-    <p>Welcome to my plugin page.</p>
-  </div>
+    <div className="p-6">
+        <h1>My Plugin Page</h1>
+        <p>Welcome to my plugin page.</p>
+    </div>
 );
 ```
 
@@ -255,8 +258,8 @@ To build a complete feature, your frontend needs to talk to your backend.
 
     ```typescript
     // apps/bot/src/plugins/my-plugin/index.ts
-    context.server.get("/stats", async () => {
-      return { count: 42 };
+    context.server.get('/stats', async () => {
+        return { count: 42 };
     });
     ```
 
@@ -266,19 +269,19 @@ To build a complete feature, your frontend needs to talk to your backend.
 
     ```tsx
     // apps/bot/src/plugins/my-plugin/web/index.tsx
-    import { useEffect, useState } from "react";
+    import { useEffect, useState } from 'react';
 
     export const MyWidget = () => {
-      const [stats, setStats] = useState(null);
+        const [stats, setStats] = useState(null);
 
-      useEffect(() => {
-        fetch("/api/plugins/my-plugin/stats")
-          .then((res) => res.json())
-          .then((data) => setStats(data));
-      }, []);
+        useEffect(() => {
+            fetch('/api/plugins/my-plugin/stats')
+                .then((res) => res.json())
+                .then((data) => setStats(data));
+        }, []);
 
-      if (!stats) return <div>Loading...</div>;
-      return <div>Count: {stats.count}</div>;
+        if (!stats) return <div>Loading...</div>;
+        return <div>Count: {stats.count}</div>;
     };
     ```
 
@@ -374,13 +377,13 @@ We provide several reference plugins in the `apps/bot/src/plugins` directory to 
 A complete CRUD application that allows users to manage personal notes from the dashboard.
 
 - **Backend**:
-  - Implements a REST API (`GET`, `POST`, `DELETE`) for managing notes.
-  - Uses `context.db.plugin` to persist data safely.
-  - Demonstrates input validation and error handling.
+    - Implements a REST API (`GET`, `POST`, `DELETE`) for managing notes.
+    - Uses `context.db.plugin` to persist data safely.
+    - Demonstrates input validation and error handling.
 - **Frontend**:
-  - **Widget**: Displays a quick view of recent notes on the main dashboard.
-  - **Page**: A full management interface with a table, form, and delete actions.
-  - **UI**: Uses `@jasper/ui` components (`Card`, `Table`, `Button`) for a native look.
+    - **Widget**: Displays a quick view of recent notes on the main dashboard.
+    - **Page**: A full management interface with a table, form, and delete actions.
+    - **UI**: Uses `@jasper/ui` components (`Card`, `Table`, `Button`) for a native look.
 - **DX Tip**: Check `web/index.tsx` to see how to share state logic (hooks) between the Widget and the Page.
 
 ### 2. Sound Effect Plugin (`sound-effect-plugin`)
@@ -390,9 +393,9 @@ A complete CRUD application that allows users to manage personal notes from the 
 Plays a sound effect when the bot joins a voice channel.
 
 - **Backend**:
-  - Listens to the `QUEUE_CREATE` hook to detect when the bot joins a channel.
-  - Uses `queue.player.play()` to inject audio into the stream.
-  - Demonstrates how to interact with the core audio engine.
+    - Listens to the `QUEUE_CREATE` hook to detect when the bot joins a channel.
+    - Uses `queue.player.play()` to inject audio into the stream.
+    - Demonstrates how to interact with the core audio engine.
 - **DX Tip**: This is a great example of how to build "reactive" plugins that respond to bot events.
 
 ### 3. Advanced Hooks Test (`advanced-hooks-test-plugin`)
@@ -402,8 +405,8 @@ Plays a sound effect when the bot joins a voice channel.
 Verifies the functionality of advanced lifecycle hooks.
 
 - **Backend**:
-  - Logs events for `SERVER_READY`, `WORKER_ASSIGNED`, and `VOICE_STATE_UPDATE`.
-  - Demonstrates how to access the Fastify server instance and Worker state.
+    - Logs events for `SERVER_READY`, `WORKER_ASSIGNED`, and `VOICE_STATE_UPDATE`.
+    - Demonstrates how to access the Fastify server instance and Worker state.
 
 ### 4. Jasper Soundboard (`soundboard`)
 
@@ -412,13 +415,13 @@ Verifies the functionality of advanced lifecycle hooks.
 A complete soundboard system that allows users to upload sounds via the dashboard and play them via slash commands or a persistent UI.
 
 - **Backend**:
-  - Registers a complex slash command with subcommands (`menu`, `play`, `ui`).
-  - Implements a **concurrency queue** to handle multiple sound requests safely without crashing the bot.
-  - Uses `context.playAudio()` with a custom queue management system.
-  - Demonstrates how to handle Discord interactions (Buttons, Select Menus, Autocomplete) globally.
+    - Registers a complex slash command with subcommands (`menu`, `play`, `ui`).
+    - Implements a **concurrency queue** to handle multiple sound requests safely without crashing the bot.
+    - Uses `context.playAudio()` with a custom queue management system.
+    - Demonstrates how to handle Discord interactions (Buttons, Select Menus, Autocomplete) globally.
 - **Frontend**:
-  - **Page**: A management interface to upload, rename, and delete sounds.
-  - Uses `usePluginStorage` for sound files and `usePluginContext` for database records.
+    - **Page**: A management interface to upload, rename, and delete sounds.
+    - Uses `usePluginStorage` for sound files and `usePluginContext` for database records.
 - **DX Tip**: Check `commands/soundboard.ts` and `core/plugins/plugin-manager.ts` to see how to implement safe concurrent audio playback and prevent "button mashing" with rate limits.
 
 ### 5. Media Gallery (`media-gallery`)
@@ -429,10 +432,10 @@ Demonstrates how to use the Extension Storage API to upload, view, and manage fi
 
 - **Backend**: Minimal (just loads the plugin).
 - **Frontend**:
-  - Uses `usePluginStorage` hook from `@jasper/hooks`.
-  - **Widget**: Displays the latest 3 uploaded images.
-  - **Page**: Allows uploading new images and deleting existing ones.
-  - Demonstrates how to handle file uploads and display images using the storage URL.
+    - Uses `usePluginStorage` hook from `@jasper/hooks`.
+    - **Widget**: Displays the latest 3 uploaded images.
+    - **Page**: Allows uploading new images and deleting existing ones.
+    - Demonstrates how to handle file uploads and display images using the storage URL.
 
 ## 🔧 Plugin Management
 

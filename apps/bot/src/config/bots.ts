@@ -1,17 +1,17 @@
-import { DISCORD_TOKEN, getWorkerTokens } from "./env.js";
+import { DISCORD_TOKEN, getWorkerTokens } from './env.js';
 
 export interface BotConfig {
-  name: string;
-  token: string;
-  role: "controller" | "worker";
+    name: string;
+    token: string;
+    role: 'controller' | 'worker';
 }
 
 const bots: BotConfig[] = [
-  {
-    name: "Jasper",
-    token: DISCORD_TOKEN,
-    role: "controller",
-  },
+    {
+        name: 'Jasper',
+        token: DISCORD_TOKEN,
+        role: 'controller',
+    },
 ];
 
 // Dynamically load worker bots from environment variables
@@ -19,11 +19,11 @@ const bots: BotConfig[] = [
 // Example: MISTY_TOKEN -> Name: Misty, Role: worker
 const workerTokens = getWorkerTokens();
 for (const worker of workerTokens) {
-  bots.push({
-    name: worker.name,
-    token: worker.token,
-    role: "worker",
-  });
+    bots.push({
+        name: worker.name,
+        token: worker.token,
+        role: 'worker',
+    });
 }
 
 export default bots;

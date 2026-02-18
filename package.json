@@ -16,13 +16,14 @@
         "format": "prettier --write \"**/*.{ts,tsx,md}\"",
         "format:plugins": "prettier --write \"apps/bot/src/plugins/**/*.{ts,tsx,md}\"",
         "lint:plugins": "eslint \"apps/bot/src/plugins/**/*.{ts,tsx}\"",
-        "prepare": "husky"
+        "prepare": "husky || true"
     },
     "devDependencies": {
         "@commitlint/cli": "^20.3.0",
         "@commitlint/config-conventional": "^20.3.0",
         "@trivago/prettier-plugin-sort-imports": "^6.0.2",
         "@types/node": "^24.10.1",
+        "eslint-config-prettier": "^10.1.8",
         "globals": "^16.5.0",
         "husky": "^9.1.7",
         "kill-port": "^2.0.1",

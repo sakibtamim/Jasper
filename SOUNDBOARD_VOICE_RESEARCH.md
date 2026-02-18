@@ -13,20 +13,20 @@
 ### Core Components
 
 1. **VoiceConnection**
-   - One per voice channel
-   - Handles the WebSocket connection to Discord
-   - Can only transmit audio from ONE AudioPlayer at a time
-   - Calling `connection.subscribe(newPlayer)` **replaces** the previous subscription
+    - One per voice channel
+    - Handles the WebSocket connection to Discord
+    - Can only transmit audio from ONE AudioPlayer at a time
+    - Calling `connection.subscribe(newPlayer)` **replaces** the previous subscription
 
 2. **AudioPlayer**
-   - Manages playback state for a single audio resource
-   - Emits lifecycle events (Playing, Paused, Idle)
-   - Can only play one resource at a time
-   - Multiple players can exist, but only one can be subscribed to a connection
+    - Manages playback state for a single audio resource
+    - Emits lifecycle events (Playing, Paused, Idle)
+    - Can only play one resource at a time
+    - Multiple players can exist, but only one can be subscribed to a connection
 
 3. **AudioResource**
-   - Represents an audio stream/file
-   - Requires Opus encoding before transmission to Discord
+    - Represents an audio stream/file
+    - Requires Opus encoding before transmission to Discord
 
 ### Why Our Separate Player Approach Failed
 
@@ -105,31 +105,31 @@ if (existingQueue) {
 
 ```typescript
 if (existingQueue) {
-  // 1. Get current music stream
-  const musicStream = getCurrentMusicStream(existingQueue);
+    // 1. Get current music stream
+    const musicStream = getCurrentMusicStream(existingQueue);
 
-  // 2. Create soundboard stream
-  const soundboardStream = fs.createReadStream(audioPath);
+    // 2. Create soundboard stream
+    const soundboardStream = fs.createReadStream(audioPath);
 
-  // 3. Mix streams using FFmpeg
-  const mixedStream = ffmpeg()
-    .input(musicStream)
-    .input(soundboardStream)
-    .complexFilter([
-      "[0:a]volume=0.7[music]", // Lower music volume
-      "[1:a]volume=1.0[sfx]", // Full soundboard volume
-      "[music][sfx]amix=inputs=2[out]", // Mix together
-    ])
-    .map("[out]")
-    .audioCodec("libopus")
-    .format("opus")
-    .pipe();
+    // 3. Mix streams using FFmpeg
+    const mixedStream = ffmpeg()
+        .input(musicStream)
+        .input(soundboardStream)
+        .complexFilter([
+            '[0:a]volume=0.7[music]', // Lower music volume
+            '[1:a]volume=1.0[sfx]', // Full soundboard volume
+            '[music][sfx]amix=inputs=2[out]', // Mix together
+        ])
+        .map('[out]')
+        .audioCodec('libopus')
+        .format('opus')
+        .pipe();
 
-  // 4. Replace current resource with mixed stream
-  const mixedResource = createAudioResource(mixedStream, {
-    inputType: StreamType.OggOpus,
-  });
-  existingQueue.player.play(mixedResource);
+    // 4. Replace current resource with mixed stream
+    const mixedResource = createAudioResource(mixedStream, {
+        inputType: StreamType.OggOpus,
+    });
+    existingQueue.player.play(mixedResource);
 }
 ```
 
@@ -217,50 +217,49 @@ if (existingQueue) {
 
 ```typescript
 if (existingQueue) {
-  // Pause main player if playing
-  const wasPlaying =
-    existingQueue.player.state.status === AudioPlayerStatus.Playing;
-  if (wasPlaying) {
-    existingQueue.player.pause();
-    logger.info("[plugins] Paused music for soundboard");
-  }
-
-  // Create and subscribe temp player
-  const tempPlayer = createAudioPlayer({
-    behaviors: { noSubscriber: NoSubscriberBehavior.Stop },
-  });
-  existingQueue.connection.subscribe(tempPlayer); // Switch subscription
-
-  // Play soundboard
-  const resource = createAudioResource(fs.createReadStream(audioPath), {
-    inputType: StreamType.Arbitrary,
-  });
-  tempPlayer.play(resource);
-
-  // On soundboard finish: restore main player
-  tempPlayer.once("idle", () => {
-    // Re-subscribe main player
-    existingQueue.connection.subscribe(existingQueue.player);
-
-    // Resume if was playing
+    // Pause main player if playing
+    const wasPlaying = existingQueue.player.state.status === AudioPlayerStatus.Playing;
     if (wasPlaying) {
-      existingQueue.player.unpause();
-      logger.info("[plugins] Resumed music after soundboard");
+        existingQueue.player.pause();
+        logger.info('[plugins] Paused music for soundboard');
     }
 
-    // Cleanup temp player
-    tempPlayer.stop();
-  });
+    // Create and subscribe temp player
+    const tempPlayer = createAudioPlayer({
+        behaviors: { noSubscriber: NoSubscriberBehavior.Stop },
+    });
+    existingQueue.connection.subscribe(tempPlayer); // Switch subscription
 
-  // Error handling
-  tempPlayer.on("error", (error) => {
-    logger.error(`[plugins] Soundboard error: ${error.message}`);
-    existingQueue.connection.subscribe(existingQueue.player);
-    if (wasPlaying) existingQueue.player.unpause();
-    tempPlayer.stop();
-  });
+    // Play soundboard
+    const resource = createAudioResource(fs.createReadStream(audioPath), {
+        inputType: StreamType.Arbitrary,
+    });
+    tempPlayer.play(resource);
 
-  return;
+    // On soundboard finish: restore main player
+    tempPlayer.once('idle', () => {
+        // Re-subscribe main player
+        existingQueue.connection.subscribe(existingQueue.player);
+
+        // Resume if was playing
+        if (wasPlaying) {
+            existingQueue.player.unpause();
+            logger.info('[plugins] Resumed music after soundboard');
+        }
+
+        // Cleanup temp player
+        tempPlayer.stop();
+    });
+
+    // Error handling
+    tempPlayer.on('error', (error) => {
+        logger.error(`[plugins] Soundboard error: ${error.message}`);
+        existingQueue.connection.subscribe(existingQueue.player);
+        if (wasPlaying) existingQueue.player.unpause();
+        tempPlayer.stop();
+    });
+
+    return;
 }
 ```
 

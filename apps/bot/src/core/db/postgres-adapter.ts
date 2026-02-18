@@ -1,42 +1,39 @@
-import pg from "pg";
-import logger from "../logger.js";
+import pg from 'pg';
+
+import { DATABASE_URL, ENCRYPTION_KEY, isProduction } from '../../config/env.js';
+import { decrypt, encrypt } from '../../utils/encryption.js';
+import logger from '../logger.js';
 import {
-  DatabaseAdapter,
-  PlayRecord,
-  SongStats,
-  UserStats,
-  User,
-  Session,
-  YtDlpCookie,
-} from "./types.js";
-import { decrypt, encrypt } from "../../utils/encryption.js";
-import {
-  DATABASE_URL,
-  ENCRYPTION_KEY,
-  isProduction,
-} from "../../config/env.js";
+    DatabaseAdapter,
+    PlayRecord,
+    Session,
+    SongStats,
+    User,
+    UserStats,
+    YtDlpCookie,
+} from './types.js';
 
 const { Pool } = pg;
 
 export class PostgresAdapter implements DatabaseAdapter {
-  private pool: pg.Pool | null = null;
+    private pool: pg.Pool | null = null;
 
-  constructor() {
-    // Connection string comes from DATABASE_URL env var
-  }
+    constructor() {
+        // Connection string comes from DATABASE_URL env var
+    }
 
-  async init(): Promise<void> {
-    try {
-      this.pool = new Pool({
-        connectionString: DATABASE_URL,
-        ssl: isProduction ? { rejectUnauthorized: false } : undefined,
-      });
+    async init(): Promise<void> {
+        try {
+            this.pool = new Pool({
+                connectionString: DATABASE_URL,
+                ssl: isProduction ? { rejectUnauthorized: false } : undefined,
+            });
 
-      // Test connection
-      await this.pool.query("SELECT 1");
+            // Test connection
+            await this.pool.query('SELECT 1');
 
-      // Create tables
-      await this.pool.query(`
+            // Create tables
+            await this.pool.query(`
         CREATE TABLE IF NOT EXISTS plays (
           id SERIAL PRIMARY KEY,
           user_id TEXT NOT NULL,
@@ -127,8 +124,8 @@ export class PostgresAdapter implements DatabaseAdapter {
         );
       `);
 
-      // Create indexes
-      await this.pool.query(`
+            // Create indexes
+            await this.pool.query(`
         CREATE INDEX IF NOT EXISTS idx_plays_user_id ON plays(user_id);
         CREATE INDEX IF NOT EXISTS idx_plays_song_url ON plays(song_url);
         CREATE INDEX IF NOT EXISTS idx_plays_played_at ON plays(played_at);
@@ -144,37 +141,37 @@ export class PostgresAdapter implements DatabaseAdapter {
         CREATE INDEX IF NOT EXISTS idx_plugin_storage_plugin_name ON plugin_storage(plugin_name);
       `);
 
-      logger.info("[db] Postgres database initialized");
-    } catch (error) {
-      logger.error(`[db] Failed to initialize Postgres: ${error}`);
-      throw error;
+            logger.info('[db] Postgres database initialized');
+        } catch (error) {
+            logger.error(`[db] Failed to initialize Postgres: ${error}`);
+            throw error;
+        }
     }
-  }
 
-  async trackPlay(record: PlayRecord): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
+    async trackPlay(record: PlayRecord): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
 
-    await this.pool.query(
-      `INSERT INTO plays (user_id, guild_id, channel_id, bot_name, song_title, song_url, duration, played_at)
+        await this.pool.query(
+            `INSERT INTO plays (user_id, guild_id, channel_id, bot_name, song_title, song_url, duration, played_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [
-        record.userId,
-        record.guildId,
-        record.channelId,
-        record.botName,
-        record.songTitle,
-        record.songUrl,
-        record.duration,
-        record.playedAt,
-      ],
-    );
-  }
+            [
+                record.userId,
+                record.guildId,
+                record.channelId,
+                record.botName,
+                record.songTitle,
+                record.songUrl,
+                record.duration,
+                record.playedAt,
+            ],
+        );
+    }
 
-  async getTopSongs(limit: number = 10): Promise<SongStats[]> {
-    if (!this.pool) throw new Error("Database not initialized");
+    async getTopSongs(limit: number = 10): Promise<SongStats[]> {
+        if (!this.pool) throw new Error('Database not initialized');
 
-    const result = await this.pool.query(
-      `
+        const result = await this.pool.query(
+            `
       SELECT 
         song_title as "songTitle",
         song_url as "songUrl",
@@ -186,20 +183,20 @@ export class PostgresAdapter implements DatabaseAdapter {
       ORDER BY "playCount" DESC
       LIMIT $1
     `,
-      [limit],
-    );
+            [limit],
+        );
 
-    return result.rows.map((row) => ({
-      ...row,
-      lastPlayedAt: new Date(row.lastPlayedAt),
-    }));
-  }
+        return result.rows.map((row) => ({
+            ...row,
+            lastPlayedAt: new Date(row.lastPlayedAt),
+        }));
+    }
 
-  async getTopUsers(limit: number = 10): Promise<UserStats[]> {
-    if (!this.pool) throw new Error("Database not initialized");
+    async getTopUsers(limit: number = 10): Promise<UserStats[]> {
+        if (!this.pool) throw new Error('Database not initialized');
 
-    const result = await this.pool.query(
-      `
+        const result = await this.pool.query(
+            `
       SELECT 
         user_id as "userId",
         COUNT(*)::int as "playCount",
@@ -210,149 +207,137 @@ export class PostgresAdapter implements DatabaseAdapter {
       ORDER BY "playCount" DESC
       LIMIT $1
     `,
-      [limit],
-    );
+            [limit],
+        );
 
-    return result.rows.map((row) => ({
-      ...row,
-      lastPlayedAt: new Date(row.lastPlayedAt),
-    }));
-  }
+        return result.rows.map((row) => ({
+            ...row,
+            lastPlayedAt: new Date(row.lastPlayedAt),
+        }));
+    }
 
-  async getGlobalStats(): Promise<{
-    totalPlays: number;
-    totalDuration: number;
-  }> {
-    if (!this.pool) throw new Error("Database not initialized");
+    async getGlobalStats(): Promise<{
+        totalPlays: number;
+        totalDuration: number;
+    }> {
+        if (!this.pool) throw new Error('Database not initialized');
 
-    const result = await this.pool.query(`
+        const result = await this.pool.query(`
       SELECT 
         COUNT(*)::int as "totalPlays",
         COALESCE(SUM(duration), 0)::int as "totalDuration"
       FROM plays
     `);
 
-    return result.rows[0];
-  }
+        return result.rows[0];
+    }
 
-  async getCachedSearchResult(
-    query: string,
-  ): Promise<import("./types.js").CachedSearchResult | null> {
-    if (!this.pool) throw new Error("Database not initialized");
+    async getCachedSearchResult(
+        query: string,
+    ): Promise<import('./types.js').CachedSearchResult | null> {
+        if (!this.pool) throw new Error('Database not initialized');
 
-    const result = await this.pool.query(
-      `
+        const result = await this.pool.query(
+            `
             SELECT query, song_title as "songTitle", song_url as "songUrl", duration, thumbnail, cached_at as "cachedAt", expires_at as "expiresAt"
             FROM search_cache
             WHERE query = $1 AND expires_at > NOW()
         `,
-      [query],
-    );
+            [query],
+        );
 
-    if (result.rows.length === 0) return null;
+        if (result.rows.length === 0) return null;
 
-    const row = result.rows[0];
-    return {
-      query: row.query,
-      songTitle: row.songTitle,
-      songUrl: row.songUrl,
-      duration: row.duration,
-      thumbnail: row.thumbnail,
-      cachedAt: new Date(row.cachedAt),
-      expiresAt: new Date(row.expiresAt),
-    };
-  }
+        const row = result.rows[0];
+        return {
+            query: row.query,
+            songTitle: row.songTitle,
+            songUrl: row.songUrl,
+            duration: row.duration,
+            thumbnail: row.thumbnail,
+            cachedAt: new Date(row.cachedAt),
+            expiresAt: new Date(row.expiresAt),
+        };
+    }
 
-  async setCachedSearchResult(
-    query: string,
-    songTitle: string,
-    songUrl: string,
-    duration: number,
-    thumbnail: string | undefined,
-    ttlHours: number,
-  ): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
+    async setCachedSearchResult(
+        query: string,
+        songTitle: string,
+        songUrl: string,
+        duration: number,
+        thumbnail: string | undefined,
+        ttlHours: number,
+    ): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
 
-    const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000);
+        const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000);
 
-    await this.pool.query(
-      `
+        await this.pool.query(
+            `
             INSERT INTO search_cache (query, song_title, song_url, duration, thumbnail, expires_at)
             VALUES ($1, $2, $3, $4, $5, $6)
             ON CONFLICT (query) DO UPDATE
             SET song_title = $2, song_url = $3, duration = $4, thumbnail = $5, expires_at = $6, cached_at = NOW()
         `,
-      [query, songTitle, songUrl, duration, thumbnail, expiresAt],
-    );
-  }
+            [query, songTitle, songUrl, duration, thumbnail, expiresAt],
+        );
+    }
 
-  async getAudioMetadata(
-    videoId: string,
-  ): Promise<import("./types.js").AudioMetadata | null> {
-    if (!this.pool) throw new Error("Database not initialized");
+    async getAudioMetadata(videoId: string): Promise<import('./types.js').AudioMetadata | null> {
+        if (!this.pool) throw new Error('Database not initialized');
 
-    const result = await this.pool.query(
-      `
+        const result = await this.pool.query(
+            `
             SELECT video_id as "videoId", title, url, duration, thumbnail, search_terms as "searchTerms", cached_at as "cachedAt", expires_at as "expiresAt"
             FROM audio_metadata
             WHERE video_id = $1 AND expires_at > NOW()
         `,
-      [videoId],
-    );
+            [videoId],
+        );
 
-    if (result.rows.length === 0) return null;
+        if (result.rows.length === 0) return null;
 
-    const row = result.rows[0];
-    return {
-      videoId: row.videoId,
-      title: row.title,
-      url: row.url,
-      duration: row.duration,
-      thumbnail: row.thumbnail,
-      searchTerms: JSON.parse(row.searchTerms),
-      cachedAt: new Date(row.cachedAt),
-      expiresAt: new Date(row.expiresAt),
-    };
-  }
+        const row = result.rows[0];
+        return {
+            videoId: row.videoId,
+            title: row.title,
+            url: row.url,
+            duration: row.duration,
+            thumbnail: row.thumbnail,
+            searchTerms: JSON.parse(row.searchTerms),
+            cachedAt: new Date(row.cachedAt),
+            expiresAt: new Date(row.expiresAt),
+        };
+    }
 
-  async setAudioMetadata(
-    videoId: string,
-    title: string,
-    url: string,
-    duration: number,
-    thumbnail: string | undefined,
-    searchTerms: string[],
-    ttlHours: number,
-  ): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
+    async setAudioMetadata(
+        videoId: string,
+        title: string,
+        url: string,
+        duration: number,
+        thumbnail: string | undefined,
+        searchTerms: string[],
+        ttlHours: number,
+    ): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
 
-    const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000);
+        const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000);
 
-    await this.pool.query(
-      `
+        await this.pool.query(
+            `
             INSERT INTO audio_metadata (video_id, title, url, duration, thumbnail, search_terms, expires_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             ON CONFLICT (video_id) DO UPDATE
             SET title = $2, url = $3, duration = $4, thumbnail = $5, search_terms = $6, expires_at = $7, cached_at = NOW()
         `,
-      [
-        videoId,
-        title,
-        url,
-        duration,
-        thumbnail,
-        JSON.stringify(searchTerms),
-        expiresAt,
-      ],
-    );
-  }
+            [videoId, title, url, duration, thumbnail, JSON.stringify(searchTerms), expiresAt],
+        );
+    }
 
-  async getRandomCachedSong(): Promise<
-    import("./types.js").AudioMetadata | null
-  > {
-    if (!this.pool) throw new Error("Database not initialized");
+    async getRandomCachedSong(): Promise<import('./types.js').AudioMetadata | null> {
+        if (!this.pool) throw new Error('Database not initialized');
 
-    const result = await this.pool.query(`
+        const result = await this.pool.query(`
             SELECT video_id as "videoId", title, url, duration, thumbnail, search_terms as "searchTerms", cached_at as "cachedAt", expires_at as "expiresAt"
             FROM audio_metadata
             WHERE expires_at > NOW()
@@ -360,67 +345,65 @@ export class PostgresAdapter implements DatabaseAdapter {
             LIMIT 1
         `);
 
-    if (result.rows.length === 0) return null;
+        if (result.rows.length === 0) return null;
 
-    const row = result.rows[0];
-    return {
-      videoId: row.videoId,
-      title: row.title,
-      url: row.url,
-      duration: row.duration,
-      thumbnail: row.thumbnail,
-      searchTerms: JSON.parse(row.searchTerms),
-      cachedAt: new Date(row.cachedAt),
-      expiresAt: new Date(row.expiresAt),
-    };
-  }
-
-  async cleanupExpiredCache(): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
-
-    const searchResult = await this.pool.query(
-      `DELETE FROM search_cache WHERE expires_at <= NOW()`,
-    );
-    const audioResult = await this.pool.query(
-      `DELETE FROM audio_metadata WHERE expires_at <= NOW()`,
-    );
-
-    const searchDeleted = searchResult.rowCount || 0;
-    const audioDeleted = audioResult.rowCount || 0;
-
-    if (searchDeleted > 0 || audioDeleted > 0) {
-      logger.info(
-        `[db] Cleaned up ${searchDeleted} expired search cache entries and ${audioDeleted} expired audio metadata entries`,
-      );
+        const row = result.rows[0];
+        return {
+            videoId: row.videoId,
+            title: row.title,
+            url: row.url,
+            duration: row.duration,
+            thumbnail: row.thumbnail,
+            searchTerms: JSON.parse(row.searchTerms),
+            cachedAt: new Date(row.cachedAt),
+            expiresAt: new Date(row.expiresAt),
+        };
     }
-  }
 
-  async getCacheStats(): Promise<{
-    searchCacheSize: number;
-    audioMetadataCount: number;
-  }> {
-    if (!this.pool) throw new Error("Database not initialized");
+    async cleanupExpiredCache(): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
 
-    const searchResult = await this.pool.query(
-      `SELECT COUNT(*)::int as count FROM search_cache WHERE expires_at > NOW()`,
-    );
-    const audioResult = await this.pool.query(
-      `SELECT COUNT(*)::int as count FROM audio_metadata WHERE expires_at > NOW()`,
-    );
+        const searchResult = await this.pool.query(
+            `DELETE FROM search_cache WHERE expires_at <= NOW()`,
+        );
+        const audioResult = await this.pool.query(
+            `DELETE FROM audio_metadata WHERE expires_at <= NOW()`,
+        );
 
-    return {
-      searchCacheSize: searchResult.rows[0].count,
-      audioMetadataCount: audioResult.rows[0].count,
-    };
-  }
+        const searchDeleted = searchResult.rowCount || 0;
+        const audioDeleted = audioResult.rowCount || 0;
 
-  async getTopChannels(
-    limit: number = 10,
-  ): Promise<import("./types.js").ChannelStats[]> {
-    if (!this.pool) throw new Error("Database not initialized");
+        if (searchDeleted > 0 || audioDeleted > 0) {
+            logger.info(
+                `[db] Cleaned up ${searchDeleted} expired search cache entries and ${audioDeleted} expired audio metadata entries`,
+            );
+        }
+    }
 
-    const result = await this.pool.query(
-      `SELECT 
+    async getCacheStats(): Promise<{
+        searchCacheSize: number;
+        audioMetadataCount: number;
+    }> {
+        if (!this.pool) throw new Error('Database not initialized');
+
+        const searchResult = await this.pool.query(
+            `SELECT COUNT(*)::int as count FROM search_cache WHERE expires_at > NOW()`,
+        );
+        const audioResult = await this.pool.query(
+            `SELECT COUNT(*)::int as count FROM audio_metadata WHERE expires_at > NOW()`,
+        );
+
+        return {
+            searchCacheSize: searchResult.rows[0].count,
+            audioMetadataCount: audioResult.rows[0].count,
+        };
+    }
+
+    async getTopChannels(limit: number = 10): Promise<import('./types.js').ChannelStats[]> {
+        if (!this.pool) throw new Error('Database not initialized');
+
+        const result = await this.pool.query(
+            `SELECT 
                 guild_id as "guildId",
                 '' as "guildName",
                 channel_id as "channelId",
@@ -430,52 +413,48 @@ export class PostgresAdapter implements DatabaseAdapter {
             GROUP BY channel_id, guild_id
             ORDER BY "playCount" DESC
             LIMIT $1`,
-      [limit],
-    );
+            [limit],
+        );
 
-    return result.rows as import("./types.js").ChannelStats[];
-  }
+        return result.rows as import('./types.js').ChannelStats[];
+    }
 
-  async getTopBots(
-    limit: number = 10,
-  ): Promise<import("./types.js").BotStats[]> {
-    if (!this.pool) throw new Error("Database not initialized");
+    async getTopBots(limit: number = 10): Promise<import('./types.js').BotStats[]> {
+        if (!this.pool) throw new Error('Database not initialized');
 
-    const result = await this.pool.query(
-      `SELECT 
+        const result = await this.pool.query(
+            `SELECT 
                 bot_name as "botName",
                 COUNT(*)::int as "playCount"
             FROM plays
             GROUP BY bot_name
             ORDER BY "playCount" DESC
             LIMIT $1`,
-      [limit],
-    );
+            [limit],
+        );
 
-    return result.rows as import("./types.js").BotStats[];
-  }
+        return result.rows as import('./types.js').BotStats[];
+    }
 
-  async trackCacheHit(
-    entityId: string,
-    entityName: string,
-    entityType: "user" | "bot",
-  ): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
+    async trackCacheHit(
+        entityId: string,
+        entityName: string,
+        entityType: 'user' | 'bot',
+    ): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
 
-    await this.pool.query(
-      `INSERT INTO cache_hits (entity_id, entity_name, entity_type)
+        await this.pool.query(
+            `INSERT INTO cache_hits (entity_id, entity_name, entity_type)
             VALUES ($1, $2, $3)`,
-      [entityId, entityName, entityType],
-    );
-  }
+            [entityId, entityName, entityType],
+        );
+    }
 
-  async getTopCacheHits(
-    limit: number = 10,
-  ): Promise<import("./types.js").CacheHitStats[]> {
-    if (!this.pool) throw new Error("Database not initialized");
+    async getTopCacheHits(limit: number = 10): Promise<import('./types.js').CacheHitStats[]> {
+        if (!this.pool) throw new Error('Database not initialized');
 
-    const result = await this.pool.query(
-      `SELECT 
+        const result = await this.pool.query(
+            `SELECT 
                 entity_id as "entityId",
                 entity_name as "entityName",
                 entity_type as "entityType",
@@ -484,23 +463,31 @@ export class PostgresAdapter implements DatabaseAdapter {
             GROUP BY entity_id, entity_name, entity_type
             ORDER BY "cacheHits" DESC
             LIMIT $1`,
-      [limit],
-    );
+            [limit],
+        );
 
-    return result.rows as import("./types.js").CacheHitStats[];
-  }
-
-  async close(): Promise<void> {
-    if (this.pool) {
-      await this.pool.end();
-      this.pool = null;
+        return result.rows as import('./types.js').CacheHitStats[];
     }
-  }
 
-  async upsertUser(user: User): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
-    await this.pool.query(
-      `
+    async getAllCachedVideoIds(): Promise<string[]> {
+        if (!this.pool) throw new Error('Database not initialized');
+
+        const result = await this.pool.query(`SELECT video_id as "videoId" FROM audio_metadata`);
+
+        return result.rows.map((row) => row.videoId);
+    }
+
+    async close(): Promise<void> {
+        if (this.pool) {
+            await this.pool.end();
+            this.pool = null;
+        }
+    }
+
+    async upsertUser(user: User): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query(
+            `
             INSERT INTO users (id, username, discriminator, avatar, access_token, refresh_token, expires_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
             ON CONFLICT (id) DO UPDATE SET
@@ -512,58 +499,58 @@ export class PostgresAdapter implements DatabaseAdapter {
                 expires_at = EXCLUDED.expires_at,
                 updated_at = NOW()
         `,
-      [
-        user.id,
-        user.username,
-        user.discriminator,
-        user.avatar,
-        user.accessToken,
-        user.refreshToken,
-        user.expiresAt,
-      ],
-    );
-  }
+            [
+                user.id,
+                user.username,
+                user.discriminator,
+                user.avatar,
+                user.accessToken,
+                user.refreshToken,
+                user.expiresAt,
+            ],
+        );
+    }
 
-  async createSession(session: Session): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
-    await this.pool.query(
-      `
+    async createSession(session: Session): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query(
+            `
             INSERT INTO sessions (id, user_id, expires_at, created_at)
             VALUES ($1, $2, $3, $4)
         `,
-      [session.id, session.userId, session.expiresAt, session.createdAt],
-    );
-  }
+            [session.id, session.userId, session.expiresAt, session.createdAt],
+        );
+    }
 
-  async getSession(sessionId: string): Promise<Session | null> {
-    if (!this.pool) throw new Error("Database not initialized");
-    const result = await this.pool.query(
-      `
+    async getSession(sessionId: string): Promise<Session | null> {
+        if (!this.pool) throw new Error('Database not initialized');
+        const result = await this.pool.query(
+            `
             SELECT id, user_id as "userId", expires_at as "expiresAt", created_at as "createdAt"
             FROM sessions
             WHERE id = $1 AND expires_at > NOW()
         `,
-      [sessionId],
-    );
+            [sessionId],
+        );
 
-    if (result.rows.length === 0) return null;
-    const row = result.rows[0];
-    return {
-      ...row,
-      expiresAt: new Date(row.expiresAt),
-      createdAt: new Date(row.createdAt),
-    };
-  }
+        if (result.rows.length === 0) return null;
+        const row = result.rows[0];
+        return {
+            ...row,
+            expiresAt: new Date(row.expiresAt),
+            createdAt: new Date(row.createdAt),
+        };
+    }
 
-  async deleteSession(sessionId: string): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
-    await this.pool.query("DELETE FROM sessions WHERE id = $1", [sessionId]);
-  }
+    async deleteSession(sessionId: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('DELETE FROM sessions WHERE id = $1', [sessionId]);
+    }
 
-  async getUser(userId: string): Promise<User | null> {
-    if (!this.pool) throw new Error("Database not initialized");
-    const result = await this.pool.query(
-      `
+    async getUser(userId: string): Promise<User | null> {
+        if (!this.pool) throw new Error('Database not initialized');
+        const result = await this.pool.query(
+            `
             SELECT 
                 id, username, discriminator, avatar, 
                 access_token as "accessToken", 
@@ -574,39 +561,37 @@ export class PostgresAdapter implements DatabaseAdapter {
             FROM users
             WHERE id = $1
         `,
-      [userId],
-    );
+            [userId],
+        );
 
-    if (result.rows.length === 0) return null;
-    const row = result.rows[0];
+        if (result.rows.length === 0) return null;
+        const row = result.rows[0];
 
-    return {
-      id: row.id,
-      username: row.username,
-      discriminator: row.discriminator,
-      avatar: row.avatar,
-      accessToken: decrypt(row.accessToken, ENCRYPTION_KEY),
-      refreshToken: decrypt(row.refreshToken, ENCRYPTION_KEY),
-      expiresAt: new Date(row.expiresAt),
-      createdAt: new Date(row.createdAt),
-      updatedAt: new Date(row.updatedAt),
-    };
-  }
+        return {
+            id: row.id,
+            username: row.username,
+            discriminator: row.discriminator,
+            avatar: row.avatar,
+            accessToken: decrypt(row.accessToken, ENCRYPTION_KEY),
+            refreshToken: decrypt(row.refreshToken, ENCRYPTION_KEY),
+            expiresAt: new Date(row.expiresAt),
+            createdAt: new Date(row.createdAt),
+            updatedAt: new Date(row.updatedAt),
+        };
+    }
 
-  // DevTools methods
-  async getAllUsers(
-    limit: number = 50,
-    offset: number = 0,
-  ): Promise<{ users: User[]; total: number }> {
-    if (!this.pool) throw new Error("Database not initialized");
+    // DevTools methods
+    async getAllUsers(
+        limit: number = 50,
+        offset: number = 0,
+    ): Promise<{ users: User[]; total: number }> {
+        if (!this.pool) throw new Error('Database not initialized');
 
-    const countResult = await this.pool.query(
-      "SELECT COUNT(*)::int as count FROM users",
-    );
-    const total = countResult.rows[0].count;
+        const countResult = await this.pool.query('SELECT COUNT(*)::int as count FROM users');
+        const total = countResult.rows[0].count;
 
-    const result = await this.pool.query(
-      `
+        const result = await this.pool.query(
+            `
             SELECT 
                 id, username, discriminator, avatar, 
                 access_token as "accessToken", 
@@ -618,397 +603,375 @@ export class PostgresAdapter implements DatabaseAdapter {
             ORDER BY created_at DESC
             LIMIT $1 OFFSET $2
         `,
-      [limit, offset],
-    );
-
-    const users = result.rows.map((row) => {
-      let accessToken = row.accessToken;
-      let refreshToken = row.refreshToken;
-      try {
-        accessToken = ENCRYPTION_KEY
-          ? decrypt(row.accessToken, ENCRYPTION_KEY)
-          : "[No Key]";
-      } catch (e) {
-        logger.warn(
-          `[db-devtools] Failed to decrypt access token for user ${row.id}: ${e instanceof Error ? e.message : String(e)}`,
+            [limit, offset],
         );
-        accessToken = "[Decryption Failed]";
-      }
-      try {
-        refreshToken = ENCRYPTION_KEY
-          ? decrypt(row.refreshToken, ENCRYPTION_KEY)
-          : "[No Key]";
-      } catch (e) {
-        logger.warn(
-          `[db-devtools] Failed to decrypt refresh token for user ${row.id}: ${e instanceof Error ? e.message : String(e)}`,
-        );
-        refreshToken = "[Decryption Failed]";
-      }
 
-      return {
-        id: row.id,
-        username: row.username,
-        discriminator: row.discriminator,
-        avatar: row.avatar,
-        accessToken,
-        refreshToken,
-        expiresAt: new Date(row.expiresAt),
-        createdAt: new Date(row.createdAt),
-        updatedAt: new Date(row.updatedAt),
-      };
-    });
+        const users = result.rows.map((row) => {
+            let accessToken = row.accessToken;
+            let refreshToken = row.refreshToken;
+            try {
+                accessToken = ENCRYPTION_KEY
+                    ? decrypt(row.accessToken, ENCRYPTION_KEY)
+                    : '[No Key]';
+            } catch (e) {
+                logger.warn(
+                    `[db-devtools] Failed to decrypt access token for user ${row.id}: ${e instanceof Error ? e.message : String(e)}`,
+                );
+                accessToken = '[Decryption Failed]';
+            }
+            try {
+                refreshToken = ENCRYPTION_KEY
+                    ? decrypt(row.refreshToken, ENCRYPTION_KEY)
+                    : '[No Key]';
+            } catch (e) {
+                logger.warn(
+                    `[db-devtools] Failed to decrypt refresh token for user ${row.id}: ${e instanceof Error ? e.message : String(e)}`,
+                );
+                refreshToken = '[Decryption Failed]';
+            }
 
-    return { users, total };
-  }
+            return {
+                id: row.id,
+                username: row.username,
+                discriminator: row.discriminator,
+                avatar: row.avatar,
+                accessToken,
+                refreshToken,
+                expiresAt: new Date(row.expiresAt),
+                createdAt: new Date(row.createdAt),
+                updatedAt: new Date(row.updatedAt),
+            };
+        });
 
-  async deleteUser(userId: string): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
-    await this.pool.query("DELETE FROM users WHERE id = $1", [userId]);
-  }
+        return { users, total };
+    }
 
-  async getAllSessions(
-    limit: number = 50,
-    offset: number = 0,
-  ): Promise<{ sessions: Session[]; total: number }> {
-    if (!this.pool) throw new Error("Database not initialized");
+    async deleteUser(userId: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('DELETE FROM users WHERE id = $1', [userId]);
+    }
 
-    const countResult = await this.pool.query(
-      "SELECT COUNT(*)::int as count FROM sessions",
-    );
-    const total = countResult.rows[0].count;
+    async getAllSessions(
+        limit: number = 50,
+        offset: number = 0,
+    ): Promise<{ sessions: Session[]; total: number }> {
+        if (!this.pool) throw new Error('Database not initialized');
 
-    const result = await this.pool.query(
-      `
+        const countResult = await this.pool.query('SELECT COUNT(*)::int as count FROM sessions');
+        const total = countResult.rows[0].count;
+
+        const result = await this.pool.query(
+            `
             SELECT id, user_id as "userId", expires_at as "expiresAt", created_at as "createdAt"
             FROM sessions
             ORDER BY created_at DESC
             LIMIT $1 OFFSET $2
         `,
-      [limit, offset],
-    );
+            [limit, offset],
+        );
 
-    const sessions = result.rows.map((row) => ({
-      id: row.id,
-      userId: row.userId,
-      expiresAt: new Date(row.expiresAt),
-      createdAt: new Date(row.createdAt),
-    }));
+        const sessions = result.rows.map((row) => ({
+            id: row.id,
+            userId: row.userId,
+            expiresAt: new Date(row.expiresAt),
+            createdAt: new Date(row.createdAt),
+        }));
 
-    return { sessions, total };
-  }
+        return { sessions, total };
+    }
 
-  async getAllCacheEntries(
-    limit: number = 50,
-    offset: number = 0,
-  ): Promise<{
-    entries: import("./types.js").CachedSearchResult[];
-    total: number;
-  }> {
-    if (!this.pool) throw new Error("Database not initialized");
+    async getAllCacheEntries(
+        limit: number = 50,
+        offset: number = 0,
+    ): Promise<{
+        entries: import('./types.js').CachedSearchResult[];
+        total: number;
+    }> {
+        if (!this.pool) throw new Error('Database not initialized');
 
-    const countResult = await this.pool.query(
-      "SELECT COUNT(*)::int as count FROM search_cache",
-    );
-    const total = countResult.rows[0].count;
+        const countResult = await this.pool.query(
+            'SELECT COUNT(*)::int as count FROM search_cache',
+        );
+        const total = countResult.rows[0].count;
 
-    const result = await this.pool.query(
-      `
+        const result = await this.pool.query(
+            `
             SELECT query, song_title as "songTitle", song_url as "songUrl", duration, thumbnail, cached_at as "cachedAt", expires_at as "expiresAt"
             FROM search_cache
             ORDER BY cached_at DESC
             LIMIT $1 OFFSET $2
         `,
-      [limit, offset],
-    );
+            [limit, offset],
+        );
 
-    const entries = result.rows.map((row) => ({
-      query: row.query,
-      songTitle: row.songTitle,
-      songUrl: row.songUrl,
-      duration: row.duration,
-      thumbnail: row.thumbnail,
-      cachedAt: new Date(row.cachedAt),
-      expiresAt: new Date(row.expiresAt),
-    }));
+        const entries = result.rows.map((row) => ({
+            query: row.query,
+            songTitle: row.songTitle,
+            songUrl: row.songUrl,
+            duration: row.duration,
+            thumbnail: row.thumbnail,
+            cachedAt: new Date(row.cachedAt),
+            expiresAt: new Date(row.expiresAt),
+        }));
 
-    return { entries, total };
-  }
+        return { entries, total };
+    }
 
-  async deleteCacheEntry(query: string): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
-    await this.pool.query("DELETE FROM search_cache WHERE query = $1", [query]);
-  }
+    async deleteCacheEntry(query: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('DELETE FROM search_cache WHERE query = $1', [query]);
+    }
 
-  async getAllAudioCacheEntries(
-    limit: number = 50,
-    offset: number = 0,
-  ): Promise<{ entries: import("./types.js").AudioMetadata[]; total: number }> {
-    if (!this.pool) throw new Error("Database not initialized");
+    async getAllAudioCacheEntries(
+        limit: number = 50,
+        offset: number = 0,
+    ): Promise<{ entries: import('./types.js').AudioMetadata[]; total: number }> {
+        if (!this.pool) throw new Error('Database not initialized');
 
-    const countResult = await this.pool.query(
-      "SELECT COUNT(*) as count FROM audio_metadata",
-    );
-    const total = parseInt(countResult.rows[0].count, 10);
+        const countResult = await this.pool.query('SELECT COUNT(*) as count FROM audio_metadata');
+        const total = parseInt(countResult.rows[0].count, 10);
 
-    const result = await this.pool.query(
-      `
+        const result = await this.pool.query(
+            `
             SELECT video_id as "videoId", title, url, duration, thumbnail, search_terms as "searchTerms", cached_at as "cachedAt", expires_at as "expiresAt"
             FROM audio_metadata
             ORDER BY cached_at DESC
             LIMIT $1 OFFSET $2
         `,
-      [limit, offset],
-    );
+            [limit, offset],
+        );
 
-    const entries = result.rows.map((row) => ({
-      videoId: row.videoId,
-      title: row.title,
-      url: row.url,
-      duration: row.duration,
-      thumbnail: row.thumbnail,
-      searchTerms: row.searchTerms, // Postgres handles JSON automatically
-      cachedAt: new Date(row.cachedAt),
-      expiresAt: new Date(row.expiresAt),
-    }));
+        const entries = result.rows.map((row) => ({
+            videoId: row.videoId,
+            title: row.title,
+            url: row.url,
+            duration: row.duration,
+            thumbnail: row.thumbnail,
+            searchTerms: row.searchTerms, // Postgres handles JSON automatically
+            cachedAt: new Date(row.cachedAt),
+            expiresAt: new Date(row.expiresAt),
+        }));
 
-    return { entries, total };
-  }
-
-  async deleteAudioCacheEntry(videoId: string): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
-    await this.pool.query("DELETE FROM audio_metadata WHERE video_id = $1", [
-      videoId,
-    ]);
-  }
-
-  async updateAudioThumbnail(
-    videoId: string,
-    thumbnail: string,
-  ): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
-    await this.pool.query(
-      "UPDATE audio_metadata SET thumbnail = $1 WHERE video_id = $2",
-      [thumbnail, videoId],
-    );
-  }
-
-  async deletePlaysForSong(songUrl: string): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
-    await this.pool.query("DELETE FROM plays WHERE song_url = $1", [songUrl]);
-  }
-
-  async deletePlaysForUser(userId: string): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
-    await this.pool.query("DELETE FROM plays WHERE user_id = $1", [userId]);
-  }
-
-  async deletePlaysForChannel(channelId: string): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
-    await this.pool.query("DELETE FROM plays WHERE channel_id = $1", [
-      channelId,
-    ]);
-  }
-
-  async deletePlaysForBot(botName: string): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
-    await this.pool.query("DELETE FROM plays WHERE bot_name = $1", [botName]);
-  }
-
-  // Plugin Repository Implementation
-  async getPluginData(pluginName: string, key: string): Promise<any | null> {
-    if (!this.pool) throw new Error("Database not initialized");
-    const result = await this.pool.query(
-      "SELECT value FROM plugin_storage WHERE plugin_name = $1 AND key = $2",
-      [pluginName, key],
-    );
-
-    if (result.rows.length === 0) return null;
-    const row = result.rows[0];
-    try {
-      return JSON.parse(row.value);
-    } catch {
-      return row.value;
+        return { entries, total };
     }
-  }
 
-  async setPluginData(
-    pluginName: string,
-    key: string,
-    value: any,
-  ): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
-    await this.pool.query(
-      `
+    async deleteAudioCacheEntry(videoId: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('DELETE FROM audio_metadata WHERE video_id = $1', [videoId]);
+    }
+
+    async updateAudioThumbnail(videoId: string, thumbnail: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('UPDATE audio_metadata SET thumbnail = $1 WHERE video_id = $2', [
+            thumbnail,
+            videoId,
+        ]);
+    }
+
+    async deletePlaysForSong(songUrl: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('DELETE FROM plays WHERE song_url = $1', [songUrl]);
+    }
+
+    async deletePlaysForUser(userId: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('DELETE FROM plays WHERE user_id = $1', [userId]);
+    }
+
+    async deletePlaysForChannel(channelId: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('DELETE FROM plays WHERE channel_id = $1', [channelId]);
+    }
+
+    async deletePlaysForBot(botName: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('DELETE FROM plays WHERE bot_name = $1', [botName]);
+    }
+
+    // Plugin Repository Implementation
+    async getPluginData(pluginName: string, key: string): Promise<any | null> {
+        if (!this.pool) throw new Error('Database not initialized');
+        const result = await this.pool.query(
+            'SELECT value FROM plugin_storage WHERE plugin_name = $1 AND key = $2',
+            [pluginName, key],
+        );
+
+        if (result.rows.length === 0) return null;
+        const row = result.rows[0];
+        try {
+            return JSON.parse(row.value);
+        } catch {
+            return row.value;
+        }
+    }
+
+    async setPluginData(pluginName: string, key: string, value: any): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query(
+            `
             INSERT INTO plugin_storage (plugin_name, key, value, updated_at)
             VALUES ($1, $2, $3, NOW())
             ON CONFLICT (plugin_name, key) DO UPDATE SET
                 value = EXCLUDED.value,
                 updated_at = NOW()
         `,
-      [pluginName, key, JSON.stringify(value)],
-    );
-  }
+            [pluginName, key, JSON.stringify(value)],
+        );
+    }
 
-  async deletePluginData(pluginName: string, key: string): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
-    await this.pool.query(
-      "DELETE FROM plugin_storage WHERE plugin_name = $1 AND key = $2",
-      [pluginName, key],
-    );
-  }
+    async deletePluginData(pluginName: string, key: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('DELETE FROM plugin_storage WHERE plugin_name = $1 AND key = $2', [
+            pluginName,
+            key,
+        ]);
+    }
 
-  async clearPluginData(pluginName: string): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
-    await this.pool.query("DELETE FROM plugin_storage WHERE plugin_name = $1", [
-      pluginName,
-    ]);
-  }
+    async clearPluginData(pluginName: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('DELETE FROM plugin_storage WHERE plugin_name = $1', [pluginName]);
+    }
 
-  // Plugin Meta Implementation
-  async isPluginEnabled(pluginId: string): Promise<boolean | null> {
-    if (!this.pool) throw new Error("Database not initialized");
-    const result = await this.pool.query(
-      "SELECT enabled FROM plugin_meta WHERE plugin_id = $1",
-      [pluginId],
-    );
-    if (result.rows.length === 0) return null;
-    return result.rows[0].enabled;
-  }
+    // Plugin Meta Implementation
+    async isPluginEnabled(pluginId: string): Promise<boolean | null> {
+        if (!this.pool) throw new Error('Database not initialized');
+        const result = await this.pool.query(
+            'SELECT enabled FROM plugin_meta WHERE plugin_id = $1',
+            [pluginId],
+        );
+        if (result.rows.length === 0) return null;
+        return result.rows[0].enabled;
+    }
 
-  async setPluginEnabled(pluginId: string, enabled: boolean): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
-    await this.pool.query(
-      `
+    async setPluginEnabled(pluginId: string, enabled: boolean): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query(
+            `
             INSERT INTO plugin_meta (plugin_id, enabled, updated_at)
             VALUES ($1, $2, NOW())
             ON CONFLICT (plugin_id) DO UPDATE SET
                 enabled = EXCLUDED.enabled,
                 updated_at = NOW()
         `,
-      [pluginId, enabled],
-    );
-  }
+            [pluginId, enabled],
+        );
+    }
 
-  async getAllPluginMeta(): Promise<
-    Array<{ pluginId: string; enabled: boolean }>
-  > {
-    if (!this.pool) throw new Error("Database not initialized");
-    const result = await this.pool.query(
-      'SELECT plugin_id as "pluginId", enabled FROM plugin_meta',
-    );
-    return result.rows.map((row) => ({
-      pluginId: row.pluginId,
-      enabled: row.enabled,
-    }));
-  }
+    async getAllPluginMeta(): Promise<Array<{ pluginId: string; enabled: boolean }>> {
+        if (!this.pool) throw new Error('Database not initialized');
+        const result = await this.pool.query(
+            'SELECT plugin_id as "pluginId", enabled FROM plugin_meta',
+        );
+        return result.rows.map((row) => ({
+            pluginId: row.pluginId,
+            enabled: row.enabled,
+        }));
+    }
 
-  // Cookie Repository Implementation
-  async addCookie(name: string, content: string): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
-    const encryptedContent = encrypt(content, ENCRYPTION_KEY);
-    await this.pool.query(
-      `
+    // Cookie Repository Implementation
+    async addCookie(name: string, content: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        const encryptedContent = encrypt(content, ENCRYPTION_KEY);
+        await this.pool.query(
+            `
             INSERT INTO yt_dlp_cookies (name, content, updated_at)
             VALUES ($1, $2, NOW())
         `,
-      [name, encryptedContent],
-    );
-  }
-
-  async getCookies(): Promise<YtDlpCookie[]> {
-    if (!this.pool) throw new Error("Database not initialized");
-    const result = await this.pool.query(
-      "SELECT * FROM yt_dlp_cookies ORDER BY created_at DESC",
-    );
-    return result.rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      content: decrypt(row.content, ENCRYPTION_KEY),
-      isActive: row.is_active,
-      successCount: row.success_count,
-      failureCount: row.failure_count,
-      lastUsed: row.last_used ? new Date(row.last_used) : undefined,
-      createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at),
-    }));
-  }
-
-  async getCookie(id: number): Promise<YtDlpCookie | null> {
-    if (!this.pool) throw new Error("Database not initialized");
-    const result = await this.pool.query(
-      "SELECT * FROM yt_dlp_cookies WHERE id = $1",
-      [id],
-    );
-    if (result.rows.length === 0) return null;
-    const row = result.rows[0];
-    return {
-      id: row.id,
-      name: row.name,
-      content: decrypt(row.content, ENCRYPTION_KEY),
-      isActive: row.is_active,
-      successCount: row.success_count,
-      failureCount: row.failure_count,
-      lastUsed: row.last_used ? new Date(row.last_used) : undefined,
-      createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at),
-    };
-  }
-
-  async updateCookie(
-    id: number,
-    updates: Partial<Omit<YtDlpCookie, "id" | "createdAt" | "updatedAt">>,
-  ): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
-
-    const sets: string[] = [];
-    const values: any[] = [];
-    let paramIndex = 1;
-
-    if (updates.name !== undefined) {
-      sets.push(`name = $${paramIndex++}`);
-      values.push(updates.name);
-    }
-    if (updates.content !== undefined) {
-      sets.push(`content = $${paramIndex++}`);
-      values.push(encrypt(updates.content, ENCRYPTION_KEY));
-    }
-    if (updates.isActive !== undefined) {
-      sets.push(`is_active = $${paramIndex++}`);
-      values.push(updates.isActive);
-    }
-    if (updates.successCount !== undefined) {
-      sets.push(`success_count = $${paramIndex++}`);
-      values.push(updates.successCount);
-    }
-    if (updates.failureCount !== undefined) {
-      sets.push(`failure_count = $${paramIndex++}`);
-      values.push(updates.failureCount);
-    }
-    if (updates.lastUsed !== undefined) {
-      sets.push(`last_used = $${paramIndex++}`);
-      values.push(updates.lastUsed);
+            [name, encryptedContent],
+        );
     }
 
-    if (sets.length === 0) return;
+    async getCookies(): Promise<YtDlpCookie[]> {
+        if (!this.pool) throw new Error('Database not initialized');
+        const result = await this.pool.query(
+            'SELECT * FROM yt_dlp_cookies ORDER BY created_at DESC',
+        );
+        return result.rows.map((row) => ({
+            id: row.id,
+            name: row.name,
+            content: decrypt(row.content, ENCRYPTION_KEY),
+            isActive: row.is_active,
+            successCount: row.success_count,
+            failureCount: row.failure_count,
+            lastUsed: row.last_used ? new Date(row.last_used) : undefined,
+            createdAt: new Date(row.created_at),
+            updatedAt: new Date(row.updated_at),
+        }));
+    }
 
-    sets.push(`updated_at = NOW()`);
-    values.push(id);
+    async getCookie(id: number): Promise<YtDlpCookie | null> {
+        if (!this.pool) throw new Error('Database not initialized');
+        const result = await this.pool.query('SELECT * FROM yt_dlp_cookies WHERE id = $1', [id]);
+        if (result.rows.length === 0) return null;
+        const row = result.rows[0];
+        return {
+            id: row.id,
+            name: row.name,
+            content: decrypt(row.content, ENCRYPTION_KEY),
+            isActive: row.is_active,
+            successCount: row.success_count,
+            failureCount: row.failure_count,
+            lastUsed: row.last_used ? new Date(row.last_used) : undefined,
+            createdAt: new Date(row.created_at),
+            updatedAt: new Date(row.updated_at),
+        };
+    }
 
-    await this.pool.query(
-      `UPDATE yt_dlp_cookies SET ${sets.join(", ")} WHERE id = $${paramIndex}`,
-      values,
-    );
-  }
+    async updateCookie(
+        id: number,
+        updates: Partial<Omit<YtDlpCookie, 'id' | 'createdAt' | 'updatedAt'>>,
+    ): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
 
-  async deleteCookie(id: number): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
-    await this.pool.query("DELETE FROM yt_dlp_cookies WHERE id = $1", [id]);
-  }
+        const sets: string[] = [];
+        const values: any[] = [];
+        let paramIndex = 1;
 
-  async rotateCookieStats(id: number, success: boolean): Promise<void> {
-    if (!this.pool) throw new Error("Database not initialized");
-    await this.pool.query(
-      `
+        if (updates.name !== undefined) {
+            sets.push(`name = $${paramIndex++}`);
+            values.push(updates.name);
+        }
+        if (updates.content !== undefined) {
+            sets.push(`content = $${paramIndex++}`);
+            values.push(encrypt(updates.content, ENCRYPTION_KEY));
+        }
+        if (updates.isActive !== undefined) {
+            sets.push(`is_active = $${paramIndex++}`);
+            values.push(updates.isActive);
+        }
+        if (updates.successCount !== undefined) {
+            sets.push(`success_count = $${paramIndex++}`);
+            values.push(updates.successCount);
+        }
+        if (updates.failureCount !== undefined) {
+            sets.push(`failure_count = $${paramIndex++}`);
+            values.push(updates.failureCount);
+        }
+        if (updates.lastUsed !== undefined) {
+            sets.push(`last_used = $${paramIndex++}`);
+            values.push(updates.lastUsed);
+        }
+
+        if (sets.length === 0) return;
+
+        sets.push(`updated_at = NOW()`);
+        values.push(id);
+
+        await this.pool.query(
+            `UPDATE yt_dlp_cookies SET ${sets.join(', ')} WHERE id = $${paramIndex}`,
+            values,
+        );
+    }
+
+    async deleteCookie(id: number): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('DELETE FROM yt_dlp_cookies WHERE id = $1', [id]);
+    }
+
+    async rotateCookieStats(id: number, success: boolean): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query(
+            `
             UPDATE yt_dlp_cookies 
             SET 
                 success_count = success_count + $1,
@@ -1017,30 +980,30 @@ export class PostgresAdapter implements DatabaseAdapter {
                 updated_at = NOW()
             WHERE id = $3
         `,
-      [success ? 1 : 0, success ? 0 : 1, id],
-    );
-  }
+            [success ? 1 : 0, success ? 0 : 1, id],
+        );
+    }
 
-  async getBestCookie(): Promise<YtDlpCookie | null> {
-    if (!this.pool) throw new Error("Database not initialized");
-    const result = await this.pool.query(`
+    async getBestCookie(): Promise<YtDlpCookie | null> {
+        if (!this.pool) throw new Error('Database not initialized');
+        const result = await this.pool.query(`
             SELECT * FROM yt_dlp_cookies 
             WHERE is_active = TRUE 
             ORDER BY (CAST(success_count AS FLOAT) / (success_count + failure_count + 1)) DESC, last_used ASC
             LIMIT 1
         `);
-    if (result.rows.length === 0) return null;
-    const row = result.rows[0];
-    return {
-      id: row.id,
-      name: row.name,
-      content: decrypt(row.content, ENCRYPTION_KEY),
-      isActive: row.is_active,
-      successCount: row.success_count,
-      failureCount: row.failure_count,
-      lastUsed: row.last_used ? new Date(row.last_used) : undefined,
-      createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at),
-    };
-  }
+        if (result.rows.length === 0) return null;
+        const row = result.rows[0];
+        return {
+            id: row.id,
+            name: row.name,
+            content: decrypt(row.content, ENCRYPTION_KEY),
+            isActive: row.is_active,
+            successCount: row.success_count,
+            failureCount: row.failure_count,
+            lastUsed: row.last_used ? new Date(row.last_used) : undefined,
+            createdAt: new Date(row.created_at),
+            updatedAt: new Date(row.updated_at),
+        };
+    }
 }

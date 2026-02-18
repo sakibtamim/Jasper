@@ -109,8 +109,8 @@ Logs out the user.
 
 - [ ] **Middleware**: Implement a Fastify middleware/hook to protect specific routes (e.g., admin dashboard).
 - [ ] **Role-Based Access Control (RBAC)**:
-  - Fetch user's guilds and roles.
-  - Define permissions (e.g., "DJ", "Admin").
+    - Fetch user's guilds and roles.
+    - Define permissions (e.g., "DJ", "Admin").
 - [ ] **Token Refresh**: Implement logic to use the `refresh_token` when the `access_token` expires.
 - [ ] **Postgres Implementation**: Fully implement the `upsertUser` and session methods in `PostgresAdapter`.
 - [ ] **State Parameter**: Ensure `@fastify/oauth2` is correctly handling the `state` parameter for CSRF protection (it does by default, but verify).

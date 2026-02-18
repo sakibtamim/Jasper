@@ -17,12 +17,12 @@ trigger: always_on
 ## Key Workflows
 
 - **Dev Server**:
-  - `pnpm dev` (Standard)
-  - `pnpm dev:fresh` (Use when testing Auth/Redirects or ensuring clean port start).
+    - `pnpm dev` (Standard)
+    - `pnpm dev:fresh` (Use when testing Auth/Redirects or ensuring clean port start).
 - **Database**:
-  - `pnpm db:push` (for schema prototyping).
-  - `pnpm migrate` (for versioned migrations).
-  - `npx prisma studio` (Viewer).
+    - `pnpm db:push` (for schema prototyping).
+    - `pnpm migrate` (for versioned migrations).
+    - `npx prisma studio` (Viewer).
 - **Linting**: `pnpm lint`.
 
 ## Critical Patterns

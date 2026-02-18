@@ -2,9 +2,26 @@ import js from '@eslint/js';
 import prettier from 'eslint-config-prettier';
 import tseslint from 'typescript-eslint';
 
+import globals from 'globals';
+
 export default tseslint.config(
     {
-        ignores: ['**/dist/**', '**/node_modules/**', '**/.turbo/**', '**/coverage/**'],
+        ignores: ['**/dist/**', '**/node_modules/**', '**/.turbo/**', '**/coverage/**', '**/.next/**', 'dist/', '**/dist/', '**/public/**'],
+    },
+    {
+        files: ['apps/web/**', 'apps/website/**', 'packages/ui/**', 'packages/elements/**'],
+        languageOptions: {
+            globals: {
+                ...globals.browser,
+            },
+        },
+    },
+    {
+        languageOptions: {
+            globals: {
+                ...globals.node,
+            },
+        },
     },
     js.configs.recommended,
     ...tseslint.configs.recommended,

@@ -11,22 +11,18 @@ trigger: model_decision
 1. Create file in `apps/bot/src/commands/` (e.g., `mycommand.ts`)
 2. Use this boilerplate:
 
-   ```typescript
-   import {
-     SlashCommandBuilder,
-     ChatInputCommandInteraction,
-   } from "discord.js";
-   import { Command } from "../types/command.js";
+    ```typescript
+    import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
 
-   export default {
-     data: new SlashCommandBuilder()
-       .setName("mycommand")
-       .setDescription("Does something cool"),
-     async execute(interaction: ChatInputCommandInteraction) {
-       await interaction.reply("Hello!");
-     },
-   } satisfies Command;
-   ```
+    import { Command } from '../types/command.js';
+
+    export default {
+        data: new SlashCommandBuilder().setName('mycommand').setDescription('Does something cool'),
+        async execute(interaction: ChatInputCommandInteraction) {
+            await interaction.reply('Hello!');
+        },
+    } satisfies Command;
+    ```
 
 3. Run `pnpm run deploy:commands`
 4. Restart the bot

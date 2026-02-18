@@ -9,12 +9,12 @@ trigger: always_on
 - **Filesystem**: Verify file paths with `find_by_name` or `list_dir` before editing.
 - **Testing**: Always implement 'QA Checklist' items manually if possible, or script them.
 - **Dependencies**:
-  - Do not add new npm packages without explicit user approval.
-  - **MUST** run `pnpm audit` before adding/upgrading dependencies to check for CVEs.
+    - Do not add new npm packages without explicit user approval.
+    - **MUST** run `pnpm audit` before adding/upgrading dependencies to check for CVEs.
 - **Git Hygiene**:
-  - **NEVER** commit directly to `main`. Always use a feature branch.
-  - **Check Branch**: Run `git status` before every `git add/commit` sequence.
-  - **Granularity**: focused commits only. Separation of concerns (Deps vs Code vs Config). No "misc" or "wip".
+    - **NEVER** commit directly to `main`. Always use a feature branch.
+    - **Check Branch**: Run `git status` before every `git add/commit` sequence.
+    - **Granularity**: focused commits only. Separation of concerns (Deps vs Code vs Config). No "misc" or "wip".
 
 ## 2. Code Style
 

@@ -1,7 +1,8 @@
-import { fetchVideoData, isUrl, isAttachmentUrl } from "./stream-handler.js";
-import ytSearch from "yt-search";
-import { isCacheEnabled, getCacheStorage } from "../cache-manager.js";
-import { Song } from "@jasper/types";
+import { Song } from '@jasper/types';
+import ytSearch from 'yt-search';
+
+import { getCacheStorage, isCacheEnabled } from '../cache-manager.js';
+import { fetchVideoData, isAttachmentUrl, isUrl, isYoutubeUrl } from './stream-handler.js';
 
 /**
  * Resolve a file attachment to a Song object
@@ -13,93 +14,96 @@ import { Song } from "@jasper/types";
  * them in long playlists.
  */
 export function resolveAttachment(
-  url: string,
-  filename: string,
-  requesterId?: string,
-  requesterName?: string,
+    url: string,
+    filename: string,
+    requesterId?: string,
+    requesterName?: string,
 ): Song {
-  // Extract a cleaner title from filename (remove extension)
-  const title = filename.replace(/\.[^/.]+$/, "") || filename;
+    // Extract a cleaner title from filename (remove extension)
+    const title = filename.replace(/\.[^/.]+$/, '') || filename;
 
-  return {
-    title,
-    url,
-    durationInSec: 0, // Unknown for attachments
-    requestedBy: requesterName ?? "Unknown",
-    requesterId,
-    thumbnail: undefined,
-    sourceType: "attachment",
-  };
+    return {
+        title,
+        url,
+        durationInSec: 0, // Unknown for attachments
+        requestedBy: requesterName ?? 'Unknown',
+        requesterId,
+        thumbnail: undefined,
+        sourceType: 'attachment',
+    };
 }
 
 export async function resolveTrack(
-  query: string,
-  requesterId?: string,
-  requesterName?: string,
+    query: string,
+    requesterId?: string,
+    requesterName?: string,
 ): Promise<Song> {
-  // Check if it's a Discord attachment URL first
-  if (isAttachmentUrl(query)) {
-    // Extract filename from URL
-    const urlParts = query.split("/");
-    const filename =
-      urlParts[urlParts.length - 1].split("?")[0] || "Unknown File";
-    return resolveAttachment(query, filename, requesterId, requesterName);
-  }
-
-  // Check search cache first
-  if (isCacheEnabled() && !isUrl(query)) {
-    const storage = getCacheStorage();
-    if (storage) {
-      const cached = await storage.getCachedSearchResult(
-        query,
-        requesterId,
-        requesterName,
-      );
-      if (cached) {
-        return cached;
-      }
-    }
-  }
-
-  // Feature 1: Direct URL support (YouTube)
-  if (isUrl(query)) {
-    try {
-      const videoData = await fetchVideoData(query);
-      return {
-        title: videoData.title,
-        url: videoData.webpage_url || videoData.url,
-        durationInSec: videoData.duration,
-        requestedBy: "Unknown", // Will be overwritten
-        thumbnail: videoData.thumbnail,
-        sourceType: "youtube",
-      };
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : String(error);
-      throw new Error(`Failed to resolve URL: ${msg} `);
-    }
-  }
-
-  const searchResult = await ytSearch(query);
-  if (searchResult && searchResult.videos.length > 0) {
-    const video = searchResult.videos[0];
-    const track: Song = {
-      title: video.title,
-      url: video.url,
-      durationInSec: video.seconds,
-      requestedBy: "Unknown", // Will be overwritten
-      thumbnail: video.thumbnail,
-      sourceType: "youtube",
-    };
-
-    // Cache the search result
-    if (isCacheEnabled()) {
-      const storage = getCacheStorage();
-      if (storage) {
-        await storage.setCachedSearchResult(query, track);
-      }
+    // Check if it's a Discord attachment URL first
+    if (isAttachmentUrl(query)) {
+        // Extract filename from URL
+        const urlParts = query.split('/');
+        const filename = urlParts[urlParts.length - 1].split('?')[0] || 'Unknown File';
+        return resolveAttachment(query, filename, requesterId, requesterName);
     }
 
-    return track;
-  }
-  throw new Error("No results found on YouTube.");
+    // Check search cache first
+    if (isCacheEnabled() && !isUrl(query)) {
+        const storage = getCacheStorage();
+        if (storage) {
+            const cached = await storage.getCachedSearchResult(query, requesterId, requesterName);
+            if (cached) {
+                return cached;
+            }
+        }
+    }
+
+    // Feature 1: Direct URL support (YouTube & Generic Files)
+    if (isUrl(query)) {
+        // If it's NOT a YouTube URL, treat it as a direct file/stream
+        if (!isYoutubeUrl(query)) {
+            const urlParts = query.split('/');
+            const filename = urlParts[urlParts.length - 1].split('?')[0] || 'Direct Stream';
+            return resolveAttachment(query, filename, requesterId, requesterName);
+        }
+
+        // It IS a YouTube URL, proceed with yt-dlp fetch
+        try {
+            const videoData = await fetchVideoData(query);
+            return {
+                title: videoData.title,
+                url: videoData.webpage_url || videoData.url,
+                durationInSec: videoData.duration,
+                requestedBy: 'Unknown', // Will be overwritten
+                thumbnail: videoData.thumbnail,
+                sourceType: 'youtube',
+            };
+        } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : String(error);
+            throw new Error(`Failed to resolve URL: ${msg} `);
+        }
+    }
+
+    const searchResult = await ytSearch(query);
+    if (searchResult && searchResult.videos.length > 0) {
+        const video = searchResult.videos[0];
+        const track: Song = {
+            title: video.title,
+            url: video.url,
+            durationInSec: video.seconds,
+            requestedBy: 'Unknown', // Will be overwritten
+            thumbnail: video.thumbnail,
+            sourceType: 'youtube',
+        };
+
+        // Cache the search result
+        if (isCacheEnabled()) {
+            const storage = getCacheStorage();
+            if (storage) {
+                await storage.setCachedSearchResult(query, track);
+            }
+        }
+
+        return track;
+    }
+    throw new Error('No results found on YouTube.');
 }
