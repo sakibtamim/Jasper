@@ -16,37 +16,39 @@ export default defineConfig(({ mode }) => ({
         mode === "production"
           ? path.resolve(__dirname, "./hooks/usePlugins.prod.ts")
           : path.resolve(__dirname, "./hooks/usePlugins.dev.ts"),
+      "@jasper/elements": path.resolve(__dirname, "../../packages/elements/src"),
+      "@jasper/ui": path.resolve(__dirname, "../../packages/ui/src"),
     },
-    publicDir: 'public',
-    base: '/',
-    server: {
-      fs: {
-        allow: [
-          // Allow serving files from the project root
-          path.resolve(__dirname, '../..'),
-          // Allow serving root assets
-          path.resolve(__dirname, '../../assets')
-        ]
+  },
+  publicDir: "public",
+  base: "/",
+  server: {
+    fs: {
+      allow: [
+        // Allow serving files from the project root
+        path.resolve(__dirname, "../.."),
+        // Allow serving root assets
+        path.resolve(__dirname, "../../assets"),
+      ],
+    },
+    proxy: {
+      "/api": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
       },
-      proxy: {
-        '/api': {
-          target: 'http://localhost:3000',
-          changeOrigin: true
-        },
-        '/auth': {
-          target: 'http://localhost:3000',
-          changeOrigin: true
-        },
-        '/legacy': {
-          target: 'http://localhost:3000',
-          changeOrigin: true
-        },
-        '/api/plugins': {
-          target: 'http://localhost:3000',
-          changeOrigin: true,
-          rewrite: (path: string) => path.replace(/^\/api\/plugins/, '/plugins')
-        }
-      }
+      "/auth": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+      },
+      "/legacy": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+      },
+      "/api/plugins": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+        rewrite: (path: string) => path.replace(/^\/api\/plugins/, "/plugins"),
+      },
     },
   },
   build: {

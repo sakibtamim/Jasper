@@ -1,0 +1,3 @@
+[submodule "apps/bot/src/plugins/garage-band"]
+	path = apps/bot/src/plugins/garage-band
+	url = https://github.com/purrfectsoft/jasper-plugin-garage-band

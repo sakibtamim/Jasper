@@ -5,3 +5,4 @@ export * from "./Table";
 export * from "./Badge";
 export * from "./Loader";
 export * from "./Image";
+export * from "./Icon";
