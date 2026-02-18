@@ -230,10 +230,43 @@ export class DatabaseCacheStorage implements ICacheStorage {
         logger.info('[cache] Running cleanup...');
 
         const db = getDatabase();
+        // 1. Clean up expired DB entries first
         await db.cleanupExpiredCache();
 
-        // Note: Audio files are not automatically deleted by this method
-        // They will be deleted when accessed if their metadata has expired
+        // 2. Get list of all valid video IDs remaining in DB
+        const validVideoIds = await db.getAllCachedVideoIds();
+        const validVideoIdsSet = new Set(validVideoIds);
+
+        // 3. Scan cache directory for orphaned files
+        try {
+            const files = await fs.readdir(CACHE_AUDIO_DIR);
+            let deletedCount = 0;
+            let keptCount = 0;
+
+            for (const file of files) {
+                if (!file.endsWith('.webm')) continue;
+
+                // file is like "videoId.webm"
+                const videoId = path.basename(file, '.webm');
+
+                if (!validVideoIdsSet.has(videoId)) {
+                    // Orphaned file, delete it
+                    const filePath = path.join(CACHE_AUDIO_DIR, file);
+                    await fs.unlink(filePath).catch((err) => {
+                        logger.warn(`[cache] Failed to delete orphaned file ${filePath}: ${err.message}`);
+                    });
+                    deletedCount++;
+                } else {
+                    keptCount++;
+                }
+            }
+
+            if (deletedCount > 0) {
+                logger.info(`[cache] Cleaned up ${deletedCount} orphaned audio files from disk (Kept: ${keptCount})`);
+            }
+        } catch (error) {
+            logger.error(`[cache] Failed during file cleanup: ${error instanceof Error ? error.message : String(error)}`);
+        }
     }
 
     async getCacheStats(): Promise<CacheStats> {
