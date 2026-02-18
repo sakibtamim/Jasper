@@ -1,4 +1,4 @@
-import { fetchVideoData, isUrl, isAttachmentUrl } from "./stream-handler.js";
+import { fetchVideoData, isUrl, isAttachmentUrl, isYoutubeUrl } from "./stream-handler.js";
 import ytSearch from "yt-search";
 import { isCacheEnabled, getCacheStorage } from "../cache-manager.js";
 import { Song } from "@jasper/types";
@@ -64,7 +64,7 @@ export async function resolveTrack(
   // Feature 1: Direct URL support (YouTube & Generic Files)
   if (isUrl(query)) {
     // If it's NOT a YouTube URL, treat it as a direct file/stream
-    if (!query.includes("youtube.com") && !query.includes("youtu.be")) {
+    if (!isYoutubeUrl(query)) {
       const urlParts = query.split("/");
       const filename =
         urlParts[urlParts.length - 1].split("?")[0] || "Direct Stream";

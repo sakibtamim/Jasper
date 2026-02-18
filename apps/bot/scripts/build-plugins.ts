@@ -46,26 +46,38 @@ async function buildPlugins() {
 
       // Copy static assets (mp3, wav, ogg, png, jpg, etc.)
       // We explicitly exclude source files and system files
-      const files = fs.readdirSync(pluginDir);
-      for (const file of files) {
-        const srcPath = path.join(pluginDir, file);
-        const stat = fs.statSync(srcPath);
-
-        if (stat.isFile()) {
-          const ext = path.extname(file).toLowerCase();
-          // Skip source code and config files we already handled or don't need
-          if (
-            [".ts", ".tsx", ".js", ".jsx", ".json", ".md"].includes(ext) &&
-            file !== "jasper-plugin.json" // We already copied this
-          ) {
-            continue;
-          }
-
-          // Copy the asset
-          fs.copyFileSync(srcPath, path.join(distPluginDir, file));
-          console.log(`   Copied asset: ${file}`);
+      // Copy static assets (mp3, wav, ogg, png, jpg, etc.)
+      // We explicitly exclude source files and system files
+      // Use a recursive function to handle nested assets
+      const copyAssets = (src: string, dest: string) => {
+        if (!fs.existsSync(dest)) {
+          fs.mkdirSync(dest, { recursive: true });
         }
-      }
+
+        const items = fs.readdirSync(src);
+        for (const item of items) {
+          const srcPath = path.join(src, item);
+          const destPath = path.join(dest, item);
+          const stat = fs.statSync(srcPath);
+
+          if (stat.isDirectory()) {
+            // Skip web source, hidden folders, and output dirs
+            if (["web", "node_modules", "dist", ".git"].includes(item)) continue;
+            copyAssets(srcPath, destPath);
+          } else if (stat.isFile()) {
+            const ext = path.extname(item).toLowerCase();
+            // Skip source code and config files
+            if ([".ts", ".tsx", ".js", ".jsx", ".json", ".md", ".lock", ".yaml", ".yml"].includes(ext) || item === '.git') {
+              continue;
+            }
+
+            fs.copyFileSync(srcPath, destPath);
+            console.log(`   Copied asset: ${path.relative(distPluginDir, destPath)}`);
+          }
+        }
+      };
+
+      copyAssets(pluginDir, distPluginDir);
     }
 
     if (entry) {

@@ -44,15 +44,16 @@ export function isAttachmentUrl(text: string): boolean {
       const url = new URL(text);
       const pathname = url.pathname.toLowerCase();
       // Common audio extensions
-      return (
-        pathname.endsWith(".mp3") ||
-        pathname.endsWith(".wav") ||
-        pathname.endsWith(".ogg") ||
-        pathname.endsWith(".flac") ||
-        pathname.endsWith(".m4a") ||
-        pathname.endsWith(".webm") ||
-        pathname.endsWith(".opus")
-      );
+      const AUDIO_EXTENSIONS = [
+        ".mp3",
+        ".wav",
+        ".ogg",
+        ".flac",
+        ".m4a",
+        ".webm",
+        ".opus",
+      ];
+      return AUDIO_EXTENSIONS.some((ext) => pathname.endsWith(ext));
     } catch {
       return false;
     }

@@ -477,7 +477,7 @@ export async function playSong(queue: Queue): Promise<void> {
       logger.info("[playback] Song failed in Radio mode, skipping to next...");
       await handleRadio(queue);
     } else {
-      playSong(queue);
+      await playSong(queue);
     }
   }
 }

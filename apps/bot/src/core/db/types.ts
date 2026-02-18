@@ -204,8 +204,7 @@ export interface ICookieRepository {
   getBestCookie(): Promise<YtDlpCookie | null>;
 }
 
-export interface DatabaseAdapter
-  extends
+export interface DatabaseAdapter extends
   IStatsRepository,
   ICacheRepository,
   IAuthRepository,

@@ -239,26 +239,34 @@ export class DatabaseCacheStorage implements ICacheStorage {
 
         // 3. Scan cache directory for orphaned files
         try {
+
             const files = await fs.readdir(CACHE_AUDIO_DIR);
-            let deletedCount = 0;
-            let keptCount = 0;
-
-            for (const file of files) {
-                if (!file.endsWith('.webm')) continue;
-
-                // file is like "videoId.webm"
+            const webmFiles = files.filter(file => file.endsWith('.webm'));
+            const orphanedFiles = webmFiles.filter(file => {
                 const videoId = path.basename(file, '.webm');
+                return !validVideoIdsSet.has(videoId);
+            });
 
-                if (!validVideoIdsSet.has(videoId)) {
-                    // Orphaned file, delete it
-                    const filePath = path.join(CACHE_AUDIO_DIR, file);
-                    await fs.unlink(filePath).catch((err) => {
-                        logger.warn(`[cache] Failed to delete orphaned file ${filePath}: ${err.message}`);
-                    });
-                    deletedCount++;
-                } else {
-                    keptCount++;
-                }
+            const keptCount = webmFiles.length - orphanedFiles.length;
+            let deletedCount = 0;
+
+            // Batch delete orphaned files (concurrency limit: 10)
+            const BATCH_SIZE = 10;
+            for (let i = 0; i < orphanedFiles.length; i += BATCH_SIZE) {
+                const chunk = orphanedFiles.slice(i, i + BATCH_SIZE);
+                const results = await Promise.allSettled(
+                    chunk.map(file => fs.unlink(path.join(CACHE_AUDIO_DIR, file)))
+                );
+
+                // Count successes and log failures
+                results.forEach((result, index) => {
+                    if (result.status === 'fulfilled') {
+                        deletedCount++;
+                    } else {
+                        const file = chunk[index];
+                        logger.warn(`[cache] Failed to delete orphaned file ${file}: ${result.reason}`);
+                    }
+                });
             }
 
             if (deletedCount > 0) {
