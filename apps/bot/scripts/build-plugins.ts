@@ -43,6 +43,29 @@ async function buildPlugins() {
         path.join(distPluginDir, "jasper-plugin.json"),
       );
       console.log(`✅ Copied manifest for ${pluginId}`);
+
+      // Copy static assets (mp3, wav, ogg, png, jpg, etc.)
+      // We explicitly exclude source files and system files
+      const files = fs.readdirSync(pluginDir);
+      for (const file of files) {
+        const srcPath = path.join(pluginDir, file);
+        const stat = fs.statSync(srcPath);
+
+        if (stat.isFile()) {
+          const ext = path.extname(file).toLowerCase();
+          // Skip source code and config files we already handled or don't need
+          if (
+            [".ts", ".tsx", ".js", ".jsx", ".json", ".md"].includes(ext) &&
+            file !== "jasper-plugin.json" // We already copied this
+          ) {
+            continue;
+          }
+
+          // Copy the asset
+          fs.copyFileSync(srcPath, path.join(distPluginDir, file));
+          console.log(`   Copied asset: ${file}`);
+        }
+      }
     }
 
     if (entry) {

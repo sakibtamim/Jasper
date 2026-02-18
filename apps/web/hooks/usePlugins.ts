@@ -11,7 +11,7 @@ export function usePlugins() {
   const [error, setError] = useState<string | null>(null);
 
   // Glob all potential plugin entry points for dev mode
-  // @ts-ignore - Vite handles this
+  // @ts-expect-error - Vite specific features this
   const pluginEntries = import.meta.glob(
     "@plugins/*/web/index.{ts,tsx,js,jsx}",
   );

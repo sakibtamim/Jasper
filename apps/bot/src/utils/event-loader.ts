@@ -21,7 +21,9 @@ export async function loadEvents(
   }
 
   const eventFiles = (await fs.promises.readdir(EVENTS_DIR)).filter(
-    (file) => file.endsWith(".js") || file.endsWith(".ts"),
+    (file) =>
+      (file.endsWith(".js") || file.endsWith(".ts")) &&
+      !file.endsWith(".d.ts"),
   );
 
   for (const file of eventFiles) {

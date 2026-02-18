@@ -186,7 +186,14 @@ export async function handleAutoplay(
 
 export async function playSong(queue: Queue): Promise<void> {
   const song = queue.songs[0];
-  if (!song) return;
+  if (!song) {
+    // If queue is empty but Radio mode is active, fetch the next song
+    if (queue.isRadio) {
+      logger.info("[playback] Queue empty in Radio mode, fetching next song...");
+      await handleRadio(queue);
+    }
+    return;
+  }
 
   // Hook: PRE_MUSIC_PLAY (Async to avoid blocking playback)
   await hookManager.triggerAsync("PRE_MUSIC_PLAY", { queue, song });
@@ -464,7 +471,14 @@ export async function playSong(queue: Queue): Promise<void> {
   } catch (error: any) {
     logger.error(`[playback] Failed to play song: ${error.message}`);
     queue.songs.shift();
-    playSong(queue);
+
+    // If Radio mode is active and we failed, try next song immediately
+    if (queue.songs.length === 0 && queue.isRadio) {
+      logger.info("[playback] Song failed in Radio mode, skipping to next...");
+      await handleRadio(queue);
+    } else {
+      playSong(queue);
+    }
   }
 }
 
