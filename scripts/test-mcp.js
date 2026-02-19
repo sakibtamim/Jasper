@@ -9,7 +9,7 @@ const PROJECT_MCP_PATH = path.join(process.cwd(), 'mcp.json');
 
 function cleanupPorts(ports) {
     console.log('🧹 Cleaning up ports...');
-    ports.forEach(port => {
+    ports.forEach((port) => {
         try {
             // Find PID occupying the port (silence stderr)
             const pid = execSync(`lsof -t -i:${port} -sTCP:LISTEN 2>/dev/null`).toString().trim();
@@ -55,7 +55,7 @@ function main() {
 
     const rl = readline.createInterface({
         input: process.stdin,
-        output: process.stdout
+        output: process.stdout,
     });
 
     rl.question(`\nEnter choice [1-${serverKeys.length}]: `, (answer) => {
@@ -80,20 +80,24 @@ function main() {
 
         // Variable Substitution
         if (Array.isArray(serverConfig.args)) {
-            serverConfig.args = serverConfig.args.map(arg => substitute(arg, fileEnvVars));
+            serverConfig.args = serverConfig.args.map((arg) => substitute(arg, fileEnvVars));
         }
 
         let args = serverConfig.args || [];
 
         // Special handling for postgres to inject DB URL if missing
         if (selectedKey === 'postgres') {
-            const hasUrl = args.some(arg => arg.includes('postgres://') || arg.includes('postgresql://'));
+            const hasUrl = args.some(
+                (arg) => arg.includes('postgres://') || arg.includes('postgresql://'),
+            );
             if (!hasUrl) {
                 let dbUrl = process.env.DATABASE_URL || fileEnvVars.DATABASE_URL;
                 if (dbUrl) {
                     dbUrl = substitute(dbUrl, fileEnvVars);
                     if (!dbUrl.includes('sslmode')) {
-                        console.warn('   ⚠️ Warning: No sslmode specified in DATABASE_URL. It is recommended for security.');
+                        console.warn(
+                            '   ⚠️ Warning: No sslmode specified in DATABASE_URL. It is recommended for security.',
+                        );
                     }
                     args = [...args, dbUrl];
                     console.log('   (Injected DATABASE_URL from .env)');
@@ -102,10 +106,12 @@ function main() {
                 }
             } else {
                 // Ensure SSL Mode is mentioned if not present
-                args.forEach(arg => {
-                    if ((arg.includes('postgres://') || arg.includes('postgresql://'))) {
+                args.forEach((arg) => {
+                    if (arg.includes('postgres://') || arg.includes('postgresql://')) {
                         if (!arg.includes('sslmode')) {
-                            console.warn('   ⚠️ Warning: No sslmode specified in connection string. It is recommended for security.');
+                            console.warn(
+                                '   ⚠️ Warning: No sslmode specified in connection string. It is recommended for security.',
+                            );
                         }
                     }
                 });
@@ -131,7 +137,7 @@ function main() {
         const executable = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 
         const child = spawn(executable, inspectorArgs, {
-            stdio: 'inherit'
+            stdio: 'inherit',
         });
 
         child.on('error', (err) => {

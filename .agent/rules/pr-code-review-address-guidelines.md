@@ -116,4 +116,4 @@ Always include a `<details>` block with the following specific summary text form
 - **Reviewers**: 1 (`@gemini-bot`)
 - **Coverage**: 100% Addressed
 - **AI-Human Collaboration**: 🤖 Agent 47 x 👤 Reviewers
-      </details>
+    </details>

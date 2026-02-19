@@ -4,15 +4,9 @@
         "outDir": "dist",
         "rootDir": ".",
         "paths": {
-            "@hooks/usePlugins": [
-                "./hooks/usePlugins.dev.ts"
-            ],
-            "@plugins/*": [
-                "../bot/src/plugins/*"
-            ]
+            "@hooks/usePlugins": ["./hooks/usePlugins.dev.ts"],
+            "@plugins/*": ["../bot/src/plugins/*"]
         }
     },
-    "include": [
-        "**/*"
-    ]
+    "include": ["**/*"]
 }

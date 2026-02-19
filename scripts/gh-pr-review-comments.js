@@ -56,16 +56,19 @@ for (let i = 0; i < args.length; i++) {
 }
 
 if (!prNumber) {
-    console.error("❌ Error: Missing required arguments. PR Number is mandatory.");
+    console.error('❌ Error: Missing required arguments. PR Number is mandatory.');
     showHelp();
     process.exit(1);
 }
 
 function getCurrentUser() {
     try {
-        return execSync('gh api user --jq .login', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+        return execSync('gh api user --jq .login', {
+            encoding: 'utf8',
+            stdio: ['pipe', 'pipe', 'pipe'],
+        }).trim();
     } catch (e) {
-        console.warn("⚠️ Could not determine current user. Delta mode might be inaccurate.");
+        console.warn('⚠️ Could not determine current user. Delta mode might be inaccurate.');
         return null;
     }
 }
@@ -79,9 +82,11 @@ function getLastAddressedTime(prNum, user) {
         const output = execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
         const comments = JSON.parse(output);
 
-        const marker = comments.find(c =>
-            c.user.login === user &&
-            (c.body.includes("Code Review Feedback Addressed") || c.body.includes("Code Review Addressed"))
+        const marker = comments.find(
+            (c) =>
+                c.user.login === user &&
+                (c.body.includes('Code Review Feedback Addressed') ||
+                    c.body.includes('Code Review Addressed')),
         );
 
         return marker ? new Date(marker.created_at) : null;
@@ -107,7 +112,8 @@ try {
 
     // If no reviewId provided, try to discover reviews with unaddressed comments
     if (!reviewId) {
-        if (!deltaMode) console.log(`🔍 No Review ID provided. Searching for reviews in PR #${prNumber}...`);
+        if (!deltaMode)
+            console.log(`🔍 No Review ID provided. Searching for reviews in PR #${prNumber}...`);
 
         // Fetch all comments to aggregate Review IDs
         const cmd = `gh api "repos/:owner/:repo/pulls/${prNumber}/comments" --paginate`;
@@ -116,24 +122,28 @@ try {
 
         // Filter by date if in delta mode
         if (cutoffDate) {
-            comments = comments.filter(c => new Date(c.created_at) > cutoffDate);
+            comments = comments.filter((c) => new Date(c.created_at) > cutoffDate);
         }
 
         if (!Array.isArray(comments) || comments.length === 0) {
-            console.log(cutoffDate ? "✅ No new comments found since your last update!" : "No inline comments found for this PR.");
+            console.log(
+                cutoffDate
+                    ? '✅ No new comments found since your last update!'
+                    : 'No inline comments found for this PR.',
+            );
             process.exit(0);
         }
 
         // Group by review_id
         const reviews = {};
-        comments.forEach(c => {
+        comments.forEach((c) => {
             if (c.pull_request_review_id) {
                 if (!reviews[c.pull_request_review_id]) {
                     reviews[c.pull_request_review_id] = {
                         id: c.pull_request_review_id,
                         author: c.user.login,
                         count: 0,
-                        lastDate: c.created_at
+                        lastDate: c.created_at,
                     };
                 }
                 reviews[c.pull_request_review_id].count++;
@@ -146,20 +156,27 @@ try {
         const reviewsList = Object.values(reviews);
 
         if (reviewsList.length === 0) {
-            console.log("Found comments, but none are associated with a review ID.");
+            console.log('Found comments, but none are associated with a review ID.');
             process.exit(0);
         }
 
         console.log(`\nFound ${reviewsList.length} Active Review Threads:`);
-        console.log("------------------------------------------------------------");
-        console.log(String("ID").padEnd(15) + String("Author").padEnd(20) + String("Comments").padEnd(10) + "Latest");
-        console.log("------------------------------------------------------------");
+        console.log('------------------------------------------------------------');
+        console.log(
+            String('ID').padEnd(15) +
+                String('Author').padEnd(20) +
+                String('Comments').padEnd(10) +
+                'Latest',
+        );
+        console.log('------------------------------------------------------------');
 
-        reviewsList.forEach(r => {
-            console.log(`${String(r.id).padEnd(15)} ${String(r.author).padEnd(20)} ${String(r.count).padEnd(10)} ${new Date(r.lastDate).toLocaleString()}`);
+        reviewsList.forEach((r) => {
+            console.log(
+                `${String(r.id).padEnd(15)} ${String(r.author).padEnd(20)} ${String(r.count).padEnd(10)} ${new Date(r.lastDate).toLocaleString()}`,
+            );
         });
-        console.log("------------------------------------------------------------");
-        console.log("\nTo fetch comments for a specific review, run:");
+        console.log('------------------------------------------------------------');
+        console.log('\nTo fetch comments for a specific review, run:');
         console.log(`node scripts/gh-pr-review-comments.js ${prNumber} <REVIEW_ID>`);
 
         process.exit(0);
@@ -172,18 +189,20 @@ try {
 
     // Filter by date if in delta mode
     if (cutoffDate) {
-        comments = comments.filter(c => new Date(c.created_at) > cutoffDate);
+        comments = comments.filter((c) => new Date(c.created_at) > cutoffDate);
     }
 
     if (!Array.isArray(comments) || comments.length === 0) {
-        console.log("No comments found for this review" + (cutoffDate ? " in the new window." : "."));
+        console.log(
+            'No comments found for this review' + (cutoffDate ? ' in the new window.' : '.'),
+        );
         process.exit(0);
     }
 
-    let formattedOutput = "";
+    let formattedOutput = '';
 
-    comments.forEach(c => {
-        const originalLine = c.original_line || c.line || "N/A";
+    comments.forEach((c) => {
+        const originalLine = c.original_line || c.line || 'N/A';
         const header = `------------------------------------------------------------
 Comment #${c.id} by ${c.user.login} on ${c.path}:${originalLine}
 State: ${c.state || 'N/A'} | Created: ${c.created_at}
@@ -203,9 +222,8 @@ ${c.diff_hunk}
     } else {
         process.stdout.write(formattedOutput);
     }
-
 } catch (error) {
-    console.error("❌ Error execution failed:");
+    console.error('❌ Error execution failed:');
     console.error(error.message);
     if (error.stderr) {
         console.error(error.stderr.toString());

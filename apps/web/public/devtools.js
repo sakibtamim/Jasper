@@ -16,17 +16,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tabs = document.querySelectorAll('[role="tab"]');
     const tabContents = document.querySelectorAll('[role="tabpanel"]');
 
-    tabs.forEach(tab => {
+    tabs.forEach((tab) => {
         tab.addEventListener('click', () => {
             // Deactivate all tabs
-            tabs.forEach(t => {
+            tabs.forEach((t) => {
                 t.setAttribute('aria-selected', 'false');
                 t.classList.remove('border-brand-primary', 'text-brand-primary');
                 t.classList.add('border-transparent');
             });
 
             // Hide all contents
-            tabContents.forEach(c => c.classList.add('hidden'));
+            tabContents.forEach((c) => c.classList.add('hidden'));
 
             // Activate clicked tab
             tab.setAttribute('aria-selected', 'true');
@@ -55,7 +55,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const darkIcon = document.getElementById('theme-toggle-dark-icon');
     const lightIcon = document.getElementById('theme-toggle-light-icon');
 
-    if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    if (
+        localStorage.getItem('theme') === 'dark' ||
+        (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    ) {
         darkIcon.classList.remove('hidden');
     } else {
         lightIcon.classList.remove('hidden');
@@ -100,9 +103,10 @@ async function loadUsers() {
         const tbody = document.getElementById('users-table-body');
         tbody.innerHTML = '';
 
-        data.users.forEach(user => {
+        data.users.forEach((user) => {
             const tr = document.createElement('tr');
-            tr.className = 'bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600';
+            tr.className =
+                'bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600';
             tr.innerHTML = `
                 <td class="py-4 px-6 font-medium text-gray-900 whitespace-nowrap dark:text-white flex items-center gap-2">
                     <img src="${user.avatar || 'assets/images/jasper-logo.png'}" class="w-8 h-8 rounded-full">
@@ -143,9 +147,10 @@ async function loadSessions() {
         const tbody = document.getElementById('sessions-table-body');
         tbody.innerHTML = '';
 
-        data.sessions.forEach(session => {
+        data.sessions.forEach((session) => {
             const tr = document.createElement('tr');
-            tr.className = 'bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600';
+            tr.className =
+                'bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600';
             tr.innerHTML = `
                 <td class="py-4 px-6 font-mono text-xs">${session.id}</td>
                 <td class="py-4 px-6">${session.userId}</td>
@@ -185,9 +190,10 @@ async function loadCache() {
         const tbody = document.getElementById('cache-table-body');
         tbody.innerHTML = '';
 
-        data.entries.forEach(entry => {
+        data.entries.forEach((entry) => {
             const tr = document.createElement('tr');
-            tr.className = 'bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600';
+            tr.className =
+                'bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600';
             tr.innerHTML = `
                 <td class="py-4 px-6 truncate max-w-xs" title="${entry.query}">${entry.query}</td>
                 <td class="py-4 px-6 truncate max-w-xs" title="${entry.songTitle}">${entry.songTitle}</td>
@@ -210,10 +216,13 @@ async function loadCache() {
         const tbody = document.getElementById('audio-cache-table-body');
         tbody.innerHTML = '';
 
-        data.entries.forEach(entry => {
+        data.entries.forEach((entry) => {
             const tr = document.createElement('tr');
-            tr.className = 'bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600';
-            const size = entry.duration ? `${Math.floor(entry.duration / 60)}:${(entry.duration % 60).toString().padStart(2, '0')}` : 'Unknown';
+            tr.className =
+                'bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600';
+            const size = entry.duration
+                ? `${Math.floor(entry.duration / 60)}:${(entry.duration % 60).toString().padStart(2, '0')}`
+                : 'Unknown';
             tr.innerHTML = `
                 <td class="py-4 px-6 font-mono text-xs">${entry.videoId}</td>
                 <td class="py-4 px-6 truncate max-w-xs" title="${entry.title}">${entry.title}</td>
@@ -262,9 +271,12 @@ async function deleteAudioCacheEntry(videoId) {
 }
 
 async function regenerateThumbnail(videoId) {
-    if (!confirm('Regenerate thumbnail for this video? This will fetch metadata from YouTube.')) return;
+    if (!confirm('Regenerate thumbnail for this video? This will fetch metadata from YouTube.'))
+        return;
     try {
-        const response = await fetch(`/api/devtools/cache/audio/${videoId}/regenerate-thumbnail`, { method: 'POST' });
+        const response = await fetch(`/api/devtools/cache/audio/${videoId}/regenerate-thumbnail`, {
+            method: 'POST',
+        });
         if (response.ok) {
             alert('Thumbnail regenerated successfully!');
             loadCache();
@@ -292,9 +304,10 @@ async function loadStats() {
         const data = await response.json();
         const tbody = document.getElementById('statsSongsTableBody');
         tbody.innerHTML = '';
-        data.forEach(song => {
+        data.forEach((song) => {
             const tr = document.createElement('tr');
-            tr.className = 'bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600';
+            tr.className =
+                'bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600';
             tr.innerHTML = `
                 <td class="py-2 px-2 truncate max-w-xs" title="${song.songTitle}">${song.songTitle}</td>
                 <td class="py-2 px-2">${song.playCount}</td>
@@ -304,7 +317,9 @@ async function loadStats() {
             `;
             tbody.appendChild(tr);
         });
-    } catch (e) { console.error('Failed to load top songs', e); }
+    } catch (e) {
+        console.error('Failed to load top songs', e);
+    }
 
     // Load Top Users
     try {
@@ -312,9 +327,10 @@ async function loadStats() {
         const data = await response.json();
         const tbody = document.getElementById('statsUsersTableBody');
         tbody.innerHTML = '';
-        data.forEach(user => {
+        data.forEach((user) => {
             const tr = document.createElement('tr');
-            tr.className = 'bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600';
+            tr.className =
+                'bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600';
             tr.innerHTML = `
                 <td class="py-2 px-2 truncate max-w-xs">${user.userId}</td>
                 <td class="py-2 px-2">${user.playCount}</td>
@@ -324,7 +340,9 @@ async function loadStats() {
             `;
             tbody.appendChild(tr);
         });
-    } catch (e) { console.error('Failed to load top users', e); }
+    } catch (e) {
+        console.error('Failed to load top users', e);
+    }
 
     // Load Top Channels
     try {
@@ -332,9 +350,10 @@ async function loadStats() {
         const data = await response.json();
         const tbody = document.getElementById('statsChannelsTableBody');
         tbody.innerHTML = '';
-        data.forEach(channel => {
+        data.forEach((channel) => {
             const tr = document.createElement('tr');
-            tr.className = 'bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600';
+            tr.className =
+                'bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600';
             tr.innerHTML = `
                 <td class="py-2 px-2 truncate max-w-xs" title="${channel.channelName}">${channel.channelName}</td>
                 <td class="py-2 px-2">${channel.playCount}</td>
@@ -344,7 +363,9 @@ async function loadStats() {
             `;
             tbody.appendChild(tr);
         });
-    } catch (e) { console.error('Failed to load top channels', e); }
+    } catch (e) {
+        console.error('Failed to load top channels', e);
+    }
 
     // Load Top Bots
     try {
@@ -352,9 +373,10 @@ async function loadStats() {
         const data = await response.json();
         const tbody = document.getElementById('statsBotsTableBody');
         tbody.innerHTML = '';
-        data.forEach(bot => {
+        data.forEach((bot) => {
             const tr = document.createElement('tr');
-            tr.className = 'bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600';
+            tr.className =
+                'bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600';
             tr.innerHTML = `
                 <td class="py-2 px-2 truncate max-w-xs">${bot.botName}</td>
                 <td class="py-2 px-2">${bot.playCount}</td>
@@ -364,7 +386,9 @@ async function loadStats() {
             `;
             tbody.appendChild(tr);
         });
-    } catch (e) { console.error('Failed to load top bots', e); }
+    } catch (e) {
+        console.error('Failed to load top bots', e);
+    }
 }
 
 async function deletePlaysForSong(url) {
@@ -373,7 +397,9 @@ async function deletePlaysForSong(url) {
         const response = await fetch(`/api/devtools/stats/songs?url=${url}`, { method: 'DELETE' });
         if (response.ok) loadStats();
         else alert((await response.json()).error);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error(e);
+    }
 }
 
 async function deletePlaysForUser(id) {
@@ -382,7 +408,9 @@ async function deletePlaysForUser(id) {
         const response = await fetch(`/api/devtools/stats/users/${id}`, { method: 'DELETE' });
         if (response.ok) loadStats();
         else alert((await response.json()).error);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error(e);
+    }
 }
 
 async function deletePlaysForChannel(id) {
@@ -391,7 +419,9 @@ async function deletePlaysForChannel(id) {
         const response = await fetch(`/api/devtools/stats/channels/${id}`, { method: 'DELETE' });
         if (response.ok) loadStats();
         else alert((await response.json()).error);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error(e);
+    }
 }
 
 async function deletePlaysForBot(name) {
@@ -400,7 +430,9 @@ async function deletePlaysForBot(name) {
         const response = await fetch(`/api/devtools/stats/bots/${name}`, { method: 'DELETE' });
         if (response.ok) loadStats();
         else alert((await response.json()).error);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error(e);
+    }
 }
 
 window.deletePlaysForSong = deletePlaysForSong;

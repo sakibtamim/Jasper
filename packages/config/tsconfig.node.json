@@ -4,11 +4,7 @@
         "target": "ES2022",
         "module": "NodeNext",
         "moduleResolution": "NodeNext",
-        "lib": [
-            "ES2022"
-        ],
-        "types": [
-            "node"
-        ]
+        "lib": ["ES2022"],
+        "types": ["node"]
     }
 }

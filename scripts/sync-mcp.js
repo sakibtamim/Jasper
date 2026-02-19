@@ -19,7 +19,9 @@ function syncMcp() {
     try {
         projectConfig = JSON.parse(fs.readFileSync(PROJECT_MCP_PATH, 'utf8'));
     } catch (e) {
-        console.error('❌ Error: mcp.json contains invalid JSON. Please fix the file and try again.');
+        console.error(
+            '❌ Error: mcp.json contains invalid JSON. Please fix the file and try again.',
+        );
         if (e && e.message) {
             console.error(`   Details: ${e.message}`);
         }
@@ -81,8 +83,13 @@ function syncMcp() {
 
         // 1. Filesystem: Resolve relative paths (skipping flags and package names)
         if (key === 'filesystem' && Array.isArray(serverConfig.args)) {
-            const newArgs = serverConfig.args.map(arg => {
-                if (typeof arg === 'string' && !path.isAbsolute(arg) && !arg.startsWith('-') && !arg.startsWith('@')) {
+            const newArgs = serverConfig.args.map((arg) => {
+                if (
+                    typeof arg === 'string' &&
+                    !path.isAbsolute(arg) &&
+                    !arg.startsWith('-') &&
+                    !arg.startsWith('@')
+                ) {
                     return path.resolve(process.cwd(), arg);
                 }
                 return arg;
@@ -93,7 +100,7 @@ function syncMcp() {
 
         // 2. Generic Variable Substitution (Supports DATABASE_URL, CONTEXT7_API_KEY, etc.)
         if (Array.isArray(serverConfig.args)) {
-            serverConfig.args = serverConfig.args.map(arg => substitute(arg, fileEnvVars));
+            serverConfig.args = serverConfig.args.map((arg) => substitute(arg, fileEnvVars));
         }
 
         // 5. Env Block Substitution
@@ -104,13 +111,19 @@ function syncMcp() {
         }
 
         // 6. CWD Resolution
-        if (serverConfig.cwd && typeof serverConfig.cwd === 'string' && !path.isAbsolute(serverConfig.cwd)) {
+        if (
+            serverConfig.cwd &&
+            typeof serverConfig.cwd === 'string' &&
+            !path.isAbsolute(serverConfig.cwd)
+        ) {
             serverConfig.cwd = path.resolve(process.cwd(), serverConfig.cwd);
         }
 
         // 3. Postgres: Specific Logic (Injection & SSL)
         if (key === 'postgres' && Array.isArray(serverConfig.args)) {
-            const hasUrl = serverConfig.args.some(arg => arg.includes('postgres://') || arg.includes('postgresql://'));
+            const hasUrl = serverConfig.args.some(
+                (arg) => arg.includes('postgres://') || arg.includes('postgresql://'),
+            );
 
             if (!hasUrl) {
                 // Try to formulate URL from env if not explicitly passed
@@ -123,10 +136,12 @@ function syncMcp() {
             }
 
             // Ensure SSL Mode Warning
-            serverConfig.args.forEach(arg => {
-                if ((arg.includes('postgres://') || arg.includes('postgresql://'))) {
+            serverConfig.args.forEach((arg) => {
+                if (arg.includes('postgres://') || arg.includes('postgresql://')) {
                     if (!arg.includes('sslmode')) {
-                        console.warn('   ⚠️ Warning: No sslmode specified in connection string. It is recommended for security.');
+                        console.warn(
+                            '   ⚠️ Warning: No sslmode specified in connection string. It is recommended for security.',
+                        );
                     }
                 }
             });
@@ -152,7 +167,9 @@ function syncMcp() {
     // 4. Write Back with Secure Permissions
     try {
         fs.writeFileSync(GLOBAL_MCP_PATH, JSON.stringify(globalConfig, null, 2), { mode: 0o600 });
-        console.log(`✅ Successfully synced ${addedCount} servers (Removed: ${removedCount}) to ${GLOBAL_MCP_PATH}`);
+        console.log(
+            `✅ Successfully synced ${addedCount} servers (Removed: ${removedCount}) to ${GLOBAL_MCP_PATH}`,
+        );
     } catch (e) {
         console.error(`❌ Error: Could not write to global config: ${e.message}`);
         process.exit(1);

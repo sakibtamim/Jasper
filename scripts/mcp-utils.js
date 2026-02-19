@@ -12,7 +12,7 @@ function parseEnv() {
     if (fs.existsSync(envPath)) {
         try {
             const envContent = fs.readFileSync(envPath, 'utf8');
-            envContent.split('\n').forEach(line => {
+            envContent.split('\n').forEach((line) => {
                 const trimmed = line.trim();
                 if (!trimmed || trimmed.startsWith('#')) return;
 
@@ -21,7 +21,10 @@ function parseEnv() {
                     let key = match[1].trim();
                     let value = match[2].trim();
                     // Remove surrounding quotes
-                    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+                    if (
+                        (value.startsWith('"') && value.endsWith('"')) ||
+                        (value.startsWith("'") && value.endsWith("'"))
+                    ) {
                         value = value.slice(1, -1);
                     }
                     envVars[key] = value;
@@ -54,7 +57,8 @@ function substitute(str, fileEnvVars = {}) {
     let maxIterations = 5; // Prevent infinite loops
 
     for (let i = 0; i < maxIterations; i++) {
-        const next = result.replace(/\$\{([^}]+)\}/g, (_, key) => getValue(key))
+        const next = result
+            .replace(/\$\{([^}]+)\}/g, (_, key) => getValue(key))
             .replace(/\$([a-zA-Z_][a-zA-Z0-9_]*)/g, (_, key) => getValue(key));
 
         if (next === result) break; // No more changes
@@ -66,5 +70,5 @@ function substitute(str, fileEnvVars = {}) {
 
 module.exports = {
     parseEnv,
-    substitute
+    substitute,
 };
