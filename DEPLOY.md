@@ -58,9 +58,9 @@ The deployment is handled automatically by GitHub Actions when you push to the `
     - The workflow installs dependencies (with `YT_DLP_SKIP_POSTINSTALL=1` to skip yt-dlp download during build)
     - Runs `turbo run build` to compile all packages and apps
     - Generates SHA256 checksums for:
-      - All files in `apps/bot/dist/` (compiled bot code)
-      - All files in `apps/web/dist/` (compiled frontend code)
-      - Top-level config files (`package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `ecosystem.config.cjs`)
+        - All files in `apps/bot/dist/` (compiled bot code)
+        - All files in `apps/web/dist/` (compiled frontend code)
+        - Top-level config files (`package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `ecosystem.config.cjs`)
 2.  **Upload**: The compiled `apps` folder, configuration files, and checksums are uploaded as an artifact.
 3.  **Deploy**:
     - The artifact is downloaded and its integrity is verified using the checksums.

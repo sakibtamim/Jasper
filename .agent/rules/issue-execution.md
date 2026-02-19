@@ -24,25 +24,25 @@ Once fetched, determine the strategy based on the `type:*` label:
 
 - **Goal**: Graduate to a full Issue (Feature/Epic).
 - **Actions**:
-  - Verify if the "Context" is still current with the codebase.
-  - Draft a plan to fill the missing "Acceptance Criteria" and "Tech Brief".
-  - DO NOT implement code until the metadata is graduated.
+    - Verify if the "Context" is still current with the codebase.
+    - Draft a plan to fill the missing "Acceptance Criteria" and "Tech Brief".
+    - DO NOT implement code until the metadata is graduated.
 
 ### 🚀 Feature / Enhancement / Bug
 
 - **Goal**: Implementation & PR.
 - **Actions**:
-  - Verify all "Acceptance Criteria" are clear.
-  - Focus strictly on the defined scope.
-  - Create a focused PR with granular, traceable commits.
+    - Verify all "Acceptance Criteria" are clear.
+    - Focus strictly on the defined scope.
+    - Create a focused PR with granular, traceable commits.
 
 ### 👑 Epic (`type: epic`)
 
 - **Goal**: Management & Coordination.
 - **Actions**:
-  - Check child issue status and ordering.
-  - Identify risks, blockers, or divergence from the plan.
-  - Update the "Execution Status" table.
+    - Check child issue status and ordering.
+    - Identify risks, blockers, or divergence from the plan.
+    - Update the "Execution Status" table.
 
 ## 3. Engagement Rules
 

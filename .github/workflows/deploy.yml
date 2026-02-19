@@ -1,164 +1,164 @@
 name: Deploy Bot
 
 on:
-  push:
-    branches:
-      - deploy
-    paths:
-      # Bot application
-      - "apps/bot/**"
-      # Web dashboard
-      - "apps/web/**"
-      # Shared packages
-      - "packages/**"
-      # Root configuration
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - "turbo.json"
-      - "ecosystem.config.cjs"
-      # Node version
-      - ".nvmrc"
-      # Workflow itself
-      - ".github/workflows/deploy.yml"
+    push:
+        branches:
+            - deploy
+        paths:
+            # Bot application
+            - 'apps/bot/**'
+            # Web dashboard
+            - 'apps/web/**'
+            # Shared packages
+            - 'packages/**'
+            # Root configuration
+            - 'package.json'
+            - 'pnpm-lock.yaml'
+            - 'pnpm-workspace.yaml'
+            - 'turbo.json'
+            - 'ecosystem.config.cjs'
+            # Node version
+            - '.nvmrc'
+            # Workflow itself
+            - '.github/workflows/deploy.yml'
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+    build:
+        runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 9
+            - name: Install pnpm
+              uses: pnpm/action-setup@v2
+              with:
+                  version: 9
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version-file: ".nvmrc"
-          cache: "pnpm"
+            - name: Setup Node.js
+              uses: actions/setup-node@v3
+              with:
+                  node-version-file: '.nvmrc'
+                  cache: 'pnpm'
 
-      - name: Install Dependencies
-        env:
-          YT_DLP_SKIP_POSTINSTALL: 1
-        run: pnpm install --frozen-lockfile
+            - name: Install Dependencies
+              env:
+                  YT_DLP_SKIP_POSTINSTALL: 1
+              run: pnpm install --frozen-lockfile
 
-      - name: Build
-        run: pnpm run build
+            - name: Build
+              run: pnpm run build
 
-      - name: Generate checksums
-        run: |
-          find apps/bot/dist -type f -exec sha256sum {} \; | sort > dist-checksums.txt
-          find apps/web/dist -type f -exec sha256sum {} \; | sort >> dist-checksums.txt
-          sha256sum package.json pnpm-lock.yaml pnpm-workspace.yaml ecosystem.config.cjs >> dist-checksums.txt
-          cat dist-checksums.txt
+            - name: Generate checksums
+              run: |
+                  find apps/bot/dist -type f -exec sha256sum {} \; | sort > dist-checksums.txt
+                  find apps/web/dist -type f -exec sha256sum {} \; | sort >> dist-checksums.txt
+                  sha256sum package.json pnpm-lock.yaml pnpm-workspace.yaml ecosystem.config.cjs >> dist-checksums.txt
+                  cat dist-checksums.txt
 
-      - name: Deploy Commands
-        env:
-          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
-          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
-          GUILD_ID: ${{ secrets.GUILD_ID }}
-        run: pnpm --filter jasper-bot run deploy:commands:prod
+            - name: Deploy Commands
+              env:
+                  DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+                  DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
+                  GUILD_ID: ${{ secrets.GUILD_ID }}
+              run: pnpm --filter jasper-bot run deploy:commands:prod
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: bot-build
-          path: |
-            apps/bot/dist
-            apps/bot/package.json
-            apps/bot/scripts
-            apps/web/dist
-            package.json
-            pnpm-lock.yaml
-            pnpm-workspace.yaml
-            ecosystem.config.cjs
-            dist-checksums.txt
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: bot-build
+                  path: |
+                      apps/bot/dist
+                      apps/bot/package.json
+                      apps/bot/scripts
+                      apps/web/dist
+                      package.json
+                      pnpm-lock.yaml
+                      pnpm-workspace.yaml
+                      ecosystem.config.cjs
+                      dist-checksums.txt
 
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
+    deploy:
+        needs: build
+        runs-on: ubuntu-latest
 
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: bot-build
+        steps:
+            - name: Download artifact
+              uses: actions/download-artifact@v4
+              with:
+                  name: bot-build
 
-      - name: Verify checksums
-        run: |
-          echo "Verifying artifact integrity..."
-          sha256sum -c dist-checksums.txt
+            - name: Verify checksums
+              run: |
+                  echo "Verifying artifact integrity..."
+                  sha256sum -c dist-checksums.txt
 
-      - name: Stop PM2 and clean target directory
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
-          script: |
-            set -e
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            cd ${{ secrets.SSH_TARGET }}
-            pm2 stop Jasper || true
-            # Remove old deployment files but preserve .env and cache directories
-            rm -rf apps dist public scripts package.json package-lock.json ecosystem.config.cjs dist-checksums.txt pnpm-workspace.yaml pnpm-lock.yaml
+            - name: Stop PM2 and clean target directory
+              uses: appleboy/ssh-action@v1
+              with:
+                  host: ${{ secrets.SSH_HOST }}
+                  username: ${{ secrets.SSH_USERNAME }}
+                  key: ${{ secrets.SSH_KEY }}
+                  port: ${{ secrets.SSH_PORT || 22 }}
+                  script: |
+                      set -e
+                      export NVM_DIR="$HOME/.nvm"
+                      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+                      cd ${{ secrets.SSH_TARGET }}
+                      pm2 stop Jasper || true
+                      # Remove old deployment files but preserve .env and cache directories
+                      rm -rf apps dist public scripts package.json package-lock.json ecosystem.config.cjs dist-checksums.txt pnpm-workspace.yaml pnpm-lock.yaml
 
-      - name: Copy files to server
-        uses: appleboy/scp-action@v1
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
-          target: ${{ secrets.SSH_TARGET }}
-          source: "apps,package.json,pnpm-lock.yaml,pnpm-workspace.yaml,ecosystem.config.cjs,dist-checksums.txt"
+            - name: Copy files to server
+              uses: appleboy/scp-action@v1
+              with:
+                  host: ${{ secrets.SSH_HOST }}
+                  username: ${{ secrets.SSH_USERNAME }}
+                  key: ${{ secrets.SSH_KEY }}
+                  port: ${{ secrets.SSH_PORT || 22 }}
+                  target: ${{ secrets.SSH_TARGET }}
+                  source: 'apps,package.json,pnpm-lock.yaml,pnpm-workspace.yaml,ecosystem.config.cjs,dist-checksums.txt'
 
-      - name: Verify deployment integrity
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
-          script: |
-            set -e
-            cd ${{ secrets.SSH_TARGET }}
-            echo "Verifying deployed files..."
-            sha256sum -c dist-checksums.txt
+            - name: Verify deployment integrity
+              uses: appleboy/ssh-action@v1
+              with:
+                  host: ${{ secrets.SSH_HOST }}
+                  username: ${{ secrets.SSH_USERNAME }}
+                  key: ${{ secrets.SSH_KEY }}
+                  port: ${{ secrets.SSH_PORT || 22 }}
+                  script: |
+                      set -e
+                      cd ${{ secrets.SSH_TARGET }}
+                      echo "Verifying deployed files..."
+                      sha256sum -c dist-checksums.txt
 
-      - name: Install dependencies and restart
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
-          script: |
-            set -e
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            cd ${{ secrets.SSH_TARGET }}
-            # Enable pnpm via corepack if not available
-            if ! command -v pnpm &> /dev/null; then
-              echo "pnpm not found, enabling via corepack..."
-              corepack enable
-              corepack prepare pnpm@latest --activate
-            fi
+            - name: Install dependencies and restart
+              uses: appleboy/ssh-action@v1
+              with:
+                  host: ${{ secrets.SSH_HOST }}
+                  username: ${{ secrets.SSH_USERNAME }}
+                  key: ${{ secrets.SSH_KEY }}
+                  port: ${{ secrets.SSH_PORT || 22 }}
+                  script: |
+                      set -e
+                      export NVM_DIR="$HOME/.nvm"
+                      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+                      cd ${{ secrets.SSH_TARGET }}
+                      # Enable pnpm via corepack if not available
+                      if ! command -v pnpm &> /dev/null; then
+                        echo "pnpm not found, enabling via corepack..."
+                        corepack enable
+                        corepack prepare pnpm@latest --activate
+                      fi
 
-            # Ensure pm2 is installed
-            if ! command -v pm2 &> /dev/null; then
-              echo "pm2 not found, installing globally..."
-              pnpm add -g pm2
-            fi
+                      # Ensure pm2 is installed
+                      if ! command -v pm2 &> /dev/null; then
+                        echo "pm2 not found, installing globally..."
+                        pnpm add -g pm2
+                      fi
 
-            pnpm install --prod --frozen-lockfile
+                      pnpm install --prod --frozen-lockfile
 
-            # Explicitly run postinstall for bot to trigger yt-dlp download
-            pnpm --filter jasper-bot run postinstall
-            pm2 startOrRestart ecosystem.config.cjs
+                      # Explicitly run postinstall for bot to trigger yt-dlp download
+                      pnpm --filter jasper-bot run postinstall
+                      pm2 startOrRestart ecosystem.config.cjs

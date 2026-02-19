@@ -22,8 +22,8 @@ Never create an unstructured issue. You must use the following schema for all "W
 - **Human Readable**: Titles must be concise, human-readable sentences or phrases.
 - **No Prefixes**: Do NOT use conventional commit prefixes (e.g., `feat:`, `chore:`, `fix:`) in issue titles.
 - **Exceptions**: Use square bracket labels only for high-level highlighting, e.g., `[Epic]`, `[Urgent]`.
-  - Good: "Implement User Login Flow"
-  - Bad: "feat(auth): User Login Flow"
+    - Good: "Implement User Login Flow"
+    - Bad: "feat(auth): User Login Flow"
 
 ## 3. Labeling
 

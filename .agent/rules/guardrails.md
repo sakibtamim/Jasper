@@ -10,9 +10,9 @@ trigger: always_on
 
 - **NEVER** commit directly to `main`.
 - **ALWAYS** create a new branch for every task:
-  - `feat/...` for features.
-  - `fix/...` for bugs.
-  - `chore/...` for maintenance.
+    - `feat/...` for features.
+    - `fix/...` for bugs.
+    - `chore/...` for maintenance.
 - If you find yourself on `main`, STOP and `git checkout -b <new-branch>` immediately.
 
 ## 2. Environment Integrity
@@ -26,9 +26,9 @@ trigger: always_on
 - **Fail Early**: If a command fails (exit code != 0), **STOP IMMEDIATELY**.
 - **Report**: Notify the Operator or file a bug. Do not proceed with "happy path" assumptions.
 - **No Sweeping Under the Rug**:
-  - **NEVER** ignore lint, build, or test failures to "just get it done".
-  - **NEVER** suppress errors without explicit instruction.
-  - **NEVER** proceed without addressing the root cause or reporting the issue.
+    - **NEVER** ignore lint, build, or test failures to "just get it done".
+    - **NEVER** suppress errors without explicit instruction.
+    - **NEVER** proceed without addressing the root cause or reporting the issue.
 
 ## 4. Commit Hygiene
 

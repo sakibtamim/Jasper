@@ -27,14 +27,14 @@ Configuration in `apps/bot/src/config/bots.ts`:
 Configuration in `apps/bot/src/config/afr-config.ts`:
 
 - **Jasper Weight**: Probability for Jasper selection (`AFR_JASPER_WEIGHT`, default 0.5)
-  - `0.5` = 50% chance Jasper is selected when available
-  - `1.0` = Always select Jasper when available
-  - `0.0` = Never select Jasper over other workers
+    - `0.5` = 50% chance Jasper is selected when available
+    - `1.0` = Always select Jasper when available
+    - `0.0` = Never select Jasper over other workers
 - **Selection Algorithm**:
-  1. Reuse worker already in target channel
-  2. If Jasper is eligible: weighted random selection
-  3. If Jasper not eligible: random from available workers
-  4. Return null if all workers busy
+    1. Reuse worker already in target channel
+    2. If Jasper is eligible: weighted random selection
+    3. If Jasper not eligible: random from available workers
+    4. Return null if all workers busy
 
 ### Entry Messages
 

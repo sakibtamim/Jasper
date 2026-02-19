@@ -205,8 +205,8 @@ CACHE_CLEANUP_INTERVAL_HOURS=1  # 1 hour (default)
 #### ⚠️ Tradeoffs
 
 - **Disk Space**: ~5-10MB per cached song (high quality)
-  - Example: 100 cached songs ≈ 500MB-1GB
-  - Automatically cleaned up based on TTL every hour (configurable)
+    - Example: 100 cached songs ≈ 500MB-1GB
+    - Automatically cleaned up based on TTL every hour (configurable)
 - **Memory**: Minimal (~5-15MB for in-memory buffers + search cache metadata)
 
 #### 📊 Recommended Settings by Use Case

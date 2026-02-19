@@ -9,12 +9,12 @@ This is a TurboRepo monorepo.
 ## 📂 Apps
 
 - **`apps/web`**: Main Next.js 15 Application.
-  - `app/`: App Router (Pages/Layouts).
-  - `components/`: UI Components.
-    - `ui/`: Primitives (`layout-system.tsx`, `image-with-fallback.tsx`).
-    - `sections/`: Page sections.
-  - `lib/`: Utilities.
-  - `server/`: tRPC Routers & Context.
+    - `app/`: App Router (Pages/Layouts).
+    - `components/`: UI Components.
+        - `ui/`: Primitives (`layout-system.tsx`, `image-with-fallback.tsx`).
+        - `sections/`: Page sections.
+    - `lib/`: Utilities.
+    - `server/`: tRPC Routers & Context.
 
 ## 📦 Packages (Shared)
 

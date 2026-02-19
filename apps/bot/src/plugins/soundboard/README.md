@@ -6,9 +6,9 @@ A full-stack plugin that adds a customizable soundboard to Jasper. Users can upl
 
 - **Web Dashboard**: Upload, rename, and delete sound files (MP3/WAV).
 - **Slash Commands**:
-  - `/soundboard menu`: Open an ephemeral selection menu to play a sound.
-  - `/soundboard play <sound>`: Play a specific sound directly (with autocomplete).
-  - `/soundboard ui`: Post a permanent message with buttons for the top 25 sounds.
+    - `/soundboard menu`: Open an ephemeral selection menu to play a sound.
+    - `/soundboard play <sound>`: Play a specific sound directly (with autocomplete).
+    - `/soundboard ui`: Post a permanent message with buttons for the top 25 sounds.
 - **Concurrency Handling**: Supports multiple users playing sounds simultaneously (queued sequentially) without crashing the bot.
 - **Spam Prevention**: Prevents "button mashing" by enforcing a 1-second cooldown after playing a sound.
 - **Audio Mixing**: Can play sounds over existing music (pauses music, plays sound, resumes music).
@@ -46,12 +46,12 @@ Creates a permanent "Soundboard" message in the channel with interactive buttons
 ### Architecture
 
 - **Backend**:
-  - `index.ts`: Registers the plugin and global interaction handlers.
-  - `commands/soundboard.ts`: Implements the slash command logic and button interaction handling.
-  - `services/playback.ts`: Helper to resolve file paths and call the core `playAudio` API.
+    - `index.ts`: Registers the plugin and global interaction handlers.
+    - `commands/soundboard.ts`: Implements the slash command logic and button interaction handling.
+    - `services/playback.ts`: Helper to resolve file paths and call the core `playAudio` API.
 - **Frontend**:
-  - `web/index.tsx`: React application for the dashboard page.
-  - Uses `@jasper/hooks` to interact with the plugin storage and database.
+    - `web/index.tsx`: React application for the dashboard page.
+    - Uses `@jasper/hooks` to interact with the plugin storage and database.
 
 ### Data Storage
 

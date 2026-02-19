@@ -7,11 +7,11 @@
 - **Architecture**: `architecture.md`
 - **Development**: `development.md`
 - **Standards**:
-  - `rules/coding-standards.md`
-  - `rules/guardrails.md`
-  - `rules/issue-execution.md`
-  - `rules/security-standards.md`
-  - `rules/tech-stack.md`
+    - `rules/coding-standards.md`
+    - `rules/guardrails.md`
+    - `rules/issue-execution.md`
+    - `rules/security-standards.md`
+    - `rules/tech-stack.md`
 - **Roadmap**: `roadmap.md`
 
 ## 🚀 Quick Start
