@@ -53,8 +53,8 @@ async function verify() {
 
         // Assertions
         if (topSongs.length !== 2) throw new Error('Expected 2 top songs');
-        if (topSongs[0].songTitle !== 'Song A') throw new Error('Expected Song A to be top');
-        if (topSongs[0].playCount !== 2) throw new Error('Expected Song A to have 2 plays');
+        if (topSongs[0].songTitle !== 'Song 1') throw new Error('Expected Song 1 to be top');
+        if (topSongs[0].playCount !== 2) throw new Error('Expected Song 1 to have 2 plays');
 
         if (topUsers.length !== 2) throw new Error('Expected 2 top users');
         if (topUsers[0].userId !== 'user1') throw new Error('Expected user1 to be top');

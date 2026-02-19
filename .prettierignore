@@ -4,3 +4,6 @@ dist
 .turbo
 js
 .DS_Store
+.next
+.next/**
+
