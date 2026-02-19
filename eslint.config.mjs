@@ -17,10 +17,23 @@ export default tseslint.config(
         },
     },
     {
+        files: [
+            'apps/bot/**',
+            'scripts/**',
+            '**/*.config.mjs',
+            '**/*.config.js',
+            '**/*.config.cjs',
+        ],
         languageOptions: {
             globals: {
                 ...globals.node,
             },
+        },
+    },
+    {
+        files: ['scripts/**/*.js', '**/*.config.js', '**/*.config.cjs', '**/*.config.mjs'],
+        rules: {
+            '@typescript-eslint/no-require-imports': 'off',
         },
     },
     js.configs.recommended,
