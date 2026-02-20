@@ -181,12 +181,11 @@ export async function playSong(queue: Queue): Promise<void> {
             if (song.url.startsWith('http')) {
                 audioSource = await createDirectUrlStream(song.url);
             } else {
-                import('node:fs').then((fs) => {
-                    if (!fs.existsSync(song.url)) {
-                        logger.error(`[playback] Local file not found: ${song.url}`);
-                    }
-                });
-                audioSource = (await import('node:fs')).createReadStream(song.url);
+                const fs = await import('node:fs');
+                if (!fs.existsSync(song.url)) {
+                    throw new Error(`Local file not found: ${song.url}`);
+                }
+                audioSource = fs.createReadStream(song.url);
             }
         }
         // Check audio cache if enabled (for YouTube only)

@@ -507,7 +507,7 @@ async function enqueuePlaylist(
 
 async function enqueueSongs(
     interaction: ChatInputCommandInteraction,
-    songs: Omit<Song, 'requestedBy' | 'requesterId' | 'sourceType'>[],
+    songs: Omit<Song, 'requestedBy' | 'requesterId'>[],
     playlistName: string,
 ): Promise<void> {
     const voiceChannel = await validateInteraction(interaction);
