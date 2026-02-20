@@ -238,7 +238,26 @@ export const MyPage = () => (
 
 You can import shared UI components from `@jasper/ui`:
 
-- `Card`, `Button`, `Input`, `Table`, `Badge`, `Loader`, etc.
+- `Card`, `Button`, `Input`, `Table`, `Badge`, `Loader`, `Modal`, `Image`, `Icon`, etc.
+
+**Modal Example:**
+
+```tsx
+import { useState } from '@jasper/elements';
+import { Button, Modal } from '@jasper/ui';
+
+export const MyComponent = () => {
+    const [isOpen, setIsOpen] = useState(false);
+    return (
+        <>
+            <Button onClick={() => setIsOpen(true)}>Open Modal</Button>
+            <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title="My Modal">
+                <p>Hello from inside the modal!</p>
+            </Modal>
+        </>
+    );
+};
+```
 
 ### Context
 
