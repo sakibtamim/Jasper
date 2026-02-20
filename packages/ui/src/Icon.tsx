@@ -1,7 +1,10 @@
 import { React } from '@jasper/elements';
 import {
+    ArrowLeft,
     ChevronDown,
     ChevronUp,
+    Copy,
+    Inbox,
     LogOut,
     Menu,
     Music,
@@ -33,8 +36,11 @@ const ICON_MAP: Record<string, React.ElementType> = {
     search: Search,
     menu: Menu,
     x: X,
+    'arrow-left': ArrowLeft,
     'chevron-down': ChevronDown,
     'chevron-up': ChevronUp,
+    copy: Copy,
+    inbox: Inbox,
     settings: Settings,
     logout: LogOut,
     user: User,
