@@ -168,6 +168,37 @@ await context.playAudio({
 - Achievement notifications
 - Custom bot event sounds
 
+### Advanced Playback (Direct Enqueueing)
+
+For plugins that build complex audio features (e.g., playlists, library management), you can bypass the simple `playAudio` wrapper and directly enqueue arrays of `Song` metadata into the core `MusicPlayer`.
+
+This is particularly useful if your plugin handles its own file storage (via `context.storage`) and you want to securely stream local files without making outbound HTTP metadata requests.
+
+```typescript
+import { Song } from '@jasper/types';
+
+import MusicPlayer from '../../core/music-player.js';
+
+// Example: Enqueue a local file managed by the plugin's storage
+const songs: Omit<Song, 'requesterId' | 'requestedBy'>[] = [
+    {
+        title: 'My Custom Local Track',
+        url: '/absolute/path/to/my-plugin-storage/track.mp3', // Note: Needs absolute path
+        durationInSec: 120,
+        thumbnail: '',
+        sourceType: 'attachment', // IMPORTANT: 'attachment' enables direct local file streaming
+    },
+];
+
+// Provide the interaction, the songs array, and a context label (e.g. playlist name)
+await MusicPlayer.enqueueSongs(interaction, songs, 'My Plugin Playlist');
+```
+
+**Key Points:**
+
+- Setting `sourceType: 'attachment'` combined with a local filesystem path in the `url` natively streams the file using Node's `fs.createReadStream`, bypassing external `yt-dlp` lookups.
+- `enqueueSongs` automatically handles Discord interaction responses, appending to the active queue, and joining the voice channel if necessary.
+
 ---
 
 ## 🖥️ Frontend Development
