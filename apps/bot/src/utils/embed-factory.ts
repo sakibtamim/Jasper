@@ -4,9 +4,28 @@ import config from '../config/config.js';
 
 const { botName, color, accentColor } = config;
 
+function escapeMarkdownText(text: string): string {
+    // Escape common Discord/Markdown formatting characters
+    // eslint-disable-next-line no-useless-escape
+    return text.replace(/([\\\[\]()*_~`])/g, '\\$1');
+}
+
+function sanitizeUrl(url: string): string | null {
+    if (!url) return null;
+    const trimmed = url.trim();
+    const isHttp = /^https?:\/\//i.test(trimmed);
+    if (!isHttp) return null;
+    try {
+        return encodeURI(trimmed);
+    } catch {
+        return null;
+    }
+}
+
 export function formatDescription(title: string, url: string): string {
-    const isHttp = url.startsWith('http://') || url.startsWith('https://');
-    return isHttp ? `[${title}](${url})` : `**${title}**`;
+    const safeTitle = escapeMarkdownText(title || 'Unknown');
+    const safeUrl = sanitizeUrl(url);
+    return safeUrl ? `[${safeTitle}](<${safeUrl}>)` : `**${safeTitle}**`;
 }
 
 export function baseEmbed(): EmbedBuilder {

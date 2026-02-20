@@ -12,7 +12,11 @@ module.exports = {
         "./services/**/*.{js,ts,jsx,tsx}",
         "./core/**/*.{js,ts,jsx,tsx}",
         "../../packages/ui/src/**/*.{js,ts,jsx,tsx}",
-        // Match plugin-specific web UIs located under ../../apps/bot/src/plugins/<pluginName>/web/
+        // Plugin-specific web UIs:
+        // Place plugin UI source files under:
+        //   ../../apps/bot/src/plugins/<pluginName>/web/
+        // so that Tailwind can scan them for class names during the build.
+        // Example: ../../apps/bot/src/plugins/example-plugin/web/components/Button.tsx
         "../../apps/bot/src/plugins/*/web/**/*.{js,ts,jsx,tsx}",
     ],
     darkMode: 'class',
