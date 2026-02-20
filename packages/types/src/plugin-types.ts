@@ -86,6 +86,9 @@ export interface SlashCommandDefinition {
     execute: (
         interaction: import('discord.js').ChatInputCommandInteraction,
     ) => void | Promise<void>;
+    autocomplete?: (
+        interaction: import('discord.js').AutocompleteInteraction,
+    ) => void | Promise<void>;
 }
 
 // --- Plugin Context ---

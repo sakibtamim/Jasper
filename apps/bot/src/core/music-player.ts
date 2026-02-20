@@ -505,6 +505,67 @@ async function enqueuePlaylist(
     }
 }
 
+async function enqueueSongs(
+    interaction: ChatInputCommandInteraction,
+    songs: Omit<Song, 'requestedBy' | 'requesterId' | 'sourceType'>[],
+    playlistName: string,
+): Promise<void> {
+    const voiceChannel = await validateInteraction(interaction);
+    if (!voiceChannel) return;
+
+    const permissions = voiceChannel.permissionsFor(interaction.client.user!);
+    if (!permissions || !permissions.has('Connect') || !permissions.has('Speak')) {
+        await interaction.reply({
+            content: 'I need permissions to play music!',
+            ephemeral: true,
+        });
+        return;
+    }
+
+    await interaction.deferReply();
+
+    try {
+        if (!songs.length) {
+            throw new Error('No songs provided to enqueue.');
+        }
+
+        const queue = await ensureQueue(interaction, voiceChannel, null);
+        if (!queue) return;
+
+        const songsToAdd: Song[] = songs.map((song) => {
+            const newSong: Song = {
+                requestedBy: interaction.user.tag,
+                requesterId: interaction.user.id,
+                sourceType: 'attachment', // Default fallback
+                ...song, // Override with any specific song properties if passed (like sourceType)
+            };
+            if (!newSong.title) newSong.title = 'Unknown Title';
+            if (!newSong.durationInSec) newSong.durationInSec = 0;
+            return newSong;
+        });
+
+        if (queue.idleTimeout) {
+            clearTimeout(queue.idleTimeout);
+            queue.idleTimeout = null;
+            logger.info(`Cleared idle timeout for ${queue.voiceChannelId} - custom playlist added`);
+        }
+
+        queue.songs.push(...songsToAdd);
+
+        if (!queue.nowPlaying && queue.songs.length === songsToAdd.length) {
+            await playSong(queue);
+        }
+
+        await interaction.editReply(
+            `✅ **Added ${songsToAdd.length} songs** from playlist: **${playlistName}**`,
+        );
+    } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        logger.error(`Custom playlist error: ${msg}`);
+        await interaction.editReply(`❌ Failed to load playlist: ${msg}`);
+    }
+}
+
 async function toggleAutoplay(interaction: ChatInputCommandInteraction): Promise<void> {
     const voiceChannel = (interaction.member as GuildMember).voice.channel;
     if (!voiceChannel) {
@@ -743,6 +804,7 @@ async function startRadio(interaction: ChatInputCommandInteraction): Promise<voi
 export default {
     enqueue,
     enqueuePlaylist,
+    enqueueSongs,
     toggleAutoplay,
     skip,
     stop,
