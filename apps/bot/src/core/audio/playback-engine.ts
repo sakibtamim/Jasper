@@ -175,10 +175,18 @@ export async function playSong(queue: Queue): Promise<void> {
 
         let audioSource: Readable;
 
-        // Handle file attachments (direct URL streaming)
+        // Handle file attachments (direct URL streaming or local files)
         if (song.sourceType === 'attachment') {
             logger.info(`[playback] Streaming attachment file: ${song.title}`);
-            audioSource = await createDirectUrlStream(song.url);
+            if (song.url.startsWith('http')) {
+                audioSource = await createDirectUrlStream(song.url);
+            } else {
+                const fs = await import('node:fs');
+                if (!fs.existsSync(song.url)) {
+                    throw new Error(`Local file not found: ${song.url}`);
+                }
+                audioSource = fs.createReadStream(song.url);
+            }
         }
         // Check audio cache if enabled (for YouTube only)
         else if (isCacheEnabled()) {
