@@ -34,9 +34,11 @@ export function songAddedEmbed(
     workerName: string,
     devPrefix: string,
 ): EmbedBuilder {
+    const isHttp = url.startsWith('http://') || url.startsWith('https://');
+    const description = isHttp ? `[${title}](${url})` : `**${title}**`;
     return baseEmbed()
         .setTitle(`${devPrefix}✅ Added to queue`)
-        .setDescription(`[${title}](${url})`)
+        .setDescription(description)
         .setThumbnail(thumbnail || null)
         .setFooter({ text: `${botName} • ${workerName}` });
 }
@@ -51,9 +53,11 @@ export function nowPlayingEmbed(
     workerName: string,
     devPrefix: string,
 ): EmbedBuilder {
+    const isHttp = url.startsWith('http://') || url.startsWith('https://');
+    const description = isHttp ? `[${title}](${url})` : `**${title}**`;
     return baseEmbed()
         .setTitle(`${devPrefix}▶️ Now Playing`)
-        .setDescription(`[${title}](${url})`)
+        .setDescription(description)
         .setThumbnail(thumbnail || null)
         .setFooter({ text: `${botName} • ${workerName}` });
 }
@@ -68,9 +72,11 @@ export function radioEmbed(
     botName: string,
     devPrefix: string,
 ): EmbedBuilder {
+    const isHttp = url.startsWith('http://') || url.startsWith('https://');
+    const description = isHttp ? `[${title}](${url})` : `**${title}**`;
     return baseEmbed()
         .setTitle(`${devPrefix}📻 Radio Mode`)
-        .setDescription(`[${title}](${url})`)
+        .setDescription(description)
         .setThumbnail(thumbnail || null)
         .setFooter({ text: `Enqueued by Radio ${botName} 📻` });
 }
