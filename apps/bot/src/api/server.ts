@@ -21,13 +21,6 @@ const __dirname = path.dirname(__filename);
 
 export const server = fastify({ logger: false });
 
-// Serve legacy static UI
-server.register(fastifyStatic, {
-    root: path.join(__dirname, '../../../web/public'),
-    prefix: '/legacy',
-    decorateReply: false,
-});
-
 // Serve React app static assets
 server.register(fastifyStatic, {
     root: path.join(__dirname, '../../../web/dist'),

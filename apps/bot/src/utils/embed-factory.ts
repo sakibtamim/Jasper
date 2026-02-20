@@ -4,6 +4,11 @@ import config from '../config/config.js';
 
 const { botName, color, accentColor } = config;
 
+export function formatDescription(title: string, url: string): string {
+    const isHttp = url.startsWith('http://') || url.startsWith('https://');
+    return isHttp ? `[${title}](${url})` : `**${title}**`;
+}
+
 export function baseEmbed(): EmbedBuilder {
     return new EmbedBuilder().setColor(color).setFooter({ text: botName });
 }
@@ -34,11 +39,9 @@ export function songAddedEmbed(
     workerName: string,
     devPrefix: string,
 ): EmbedBuilder {
-    const isHttp = url.startsWith('http://') || url.startsWith('https://');
-    const description = isHttp ? `[${title}](${url})` : `**${title}**`;
     return baseEmbed()
         .setTitle(`${devPrefix}✅ Added to queue`)
-        .setDescription(description)
+        .setDescription(formatDescription(title, url))
         .setThumbnail(thumbnail || null)
         .setFooter({ text: `${botName} • ${workerName}` });
 }
@@ -53,11 +56,9 @@ export function nowPlayingEmbed(
     workerName: string,
     devPrefix: string,
 ): EmbedBuilder {
-    const isHttp = url.startsWith('http://') || url.startsWith('https://');
-    const description = isHttp ? `[${title}](${url})` : `**${title}**`;
     return baseEmbed()
         .setTitle(`${devPrefix}▶️ Now Playing`)
-        .setDescription(description)
+        .setDescription(formatDescription(title, url))
         .setThumbnail(thumbnail || null)
         .setFooter({ text: `${botName} • ${workerName}` });
 }
@@ -72,11 +73,9 @@ export function radioEmbed(
     botName: string,
     devPrefix: string,
 ): EmbedBuilder {
-    const isHttp = url.startsWith('http://') || url.startsWith('https://');
-    const description = isHttp ? `[${title}](${url})` : `**${title}**`;
     return baseEmbed()
         .setTitle(`${devPrefix}📻 Radio Mode`)
-        .setDescription(description)
+        .setDescription(formatDescription(title, url))
         .setThumbnail(thumbnail || null)
         .setFooter({ text: `Enqueued by Radio ${botName} 📻` });
 }
