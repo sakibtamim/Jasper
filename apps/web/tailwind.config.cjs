@@ -12,7 +12,7 @@ module.exports = {
         "./services/**/*.{js,ts,jsx,tsx}",
         "./core/**/*.{js,ts,jsx,tsx}",
         "../../packages/ui/src/**/*.{js,ts,jsx,tsx}",
-        "../../apps/bot/src/plugins/**/*.{js,ts,jsx,tsx}",
+        "../../apps/bot/src/plugins/*/web/**/*.{js,ts,jsx,tsx}",
     ],
     darkMode: 'class',
     theme: {
