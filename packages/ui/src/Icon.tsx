@@ -4,7 +4,10 @@ import {
     ChevronDown,
     ChevronUp,
     Copy,
+    HardDrive,
     Inbox,
+    Link,
+    List,
     LogOut,
     Menu,
     Music,
@@ -18,9 +21,11 @@ import {
     SkipBack,
     SkipForward,
     Trash,
+    UploadCloud,
     User,
     Volume2,
     X,
+    Youtube,
 } from 'lucide-react';
 
 export interface IconProps extends React.SVGProps<SVGSVGElement> {
@@ -50,6 +55,11 @@ const ICON_MAP: Record<string, React.ElementType> = {
     pause: Pause,
     repeat: Repeat,
     shuffle: Shuffle,
+    'upload-cloud': UploadCloud,
+    list: List,
+    youtube: Youtube,
+    'hard-drive': HardDrive,
+    link: Link,
 };
 
 export const Icon = ({ name, size = 24, className, ...props }: IconProps) => {

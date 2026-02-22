@@ -1,4 +1,3 @@
-import multipart from '@fastify/multipart';
 import AdmZip from 'adm-zip';
 import { FastifyInstance } from 'fastify';
 import fs from 'node:fs';
@@ -13,9 +12,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PLUGINS_DIR = path.resolve(__dirname, '../../plugins');
 
 export default async function pluginsManagementRoutes(server: FastifyInstance) {
-    // Register multipart support
-    server.register(multipart);
-
     // List all installed plugins (backend & frontend)
     server.get('/', async (request, reply) => {
         const pluginsMap = pluginManager.getPlugins();

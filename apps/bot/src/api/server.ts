@@ -1,4 +1,5 @@
 import fastifyCookie from '@fastify/cookie';
+import multipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
 import fastify from 'fastify';
 import path from 'path';
@@ -20,6 +21,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export const server = fastify({ logger: false });
+
+// Register Multipart Globally
+server.register(multipart, {
+    limits: {
+        fileSize: 100 * 1024 * 1024, // 100MB limit
+    },
+});
 
 // Serve React app static assets
 server.register(fastifyStatic, {

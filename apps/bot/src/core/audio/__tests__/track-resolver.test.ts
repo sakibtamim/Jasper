@@ -9,6 +9,7 @@ import { resolveTrack } from '../track-resolver.js';
 vi.mock('../stream-handler.js', () => ({
     fetchVideoData: vi.fn(),
     isUrl: vi.fn(),
+    isYoutubeUrl: vi.fn(),
     isAttachmentUrl: vi.fn().mockReturnValue(false),
 }));
 
@@ -28,6 +29,7 @@ describe('resolveTrack', () => {
 
     it('should resolve a URL directly', async () => {
         vi.mocked(streamHandler.isUrl).mockReturnValue(true);
+        vi.mocked(streamHandler.isYoutubeUrl).mockReturnValue(true);
         vi.mocked(streamHandler.fetchVideoData).mockResolvedValue({
             title: 'Test Song',
             webpage_url: 'http://example.com/song',
