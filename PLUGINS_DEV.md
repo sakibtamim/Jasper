@@ -212,7 +212,7 @@ Plugins can extend the web dashboard using React components.
 > **✅ Correct:**
 >
 > ```typescript
-> import { useEffect, useState } from '@jasper/elements';
+> import { React, useEffect, useState } from '@jasper/elements';
 > ```
 >
 > **❌ Incorrect:**
@@ -244,8 +244,7 @@ The frontend entry point must export components that you want to register. It do
 ### Basic Structure
 
 ```tsx
-import React from 'react';
-
+import { React } from '@jasper/elements';
 import { Button, Card } from '@jasper/ui';
 
 // Component for the dashboard widget

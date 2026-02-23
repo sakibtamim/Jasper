@@ -1,4 +1,4 @@
-import { FormEvent, ReactRouterDOM, useEffect, useState } from '@jasper/elements';
+import { FormEvent, React, ReactRouterDOM, useEffect, useState } from '@jasper/elements';
 import { Badge, Button, Card, Input, Loader, Table } from '@jasper/ui';
 import { Clipboard, Plus, Trash2 } from 'lucide-react';
 
