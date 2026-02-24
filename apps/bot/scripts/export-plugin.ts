@@ -38,7 +38,10 @@ console.log(`Exporting plugin: ${PLUGIN_ID} (${isSourceExport ? 'SOURCE' : 'COMP
 if (!isSourceExport) {
     console.log('Building backend...');
     try {
-        execSync('pnpm run build:backend', { stdio: 'inherit', cwd: ROOT_DIR });
+        execSync('pnpm exec tsc && pnpm tsx scripts/build-plugins.ts ' + PLUGIN_ID, {
+            stdio: 'inherit',
+            cwd: ROOT_DIR,
+        });
     } catch (e) {
         console.error('Build failed.');
         process.exit(1);

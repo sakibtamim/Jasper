@@ -14,8 +14,14 @@ async function buildPlugins() {
         return;
     }
 
+    const args = process.argv.slice(2);
+    const targetPlugin = args[0];
+
     const plugins = fs.readdirSync(PLUGINS_DIR).filter((file) => {
-        return fs.statSync(path.join(PLUGINS_DIR, file)).isDirectory();
+        const isDir = fs.statSync(path.join(PLUGINS_DIR, file)).isDirectory();
+        if (!isDir) return false;
+        if (targetPlugin && file !== targetPlugin) return false;
+        return true;
     });
 
     console.log(`Found ${plugins.length} plugins to check for frontend code...`);
