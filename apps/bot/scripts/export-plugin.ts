@@ -39,7 +39,7 @@ if (!isSourceExport) {
     console.log('Building backend...');
     try {
         execSync(
-            'pnpm run build --filter @jasper/types... && pnpm exec tsc && pnpm tsx scripts/build-plugins.ts ' +
+            'pnpm run build --filter "jasper-bot^..." && pnpm exec tsc && pnpm tsx scripts/build-plugins.ts ' +
                 PLUGIN_ID,
             {
                 stdio: 'inherit',
