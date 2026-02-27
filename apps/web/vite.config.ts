@@ -47,7 +47,16 @@ export default defineConfig(({ mode }) => ({
             '/api/plugins': {
                 target: 'http://localhost:3000',
                 changeOrigin: true,
-                rewrite: (path: string) => path.replace(/^\/api\/plugins/, '/plugins'),
+                rewrite: (path: string) => {
+                    // Don't rewrite the API endpoints, only static assets if needed
+                    // Actually, if it's an API call, we SHOULD NOT rewrite it to /plugins
+                    // Let's check headers or just remove this rewrite if not strictly needed
+                    // For now, let's skip rewriting if it ends with /install or /storage
+                    if (path.includes('/install') || path.includes('/storage')) {
+                        return path;
+                    }
+                    return path.replace(/^\/api\/plugins/, '/plugins');
+                },
             },
         },
     },

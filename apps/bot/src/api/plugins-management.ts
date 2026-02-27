@@ -185,12 +185,18 @@ export default async function pluginsManagementRoutes(server: FastifyInstance) {
             await fs.promises.rename(tempExtractDir, targetDir);
 
             logger.info(
-                `[plugins] Installed plugin: ${manifest.id} v${manifest.version} by ${user.username}`,
+                `[plugins] Installed plugin files: ${manifest.id} v${manifest.version} by ${user.username}`,
             );
+
+            // 5. Hot Reload the Plugin into Memory
+            // We first toggle it off (just in case it was an update and was loaded)
+            await pluginManager.togglePlugin(manifest.id, false);
+            // Ensure the DB knows it's enabled by default upon new install
+            await pluginManager.togglePlugin(manifest.id, true);
 
             return {
                 success: true,
-                message: `Plugin ${manifest.id} installed successfully`,
+                message: `Plugin ${manifest.id} installed and loaded successfully`,
             };
         } catch (error) {
             logger.error(`[plugins] Installation failed: ${error}`);

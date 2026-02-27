@@ -142,6 +142,7 @@ export default function DevToolsPage() {
 
     // Plugin Upload State
     const [uploading, setUploading] = useState(false);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
     const PROTECTED_TABS = ['users', 'sessions', 'cache', 'stats', 'plugins', 'cookies'];
 
@@ -233,20 +234,31 @@ export default function DevToolsPage() {
         }
     };
 
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-        if (!file) return;
-
-        if (!file.name.endsWith('.zip')) {
-            setMessage('Error: Please upload a .zip file.');
+        if (!file) {
+            setSelectedFile(null);
             return;
         }
 
+        if (!file.name.endsWith('.zip')) {
+            setMessage('Error: Please select a .zip file.');
+            setSelectedFile(null);
+            return;
+        }
+
+        setSelectedFile(file);
+        setMessage(null);
+    };
+
+    const handleFileUpload = async () => {
+        if (!selectedFile) return;
+
         setUploading(true);
-        setMessage('Uploading...');
+        setMessage('Installing...');
 
         const formData = new FormData();
-        formData.append('plugin', file);
+        formData.append('plugin', selectedFile);
 
         try {
             const res = await fetch('/api/plugins/install', {
@@ -261,6 +273,7 @@ export default function DevToolsPage() {
 
             const data = await res.json();
             setMessage(`Success: ${data.message}. Please restart the bot to apply changes.`);
+            setSelectedFile(null);
             loadTab('plugins'); // Reload plugins tab after upload
         } catch (e) {
             setMessage(`Error: ${e instanceof Error ? e.message : String(e)}`);
@@ -778,26 +791,46 @@ export default function DevToolsPage() {
                                                 Upload a plugin .zip file (exported via{' '}
                                                 <code>pnpm run export-plugin</code>).
                                             </p>
-                                            <div className="flex items-center gap-4">
+                                            <div className="flex flex-col gap-4">
                                                 <input
                                                     type="file"
                                                     accept=".zip"
-                                                    onChange={handleFileUpload}
+                                                    onChange={handleFileSelect}
+                                                    onClick={(e) => {
+                                                        (e.target as HTMLInputElement).value = '';
+                                                    }}
                                                     disabled={uploading}
                                                     className="block w-full text-sm text-gray-500
-                                                file:mr-4 file:py-2 file:px-4
-                                                file:rounded-full file:border-0
-                                                file:text-sm file:font-semibold
-                                                file:bg-brand-primary/10 file:text-brand-primary
-                                                hover:file:bg-brand-primary/20
-                                                dark:file:bg-brand-primary/20 dark:file:text-brand-primary-light
-                                            "
+                                                        file:mr-4 file:py-2 file:px-4
+                                                        file:rounded-full file:border-0
+                                                        file:text-sm file:font-semibold
+                                                        file:bg-brand-primary/10 file:text-brand-primary
+                                                        hover:file:bg-brand-primary/20
+                                                        dark:file:bg-brand-primary/20 dark:file:text-brand-primary-light
+                                                    "
                                                 />
-                                                {uploading && (
-                                                    <span className="text-sm text-gray-500">
-                                                        Uploading...
-                                                    </span>
-                                                )}
+                                                <div className="flex items-center gap-4">
+                                                    <button
+                                                        onClick={handleFileUpload}
+                                                        disabled={uploading || !selectedFile}
+                                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors ${
+                                                            uploading || !selectedFile
+                                                                ? 'bg-brand-primary/50 cursor-not-allowed'
+                                                                : 'bg-brand-primary hover:bg-brand-primary-dark'
+                                                        }`}
+                                                    >
+                                                        <Upload className="w-4 h-4" />
+                                                        {uploading
+                                                            ? 'Installing...'
+                                                            : 'Install Plugin'}
+                                                    </button>
+                                                    {selectedFile && !uploading && (
+                                                        <span className="text-sm border border-brand-primary/20 bg-brand-primary/5 text-brand-primary px-3 py-1 rounded-full flex items-center gap-2">
+                                                            <Package className="w-3 h-3" />
+                                                            {selectedFile.name}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
 
