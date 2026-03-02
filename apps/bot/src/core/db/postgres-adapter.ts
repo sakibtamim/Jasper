@@ -857,6 +857,11 @@ export class PostgresAdapter implements DatabaseAdapter {
         );
     }
 
+    async deletePluginMeta(pluginId: string): Promise<void> {
+        if (!this.pool) throw new Error('Database not initialized');
+        await this.pool.query('DELETE FROM plugin_meta WHERE plugin_id = $1', [pluginId]);
+    }
+
     async getAllPluginMeta(): Promise<Array<{ pluginId: string; enabled: boolean }>> {
         if (!this.pool) throw new Error('Database not initialized');
         const result = await this.pool.query(

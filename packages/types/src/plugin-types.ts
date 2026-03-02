@@ -72,6 +72,7 @@ export interface CoreDataAccessor {
     isPluginEnabled(pluginId: string): Promise<boolean | null>;
     setPluginEnabled(pluginId: string, enabled: boolean): Promise<void>;
     getAllPluginMeta(): Promise<Array<{ pluginId: string; enabled: boolean }>>;
+    deletePluginMeta(pluginId: string): Promise<void>;
 }
 
 export interface SlashCommandDefinition {
