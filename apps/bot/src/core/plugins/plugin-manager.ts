@@ -38,10 +38,106 @@ const packageJsonPath = path.join(__dirname, '..', '..', '..', 'package.json');
 const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
 const CORE_VERSION = packageJson.version;
 
+type RouteHandler = (req: any, reply: any) => Promise<any> | void;
+type RouteEntry = {
+    method: string;
+    pathDef: string;
+    handler: RouteHandler;
+    regex: RegExp;
+    paramNames: string[];
+};
+
+export class DynamicPluginRouter {
+    private routes: RouteEntry[] = [];
+
+    constructor(private pluginId: string) {}
+
+    private compilePath(pathStr: string) {
+        const paramNames: string[] = [];
+        const regexStr = pathStr.replace(/:([a-zA-Z0-9_]+)/g, (_, name) => {
+            paramNames.push(name);
+            return '([a-zA-Z0-9_-]+)';
+        });
+        return { regex: new RegExp(`^${regexStr}$`), paramNames };
+    }
+
+    private addRoute(method: string, pathStr: string, handler: RouteHandler) {
+        let normalizedPath = pathStr.startsWith('/') ? pathStr : `/${pathStr}`;
+        if (normalizedPath.length > 1 && normalizedPath.endsWith('/')) {
+            normalizedPath = normalizedPath.slice(0, -1);
+        }
+        const { regex, paramNames } = this.compilePath(normalizedPath);
+        this.routes.push({ method, pathDef: normalizedPath, handler, regex, paramNames });
+    }
+
+    get(pathStr: string, handler: RouteHandler) {
+        this.addRoute('GET', pathStr, handler);
+        return this;
+    }
+    post(pathStr: string, handler: RouteHandler) {
+        this.addRoute('POST', pathStr, handler);
+        return this;
+    }
+    put(pathStr: string, handler: RouteHandler) {
+        this.addRoute('PUT', pathStr, handler);
+        return this;
+    }
+    delete(pathStr: string, handler: RouteHandler) {
+        this.addRoute('DELETE', pathStr, handler);
+        return this;
+    }
+    patch(pathStr: string, handler: RouteHandler) {
+        this.addRoute('PATCH', pathStr, handler);
+        return this;
+    }
+    options(pathStr: string, handler: RouteHandler) {
+        this.addRoute('OPTIONS', pathStr, handler);
+        return this;
+    }
+    all(pathStr: string, handler: RouteHandler) {
+        this.addRoute('ALL', pathStr, handler);
+        return this;
+    }
+
+    async register(pluginFn: any, opts?: any) {
+        if (typeof pluginFn === 'function') {
+            await pluginFn(this, opts);
+        }
+    }
+
+    async handle(method: string, pathStr: string, req: any, reply: any): Promise<boolean> {
+        let normalizedPath = pathStr.startsWith('/') ? pathStr : `/${pathStr}`;
+        if (normalizedPath.length > 1 && normalizedPath.endsWith('/')) {
+            normalizedPath = normalizedPath.slice(0, -1);
+        }
+
+        for (const route of this.routes) {
+            if (route.method === method || route.method === 'ALL') {
+                const match = normalizedPath.match(route.regex);
+                if (match) {
+                    req.params = req.params || {};
+                    route.paramNames.forEach((name, i) => {
+                        req.params[name] = match[i + 1];
+                    });
+                    await route.handler(req, reply);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+}
+
 export class PluginManager {
     private plugins: Map<
         string,
-        { plugin: Plugin; context: PluginContext; metadata: any; pluginDir: string }
+        {
+            plugin: Plugin;
+            context: PluginContext;
+            metadata: any;
+            pluginDir: string;
+            router: DynamicPluginRouter;
+        }
     >;
     private pluginCommands: Map<string, string[]>; // Track commands registered by each plugin
     private pluginIntervals: Map<string, Set<NodeJS.Timeout>>; // Track intervals registered by each plugin
@@ -71,6 +167,24 @@ export class PluginManager {
         this.pluginIntervals = new Map();
         this.soundboardQueues = new Map();
         this.context = null;
+    }
+
+    /**
+     * Handle incoming dynamic routed requests
+     */
+    async handleDynamicRoute(
+        pluginId: string,
+        method: string,
+        pathStr: string,
+        req: any,
+        reply: any,
+    ): Promise<boolean> {
+        for (const [_, data] of this.plugins.entries()) {
+            if (data.metadata.id === pluginId) {
+                return await data.router.handle(method, pathStr, req, reply);
+            }
+        }
+        return false;
     }
 
     /**
@@ -359,6 +473,32 @@ export class PluginManager {
             withFileTypes: true,
         });
 
+        // 0. Startup Validation: Catch DB vs Filesystem Mismatches
+        const dbPlugins = await this.context.db.core.getAllPluginMeta();
+        const validPluginDirs = new Set(
+            entries
+                .filter((entry) => entry.isDirectory() || entry.isSymbolicLink())
+                .map((entry) => path.join(PLUGINS_DIR, entry.name, 'jasper-plugin.json'))
+                .filter((p) => fs.existsSync(p))
+                .map((p) => {
+                    try {
+                        return JSON.parse(fs.readFileSync(p, 'utf-8')).id;
+                    } catch {
+                        return null;
+                    }
+                })
+                .filter(Boolean),
+        );
+
+        for (const dbPlugin of dbPlugins) {
+            if (!validPluginDirs.has(dbPlugin.pluginId)) {
+                logger.warn(
+                    `[plugins] Mismatch Detected: Plugin '${dbPlugin.pluginId}' is in the database but missing from the filesystem. Cleaning up database entry.`,
+                );
+                await this.context.db.core.deletePluginMeta(dbPlugin.pluginId);
+            }
+        }
+
         // Test plugins to disable in production by default
         // TEST_PLUGINS imported from config
 
@@ -491,69 +631,62 @@ export class PluginManager {
             // Initialize command tracking for this plugin
             this.pluginCommands.set(plugin.name, []);
 
-            // 3. Auto-enforced Web Route Namespacing
-            // We register a new Fastify scope with the plugin's ID as the prefix.
-            // All routes registered via context.server inside onLoad will be scoped.
-            await this.context!.server.register(
-                async (scopedServer) => {
-                    // Create a context specific to this plugin
-                    const pluginContext: PluginContext = {
-                        ...this.context!,
-                        server: scopedServer, // Override server with scoped instance
-                        db: {
-                            plugin: new ScopedPluginStore(metadata.id), // Use ID for DB namespace
-                            core: coreDataAccessor,
-                        },
-                        storage: new PluginStorage(metadata.id),
-                        logger: {
-                            debug: (msg: string) => logger.debug(`[${metadata.id}] ${msg}`),
-                            info: (msg: string) => logger.info(`[${metadata.id}] ${msg}`),
-                            warn: (msg: string) => logger.warn(`[${metadata.id}] ${msg}`),
-                            error: (msg: string) => logger.error(`[${metadata.id}] ${msg}`),
-                        },
-                        // Override registerCommand to track commands
-                        registerCommand: (command: any) => {
-                            this.context!.registerCommand(command); // Call base implementation
-                            const commands = this.pluginCommands.get(plugin.name) || [];
-                            commands.push(command.data.name);
-                            this.pluginCommands.set(plugin.name, commands);
-                        },
-                        scheduleTask: (intervalMs, task) => {
-                            if (intervalMs <= 0) {
-                                throw new Error('Interval must be positive');
-                            }
+            const router = new DynamicPluginRouter(metadata.id);
 
-                            const interval = setInterval(async () => {
-                                try {
-                                    await task();
-                                } catch (error) {
-                                    logger.error(
-                                        `[plugin:${metadata.id}] Scheduled task failed: ${error}`,
-                                    );
-                                }
-                            }, intervalMs);
-
-                            if (!this.pluginIntervals.has(plugin.name)) {
-                                this.pluginIntervals.set(plugin.name, new Set());
-                            }
-                            this.pluginIntervals.get(plugin.name)!.add(interval);
-                            logger.debug(
-                                `[plugin:${metadata.id}] Scheduled task with interval ${intervalMs}ms`,
-                            );
-                        },
-                    };
-
-                    await plugin.onLoad(pluginContext);
-                    this.plugins.set(plugin.name, {
-                        plugin,
-                        context: pluginContext,
-                        metadata,
-                        pluginDir,
-                    });
-                    logger.info(`[plugins] Successfully loaded ${plugin.name}`);
+            // Create a context specific to this plugin
+            const pluginContext: PluginContext = {
+                ...this.context!,
+                server: router as unknown as FastifyInstance, // Override server with dynamic router mock
+                db: {
+                    plugin: new ScopedPluginStore(metadata.id), // Use ID for DB namespace
+                    core: coreDataAccessor,
                 },
-                { prefix: `/api/plugins/${metadata.id}` },
-            );
+                storage: new PluginStorage(metadata.id),
+                logger: {
+                    debug: (msg: string) => logger.debug(`[${metadata.id}] ${msg}`),
+                    info: (msg: string) => logger.info(`[${metadata.id}] ${msg}`),
+                    warn: (msg: string) => logger.warn(`[${metadata.id}] ${msg}`),
+                    error: (msg: string) => logger.error(`[${metadata.id}] ${msg}`),
+                },
+                // Override registerCommand to track commands
+                registerCommand: (command: any) => {
+                    this.context!.registerCommand(command); // Call base implementation
+                    const commands = this.pluginCommands.get(plugin.name) || [];
+                    commands.push(command.data.name);
+                    this.pluginCommands.set(plugin.name, commands);
+                },
+                scheduleTask: (intervalMs, task) => {
+                    if (intervalMs <= 0) {
+                        throw new Error('Interval must be positive');
+                    }
+
+                    const interval = setInterval(async () => {
+                        try {
+                            await task();
+                        } catch (error) {
+                            logger.error(`[plugin:${metadata.id}] Scheduled task failed: ${error}`);
+                        }
+                    }, intervalMs);
+
+                    if (!this.pluginIntervals.has(plugin.name)) {
+                        this.pluginIntervals.set(plugin.name, new Set());
+                    }
+                    this.pluginIntervals.get(plugin.name)!.add(interval);
+                    logger.debug(
+                        `[plugin:${metadata.id}] Scheduled task with interval ${intervalMs}ms`,
+                    );
+                },
+            };
+
+            await plugin.onLoad(pluginContext);
+            this.plugins.set(plugin.name, {
+                plugin,
+                context: pluginContext,
+                metadata,
+                pluginDir,
+                router,
+            });
+            logger.info(`[plugins] Successfully loaded ${plugin.name}`);
         } catch (error) {
             logger.error(
                 `[plugins] Failed to initialize plugin ${plugin.name}: ${error instanceof Error ? error.message : String(error)}`,

@@ -1,10 +1,15 @@
 import { FastifyPluginAsync } from 'fastify';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { fetchVideoData } from '../core/audio/stream-handler.js';
 import { getCacheStorage } from '../core/cache-manager.js';
 import db from '../core/db/index.js';
 import logger from '../core/logger.js';
 import pluginManager from '../core/plugins/plugin-manager.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const devtoolsRoutes: FastifyPluginAsync = async (fastify) => {
     // Middleware to check if user is authenticated
@@ -275,6 +280,32 @@ const devtoolsRoutes: FastifyPluginAsync = async (fastify) => {
             } catch (error) {
                 logger.error(`[api] Failed to toggle plugin ${id}: ${error}`);
                 reply.status(500).send({ error: 'Internal server error' });
+            }
+        },
+    );
+
+    fastify.delete<{ Params: { id: string } }>(
+        '/api/devtools/plugins/:id',
+        async (request, reply) => {
+            const { id } = request.params;
+            try {
+                // Ensure it's unloaded first
+                await pluginManager.unloadPlugin(id);
+
+                // Delete its metadata
+                await db.deletePluginMeta(id);
+
+                // Find directory by ID (since it's usually the same as name, but let's be safe)
+                // If it exists in PLUGINS_DIR, remove it
+                const pluginDir = path.join(__dirname, '../../plugins', id);
+                if (fs.existsSync(pluginDir)) {
+                    await fs.promises.rm(pluginDir, { recursive: true, force: true });
+                }
+
+                reply.send({ success: true });
+            } catch (error) {
+                logger.error(`[api] Failed to remove plugin ${id}: ${error}`);
+                reply.status(500).send({ error: 'Failed to remove plugin' });
             }
         },
     );
