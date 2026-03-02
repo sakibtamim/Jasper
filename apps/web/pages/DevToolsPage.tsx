@@ -142,6 +142,7 @@ export default function DevToolsPage() {
 
     // Plugin Upload State
     const [uploading, setUploading] = useState(false);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
     const PROTECTED_TABS = ['users', 'sessions', 'cache', 'stats', 'plugins', 'cookies'];
 
@@ -233,20 +234,28 @@ export default function DevToolsPage() {
         }
     };
 
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-        if (!file) return;
+        if (file) {
+            setSelectedFile(file);
+        } else {
+            setSelectedFile(null);
+        }
+    };
 
-        if (!file.name.endsWith('.zip')) {
-            setMessage('Error: Please upload a .zip file.');
+    const handleInstallClick = async () => {
+        if (!selectedFile) return;
+
+        if (!selectedFile.name.endsWith('.zip')) {
+            setMessage('Error: Please select a .zip file.');
             return;
         }
 
         setUploading(true);
-        setMessage('Uploading...');
+        setMessage('Uploading and installing plugin...');
 
         const formData = new FormData();
-        formData.append('plugin', file);
+        formData.append('plugin', selectedFile);
 
         try {
             const res = await fetch('/api/plugins/install', {
@@ -256,12 +265,23 @@ export default function DevToolsPage() {
 
             if (!res.ok) {
                 const text = await res.text();
-                throw new Error(text || res.statusText);
+                let errMessage = res.statusText;
+                try {
+                    const parsed = JSON.parse(text);
+                    errMessage = parsed.message || parsed.error || errMessage;
+                } catch (e) {
+                    errMessage = text;
+                }
+                throw new Error(errMessage);
             }
 
             const data = await res.json();
-            setMessage(`Success: ${data.message}. Please restart the bot to apply changes.`);
-            loadTab('plugins'); // Reload plugins tab after upload
+            setMessage(`Success: ${data.message}`);
+            setSelectedFile(null);
+            loadTab('plugins'); // Reload plugins tab
+
+            // Re-fetch global plugin context if available
+            window.location.reload();
         } catch (e) {
             setMessage(`Error: ${e instanceof Error ? e.message : String(e)}`);
         } finally {
@@ -782,7 +802,7 @@ export default function DevToolsPage() {
                                                 <input
                                                     type="file"
                                                     accept=".zip"
-                                                    onChange={handleFileUpload}
+                                                    onChange={handleFileSelect}
                                                     disabled={uploading}
                                                     className="block w-full text-sm text-gray-500
                                                 file:mr-4 file:py-2 file:px-4
@@ -793,12 +813,24 @@ export default function DevToolsPage() {
                                                 dark:file:bg-brand-primary/20 dark:file:text-brand-primary-light
                                             "
                                                 />
-                                                {uploading && (
-                                                    <span className="text-sm text-gray-500">
-                                                        Uploading...
-                                                    </span>
-                                                )}
+                                                <button
+                                                    onClick={handleInstallClick}
+                                                    disabled={!selectedFile || uploading}
+                                                    className="px-4 py-2 text-sm font-medium text-white bg-brand-primary hover:bg-brand-primary/90 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg"
+                                                >
+                                                    {uploading ? 'Installing...' : 'Install'}
+                                                </button>
                                             </div>
+                                            {message && message.includes('Success') && (
+                                                <p className="mt-2 text-sm text-green-600 dark:text-green-400">
+                                                    {message}
+                                                </p>
+                                            )}
+                                            {message && message.includes('Error') && (
+                                                <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+                                                    {message}
+                                                </p>
+                                            )}
                                         </div>
 
                                         <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
@@ -891,6 +923,17 @@ export default function DevToolsPage() {
                                                                         <span
                                                                             className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${plugin.enabled ? 'translate-x-6' : 'translate-x-1'}`}
                                                                         />
+                                                                    </button>
+
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            deleteItem(
+                                                                                `/api/devtools/plugins/${plugin.id}`,
+                                                                            )
+                                                                        }
+                                                                        className="ml-2 text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium px-2 py-1 border border-red-200 dark:border-red-900/50 rounded bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 transition-colors"
+                                                                    >
+                                                                        Remove
                                                                     </button>
                                                                 </div>
                                                             </div>
