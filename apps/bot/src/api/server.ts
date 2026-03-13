@@ -84,28 +84,31 @@ server.get('/', async (request, reply) => {
     return reply.sendFile('index.html', path.join(__dirname, '../../../web/dist'));
 });
 
-server.all('/api/plugins/:pluginId/*', async (request: any, reply: any) => {
-    const { pluginId } = request.params;
-    const wildCardPath = '/' + (request.params['*'] || '');
+server.all<{ Params: { pluginId: string; '*': string } }>(
+    '/api/plugins/:pluginId/*',
+    async (request, reply) => {
+        const { pluginId } = request.params;
+        const wildCardPath = '/' + (request.params['*'] || '');
 
-    // Attempt dynamic plugin handling first
-    const handled = await pluginManager.handleDynamicRoute(
-        pluginId,
-        request.method,
-        wildCardPath,
-        request,
-        reply,
-    );
+        // Attempt dynamic plugin handling first
+        const handled = await pluginManager.handleDynamicRoute(
+            pluginId,
+            request.method,
+            wildCardPath,
+            request,
+            reply,
+        );
 
-    // If handled correctly by the plugin router, do not proceed
-    if (handled) return;
+        // If handled correctly by the plugin router, do not proceed
+        if (handled) return;
 
-    // It was not handled by any dynamic route inside the plugin
-    // If not handled, this could fall through or just explicitly 404 here
-    if (!reply.sent) {
-        return reply.status(404).send({ error: 'Plugin Route Not Found' });
-    }
-});
+        // It was not handled by any dynamic route inside the plugin
+        // If not handled, this could fall through or just explicitly 404 here
+        if (!reply.sent) {
+            return reply.status(404).send({ error: 'Plugin Route Not Found' });
+        }
+    },
+);
 
 // API Endpoints
 
