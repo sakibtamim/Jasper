@@ -8,7 +8,7 @@ import {
     entersState,
     joinVoiceChannel,
 } from '@discordjs/voice';
-import { Plugin, PluginContext } from '@jasper/types';
+import { IPluginRouter, Plugin, PluginContext, PluginRouteHandler } from '@jasper/types';
 import { Client, REST, Routes } from 'discord.js';
 import { FastifyInstance } from 'fastify';
 import fs from 'node:fs';
@@ -20,6 +20,7 @@ import { getEntryMessage } from '../../config/afr-config.js';
 import { DISCORD_CLIENT_ID, DISCORD_TOKEN, GUILD_ID } from '../../config/env.js';
 import { TEST_PLUGINS } from '../../config/plugins.js';
 import { getQueue } from '../audio/queue-manager.js';
+import db from '../db/index.js';
 import logger from '../logger.js';
 import workerPool from '../worker-pool.js';
 import coreDataAccessor from './core-data-accessor.js';
@@ -31,14 +32,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Calculate the root 'src' directory based on this file's location (src/core/plugins/plugin-manager.ts)
-const PLUGINS_DIR = path.join(__dirname, '..', '..', 'plugins');
+export const PLUGINS_DIR = path.join(__dirname, '..', '..', 'plugins');
 
 // Read core version from package.json
 const packageJsonPath = path.join(__dirname, '..', '..', '..', 'package.json');
 const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
 const CORE_VERSION = packageJson.version;
 
-type RouteHandler = (req: any, reply: any) => Promise<any> | void;
+type RouteHandler = PluginRouteHandler;
 type RouteEntry = {
     method: string;
     pathDef: string;
@@ -47,17 +48,31 @@ type RouteEntry = {
     paramNames: string[];
 };
 
-export class DynamicPluginRouter {
+// Escape regex special characters in a string
+function escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export class DynamicPluginRouter implements IPluginRouter {
     private routes: RouteEntry[] = [];
 
     constructor(private pluginId: string) {}
 
     private compilePath(pathStr: string) {
         const paramNames: string[] = [];
-        const regexStr = pathStr.replace(/:([a-zA-Z0-9_]+)/g, (_, name) => {
-            paramNames.push(name);
-            return '([a-zA-Z0-9_-]+)';
-        });
+        // Split around :param tokens, escape static segments, reassemble
+        const parts = pathStr.split(/:([a-zA-Z0-9_]+)/g);
+        let regexStr = '';
+        for (let i = 0; i < parts.length; i++) {
+            if (i % 2 === 0) {
+                // Static segment — escape regex special chars
+                regexStr += escapeRegex(parts[i]);
+            } else {
+                // Param name
+                paramNames.push(parts[i]);
+                regexStr += '([a-zA-Z0-9_-]+)';
+            }
+        }
         return { regex: new RegExp(`^${regexStr}$`), paramNames };
     }
 
@@ -141,6 +156,7 @@ export class PluginManager {
     >;
     private pluginCommands: Map<string, string[]>; // Track commands registered by each plugin
     private pluginIntervals: Map<string, Set<NodeJS.Timeout>>; // Track intervals registered by each plugin
+    private pluginRouters: Map<string, DynamicPluginRouter>; // O(1) plugin-id → router lookup
     private context: PluginContext | null;
 
     private soundboardQueues: Map<
@@ -165,24 +181,24 @@ export class PluginManager {
         this.plugins = new Map();
         this.pluginCommands = new Map();
         this.pluginIntervals = new Map();
+        this.pluginRouters = new Map();
         this.soundboardQueues = new Map();
         this.context = null;
     }
 
     /**
-     * Handle incoming dynamic routed requests
+     * Handle incoming dynamic routed requests (O(1) lookup by plugin ID)
      */
     async handleDynamicRoute(
         pluginId: string,
         method: string,
         pathStr: string,
-        req: any,
-        reply: any,
+        req: unknown,
+        reply: unknown,
     ): Promise<boolean> {
-        for (const [_, data] of this.plugins.entries()) {
-            if (data.metadata.id === pluginId) {
-                return await data.router.handle(method, pathStr, req, reply);
-            }
+        const router = this.pluginRouters.get(pluginId);
+        if (router) {
+            return await router.handle(method, pathStr, req, reply);
         }
         return false;
     }
@@ -377,7 +393,7 @@ export class PluginManager {
         this.context = {
             client,
             workers: workerPool.getWorkers(),
-            server,
+            server: server as unknown as IPluginRouter, // Base context; overridden per-plugin with DynamicPluginRouter
             registerCommand: (command: any) => {
                 // Base implementation - just registers to client
                 // This will be wrapped by the scoped context to add tracking
@@ -495,7 +511,7 @@ export class PluginManager {
                 logger.warn(
                     `[plugins] Mismatch Detected: Plugin '${dbPlugin.pluginId}' is in the database but missing from the filesystem. Cleaning up database entry.`,
                 );
-                await this.context.db.core.deletePluginMeta(dbPlugin.pluginId);
+                await db.deletePluginMeta(dbPlugin.pluginId);
             }
         }
 
@@ -636,7 +652,7 @@ export class PluginManager {
             // Create a context specific to this plugin
             const pluginContext: PluginContext = {
                 ...this.context!,
-                server: router as unknown as FastifyInstance, // Override server with dynamic router mock
+                server: router, // DynamicPluginRouter implements IPluginRouter directly
                 db: {
                     plugin: new ScopedPluginStore(metadata.id), // Use ID for DB namespace
                     core: coreDataAccessor,
@@ -686,6 +702,7 @@ export class PluginManager {
                 pluginDir,
                 router,
             });
+            this.pluginRouters.set(metadata.id, router);
             logger.info(`[plugins] Successfully loaded ${plugin.name}`);
         } catch (error) {
             logger.error(
@@ -722,6 +739,11 @@ export class PluginManager {
                     clearInterval(interval);
                 }
                 this.pluginIntervals.delete(name);
+            }
+
+            // Remove from pluginRouters map
+            if (entry.metadata?.id) {
+                this.pluginRouters.delete(entry.metadata.id);
             }
 
             this.plugins.delete(name);

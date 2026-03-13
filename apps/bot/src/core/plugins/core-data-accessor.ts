@@ -30,10 +30,6 @@ export class ReadOnlyCoreDataAccessor implements CoreDataAccessor {
     async getAllPluginMeta(): Promise<Array<{ pluginId: string; enabled: boolean }>> {
         return await db.getAllPluginMeta();
     }
-
-    async deletePluginMeta(pluginId: string): Promise<void> {
-        return await db.deletePluginMeta(pluginId);
-    }
 }
 
 // Singleton instance

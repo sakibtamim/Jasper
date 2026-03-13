@@ -72,7 +72,6 @@ export interface CoreDataAccessor {
     isPluginEnabled(pluginId: string): Promise<boolean | null>;
     setPluginEnabled(pluginId: string, enabled: boolean): Promise<void>;
     getAllPluginMeta(): Promise<Array<{ pluginId: string; enabled: boolean }>>;
-    deletePluginMeta(pluginId: string): Promise<void>;
 }
 
 export interface SlashCommandDefinition {
@@ -92,12 +91,31 @@ export interface SlashCommandDefinition {
     ) => void | Promise<void>;
 }
 
+// --- Plugin Router Interface ---
+// Plugins receive this instead of a raw FastifyInstance.
+// Only exposes the HTTP method helpers plugins actually need.
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type PluginRouteHandler = (req: any, reply: any) => Promise<any> | void;
+
+export interface IPluginRouter {
+    get(path: string, handler: PluginRouteHandler): IPluginRouter;
+    post(path: string, handler: PluginRouteHandler): IPluginRouter;
+    put(path: string, handler: PluginRouteHandler): IPluginRouter;
+    delete(path: string, handler: PluginRouteHandler): IPluginRouter;
+    patch(path: string, handler: PluginRouteHandler): IPluginRouter;
+    options(path: string, handler: PluginRouteHandler): IPluginRouter;
+    all(path: string, handler: PluginRouteHandler): IPluginRouter;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    register(pluginFn: any, opts?: any): Promise<void>;
+}
+
 // --- Plugin Context ---
 
 export interface PluginContext {
     client: Client; // Controller client
     workers: WorkerState[]; // Access to worker pool
-    server: FastifyInstance; // Access to web server
+    server: IPluginRouter; // Scoped plugin router (subset of Fastify)
 
     // Scoped logger for the plugin
     logger: {
