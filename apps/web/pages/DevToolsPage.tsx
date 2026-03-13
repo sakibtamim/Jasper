@@ -279,9 +279,6 @@ export default function DevToolsPage() {
             setMessage(`Success: ${data.message}`);
             setSelectedFile(null);
             loadTab('plugins'); // Reload plugins tab
-
-            // Re-fetch global plugin context if available
-            window.location.reload();
         } catch (e) {
             setMessage(`Error: ${e instanceof Error ? e.message : String(e)}`);
         } finally {
@@ -821,12 +818,12 @@ export default function DevToolsPage() {
                                                     {uploading ? 'Installing...' : 'Install'}
                                                 </button>
                                             </div>
-                                            {message && message.includes('Success') && (
+                                            {message && message.startsWith('Success') && (
                                                 <p className="mt-2 text-sm text-green-600 dark:text-green-400">
                                                     {message}
                                                 </p>
                                             )}
-                                            {message && message.includes('Error') && (
+                                            {message && message.startsWith('Error') && (
                                                 <p className="mt-2 text-sm text-red-600 dark:text-red-400">
                                                     {message}
                                                 </p>
