@@ -1,5 +1,4 @@
 import { Client } from 'discord.js';
-import { FastifyInstance } from 'fastify';
 import fs from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -34,18 +33,15 @@ vi.mock('../logger.js', () => ({
 describe('PluginManager', () => {
     let pluginManager: PluginManager;
     let mockClient: Client;
-    let mockServer: FastifyInstance;
+    let mockServer: { register: ReturnType<typeof vi.fn> };
 
     beforeEach(() => {
         pluginManager = new PluginManager();
         mockClient = new Client({ intents: [] });
         mockClient.commands = new Map() as any;
         mockServer = {
-            register: vi.fn().mockImplementation((plugin, opts) => {
-                // Simulate plugin registration
-                return plugin({}, opts);
-            }),
-        } as unknown as FastifyInstance;
+            register: vi.fn(),
+        };
     });
 
     afterEach(() => {
@@ -53,13 +49,13 @@ describe('PluginManager', () => {
     });
 
     it('should initialize correctly', () => {
-        pluginManager.init(mockClient, mockServer);
+        pluginManager.init(mockClient, mockServer as any);
         // @ts-expect-error - testing private property
         expect(pluginManager.context).toBeDefined();
     });
 
     it('should register a plugin', async () => {
-        pluginManager.init(mockClient, mockServer);
+        pluginManager.init(mockClient, mockServer as any);
 
         const mockPlugin = {
             name: 'test-plugin',
@@ -79,11 +75,10 @@ describe('PluginManager', () => {
         const plugins = pluginManager.getPlugins();
         expect(plugins.has('test-plugin')).toBe(true);
         expect(mockPlugin.onLoad).toHaveBeenCalled();
-        expect(mockServer.register).toHaveBeenCalled();
     });
 
     it('should not register the same plugin twice', async () => {
-        pluginManager.init(mockClient, mockServer);
+        pluginManager.init(mockClient, mockServer as any);
 
         const mockPlugin = {
             name: 'test-plugin',
@@ -105,7 +100,7 @@ describe('PluginManager', () => {
     });
 
     it('should unload a plugin', async () => {
-        pluginManager.init(mockClient, mockServer);
+        pluginManager.init(mockClient, mockServer as any);
 
         const mockPlugin = {
             name: 'test-plugin',

@@ -169,6 +169,7 @@ export interface IPluginRepository {
 export interface IPluginMetaRepository {
     isPluginEnabled(pluginId: string): Promise<boolean | null>;
     setPluginEnabled(pluginId: string, enabled: boolean): Promise<void>;
+    deletePluginMeta(pluginId: string): Promise<void>;
     getAllPluginMeta(): Promise<Array<{ pluginId: string; enabled: boolean }>>;
 }
 

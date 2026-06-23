@@ -8,7 +8,7 @@ import {
     entersState,
     joinVoiceChannel,
 } from '@discordjs/voice';
-import { Plugin, PluginContext } from '@jasper/types';
+import { IPluginRouter, Plugin, PluginContext, PluginRouteHandler } from '@jasper/types';
 import { Client, REST, Routes } from 'discord.js';
 import { FastifyInstance } from 'fastify';
 import fs from 'node:fs';
@@ -20,6 +20,7 @@ import { getEntryMessage } from '../../config/afr-config.js';
 import { DISCORD_CLIENT_ID, DISCORD_TOKEN, GUILD_ID } from '../../config/env.js';
 import { TEST_PLUGINS } from '../../config/plugins.js';
 import { getQueue } from '../audio/queue-manager.js';
+import db from '../db/index.js';
 import logger from '../logger.js';
 import workerPool from '../worker-pool.js';
 import coreDataAccessor from './core-data-accessor.js';
@@ -31,20 +32,131 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Calculate the root 'src' directory based on this file's location (src/core/plugins/plugin-manager.ts)
-const PLUGINS_DIR = path.join(__dirname, '..', '..', 'plugins');
+export const PLUGINS_DIR = path.join(__dirname, '..', '..', 'plugins');
 
 // Read core version from package.json
 const packageJsonPath = path.join(__dirname, '..', '..', '..', 'package.json');
 const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
 const CORE_VERSION = packageJson.version;
 
+type RouteHandler = PluginRouteHandler;
+type RouteEntry = {
+    method: string;
+    pathDef: string;
+    handler: RouteHandler;
+    regex: RegExp;
+    paramNames: string[];
+};
+
+// Escape regex special characters in a string
+function escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export class DynamicPluginRouter implements IPluginRouter {
+    private routes: RouteEntry[] = [];
+
+    constructor(private pluginId: string) {}
+
+    private compilePath(pathStr: string) {
+        const paramNames: string[] = [];
+        // Split around :param tokens, escape static segments, reassemble
+        const parts = pathStr.split(/:([a-zA-Z0-9_]+)/g);
+        let regexStr = '';
+        for (let i = 0; i < parts.length; i++) {
+            if (i % 2 === 0) {
+                // Static segment — escape regex special chars
+                regexStr += escapeRegex(parts[i]);
+            } else {
+                // Param name
+                paramNames.push(parts[i]);
+                regexStr += '([a-zA-Z0-9_-]+)';
+            }
+        }
+        return { regex: new RegExp(`^${regexStr}$`), paramNames };
+    }
+
+    private addRoute(method: string, pathStr: string, handler: RouteHandler) {
+        let normalizedPath = pathStr.startsWith('/') ? pathStr : `/${pathStr}`;
+        if (normalizedPath.length > 1 && normalizedPath.endsWith('/')) {
+            normalizedPath = normalizedPath.slice(0, -1);
+        }
+        const { regex, paramNames } = this.compilePath(normalizedPath);
+        this.routes.push({ method, pathDef: normalizedPath, handler, regex, paramNames });
+    }
+
+    get(pathStr: string, handler: RouteHandler) {
+        this.addRoute('GET', pathStr, handler);
+        return this;
+    }
+    post(pathStr: string, handler: RouteHandler) {
+        this.addRoute('POST', pathStr, handler);
+        return this;
+    }
+    put(pathStr: string, handler: RouteHandler) {
+        this.addRoute('PUT', pathStr, handler);
+        return this;
+    }
+    delete(pathStr: string, handler: RouteHandler) {
+        this.addRoute('DELETE', pathStr, handler);
+        return this;
+    }
+    patch(pathStr: string, handler: RouteHandler) {
+        this.addRoute('PATCH', pathStr, handler);
+        return this;
+    }
+    options(pathStr: string, handler: RouteHandler) {
+        this.addRoute('OPTIONS', pathStr, handler);
+        return this;
+    }
+    all(pathStr: string, handler: RouteHandler) {
+        this.addRoute('ALL', pathStr, handler);
+        return this;
+    }
+
+    async register(pluginFn: any, opts?: any) {
+        if (typeof pluginFn === 'function') {
+            await pluginFn(this, opts);
+        }
+    }
+
+    async handle(method: string, pathStr: string, req: any, reply: any): Promise<boolean> {
+        let normalizedPath = pathStr.startsWith('/') ? pathStr : `/${pathStr}`;
+        if (normalizedPath.length > 1 && normalizedPath.endsWith('/')) {
+            normalizedPath = normalizedPath.slice(0, -1);
+        }
+
+        for (const route of this.routes) {
+            if (route.method === method || route.method === 'ALL') {
+                const match = normalizedPath.match(route.regex);
+                if (match) {
+                    req.params = req.params || {};
+                    route.paramNames.forEach((name, i) => {
+                        req.params[name] = match[i + 1];
+                    });
+                    await route.handler(req, reply);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+}
+
 export class PluginManager {
     private plugins: Map<
         string,
-        { plugin: Plugin; context: PluginContext; metadata: any; pluginDir: string }
+        {
+            plugin: Plugin;
+            context: PluginContext;
+            metadata: any;
+            pluginDir: string;
+            router: DynamicPluginRouter;
+        }
     >;
     private pluginCommands: Map<string, string[]>; // Track commands registered by each plugin
     private pluginIntervals: Map<string, Set<NodeJS.Timeout>>; // Track intervals registered by each plugin
+    private pluginRouters: Map<string, DynamicPluginRouter>; // O(1) plugin-id → router lookup
     private context: PluginContext | null;
 
     private soundboardQueues: Map<
@@ -69,8 +181,26 @@ export class PluginManager {
         this.plugins = new Map();
         this.pluginCommands = new Map();
         this.pluginIntervals = new Map();
+        this.pluginRouters = new Map();
         this.soundboardQueues = new Map();
         this.context = null;
+    }
+
+    /**
+     * Handle incoming dynamic routed requests (O(1) lookup by plugin ID)
+     */
+    async handleDynamicRoute(
+        pluginId: string,
+        method: string,
+        pathStr: string,
+        req: unknown,
+        reply: unknown,
+    ): Promise<boolean> {
+        const router = this.pluginRouters.get(pluginId);
+        if (router) {
+            return await router.handle(method, pathStr, req, reply);
+        }
+        return false;
     }
 
     /**
@@ -263,7 +393,7 @@ export class PluginManager {
         this.context = {
             client,
             workers: workerPool.getWorkers(),
-            server,
+            server: server as unknown as IPluginRouter, // Base context; overridden per-plugin with DynamicPluginRouter
             registerCommand: (command: any) => {
                 // Base implementation - just registers to client
                 // This will be wrapped by the scoped context to add tracking
@@ -358,6 +488,32 @@ export class PluginManager {
         const entries = await fs.promises.readdir(PLUGINS_DIR, {
             withFileTypes: true,
         });
+
+        // 0. Startup Validation: Catch DB vs Filesystem Mismatches
+        const dbPlugins = await this.context.db.core.getAllPluginMeta();
+        const validPluginDirs = new Set(
+            entries
+                .filter((entry) => entry.isDirectory() || entry.isSymbolicLink())
+                .map((entry) => path.join(PLUGINS_DIR, entry.name, 'jasper-plugin.json'))
+                .filter((p) => fs.existsSync(p))
+                .map((p) => {
+                    try {
+                        return JSON.parse(fs.readFileSync(p, 'utf-8')).id;
+                    } catch {
+                        return null;
+                    }
+                })
+                .filter(Boolean),
+        );
+
+        for (const dbPlugin of dbPlugins) {
+            if (!validPluginDirs.has(dbPlugin.pluginId)) {
+                logger.warn(
+                    `[plugins] Mismatch Detected: Plugin '${dbPlugin.pluginId}' is in the database but missing from the filesystem. Cleaning up database entry.`,
+                );
+                await db.deletePluginMeta(dbPlugin.pluginId);
+            }
+        }
 
         // Test plugins to disable in production by default
         // TEST_PLUGINS imported from config
@@ -491,69 +647,63 @@ export class PluginManager {
             // Initialize command tracking for this plugin
             this.pluginCommands.set(plugin.name, []);
 
-            // 3. Auto-enforced Web Route Namespacing
-            // We register a new Fastify scope with the plugin's ID as the prefix.
-            // All routes registered via context.server inside onLoad will be scoped.
-            await this.context!.server.register(
-                async (scopedServer) => {
-                    // Create a context specific to this plugin
-                    const pluginContext: PluginContext = {
-                        ...this.context!,
-                        server: scopedServer, // Override server with scoped instance
-                        db: {
-                            plugin: new ScopedPluginStore(metadata.id), // Use ID for DB namespace
-                            core: coreDataAccessor,
-                        },
-                        storage: new PluginStorage(metadata.id),
-                        logger: {
-                            debug: (msg: string) => logger.debug(`[${metadata.id}] ${msg}`),
-                            info: (msg: string) => logger.info(`[${metadata.id}] ${msg}`),
-                            warn: (msg: string) => logger.warn(`[${metadata.id}] ${msg}`),
-                            error: (msg: string) => logger.error(`[${metadata.id}] ${msg}`),
-                        },
-                        // Override registerCommand to track commands
-                        registerCommand: (command: any) => {
-                            this.context!.registerCommand(command); // Call base implementation
-                            const commands = this.pluginCommands.get(plugin.name) || [];
-                            commands.push(command.data.name);
-                            this.pluginCommands.set(plugin.name, commands);
-                        },
-                        scheduleTask: (intervalMs, task) => {
-                            if (intervalMs <= 0) {
-                                throw new Error('Interval must be positive');
-                            }
+            const router = new DynamicPluginRouter(metadata.id);
 
-                            const interval = setInterval(async () => {
-                                try {
-                                    await task();
-                                } catch (error) {
-                                    logger.error(
-                                        `[plugin:${metadata.id}] Scheduled task failed: ${error}`,
-                                    );
-                                }
-                            }, intervalMs);
-
-                            if (!this.pluginIntervals.has(plugin.name)) {
-                                this.pluginIntervals.set(plugin.name, new Set());
-                            }
-                            this.pluginIntervals.get(plugin.name)!.add(interval);
-                            logger.debug(
-                                `[plugin:${metadata.id}] Scheduled task with interval ${intervalMs}ms`,
-                            );
-                        },
-                    };
-
-                    await plugin.onLoad(pluginContext);
-                    this.plugins.set(plugin.name, {
-                        plugin,
-                        context: pluginContext,
-                        metadata,
-                        pluginDir,
-                    });
-                    logger.info(`[plugins] Successfully loaded ${plugin.name}`);
+            // Create a context specific to this plugin
+            const pluginContext: PluginContext = {
+                ...this.context!,
+                server: router, // DynamicPluginRouter implements IPluginRouter directly
+                db: {
+                    plugin: new ScopedPluginStore(metadata.id), // Use ID for DB namespace
+                    core: coreDataAccessor,
                 },
-                { prefix: `/api/plugins/${metadata.id}` },
-            );
+                storage: new PluginStorage(metadata.id),
+                logger: {
+                    debug: (msg: string) => logger.debug(`[${metadata.id}] ${msg}`),
+                    info: (msg: string) => logger.info(`[${metadata.id}] ${msg}`),
+                    warn: (msg: string) => logger.warn(`[${metadata.id}] ${msg}`),
+                    error: (msg: string) => logger.error(`[${metadata.id}] ${msg}`),
+                },
+                // Override registerCommand to track commands
+                registerCommand: (command: any) => {
+                    this.context!.registerCommand(command); // Call base implementation
+                    const commands = this.pluginCommands.get(plugin.name) || [];
+                    commands.push(command.data.name);
+                    this.pluginCommands.set(plugin.name, commands);
+                },
+                scheduleTask: (intervalMs, task) => {
+                    if (intervalMs <= 0) {
+                        throw new Error('Interval must be positive');
+                    }
+
+                    const interval = setInterval(async () => {
+                        try {
+                            await task();
+                        } catch (error) {
+                            logger.error(`[plugin:${metadata.id}] Scheduled task failed: ${error}`);
+                        }
+                    }, intervalMs);
+
+                    if (!this.pluginIntervals.has(plugin.name)) {
+                        this.pluginIntervals.set(plugin.name, new Set());
+                    }
+                    this.pluginIntervals.get(plugin.name)!.add(interval);
+                    logger.debug(
+                        `[plugin:${metadata.id}] Scheduled task with interval ${intervalMs}ms`,
+                    );
+                },
+            };
+
+            await plugin.onLoad(pluginContext);
+            this.plugins.set(plugin.name, {
+                plugin,
+                context: pluginContext,
+                metadata,
+                pluginDir,
+                router,
+            });
+            this.pluginRouters.set(metadata.id, router);
+            logger.info(`[plugins] Successfully loaded ${plugin.name}`);
         } catch (error) {
             logger.error(
                 `[plugins] Failed to initialize plugin ${plugin.name}: ${error instanceof Error ? error.message : String(error)}`,
@@ -589,6 +739,11 @@ export class PluginManager {
                     clearInterval(interval);
                 }
                 this.pluginIntervals.delete(name);
+            }
+
+            // Remove from pluginRouters map
+            if (entry.metadata?.id) {
+                this.pluginRouters.delete(entry.metadata.id);
             }
 
             this.plugins.delete(name);

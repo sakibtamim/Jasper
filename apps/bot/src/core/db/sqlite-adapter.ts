@@ -931,6 +931,12 @@ export class SqliteAdapter implements DatabaseAdapter {
         stmt.run(pluginId, enabled ? 1 : 0);
     }
 
+    async deletePluginMeta(pluginId: string): Promise<void> {
+        if (!this.db) throw new Error('Database not initialized');
+        const stmt = this.db.prepare('DELETE FROM plugin_meta WHERE plugin_id = ?');
+        stmt.run(pluginId);
+    }
+
     async getAllPluginMeta(): Promise<Array<{ pluginId: string; enabled: boolean }>> {
         if (!this.db) throw new Error('Database not initialized');
         const stmt = this.db.prepare('SELECT plugin_id, enabled FROM plugin_meta');

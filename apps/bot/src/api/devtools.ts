@@ -1,10 +1,12 @@
 import { FastifyPluginAsync } from 'fastify';
+import fs from 'node:fs';
+import path from 'node:path';
 
 import { fetchVideoData } from '../core/audio/stream-handler.js';
 import { getCacheStorage } from '../core/cache-manager.js';
 import db from '../core/db/index.js';
 import logger from '../core/logger.js';
-import pluginManager from '../core/plugins/plugin-manager.js';
+import pluginManager, { PLUGINS_DIR } from '../core/plugins/plugin-manager.js';
 
 const devtoolsRoutes: FastifyPluginAsync = async (fastify) => {
     // Middleware to check if user is authenticated
@@ -275,6 +277,47 @@ const devtoolsRoutes: FastifyPluginAsync = async (fastify) => {
             } catch (error) {
                 logger.error(`[api] Failed to toggle plugin ${id}: ${error}`);
                 reply.status(500).send({ error: 'Internal server error' });
+            }
+        },
+    );
+
+    fastify.delete<{ Params: { id: string } }>(
+        '/api/devtools/plugins/:id',
+        async (request, reply) => {
+            const { id } = request.params;
+
+            // Validate plugin ID to prevent path traversal
+            if (!/^[a-z0-9-]+$/.test(id)) {
+                return reply.status(400).send({ error: 'Invalid plugin ID' });
+            }
+
+            try {
+                // Resolve plugin by ID to get its runtime name, then unload
+                const pluginEntry = Array.from(pluginManager.getPlugins().values()).find(
+                    (p) => p.metadata.id === id,
+                );
+                if (pluginEntry) {
+                    await pluginManager.unloadPlugin(pluginEntry.plugin.name);
+                }
+
+                // Delete metadata and stored data
+                await db.deletePluginMeta(id);
+                await db.clearPluginData(id);
+
+                // Remove plugin files from disk (using shared PLUGINS_DIR)
+                const pluginDir = path.resolve(PLUGINS_DIR, id);
+                const resolvedPluginsDir = path.resolve(PLUGINS_DIR);
+                if (!pluginDir.startsWith(resolvedPluginsDir + path.sep)) {
+                    return reply.status(400).send({ error: 'Invalid path' });
+                }
+                if (fs.existsSync(pluginDir)) {
+                    await fs.promises.rm(pluginDir, { recursive: true, force: true });
+                }
+
+                reply.send({ success: true });
+            } catch (error) {
+                logger.error(`[api] Failed to remove plugin ${id}: ${error}`);
+                reply.status(500).send({ error: 'Failed to remove plugin' });
             }
         },
     );
