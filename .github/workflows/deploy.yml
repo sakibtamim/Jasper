@@ -110,7 +110,7 @@ jobs:
                       cd ${{ secrets.SSH_TARGET }}
                       pm2 stop Jasper || true
                       # Remove old deployment files but preserve .env and cache directories
-                      rm -rf apps dist public scripts package.json package-lock.json ecosystem.config.cjs dist-checksums.txt pnpm-workspace.yaml pnpm-lock.yaml
+                      rm -rf apps dist public scripts package.json package-lock.json ecosystem.config.cjs dist-checksums.txt pnpm-workspace.yaml pnpm-lock.yaml yt-dlp yt-dlp.exe
 
             - name: Copy files to server
               uses: appleboy/scp-action@v1
