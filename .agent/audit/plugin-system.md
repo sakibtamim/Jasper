@@ -153,7 +153,7 @@ To prevent wildcards from intercepting core operations, static/predefined plugin
     - Prefix: `/api/plugins`
     - `GET /`: Lists details of all installed plugins.
     - `GET /:pluginId/storage`: Returns namespaced storage filenames.
-    - `GET /:pluginId/storage/:filename`: Streams a files from the plugin's storage path.
+    - `GET /:pluginId/storage/:filename`: Streams files from the plugin's storage path.
     - `POST /:pluginId/storage`: Uploads a file (requires session authentication).
     - `DELETE /:pluginId/storage/:filename`: Deletes a file from storage (requires session authentication).
     - `POST /install`: Installs a zipped plugin bundle, incorporating Zip Slip extraction validation.

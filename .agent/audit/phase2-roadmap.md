@@ -58,13 +58,18 @@ This document outlines the sequential implementation strategy, file paths, data 
 
             const entryMap = new Map(playlist.entries.map((e) => [e.id, e]));
             const sortedEntries: PlaylistEntry[] = [];
+            const seen = new Set<string>();
 
             for (const id of entryIds) {
+                if (seen.has(id)) continue;
                 const entry = entryMap.get(id);
-                if (entry) sortedEntries.push(entry);
+                if (entry) {
+                    sortedEntries.push(entry);
+                    seen.add(id);
+                }
             }
 
-            const remaining = playlist.entries.filter((e) => !entryIds.includes(e.id));
+            const remaining = playlist.entries.filter((e) => !seen.has(e.id));
             playlist.entries = [...sortedEntries, ...remaining];
 
             await savePlaylists(playlists);
@@ -83,10 +88,13 @@ This document outlines the sequential implementation strategy, file paths, data 
                 return;
             }
             const filtered = playlist.entries
-                .filter((e) => e.title.toLowerCase().includes(focusedOption.value.toLowerCase()))
+                .filter((e) => e.title.toLowerCase().includes((focusedOption.value || '').toLowerCase()))
                 .slice(0, 25);
             await interaction.respond(
-                filtered.map((e) => ({ name: e.title, value: e.id }))
+                filtered.map((e) => ({
+                    name: e.title.length > 100 ? e.title.slice(0, 97) + '...' : e.title,
+                    value: e.id
+                }))
             );
         }
         ```
@@ -171,10 +179,21 @@ This document outlines the sequential implementation strategy, file paths, data 
     - **Auto-Resolution**: Add a parser to extract default YouTube thumbnails (`https://img.youtube.com/vi/<video_id>/hqdefault.jpg`) for YouTube links if no custom override thumbnail is supplied:
         ```typescript
         const extractVideoId = (url: string): string | null => {
-            const match = url.match(
-                /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i,
-            );
-            return match ? match[1] : null;
+            try {
+                const urlObj = new URL(url);
+                if (urlObj.hostname === 'youtu.be') {
+                    return urlObj.pathname.slice(1);
+                }
+                if (urlObj.pathname.startsWith('/shorts/')) {
+                    return urlObj.pathname.split('/')[2];
+                }
+                if (urlObj.pathname.startsWith('/embed/')) {
+                    return urlObj.pathname.split('/')[2];
+                }
+                return urlObj.searchParams.get('v');
+            } catch {
+                return null;
+            }
         };
         ```
     - **Web Dashboard**:
