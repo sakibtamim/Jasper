@@ -43,7 +43,12 @@ export interface ICacheStorage {
         requesterId?: string,
         requesterName?: string,
     ): Promise<Readable | null>;
-    cacheAudioStream(url: string, videoId: string, searchTerms: string[]): Promise<Readable>;
+    cacheAudioStream(
+        url: string,
+        videoId: string,
+        searchTerms: string[],
+        duration?: number,
+    ): Promise<Readable>;
 
     // Cleanup and stats
     cleanupExpiredCache(): Promise<void>;

@@ -35,7 +35,8 @@ process.on('uncaughtException', (error) => {
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    logger.error(`[core] Unhandled Rejection at: ${promise}, reason: ${reason}`);
+    const errorMsg = reason instanceof Error ? reason.stack || reason.message : String(reason);
+    logger.error(`[core] Unhandled Rejection at: ${promise}, reason: ${errorMsg}`);
     // We don't exit on unhandledRejection to keep the bot running,
     // but we log it. If it's critical, uncaughtException might eventually trigger.
 });

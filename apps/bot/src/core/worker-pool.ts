@@ -34,6 +34,33 @@ function createBots(): WorkerState[] {
         // @ts-expect-error - Injecting custom property
         client.role = botConfig.role;
 
+        // Register basic error and status logging handlers to keep track of connection issues
+        if (typeof client.on === 'function') {
+            client.on('error', (error) => {
+                logger.error(`[${botConfig.name}] Client error: ${error.stack || error.message}`);
+            });
+
+            client.on('warn', (warning) => {
+                logger.warn(`[${botConfig.name}] Client warning: ${warning}`);
+            });
+
+            client.on('shardDisconnect', (event, shardId) => {
+                logger.warn(
+                    `[${botConfig.name}] Shard ${shardId} disconnected: Code ${event.code}, Reason: ${event.reason}`,
+                );
+            });
+
+            client.on('shardReconnecting', (shardId) => {
+                logger.info(`[${botConfig.name}] Shard ${shardId} is reconnecting...`);
+            });
+
+            client.on('shardResume', (shardId, replayed) => {
+                logger.info(
+                    `[${botConfig.name}] Shard ${shardId} resumed. Replayed events: ${replayed}`,
+                );
+            });
+        }
+
         workers.push({
             name: botConfig.name,
             client: client,
