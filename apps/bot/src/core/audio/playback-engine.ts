@@ -18,7 +18,7 @@ import db from '../db/index.js';
 import logger from '../logger.js';
 import hookManager from '../plugins/hook-manager.js';
 import { createControlButtons, getAutoplayButton } from '../ui/player-controls.js';
-import { getChannelName, setVoiceStatus } from '../utils/voice-utils.js';
+import { setVoiceStatus } from '../utils/voice-utils.js';
 import workerPool from '../worker-pool.js';
 import { deleteQueue } from './queue-manager.js';
 import { createDirectUrlStream, createStreamProcess } from './stream-handler.js';
@@ -155,6 +155,19 @@ export async function handleAutoplay(queue: Queue, lastSong: Song): Promise<void
 }
 
 export async function playSong(queue: Queue): Promise<void> {
+    // Kill any existing stream process before playing a new track
+    if (queue.streamProcess) {
+        try {
+            logger.info(
+                `[playback] Killing previous stream process (PID: ${queue.streamProcess.pid})`,
+            );
+            queue.streamProcess.kill('SIGKILL');
+        } catch {
+            // Ignore error when killing process
+        }
+        queue.streamProcess = null;
+    }
+
     const song = queue.songs[0];
     if (!song) {
         // If queue is empty but Radio mode is active, fetch the next song
@@ -204,9 +217,18 @@ export async function playSong(queue: Queue): Promise<void> {
                     audioSource = cachedStream;
                     song.fromCache = true;
                     logger.info(`[cache] Streaming from cache for: ${song.title}`);
+                    queue.streamProcess = null;
                 } else {
                     // Cache miss: stream from memory while writing to disk (async)
-                    audioSource = await storage.cacheAudioStream(song.url, videoId, [song.title]);
+                    audioSource = await storage.cacheAudioStream(
+                        song.url,
+                        videoId,
+                        [song.title],
+                        song.durationInSec,
+                    );
+                    queue.streamProcess =
+                        (audioSource as { ytDlpProcess?: import('child_process').ChildProcess })
+                            .ytDlpProcess || null;
                     logger.info(`[cache] Downloading and caching: ${song.title}`);
                 }
             } else {
@@ -216,6 +238,7 @@ export async function playSong(queue: Queue): Promise<void> {
                     throw new Error('Failed to create yt-dlp process stdout');
                 }
                 audioSource = process.stdout;
+                queue.streamProcess = process;
             }
         } else {
             // Caching disabled: stream directly from yt-dlp
@@ -224,6 +247,7 @@ export async function playSong(queue: Queue): Promise<void> {
                 throw new Error('Failed to create yt-dlp process stdout');
             }
             audioSource = process.stdout;
+            queue.streamProcess = process;
         }
 
         const resource = createAudioResource(audioSource, {
@@ -267,8 +291,6 @@ export async function playSong(queue: Queue): Promise<void> {
 
         let playingMessage: Message | undefined;
         if (queue.textChannel && 'send' in queue.textChannel) {
-            const channelName = await getChannelName(queue.worker.client, queue.voiceChannelId);
-
             const devPrefix = getDevPrefix();
 
             if (queue.isRadio) {
@@ -419,13 +441,14 @@ export async function playSong(queue: Queue): Promise<void> {
                                 `Failed to disable buttons: ${error instanceof Error ? error.message : String(error)}`,
                             ),
                         );
-                } catch (e) {
+                } catch {
                     // Message might have been deleted, ignore
                 }
             });
         }
-    } catch (error: any) {
-        logger.error(`[playback] Failed to play song: ${error.message}`);
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.error(`[playback] Failed to play song: ${message}`);
         queue.songs.shift();
 
         // If Radio mode is active and we failed, try next song immediately

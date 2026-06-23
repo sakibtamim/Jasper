@@ -3,6 +3,7 @@ import {
     NoSubscriberBehavior,
     VoiceConnectionStatus,
     createAudioPlayer,
+    entersState,
     joinVoiceChannel,
 } from '@discordjs/voice';
 import { WorkerState } from '@jasper/types';
@@ -188,6 +189,84 @@ async function createQueue(
 
     workerPool.setWorkerBusy(worker, voiceChannel.guild.id, voiceChannel.id);
 
+    if (typeof connection.on === 'function') {
+        connection.on('stateChange', async (oldState, newState) => {
+            logger.info(
+                `[connection] State changed from ${oldState.status} to ${newState.status} in channel ${voiceChannel.id} for worker ${worker.name}`,
+            );
+
+            if (newState.status === VoiceConnectionStatus.Disconnected) {
+                try {
+                    // Wait 5 seconds for potential automatic reconnection
+                    await Promise.race([
+                        entersState(connection, VoiceConnectionStatus.Signalling, 5000),
+                        entersState(connection, VoiceConnectionStatus.Connecting, 5000),
+                    ]);
+                } catch {
+                    logger.warn(
+                        `[connection] Disconnection detected, cleaning up queue for channel ${voiceChannel.id} (worker ${worker.name})`,
+                    );
+
+                    if (queue.idleTimeout) clearTimeout(queue.idleTimeout);
+                    setVoiceStatus(queue.worker.client, queue.voiceChannelId, '');
+
+                    if (queue.streamProcess) {
+                        try {
+                            logger.info(
+                                `[connection] Killing active stream process (PID: ${queue.streamProcess.pid}) due to disconnection`,
+                            );
+                            queue.streamProcess.kill('SIGKILL');
+                        } catch (e) {
+                            logger.error(`[connection] Failed to kill stream process: ${e}`);
+                        }
+                        queue.streamProcess = null;
+                    }
+
+                    if (connection.state.status !== VoiceConnectionStatus.Destroyed) {
+                        try {
+                            connection.destroy();
+                        } catch {
+                            // Connection might already be destroyed, ignore
+                        }
+                    }
+                    deleteQueue(queue.voiceChannelId);
+                    workerPool.releaseWorker(queue.voiceChannelId);
+                }
+            }
+        });
+
+        connection.on('error', (error) => {
+            logger.error(
+                `[connection] Error in voice connection for channel ${voiceChannel.id} (worker ${worker.name}): ${error.message}`,
+            );
+
+            if (queue.idleTimeout) clearTimeout(queue.idleTimeout);
+            setVoiceStatus(queue.worker.client, queue.voiceChannelId, '');
+
+            if (queue.streamProcess) {
+                try {
+                    logger.info(
+                        `[connection] Killing active stream process (PID: ${queue.streamProcess.pid}) due to connection error`,
+                    );
+                    queue.streamProcess.kill('SIGKILL');
+                } catch (e) {
+                    logger.error(`[connection] Failed to kill stream process: ${e}`);
+                }
+                queue.streamProcess = null;
+            }
+
+            if (connection.state.status !== VoiceConnectionStatus.Destroyed) {
+                try {
+                    connection.destroy();
+                } catch {
+                    // Connection might already be destroyed, ignore
+                }
+            }
+            deleteQueue(queue.voiceChannelId);
+            workerPool.releaseWorker(queue.voiceChannelId);
+        });
+    }
+
     player.on(AudioPlayerStatus.Idle, async () => {
         if (queue.stopping) return;
 
@@ -206,6 +285,17 @@ async function createQueue(
             await handleAutoplay(queue, lastSong);
         } else {
             queue.nowPlaying = null;
+            if (queue.streamProcess) {
+                try {
+                    logger.info(
+                        `[MusicPlayer] Killing stream process (PID: ${queue.streamProcess.pid}) as queue is now idle`,
+                    );
+                    queue.streamProcess.kill('SIGKILL');
+                } catch {
+                    // Ignore error when killing process
+                }
+                queue.streamProcess = null;
+            }
 
             // Set idle status to show bot is ready for new requests
             setVoiceStatus(queue.worker.client, queue.voiceChannelId, '[IDLE] Ready to Meow');
@@ -643,6 +733,17 @@ async function stop(interaction: ChatInputCommandInteraction): Promise<void> {
     queue.isRadio = false;
     setVoiceStatus(queue.worker.client, queue.voiceChannelId, '');
     queue.player.stop();
+    if (queue.streamProcess) {
+        try {
+            logger.info(
+                `[playback] Killing active stream process (PID: ${queue.streamProcess.pid}) due to stop command`,
+            );
+            queue.streamProcess.kill('SIGKILL');
+        } catch {
+            // Ignore error when killing process
+        }
+        queue.streamProcess = null;
+    }
     if (queue.connection) {
         queue.connection.destroy();
     }

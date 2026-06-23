@@ -14,7 +14,7 @@ apps/web/public/vendor/
 /review_comments_*.md
 
 # Cache directories (not committed to version control)
-cache/
+/cache/
 .cache/
 
 # Database files (runtime data)
