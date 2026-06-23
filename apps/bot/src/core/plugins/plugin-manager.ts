@@ -134,7 +134,10 @@ export class DynamicPluginRouter implements IPluginRouter {
                     route.paramNames.forEach((name, i) => {
                         req.params[name] = match[i + 1];
                     });
-                    await route.handler(req, reply);
+                    const result = await route.handler(req, reply);
+                    if (result !== undefined && !reply.sent) {
+                        reply.send(result);
+                    }
                     return true;
                 }
             }
