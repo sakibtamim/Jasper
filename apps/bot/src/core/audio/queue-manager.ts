@@ -1,6 +1,4 @@
-import { AudioPlayer, VoiceConnection } from '@discordjs/voice';
 import { Queue, WorkerState } from '@jasper/types';
-import { Message, TextBasedChannel } from 'discord.js';
 
 import logger from '../logger.js';
 import { setVoiceStatus } from '../utils/voice-utils.js';
@@ -64,6 +62,19 @@ export function cleanupWorkerOldQueues(worker: WorkerState): void {
             // Clear voice status
             setVoiceStatus(worker.client, channelId, '');
 
+            // Kill stream process
+            if (queue.streamProcess) {
+                try {
+                    logger.info(
+                        `[cleanup] Killing stream process (PID: ${queue.streamProcess.pid}) for channel ${channelId}`,
+                    );
+                    queue.streamProcess.kill('SIGKILL');
+                } catch {
+                    // Ignore error when killing process
+                }
+                queue.streamProcess = null;
+            }
+
             // Destroy connection
             if (queue.connection) {
                 queue.connection.destroy();
@@ -86,6 +97,19 @@ export function clearAllQueues() {
 
         // Clear voice status
         setVoiceStatus(queue.worker.client, channelId, '');
+
+        // Kill stream process
+        if (queue.streamProcess) {
+            try {
+                logger.info(
+                    `[cleanup] Killing stream process (PID: ${queue.streamProcess.pid}) for channel ${channelId}`,
+                );
+                queue.streamProcess.kill('SIGKILL');
+            } catch {
+                // Ignore error when killing process
+            }
+            queue.streamProcess = null;
+        }
 
         // Destroy connection
         if (queue.connection) {

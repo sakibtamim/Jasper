@@ -1,15 +1,21 @@
-import { Readable, PassThrough } from 'stream';
-import { createWriteStream, createReadStream } from 'fs';
+import { Song } from '@jasper/types';
 import { spawn } from 'child_process';
-import path from 'path';
+import { createReadStream, createWriteStream } from 'fs';
 import fs from 'fs/promises';
-import logger from '../logger.js';
-import { Song } from "@jasper/types";
-import { ICacheStorage, CacheStats, CACHE_AUDIO_TTL_HOURS, CACHE_SEARCH_TTL_HOURS } from '../cache-manager.js';
-import { getDatabase } from '../db/index.js';
-import { getYtDlpPath } from '../audio/stream-handler.js';
+import path from 'path';
+import { PassThrough, Readable } from 'stream';
+
 import { getBaseYtDlpArgs } from '../../utils/yt-dlp-helper.js';
+import { getYtDlpPath } from '../audio/stream-handler.js';
+import {
+    CACHE_AUDIO_TTL_HOURS,
+    CACHE_SEARCH_TTL_HOURS,
+    CacheStats,
+    ICacheStorage,
+} from '../cache-manager.js';
 import cookieManager from '../cookies/cookie-manager.js';
+import { getDatabase } from '../db/index.js';
+import logger from '../logger.js';
 
 const CACHE_AUDIO_DIR = path.join(process.cwd(), 'cache', 'audio');
 
@@ -18,7 +24,11 @@ const CACHE_AUDIO_DIR = path.join(process.cwd(), 'cache', 'audio');
  * Uses database for metadata, filesystem for audio files
  */
 export class DatabaseCacheStorage implements ICacheStorage {
-    async getCachedSearchResult(query: string, requesterId?: string, requesterName?: string): Promise<Song | null> {
+    async getCachedSearchResult(
+        query: string,
+        requesterId?: string,
+        requesterName?: string,
+    ): Promise<Song | null> {
         const db = getDatabase();
         const result = await db.getCachedSearchResult(query);
 
@@ -28,8 +38,8 @@ export class DatabaseCacheStorage implements ICacheStorage {
 
         if (requesterId && requesterName) {
             // Track cache hit
-            db.trackCacheHit(requesterId, requesterName, 'user').catch(err =>
-                logger.warn(`[cache] Failed to track search hit: ${err}`)
+            db.trackCacheHit(requesterId, requesterName, 'user').catch((err) =>
+                logger.warn(`[cache] Failed to track search hit: ${err}`),
             );
         }
 
@@ -37,9 +47,9 @@ export class DatabaseCacheStorage implements ICacheStorage {
             title: result.songTitle,
             url: result.songUrl,
             durationInSec: result.duration,
-            requestedBy: "Unknown",
+            requestedBy: 'Unknown',
             thumbnail: result.thumbnail,
-            fromCache: true
+            fromCache: true,
         };
     }
 
@@ -51,12 +61,16 @@ export class DatabaseCacheStorage implements ICacheStorage {
             song.url,
             song.durationInSec,
             song.thumbnail,
-            CACHE_SEARCH_TTL_HOURS
+            CACHE_SEARCH_TTL_HOURS,
         );
         logger.info(`[cache] Cached search result for: ${query}`);
     }
 
-    async getCachedAudioStream(videoId: string, requesterId?: string, requesterName?: string): Promise<Readable | null> {
+    async getCachedAudioStream(
+        videoId: string,
+        requesterId?: string,
+        requesterName?: string,
+    ): Promise<Readable | null> {
         const audioPath = path.join(CACHE_AUDIO_DIR, `${videoId}.webm`);
 
         try {
@@ -70,7 +84,9 @@ export class DatabaseCacheStorage implements ICacheStorage {
             if (!metadata) {
                 // Expired or missing metadata, delete orphaned file
                 await fs.unlink(audioPath).catch((err) => {
-                    logger.warn(`[cache] Failed to delete orphaned file ${audioPath}: ${err.message}`);
+                    logger.warn(
+                        `[cache] Failed to delete orphaned file ${audioPath}: ${err.message}`,
+                    );
                 });
                 return null;
             }
@@ -82,10 +98,10 @@ export class DatabaseCacheStorage implements ICacheStorage {
                 // Track cache hit
                 // If requester is "Radio", it's a bot hit
                 const type = requesterName.startsWith('Radio') ? 'bot' : 'user';
-                // For bot hits, we might want to use the bot name as entityName if possible, 
+                // For bot hits, we might want to use the bot name as entityName if possible,
                 // but here we just use what's passed.
-                db.trackCacheHit(requesterId, requesterName, type).catch(err =>
-                    logger.warn(`[cache] Failed to track audio hit: ${err}`)
+                db.trackCacheHit(requesterId, requesterName, type).catch((err) =>
+                    logger.warn(`[cache] Failed to track audio hit: ${err}`),
                 );
             }
 
@@ -96,10 +112,15 @@ export class DatabaseCacheStorage implements ICacheStorage {
         }
     }
 
-
-
-    async cacheAudioStream(url: string, videoId: string, searchTerms: string[]): Promise<Readable> {
-        logger.info(`[cache] Audio cache miss, downloading: ${url}`);
+    async cacheAudioStream(
+        url: string,
+        videoId: string,
+        searchTerms: string[],
+        duration?: number,
+    ): Promise<Readable> {
+        logger.info(
+            `[cache] Audio cache miss, downloading: ${url} (duration: ${duration ?? 'unknown'}s)`,
+        );
 
         // Ensure directory exists
         await fs.mkdir(CACHE_AUDIO_DIR, { recursive: true });
@@ -120,19 +141,25 @@ export class DatabaseCacheStorage implements ICacheStorage {
 
         // Spawn yt-dlp process
         const ytDlpPath = getYtDlpPath();
-        const args = [
-            ...getBaseYtDlpArgs(),
-            '-f', 'bestaudio',
-            '-o', '-',
-            '-q',
-            url
-        ];
+        const args = [...getBaseYtDlpArgs(), '-f', 'bestaudio', '-o', '-', '-q', url];
 
         if (cookiePath) {
             args.push('--cookies', cookiePath);
         }
 
         const ytDlpProcess = spawn(ytDlpPath, args);
+
+        // Dynamically base timeout on song duration (duration + 2 minutes), fallback to 10 minutes
+        let killedByTimeout = false;
+        const timeoutMs = duration && duration > 0 ? (duration + 120) * 1000 : 600 * 1000;
+        const timeoutId = setTimeout(() => {
+            if (ytDlpProcess.killed) return;
+            logger.warn(
+                `[cache] yt-dlp download timed out for ${url} (limit: ${timeoutMs / 1000}s), killing process...`,
+            );
+            killedByTimeout = true;
+            ytDlpProcess.kill('SIGKILL');
+        }, timeoutMs);
 
         ytDlpProcess.stderr!.on('data', (data) => {
             const msg = data.toString().trim();
@@ -158,19 +185,31 @@ export class DatabaseCacheStorage implements ICacheStorage {
         });
 
         // Handle process exit
-        ytDlpProcess.on('close', async (code) => {
-            if (code !== 0 && !hasError) {
-                logger.error(`[cache] yt-dlp exited with code ${code} for: ${url}`);
+        ytDlpProcess.on('close', async (code, signal) => {
+            clearTimeout(timeoutId);
+            const isIntentionalCancellation = signal === 'SIGKILL' && !killedByTimeout;
+
+            if ((code !== 0 || signal) && !hasError) {
+                if (isIntentionalCancellation) {
+                    logger.info(
+                        `[cache] yt-dlp stream process cancelled intentionally for: ${url}`,
+                    );
+                } else {
+                    logger.error(
+                        `[cache] yt-dlp exited with code ${code} (signal: ${signal}) for: ${url}`,
+                    );
+                }
                 hasError = true;
 
-                if (cookieId) {
-                    // Assume failure if non-zero exit code
-                    // We could parse stderr to be more specific, but for now this is safe
+                if (cookieId && !isIntentionalCancellation) {
+                    // Assume failure if non-zero exit code (and not intentional cancel)
                     await cookieManager.reportUsage(cookieId, false);
                 }
 
                 await fs.unlink(audioPath).catch((err) => {
-                    logger.warn(`[cache] Failed to delete partial file ${audioPath}: ${err.message}`);
+                    logger.warn(
+                        `[cache] Failed to delete partial file ${audioPath}: ${err.message}`,
+                    );
                 });
             } else if (code === 0 && !hasError) {
                 // Success
@@ -185,16 +224,22 @@ export class DatabaseCacheStorage implements ICacheStorage {
                         videoId,
                         searchTerms[0] || 'Unknown',
                         url,
-                        0, // Duration unknown here
+                        duration || 0,
                         undefined,
                         searchTerms,
-                        CACHE_AUDIO_TTL_HOURS
+                        CACHE_AUDIO_TTL_HOURS,
                     );
-                    logger.info(`[cache] Cached audio for video: ${videoId} (${(totalBytes / 1024 / 1024).toFixed(2)}MB)`);
+                    logger.info(
+                        `[cache] Cached audio for video: ${videoId} (${(totalBytes / 1024 / 1024).toFixed(2)}MB)`,
+                    );
                 } catch (err) {
-                    logger.error(`[cache] Failed to save metadata for ${videoId}: ${err instanceof Error ? err.message : String(err)}`);
+                    logger.error(
+                        `[cache] Failed to save metadata for ${videoId}: ${err instanceof Error ? err.message : String(err)}`,
+                    );
                     await fs.unlink(audioPath).catch((err) => {
-                        logger.warn(`[cache] Failed to delete file after metadata error ${audioPath}: ${err.message}`);
+                        logger.warn(
+                            `[cache] Failed to delete file after metadata error ${audioPath}: ${err.message}`,
+                        );
                     });
                 }
             }
@@ -206,6 +251,7 @@ export class DatabaseCacheStorage implements ICacheStorage {
         });
 
         ytDlpProcess.on('error', async (err) => {
+            clearTimeout(timeoutId);
             logger.error(`[cache] yt-dlp error during caching: ${err.message}`);
             hasError = true;
 
@@ -215,13 +261,16 @@ export class DatabaseCacheStorage implements ICacheStorage {
 
             passThrough.destroy(err);
             fileStream.destroy();
-            await fs.unlink(audioPath).catch(() => { });
+            await fs.unlink(audioPath).catch(() => {});
 
             // Cleanup cookie file
             if (cookiePath) {
                 await cookieManager.cleanupCookieFile(cookiePath);
             }
         });
+
+        // Attach process to passThrough stream so caller can manage/kill it if needed
+        (passThrough as any).ytDlpProcess = ytDlpProcess;
 
         return passThrough;
     }
@@ -239,10 +288,9 @@ export class DatabaseCacheStorage implements ICacheStorage {
 
         // 3. Scan cache directory for orphaned files
         try {
-
             const files = await fs.readdir(CACHE_AUDIO_DIR);
-            const webmFiles = files.filter(file => file.endsWith('.webm'));
-            const orphanedFiles = webmFiles.filter(file => {
+            const webmFiles = files.filter((file) => file.endsWith('.webm'));
+            const orphanedFiles = webmFiles.filter((file) => {
                 const videoId = path.basename(file, '.webm');
                 return !validVideoIdsSet.has(videoId);
             });
@@ -255,7 +303,7 @@ export class DatabaseCacheStorage implements ICacheStorage {
             for (let i = 0; i < orphanedFiles.length; i += BATCH_SIZE) {
                 const chunk = orphanedFiles.slice(i, i + BATCH_SIZE);
                 const results = await Promise.allSettled(
-                    chunk.map(file => fs.unlink(path.join(CACHE_AUDIO_DIR, file)))
+                    chunk.map((file) => fs.unlink(path.join(CACHE_AUDIO_DIR, file))),
                 );
 
                 // Count successes and log failures
@@ -264,16 +312,22 @@ export class DatabaseCacheStorage implements ICacheStorage {
                         deletedCount++;
                     } else {
                         const file = chunk[index];
-                        logger.warn(`[cache] Failed to delete orphaned file ${file}: ${result.reason}`);
+                        logger.warn(
+                            `[cache] Failed to delete orphaned file ${file}: ${result.reason}`,
+                        );
                     }
                 });
             }
 
             if (deletedCount > 0) {
-                logger.info(`[cache] Cleaned up ${deletedCount} orphaned audio files from disk (Kept: ${keptCount})`);
+                logger.info(
+                    `[cache] Cleaned up ${deletedCount} orphaned audio files from disk (Kept: ${keptCount})`,
+                );
             }
         } catch (error) {
-            logger.error(`[cache] Failed during file cleanup: ${error instanceof Error ? error.message : String(error)}`);
+            logger.error(
+                `[cache] Failed during file cleanup: ${error instanceof Error ? error.message : String(error)}`,
+            );
         }
     }
 
@@ -315,9 +369,9 @@ export class DatabaseCacheStorage implements ICacheStorage {
             title: metadata.title,
             url: metadata.url,
             durationInSec: metadata.duration,
-            requestedBy: "Radio",
+            requestedBy: 'Radio',
             thumbnail: metadata.thumbnail,
-            fromCache: true
+            fromCache: true,
         };
     }
 
@@ -328,7 +382,9 @@ export class DatabaseCacheStorage implements ICacheStorage {
             logger.info(`[cache] Deleted cached file: ${audioPath}`);
             return true;
         } catch (error) {
-            logger.warn(`[cache] Failed to delete file ${audioPath}: ${error instanceof Error ? error.message : String(error)}`);
+            logger.warn(
+                `[cache] Failed to delete file ${audioPath}: ${error instanceof Error ? error.message : String(error)}`,
+            );
             return false;
         }
     }

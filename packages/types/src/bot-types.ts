@@ -50,6 +50,7 @@ export interface Queue {
     playingMessage?: Message;
     isAutoPaused?: boolean;
     isRadio?: boolean;
+    streamProcess?: import('child_process').ChildProcess | null;
 }
 
 // --- Database Types (Shared) ---

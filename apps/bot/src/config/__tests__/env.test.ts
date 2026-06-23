@@ -16,6 +16,12 @@ describe('env.ts', () => {
         vi.resetModules();
         // Clone process.env
         process.env = { ...originalEnv };
+        // Delete all _TOKEN env vars to ensure a clean slate for token tests
+        Object.keys(process.env).forEach((key) => {
+            if (key.endsWith('_TOKEN')) {
+                delete process.env[key];
+            }
+        });
     });
 
     afterEach(() => {

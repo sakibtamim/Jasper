@@ -308,17 +308,18 @@ server.get('/api/stats', async (request, _reply) => {
         }
 
         // 2. Fallback to fetch if not found in any cache
-        // We use the first available worker to fetch
-        if (workers.length > 0) {
+        // We use the first ready worker to fetch
+        const readyWorker = workers.find((w) => w.client.isReady());
+        if (readyWorker) {
             try {
-                const discordUser = await workers[0].client.users.fetch(userId);
+                const discordUser = await readyWorker.client.users.fetch(userId);
                 return {
                     username: discordUser.username,
                     avatarUrl: discordUser.displayAvatarURL(),
                 };
             } catch (e) {
                 logger.warn(
-                    `[api] Error fetching user ${userId}: ${e instanceof Error ? e.message : String(e)}`,
+                    `[api] Error fetching user ${userId} via ${readyWorker.name}: ${e instanceof Error ? e.message : String(e)}`,
                 );
             }
         }
