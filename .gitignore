@@ -43,3 +43,6 @@ pnpm-debug.log*
 
 # TS Build Info
 *.tsbuildinfo
+
+# Teamwork Session Files
+.agents/
