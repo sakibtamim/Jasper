@@ -22,7 +22,7 @@ export async function handleGracefulExit(reason: string, error?: Error): Promise
     // Set a safety timeout to force exit if cleanup hangs (e.g. if Discord is down)
     setTimeout(() => {
         logger.error('[gracefulexit] Shutdown cleanup timed out after 15 seconds, forcing exit.');
-        process.exit(error ? 1 : 0);
+        process.exit(1);
     }, 15000).unref();
 
     if (error) {

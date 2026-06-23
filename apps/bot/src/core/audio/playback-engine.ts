@@ -226,9 +226,19 @@ export async function playSong(queue: Queue): Promise<void> {
                         [song.title],
                         song.durationInSec,
                     );
-                    queue.streamProcess =
-                        (audioSource as { ytDlpProcess?: import('child_process').ChildProcess })
-                            .ytDlpProcess || null;
+                    const proc = (
+                        audioSource as { ytDlpProcess?: import('child_process').ChildProcess }
+                    ).ytDlpProcess;
+                    if (proc) {
+                        queue.streamProcess = proc;
+                        proc.on('exit', () => {
+                            if (queue.streamProcess === proc) {
+                                queue.streamProcess = null;
+                            }
+                        });
+                    } else {
+                        queue.streamProcess = null;
+                    }
                     logger.info(`[cache] Downloading and caching: ${song.title}`);
                 }
             } else {
@@ -239,6 +249,11 @@ export async function playSong(queue: Queue): Promise<void> {
                 }
                 audioSource = process.stdout;
                 queue.streamProcess = process;
+                process.on('exit', () => {
+                    if (queue.streamProcess === process) {
+                        queue.streamProcess = null;
+                    }
+                });
             }
         } else {
             // Caching disabled: stream directly from yt-dlp
@@ -248,6 +263,11 @@ export async function playSong(queue: Queue): Promise<void> {
             }
             audioSource = process.stdout;
             queue.streamProcess = process;
+            process.on('exit', () => {
+                if (queue.streamProcess === process) {
+                    queue.streamProcess = null;
+                }
+            });
         }
 
         const resource = createAudioResource(audioSource, {

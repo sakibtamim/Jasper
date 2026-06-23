@@ -150,12 +150,14 @@ export class DatabaseCacheStorage implements ICacheStorage {
         const ytDlpProcess = spawn(ytDlpPath, args);
 
         // Dynamically base timeout on song duration (duration + 2 minutes), fallback to 10 minutes
+        let killedByTimeout = false;
         const timeoutMs = duration && duration > 0 ? (duration + 120) * 1000 : 600 * 1000;
         const timeoutId = setTimeout(() => {
             if (ytDlpProcess.killed) return;
             logger.warn(
                 `[cache] yt-dlp download timed out for ${url} (limit: ${timeoutMs / 1000}s), killing process...`,
             );
+            killedByTimeout = true;
             ytDlpProcess.kill('SIGKILL');
         }, timeoutMs);
 
@@ -185,15 +187,22 @@ export class DatabaseCacheStorage implements ICacheStorage {
         // Handle process exit
         ytDlpProcess.on('close', async (code, signal) => {
             clearTimeout(timeoutId);
+            const isIntentionalCancellation = signal === 'SIGKILL' && !killedByTimeout;
+
             if ((code !== 0 || signal) && !hasError) {
-                logger.error(
-                    `[cache] yt-dlp exited with code ${code} (signal: ${signal}) for: ${url}`,
-                );
+                if (isIntentionalCancellation) {
+                    logger.info(
+                        `[cache] yt-dlp stream process cancelled intentionally for: ${url}`,
+                    );
+                } else {
+                    logger.error(
+                        `[cache] yt-dlp exited with code ${code} (signal: ${signal}) for: ${url}`,
+                    );
+                }
                 hasError = true;
 
-                if (cookieId) {
-                    // Assume failure if non-zero exit code
-                    // We could parse stderr to be more specific, but for now this is safe
+                if (cookieId && !isIntentionalCancellation) {
+                    // Assume failure if non-zero exit code (and not intentional cancel)
                     await cookieManager.reportUsage(cookieId, false);
                 }
 

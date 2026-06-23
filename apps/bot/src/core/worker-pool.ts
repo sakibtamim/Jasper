@@ -54,7 +54,7 @@ function createBots(): WorkerState[] {
                 logger.info(`[${botConfig.name}] Shard ${shardId} is reconnecting...`);
             });
 
-            client.on('shardResume', (replayed, shardId) => {
+            client.on('shardResume', (shardId, replayed) => {
                 logger.info(
                     `[${botConfig.name}] Shard ${shardId} resumed. Replayed events: ${replayed}`,
                 );
