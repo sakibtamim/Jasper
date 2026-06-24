@@ -51,6 +51,8 @@ export interface Queue {
     isAutoPaused?: boolean;
     isRadio?: boolean;
     streamProcess?: import('child_process').ChildProcess | null;
+    loopTrack?: boolean;
+    loopQueue?: boolean;
 }
 
 // --- Database Types (Shared) ---

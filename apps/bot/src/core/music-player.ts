@@ -183,6 +183,8 @@ async function createQueue(
         idleTimeout: null, // Track idle disconnect timeout
         stopping: false, // Flag to prevent autoplay/idle logic when stopping manually
         isRadio: false,
+        loopTrack: false,
+        loopQueue: false,
     };
 
     connection.subscribe(player);
@@ -254,15 +256,23 @@ async function createQueue(
         if (!queue.nowPlaying) return;
 
         const lastSong = queue.nowPlaying;
-        queue.songs.shift();
 
-        if (queue.songs.length > 0) {
+        if (queue.loopTrack) {
             playSong(queue);
-        } else if (queue.isRadio) {
-            await handleRadio(queue);
-        } else if (queue.autoplay && lastSong) {
-            await handleAutoplay(queue, lastSong);
         } else {
+            queue.songs.shift();
+
+            if (queue.loopQueue && lastSong) {
+                queue.songs.push(lastSong);
+            }
+
+            if (queue.songs.length > 0) {
+                playSong(queue);
+            } else if (queue.isRadio) {
+                await handleRadio(queue);
+            } else if (queue.autoplay && lastSong) {
+                await handleAutoplay(queue, lastSong);
+            } else {
             queue.nowPlaying = null;
             if (queue.streamProcess) {
                 try {
@@ -346,7 +356,8 @@ async function createQueue(
                 5 * 60 * 1000,
             ); // 5 minutes
         }
-    });
+    }
+});
 
     player.on('error', (error) => {
         logger.error(`Audio player error: ${error.message} `);
@@ -578,6 +589,7 @@ async function enqueueSongs(
     interaction: ChatInputCommandInteraction,
     songs: Omit<Song, 'requestedBy' | 'requesterId'>[],
     playlistName: string,
+    options?: { loopTrack?: boolean; loopQueue?: boolean; shuffle?: boolean },
 ): Promise<void> {
     const voiceChannel = await validateInteraction(interaction);
     if (!voiceChannel) return;
@@ -601,7 +613,7 @@ async function enqueueSongs(
         const queue = await ensureQueue(interaction, voiceChannel, null);
         if (!queue) return;
 
-        const songsToAdd: Song[] = songs.map((song) => {
+        let songsToAdd: Song[] = songs.map((song) => {
             const newSong: Song = {
                 requestedBy: interaction.user.tag,
                 requesterId: interaction.user.id,
@@ -613,10 +625,19 @@ async function enqueueSongs(
             return newSong;
         });
 
+        if (options?.shuffle) {
+            songsToAdd = shuffleArray(songsToAdd);
+        }
+
         if (queue.idleTimeout) {
             clearTimeout(queue.idleTimeout);
             queue.idleTimeout = null;
             logger.info(`Cleared idle timeout for ${queue.voiceChannelId} - custom playlist added`);
+        }
+
+        if (options) {
+            if (options.loopTrack !== undefined) queue.loopTrack = options.loopTrack;
+            if (options.loopQueue !== undefined) queue.loopQueue = options.loopQueue;
         }
 
         queue.songs.push(...songsToAdd);
@@ -881,6 +902,110 @@ async function startRadio(interaction: ChatInputCommandInteraction): Promise<voi
     }
 }
 
+function shuffleArray<T>(array: T[]): T[] {
+    const arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+async function toggleLoop(interaction: ChatInputCommandInteraction): Promise<void> {
+    const voiceChannel = (interaction.member as GuildMember).voice.channel;
+    if (!voiceChannel) {
+        await interaction.reply({
+            content: 'You must be in a voice channel.',
+            ephemeral: true,
+        });
+        return;
+    }
+    const queue = getQueue(voiceChannel.id);
+    if (!queue) {
+        await interaction.reply({
+            content: 'There is no active queue to loop.',
+            ephemeral: true,
+        });
+        return;
+    }
+
+    queue.loopTrack = !queue.loopTrack;
+    if (queue.loopTrack) {
+        queue.loopQueue = false;
+    }
+
+    await interaction.reply(`🔂 **Looping is now ${queue.loopTrack ? 'ENABLED (repeating current track)' : 'DISABLED'}**`);
+}
+
+async function toggleRepeat(interaction: ChatInputCommandInteraction): Promise<void> {
+    const voiceChannel = (interaction.member as GuildMember).voice.channel;
+    if (!voiceChannel) {
+        await interaction.reply({
+            content: 'You must be in a voice channel.',
+            ephemeral: true,
+        });
+        return;
+    }
+    const queue = getQueue(voiceChannel.id);
+    if (!queue) {
+        await interaction.reply({
+            content: 'There is no active queue to repeat.',
+            ephemeral: true,
+        });
+        return;
+    }
+
+    queue.loopQueue = !queue.loopQueue;
+    if (queue.loopQueue) {
+        queue.loopTrack = false;
+    }
+
+    await interaction.reply(`🔁 **Queue repeating is now ${queue.loopQueue ? 'ENABLED (repeating the entire queue)' : 'DISABLED'}**`);
+}
+
+async function shuffleQueue(interaction: ChatInputCommandInteraction): Promise<void> {
+    const voiceChannel = (interaction.member as GuildMember).voice.channel;
+    if (!voiceChannel) {
+        await interaction.reply({
+            content: 'You must be in a voice channel.',
+            ephemeral: true,
+        });
+        return;
+    }
+    const queue = getQueue(voiceChannel.id);
+    if (!queue) {
+        await interaction.reply({
+            content: 'There is no active queue to shuffle.',
+            ephemeral: true,
+        });
+        return;
+    }
+
+    if (!queue.nowPlaying) {
+        if (queue.songs.length < 2) {
+            await interaction.reply({
+                content: 'There are not enough songs in the queue to shuffle.',
+                ephemeral: true,
+            });
+            return;
+        }
+        queue.songs = shuffleArray(queue.songs);
+    } else {
+        if (queue.songs.length < 3) {
+            await interaction.reply({
+                content: 'There are not enough upcoming songs in the queue to shuffle.',
+                ephemeral: true,
+            });
+            return;
+        }
+        const upcoming = queue.songs.slice(1);
+        const shuffled = shuffleArray(upcoming);
+        queue.songs = [queue.songs[0], ...shuffled];
+    }
+
+    await interaction.reply('🔀 **Queue shuffled successfully!**');
+}
+
 export default {
     enqueue,
     enqueuePlaylist,
@@ -895,4 +1020,7 @@ export default {
     startRadio,
     getQueues: getAllQueues,
     clearAllQueues,
+    toggleLoop,
+    toggleRepeat,
+    shuffleQueue,
 };
