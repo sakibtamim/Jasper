@@ -4,6 +4,7 @@ import {
     ChevronDown,
     ChevronUp,
     Copy,
+    GripVertical,
     HardDrive,
     Inbox,
     Link,
@@ -60,6 +61,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
     youtube: Youtube,
     'hard-drive': HardDrive,
     link: Link,
+    'grip-vertical': GripVertical,
 };
 
 export const Icon = ({ name, size = 24, className, ...props }: IconProps) => {
