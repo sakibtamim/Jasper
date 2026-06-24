@@ -256,8 +256,10 @@ async function createQueue(
         if (!queue.nowPlaying) return;
 
         const lastSong = queue.nowPlaying;
+        const wasSkipped = queue.skipping;
+        queue.skipping = false; // Reset the transient skip flag
 
-        if (queue.loopTrack) {
+        if (queue.loopTrack && !wasSkipped) {
             playSong(queue);
         } else {
             queue.songs.shift();
@@ -273,91 +275,91 @@ async function createQueue(
             } else if (queue.autoplay && lastSong) {
                 await handleAutoplay(queue, lastSong);
             } else {
-            queue.nowPlaying = null;
-            if (queue.streamProcess) {
-                try {
-                    logger.info(
-                        `[MusicPlayer] Killing stream process (PID: ${queue.streamProcess.pid}) as queue is now idle`,
-                    );
-                    queue.streamProcess.kill('SIGKILL');
-                } catch {
-                    // Ignore error when killing process
-                }
-                queue.streamProcess = null;
-            }
-
-            // Set idle status to show bot is ready for new requests
-            setVoiceStatus(queue.worker.client, queue.voiceChannelId, '[IDLE] Ready to Meow');
-
-            // Release worker immediately for reuse, but keep connection alive for 5 minutes
-            workerPool.releaseWorker(queue.voiceChannelId);
-
-            // Send enhanced queue finished message
-            if (
-                queue.textChannel &&
-                queue.textChannel.isTextBased() &&
-                !queue.textChannel.isDMBased()
-            ) {
-                try {
-                    const channel = await queue.worker.client.channels.fetch(queue.voiceChannelId);
-                    const channelName =
-                        channel && 'name' in channel
-                            ? (channel as { name: string }).name
-                            : 'the voice channel';
-                    queue.textChannel
-                        .send(
-                            `🎶 **${queue.worker.name}** has finished the queue in **${channelName}**! Staying connected for 5 more minutes.`,
-                        )
-                        .catch((err: unknown) =>
-                            logger.warn(
-                                `Failed to send finished message: ${err instanceof Error ? err.message : String(err)} `,
-                            ),
+                queue.nowPlaying = null;
+                if (queue.streamProcess) {
+                    try {
+                        logger.info(
+                            `[MusicPlayer] Killing stream process (PID: ${queue.streamProcess.pid}) as queue is now idle`,
                         );
-                } catch (err: unknown) {
-                    logger.warn(
-                        `Failed to fetch channel for finished message: ${err instanceof Error ? err.message : String(err)} `,
-                    );
-                    if (queue.textChannel.isTextBased() && !queue.textChannel.isDMBased()) {
+                        queue.streamProcess.kill('SIGKILL');
+                    } catch {
+                        // Ignore error when killing process
+                    }
+                    queue.streamProcess = null;
+                }
+
+                // Set idle status to show bot is ready for new requests
+                setVoiceStatus(queue.worker.client, queue.voiceChannelId, '[IDLE] Ready to Meow');
+
+                // Release worker immediately for reuse, but keep connection alive for 5 minutes
+                workerPool.releaseWorker(queue.voiceChannelId);
+
+                // Send enhanced queue finished message
+                if (
+                    queue.textChannel &&
+                    queue.textChannel.isTextBased() &&
+                    !queue.textChannel.isDMBased()
+                ) {
+                    try {
+                        const channel = await queue.worker.client.channels.fetch(queue.voiceChannelId);
+                        const channelName =
+                            channel && 'name' in channel
+                                ? (channel as { name: string }).name
+                                : 'the voice channel';
                         queue.textChannel
                             .send(
-                                `🎶 **${queue.worker.name}** has finished the queue! Staying connected for 5 more minutes.`,
+                                `🎶 **${queue.worker.name}** has finished the queue in **${channelName}**! Staying connected for 5 more minutes.`,
                             )
                             .catch((err: unknown) =>
                                 logger.warn(
                                     `Failed to send finished message: ${err instanceof Error ? err.message : String(err)} `,
                                 ),
                             );
-                    }
-                }
-            }
-
-            // Set 5-minute idle timeout before disconnecting
-            queue.idleTimeout = setTimeout(
-                () => {
-                    logger.info(
-                        `Disconnecting from ${queue.voiceChannelId} after 5 minutes of idle time`,
-                    );
-                    // Clear voice status before disconnecting
-                    setVoiceStatus(queue.worker.client, queue.voiceChannelId, '');
-                    if (
-                        queue.connection &&
-                        queue.connection.state.status !== VoiceConnectionStatus.Destroyed
-                    ) {
-                        try {
-                            queue.connection.destroy();
-                        } catch (error) {
-                            logger.warn(
-                                `[MusicPlayer] Failed to destroy connection for ${queue.voiceChannelId}: ${error}`,
-                            );
+                    } catch (err: unknown) {
+                        logger.warn(
+                            `Failed to fetch channel for finished message: ${err instanceof Error ? err.message : String(err)} `,
+                        );
+                        if (queue.textChannel.isTextBased() && !queue.textChannel.isDMBased()) {
+                            queue.textChannel
+                                .send(
+                                    `🎶 **${queue.worker.name}** has finished the queue! Staying connected for 5 more minutes.`,
+                                )
+                                .catch((err: unknown) =>
+                                    logger.warn(
+                                        `Failed to send finished message: ${err instanceof Error ? err.message : String(err)} `,
+                                    ),
+                                );
                         }
                     }
-                    deleteQueue(queue.voiceChannelId);
-                },
-                5 * 60 * 1000,
-            ); // 5 minutes
+                }
+
+                // Set 5-minute idle timeout before disconnecting
+                queue.idleTimeout = setTimeout(
+                    () => {
+                        logger.info(
+                            `Disconnecting from ${queue.voiceChannelId} after 5 minutes of idle time`,
+                        );
+                        // Clear voice status before disconnecting
+                        setVoiceStatus(queue.worker.client, queue.voiceChannelId, '');
+                        if (
+                            queue.connection &&
+                            queue.connection.state.status !== VoiceConnectionStatus.Destroyed
+                        ) {
+                            try {
+                                queue.connection.destroy();
+                            } catch (error) {
+                                logger.warn(
+                                    `[MusicPlayer] Failed to destroy connection for ${queue.voiceChannelId}: ${error}`,
+                                );
+                            }
+                        }
+                        deleteQueue(queue.voiceChannelId);
+                    },
+                    5 * 60 * 1000,
+                ); // 5 minutes
+            }
         }
-    }
-});
+    });
 
     player.on('error', (error) => {
         logger.error(`Audio player error: ${error.message} `);
@@ -489,6 +491,7 @@ async function enqueue(
         // If the queue was empty, it will just play.
         // If something was playing, we skip it.
         if (options.skipCurrent && queue.nowPlaying) {
+            queue.skipping = true;
             queue.player.stop(); // This triggers Idle event, which plays the next song (which we just inserted at index 1)
             await interaction.editReply({
                 content: `⏭️ **Skipping current song to play:** ${track.title}`,
@@ -638,6 +641,9 @@ async function enqueueSongs(
         if (options) {
             if (options.loopTrack !== undefined) queue.loopTrack = options.loopTrack;
             if (options.loopQueue !== undefined) queue.loopQueue = options.loopQueue;
+            if (queue.loopTrack && queue.loopQueue) {
+                queue.loopQueue = false;
+            }
         }
 
         queue.songs.push(...songsToAdd);
@@ -712,6 +718,7 @@ async function skip(interaction: ChatInputCommandInteraction): Promise<void> {
         });
         return;
     }
+    queue.skipping = true;
     queue.player.stop();
     await interaction.reply('⏭️ Skipped current track.');
 }
@@ -912,14 +919,8 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 async function toggleLoop(interaction: ChatInputCommandInteraction): Promise<void> {
-    const voiceChannel = (interaction.member as GuildMember).voice.channel;
-    if (!voiceChannel) {
-        await interaction.reply({
-            content: 'You must be in a voice channel.',
-            ephemeral: true,
-        });
-        return;
-    }
+    const voiceChannel = await validateInteraction(interaction);
+    if (!voiceChannel) return;
     const queue = getQueue(voiceChannel.id);
     if (!queue) {
         await interaction.reply({
@@ -938,14 +939,8 @@ async function toggleLoop(interaction: ChatInputCommandInteraction): Promise<voi
 }
 
 async function toggleRepeat(interaction: ChatInputCommandInteraction): Promise<void> {
-    const voiceChannel = (interaction.member as GuildMember).voice.channel;
-    if (!voiceChannel) {
-        await interaction.reply({
-            content: 'You must be in a voice channel.',
-            ephemeral: true,
-        });
-        return;
-    }
+    const voiceChannel = await validateInteraction(interaction);
+    if (!voiceChannel) return;
     const queue = getQueue(voiceChannel.id);
     if (!queue) {
         await interaction.reply({
@@ -964,14 +959,8 @@ async function toggleRepeat(interaction: ChatInputCommandInteraction): Promise<v
 }
 
 async function shuffleQueue(interaction: ChatInputCommandInteraction): Promise<void> {
-    const voiceChannel = (interaction.member as GuildMember).voice.channel;
-    if (!voiceChannel) {
-        await interaction.reply({
-            content: 'You must be in a voice channel.',
-            ephemeral: true,
-        });
-        return;
-    }
+    const voiceChannel = await validateInteraction(interaction);
+    if (!voiceChannel) return;
     const queue = getQueue(voiceChannel.id);
     if (!queue) {
         await interaction.reply({

@@ -53,6 +53,7 @@ export interface Queue {
     streamProcess?: import('child_process').ChildProcess | null;
     loopTrack?: boolean;
     loopQueue?: boolean;
+    skipping?: boolean;
 }
 
 // --- Database Types (Shared) ---
