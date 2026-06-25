@@ -183,6 +183,8 @@ async function createQueue(
         idleTimeout: null, // Track idle disconnect timeout
         stopping: false, // Flag to prevent autoplay/idle logic when stopping manually
         isRadio: false,
+        loopTrack: false,
+        loopQueue: false,
     };
 
     connection.subscribe(player);
@@ -254,97 +256,108 @@ async function createQueue(
         if (!queue.nowPlaying) return;
 
         const lastSong = queue.nowPlaying;
-        queue.songs.shift();
+        const wasSkipped = queue.skipping;
+        queue.skipping = false; // Reset the transient skip flag
 
-        if (queue.songs.length > 0) {
+        if (queue.loopTrack && !wasSkipped) {
             playSong(queue);
-        } else if (queue.isRadio) {
-            await handleRadio(queue);
-        } else if (queue.autoplay && lastSong) {
-            await handleAutoplay(queue, lastSong);
         } else {
-            queue.nowPlaying = null;
-            if (queue.streamProcess) {
-                try {
-                    logger.info(
-                        `[MusicPlayer] Killing stream process (PID: ${queue.streamProcess.pid}) as queue is now idle`,
-                    );
-                    queue.streamProcess.kill('SIGKILL');
-                } catch {
-                    // Ignore error when killing process
-                }
-                queue.streamProcess = null;
+            queue.songs.shift();
+
+            if (queue.loopQueue && lastSong) {
+                queue.songs.push(lastSong);
             }
 
-            // Set idle status to show bot is ready for new requests
-            setVoiceStatus(queue.worker.client, queue.voiceChannelId, '[IDLE] Ready to Meow');
-
-            // Release worker immediately for reuse, but keep connection alive for 5 minutes
-            workerPool.releaseWorker(queue.voiceChannelId);
-
-            // Send enhanced queue finished message
-            if (
-                queue.textChannel &&
-                queue.textChannel.isTextBased() &&
-                !queue.textChannel.isDMBased()
-            ) {
-                try {
-                    const channel = await queue.worker.client.channels.fetch(queue.voiceChannelId);
-                    const channelName =
-                        channel && 'name' in channel
-                            ? (channel as { name: string }).name
-                            : 'the voice channel';
-                    queue.textChannel
-                        .send(
-                            `🎶 **${queue.worker.name}** has finished the queue in **${channelName}**! Staying connected for 5 more minutes.`,
-                        )
-                        .catch((err: unknown) =>
-                            logger.warn(
-                                `Failed to send finished message: ${err instanceof Error ? err.message : String(err)} `,
-                            ),
+            if (queue.songs.length > 0) {
+                playSong(queue);
+            } else if (queue.isRadio) {
+                await handleRadio(queue);
+            } else if (queue.autoplay && lastSong) {
+                await handleAutoplay(queue, lastSong);
+            } else {
+                queue.nowPlaying = null;
+                if (queue.streamProcess) {
+                    try {
+                        logger.info(
+                            `[MusicPlayer] Killing stream process (PID: ${queue.streamProcess.pid}) as queue is now idle`,
                         );
-                } catch (err: unknown) {
-                    logger.warn(
-                        `Failed to fetch channel for finished message: ${err instanceof Error ? err.message : String(err)} `,
-                    );
-                    if (queue.textChannel.isTextBased() && !queue.textChannel.isDMBased()) {
+                        queue.streamProcess.kill('SIGKILL');
+                    } catch {
+                        // Ignore error when killing process
+                    }
+                    queue.streamProcess = null;
+                }
+
+                // Set idle status to show bot is ready for new requests
+                setVoiceStatus(queue.worker.client, queue.voiceChannelId, '[IDLE] Ready to Meow');
+
+                // Release worker immediately for reuse, but keep connection alive for 5 minutes
+                workerPool.releaseWorker(queue.voiceChannelId);
+
+                // Send enhanced queue finished message
+                if (
+                    queue.textChannel &&
+                    queue.textChannel.isTextBased() &&
+                    !queue.textChannel.isDMBased()
+                ) {
+                    try {
+                        const channel = await queue.worker.client.channels.fetch(queue.voiceChannelId);
+                        const channelName =
+                            channel && 'name' in channel
+                                ? (channel as { name: string }).name
+                                : 'the voice channel';
                         queue.textChannel
                             .send(
-                                `🎶 **${queue.worker.name}** has finished the queue! Staying connected for 5 more minutes.`,
+                                `🎶 **${queue.worker.name}** has finished the queue in **${channelName}**! Staying connected for 5 more minutes.`,
                             )
                             .catch((err: unknown) =>
                                 logger.warn(
                                     `Failed to send finished message: ${err instanceof Error ? err.message : String(err)} `,
                                 ),
                             );
-                    }
-                }
-            }
-
-            // Set 5-minute idle timeout before disconnecting
-            queue.idleTimeout = setTimeout(
-                () => {
-                    logger.info(
-                        `Disconnecting from ${queue.voiceChannelId} after 5 minutes of idle time`,
-                    );
-                    // Clear voice status before disconnecting
-                    setVoiceStatus(queue.worker.client, queue.voiceChannelId, '');
-                    if (
-                        queue.connection &&
-                        queue.connection.state.status !== VoiceConnectionStatus.Destroyed
-                    ) {
-                        try {
-                            queue.connection.destroy();
-                        } catch (error) {
-                            logger.warn(
-                                `[MusicPlayer] Failed to destroy connection for ${queue.voiceChannelId}: ${error}`,
-                            );
+                    } catch (err: unknown) {
+                        logger.warn(
+                            `Failed to fetch channel for finished message: ${err instanceof Error ? err.message : String(err)} `,
+                        );
+                        if (queue.textChannel.isTextBased() && !queue.textChannel.isDMBased()) {
+                            queue.textChannel
+                                .send(
+                                    `🎶 **${queue.worker.name}** has finished the queue! Staying connected for 5 more minutes.`,
+                                )
+                                .catch((err: unknown) =>
+                                    logger.warn(
+                                        `Failed to send finished message: ${err instanceof Error ? err.message : String(err)} `,
+                                    ),
+                                );
                         }
                     }
-                    deleteQueue(queue.voiceChannelId);
-                },
-                5 * 60 * 1000,
-            ); // 5 minutes
+                }
+
+                // Set 5-minute idle timeout before disconnecting
+                queue.idleTimeout = setTimeout(
+                    () => {
+                        logger.info(
+                            `Disconnecting from ${queue.voiceChannelId} after 5 minutes of idle time`,
+                        );
+                        // Clear voice status before disconnecting
+                        setVoiceStatus(queue.worker.client, queue.voiceChannelId, '');
+                        if (
+                            queue.connection &&
+                            queue.connection.state.status !== VoiceConnectionStatus.Destroyed
+                        ) {
+                            try {
+                                queue.connection.destroy();
+                            } catch (error) {
+                                logger.warn(
+                                    `[MusicPlayer] Failed to destroy connection for ${queue.voiceChannelId}: ${error}`,
+                                );
+                            }
+                        }
+                        deleteQueue(queue.voiceChannelId);
+                    },
+                    5 * 60 * 1000,
+                ); // 5 minutes
+            }
         }
     });
 
@@ -478,6 +491,7 @@ async function enqueue(
         // If the queue was empty, it will just play.
         // If something was playing, we skip it.
         if (options.skipCurrent && queue.nowPlaying) {
+            queue.skipping = true;
             queue.player.stop(); // This triggers Idle event, which plays the next song (which we just inserted at index 1)
             await interaction.editReply({
                 content: `⏭️ **Skipping current song to play:** ${track.title}`,
@@ -578,6 +592,7 @@ async function enqueueSongs(
     interaction: ChatInputCommandInteraction,
     songs: Omit<Song, 'requestedBy' | 'requesterId'>[],
     playlistName: string,
+    options?: { loopTrack?: boolean; loopQueue?: boolean; shuffle?: boolean },
 ): Promise<void> {
     const voiceChannel = await validateInteraction(interaction);
     if (!voiceChannel) return;
@@ -601,7 +616,7 @@ async function enqueueSongs(
         const queue = await ensureQueue(interaction, voiceChannel, null);
         if (!queue) return;
 
-        const songsToAdd: Song[] = songs.map((song) => {
+        let songsToAdd: Song[] = songs.map((song) => {
             const newSong: Song = {
                 requestedBy: interaction.user.tag,
                 requesterId: interaction.user.id,
@@ -613,10 +628,22 @@ async function enqueueSongs(
             return newSong;
         });
 
+        if (options?.shuffle) {
+            songsToAdd = shuffleArray(songsToAdd);
+        }
+
         if (queue.idleTimeout) {
             clearTimeout(queue.idleTimeout);
             queue.idleTimeout = null;
             logger.info(`Cleared idle timeout for ${queue.voiceChannelId} - custom playlist added`);
+        }
+
+        if (options) {
+            if (options.loopTrack !== undefined) queue.loopTrack = options.loopTrack;
+            if (options.loopQueue !== undefined) queue.loopQueue = options.loopQueue;
+            if (queue.loopTrack && queue.loopQueue) {
+                queue.loopQueue = false;
+            }
         }
 
         queue.songs.push(...songsToAdd);
@@ -691,6 +718,7 @@ async function skip(interaction: ChatInputCommandInteraction): Promise<void> {
         });
         return;
     }
+    queue.skipping = true;
     queue.player.stop();
     await interaction.reply('⏭️ Skipped current track.');
 }
@@ -881,6 +909,92 @@ async function startRadio(interaction: ChatInputCommandInteraction): Promise<voi
     }
 }
 
+function shuffleArray<T>(array: T[]): T[] {
+    const arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+async function toggleLoop(interaction: ChatInputCommandInteraction): Promise<void> {
+    const voiceChannel = await validateInteraction(interaction);
+    if (!voiceChannel) return;
+    const queue = getQueue(voiceChannel.id);
+    if (!queue) {
+        await interaction.reply({
+            content: 'There is no active queue to loop.',
+            ephemeral: true,
+        });
+        return;
+    }
+
+    queue.loopTrack = !queue.loopTrack;
+    if (queue.loopTrack) {
+        queue.loopQueue = false;
+    }
+
+    await interaction.reply(`🔂 **Looping is now ${queue.loopTrack ? 'ENABLED (repeating current track)' : 'DISABLED'}**`);
+}
+
+async function toggleRepeat(interaction: ChatInputCommandInteraction): Promise<void> {
+    const voiceChannel = await validateInteraction(interaction);
+    if (!voiceChannel) return;
+    const queue = getQueue(voiceChannel.id);
+    if (!queue) {
+        await interaction.reply({
+            content: 'There is no active queue to repeat.',
+            ephemeral: true,
+        });
+        return;
+    }
+
+    queue.loopQueue = !queue.loopQueue;
+    if (queue.loopQueue) {
+        queue.loopTrack = false;
+    }
+
+    await interaction.reply(`🔁 **Queue repeating is now ${queue.loopQueue ? 'ENABLED (repeating the entire queue)' : 'DISABLED'}**`);
+}
+
+async function shuffleQueue(interaction: ChatInputCommandInteraction): Promise<void> {
+    const voiceChannel = await validateInteraction(interaction);
+    if (!voiceChannel) return;
+    const queue = getQueue(voiceChannel.id);
+    if (!queue) {
+        await interaction.reply({
+            content: 'There is no active queue to shuffle.',
+            ephemeral: true,
+        });
+        return;
+    }
+
+    if (!queue.nowPlaying) {
+        if (queue.songs.length < 2) {
+            await interaction.reply({
+                content: 'There are not enough songs in the queue to shuffle.',
+                ephemeral: true,
+            });
+            return;
+        }
+        queue.songs = shuffleArray(queue.songs);
+    } else {
+        if (queue.songs.length < 3) {
+            await interaction.reply({
+                content: 'There are not enough upcoming songs in the queue to shuffle.',
+                ephemeral: true,
+            });
+            return;
+        }
+        const upcoming = queue.songs.slice(1);
+        const shuffled = shuffleArray(upcoming);
+        queue.songs = [queue.songs[0], ...shuffled];
+    }
+
+    await interaction.reply('🔀 **Queue shuffled successfully!**');
+}
+
 export default {
     enqueue,
     enqueuePlaylist,
@@ -895,4 +1009,7 @@ export default {
     startRadio,
     getQueues: getAllQueues,
     clearAllQueues,
+    toggleLoop,
+    toggleRepeat,
+    shuffleQueue,
 };
