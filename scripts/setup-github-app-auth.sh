@@ -6,27 +6,16 @@ echo "   Jasper GitHub App Auth Configuration Script"
 echo "=========================================================="
 echo ""
 
-MANIFEST='{
-  "name": "Jasper Deployment App",
-  "url": "https://github.com/sakibtamim/Jasper",
-  "public": false,
-  "hook_attributes": {
-    "active": false
-  },
-  "default_permissions": {
-    "contents": "read"
-  }
-}'
-
-# URL-encode the manifest JSON
-ENCODED_MANIFEST=$(node -e "console.log(encodeURIComponent(process.argv[1]))" "$MANIFEST")
-REGISTRATION_URL="https://github.com/settings/apps/new?manifest=${ENCODED_MANIFEST}"
-
-echo "👉 Step 1: Create the GitHub App using this pre-filled configuration link:"
-echo ""
-echo "$REGISTRATION_URL"
-echo ""
-echo "After creating, download the generated Private Key (.pem file)."
+echo "👉 Step 1: Register a new GitHub App manually:"
+echo "   1. Go to: https://github.com/settings/apps/new"
+echo "      (Or for an organization: https://github.com/organizations/<your-org>/settings/apps/new)"
+echo "   2. Configure the following fields:"
+echo "      - GitHub App name: Jasper Deployment App (or any unique name)"
+echo "      - Homepage URL: https://github.com/sakibtamim/Jasper"
+echo "      - Webhook -> Active: Uncheck / Disable"
+echo "      - Repository permissions -> Contents: Read-only"
+echo "   3. Click 'Create GitHub App' at the bottom."
+echo "   4. Scroll down to 'Private keys' and click 'Generate a private key' to download the .pem file."
 echo ""
 
 echo "👉 Step 2: Install the App on:"
