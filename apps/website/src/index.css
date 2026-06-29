@@ -4,6 +4,35 @@
 
 @layer base {
   :root {
-    --radius: 0.5rem;
+    --radius: 0.75rem;
   }
+}
+
+@keyframes vinyl-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-vinyl-spin {
+  animation: vinyl-rotate 6s linear infinite;
+}
+
+.glow-pink-hover:hover {
+  box-shadow: 0 0 25px rgba(255, 106, 213, 0.35);
+  border-color: rgba(255, 106, 213, 0.5);
+}
+
+.glow-cyan-hover:hover {
+  box-shadow: 0 0 25px rgba(0, 229, 255, 0.35);
+  border-color: rgba(0, 229, 255, 0.5);
+}
+
+.glass-panel {
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
