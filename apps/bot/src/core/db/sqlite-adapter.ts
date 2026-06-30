@@ -557,15 +557,14 @@ export class SqliteAdapter implements DatabaseAdapter {
         expires_at = excluded.expires_at,
         updated_at = datetime('now')
     `);
-        stmt.setAllowBareNamedParameters(true);
         stmt.run({
-            id: user.id,
-            username: user.username,
-            discriminator: user.discriminator,
-            avatar: user.avatar || null,
-            accessToken: user.accessToken,
-            refreshToken: user.refreshToken,
-            expiresAt: user.expiresAt.toISOString(),
+            '@id': user.id,
+            '@username': user.username,
+            '@discriminator': user.discriminator,
+            '@avatar': user.avatar || null,
+            '@accessToken': user.accessToken,
+            '@refreshToken': user.refreshToken,
+            '@expiresAt': user.expiresAt.toISOString(),
         });
     }
 
@@ -575,12 +574,11 @@ export class SqliteAdapter implements DatabaseAdapter {
       INSERT INTO sessions (id, user_id, expires_at, created_at)
       VALUES (@id, @userId, @expiresAt, @createdAt)
     `);
-        stmt.setAllowBareNamedParameters(true);
         stmt.run({
-            id: session.id,
-            userId: session.userId,
-            expiresAt: session.expiresAt.toISOString(),
-            createdAt: session.createdAt.toISOString(),
+            '@id': session.id,
+            '@userId': session.userId,
+            '@expiresAt': session.expiresAt.toISOString(),
+            '@createdAt': session.createdAt.toISOString(),
         });
     }
 
