@@ -1,5 +1,5 @@
-import Database from 'better-sqlite3';
 import fs from 'fs';
+import { DatabaseSync } from 'node:sqlite';
 import path from 'path';
 
 import { ENCRYPTION_KEY } from '../../config/env.js';
@@ -16,7 +16,7 @@ import {
 } from './types.js';
 
 export class SqliteAdapter implements DatabaseAdapter {
-    private db: Database.Database | null = null;
+    private db: DatabaseSync | null = null;
     private dbPath: string;
 
     constructor(customPath?: string) {
@@ -31,8 +31,8 @@ export class SqliteAdapter implements DatabaseAdapter {
 
     async init(): Promise<void> {
         try {
-            this.db = new Database(this.dbPath);
-            this.db.pragma('journal_mode = WAL');
+            this.db = new DatabaseSync(this.dbPath);
+            this.db.exec('PRAGMA journal_mode = WAL');
 
             // Create tables
             this.db.exec(`
@@ -129,7 +129,7 @@ export class SqliteAdapter implements DatabaseAdapter {
       `);
 
             // Migration: Add thumbnail column if it doesn't exist
-            const tableInfo = this.db.pragma('table_info(plays)') as {
+            const tableInfo = this.db.prepare('PRAGMA table_info(plays)').all() as {
                 name: string;
             }[];
             const hasThumbnail = tableInfo.some((col) => col.name === 'thumbnail');
@@ -209,7 +209,7 @@ export class SqliteAdapter implements DatabaseAdapter {
             thumbnail?: string;
         }
 
-        const rows = stmt.all(limit) as SongStatsRow[];
+        const rows = stmt.all(limit) as unknown as SongStatsRow[];
         return rows.map((row) => ({
             ...row,
             lastPlayedAt: new Date(row.lastPlayedAt),
@@ -238,7 +238,7 @@ export class SqliteAdapter implements DatabaseAdapter {
             lastPlayedAt: string;
         }
 
-        const rows = stmt.all(limit) as UserStatsRow[];
+        const rows = stmt.all(limit) as unknown as UserStatsRow[];
         return rows.map((row) => ({
             ...row,
             lastPlayedAt: new Date(row.lastPlayedAt),
@@ -313,7 +313,7 @@ export class SqliteAdapter implements DatabaseAdapter {
       VALUES (?, ?, ?, ?, ?, ?)
     `);
 
-        stmt.run(query, songTitle, songUrl, duration, thumbnail, expiresAt);
+        stmt.run(query, songTitle, songUrl, duration, thumbnail || null, expiresAt);
     }
 
     async getAudioMetadata(videoId: string): Promise<import('./types.js').AudioMetadata | null> {
@@ -369,7 +369,15 @@ export class SqliteAdapter implements DatabaseAdapter {
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
-        stmt.run(videoId, title, url, duration, thumbnail, JSON.stringify(searchTerms), expiresAt);
+        stmt.run(
+            videoId,
+            title,
+            url,
+            duration,
+            thumbnail || null,
+            JSON.stringify(searchTerms),
+            expiresAt,
+        );
     }
 
     async getRandomCachedSong(): Promise<import('./types.js').AudioMetadata | null> {
@@ -467,7 +475,7 @@ export class SqliteAdapter implements DatabaseAdapter {
       LIMIT ?
     `);
 
-        return stmt.all(limit) as import('./types.js').ChannelStats[];
+        return stmt.all(limit) as unknown as import('./types.js').ChannelStats[];
     }
 
     async getTopBots(limit: number = 10): Promise<import('./types.js').BotStats[]> {
@@ -483,7 +491,7 @@ export class SqliteAdapter implements DatabaseAdapter {
       LIMIT ?
     `);
 
-        return stmt.all(limit) as import('./types.js').BotStats[];
+        return stmt.all(limit) as unknown as import('./types.js').BotStats[];
     }
 
     async trackCacheHit(
@@ -516,7 +524,7 @@ export class SqliteAdapter implements DatabaseAdapter {
       LIMIT ?
     `);
 
-        return stmt.all(limit) as import('./types.js').CacheHitStats[];
+        return stmt.all(limit) as unknown as import('./types.js').CacheHitStats[];
     }
 
     async getAllCachedVideoIds(): Promise<string[]> {
@@ -549,9 +557,14 @@ export class SqliteAdapter implements DatabaseAdapter {
         expires_at = excluded.expires_at,
         updated_at = datetime('now')
     `);
+        stmt.setAllowBareNamedParameters(true);
         stmt.run({
-            ...user,
+            id: user.id,
+            username: user.username,
+            discriminator: user.discriminator,
             avatar: user.avatar || null,
+            accessToken: user.accessToken,
+            refreshToken: user.refreshToken,
             expiresAt: user.expiresAt.toISOString(),
         });
     }
@@ -562,8 +575,10 @@ export class SqliteAdapter implements DatabaseAdapter {
       INSERT INTO sessions (id, user_id, expires_at, created_at)
       VALUES (@id, @userId, @expiresAt, @createdAt)
     `);
+        stmt.setAllowBareNamedParameters(true);
         stmt.run({
-            ...session,
+            id: session.id,
+            userId: session.userId,
             expiresAt: session.expiresAt.toISOString(),
             createdAt: session.createdAt.toISOString(),
         });
@@ -681,7 +696,7 @@ export class SqliteAdapter implements DatabaseAdapter {
             updatedAt: string;
         }
 
-        const rows = stmt.all(limit, offset) as UserRow[];
+        const rows = stmt.all(limit, offset) as unknown as UserRow[];
 
         const users = rows.map((row) => {
             let accessToken = row.accessToken;
@@ -752,7 +767,7 @@ export class SqliteAdapter implements DatabaseAdapter {
             createdAt: string;
         }
 
-        const rows = stmt.all(limit, offset) as SessionRow[];
+        const rows = stmt.all(limit, offset) as unknown as SessionRow[];
         const sessions = rows.map((row) => ({
             id: row.id,
             userId: row.userId,
@@ -940,7 +955,7 @@ export class SqliteAdapter implements DatabaseAdapter {
     async getAllPluginMeta(): Promise<Array<{ pluginId: string; enabled: boolean }>> {
         if (!this.db) throw new Error('Database not initialized');
         const stmt = this.db.prepare('SELECT plugin_id, enabled FROM plugin_meta');
-        const rows = stmt.all() as { plugin_id: string; enabled: number }[];
+        const rows = stmt.all() as unknown as { plugin_id: string; enabled: number }[];
         return rows.map((row) => ({
             pluginId: row.plugin_id,
             enabled: row.enabled === 1,
