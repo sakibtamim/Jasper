@@ -100,3 +100,13 @@ To allow Vite to serve files from outside the monorepo root (for symlinked plugi
 
 - **Build**: Run `turbo run build` to compile plugins.
 - **Export**: Run `pnpm run export-plugin <id>` to create a distributable `.zip`.
+
+## 9. Security, Extension Fallbacks & Linting
+
+- **Directory Traversal Security**: All plugin loading and toggling mechanisms must resolve `pluginDir` and `entry` file paths using `path.resolve` and enforce that the resolved entry path is strictly contained within the plugin directory:
+  `pluginPath.startsWith(resolvedPluginDir + path.sep) || pluginPath === resolvedPluginDir`
+  Any paths escaping the plugin root must be rejected immediately to prevent directory traversal.
+- **Extension Agnosticism (Bidirectional Fallbacks)**: When resolving the plugin entry file, always implement bidirectional extension fallbacks:
+    - If `entry` points to `.ts` but only `.js` exists (compiled/packaged plugins), fall back to `.js`.
+    - If `entry` points to `.js` but only `.ts` exists (dev mode source plugins), fall back to `.ts`.
+- **ESLint Configuration**: The runtime `apps/bot/plugins/` folder and any compiled JS/IIFE bundles (e.g. `apps/bot/src/plugins/**/web/*.js`) must be excluded from ESLint checks via `ignores` in `eslint.config.mjs` to avoid transpiled code syntax errors.
