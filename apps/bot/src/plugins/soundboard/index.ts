@@ -9,7 +9,8 @@ import {
     registerCommand,
 } from './commands/soundboard.js';
 import { registerRoutes } from './routes.js';
-import { SoundService } from './services/sound-service.js';
+
+// import { SoundService } from './services/sound-service.js';
 
 let interactionHandler: (interaction: Interaction) => Promise<void>;
 
@@ -36,7 +37,7 @@ const soundboardPlugin = {
         // Schedule cleanup task (every 1 hour)
         // DISABLED: This is dangerous if storage is temporarily inaccessible
         // context.scheduleTask(60 * 60 * 1000, async () => {
-        //   await cleanupOrphanedFiles(context);
+        //   await _cleanupOrphanedFiles(context);
         // });
     },
     onUnload: async (context: PluginContext) => {
@@ -49,7 +50,8 @@ const soundboardPlugin = {
     },
 };
 
-async function cleanupOrphanedFiles(context: PluginContext) {
+/*
+async function _cleanupOrphanedFiles(context: PluginContext) {
     try {
         const files = await context.storage.list();
         const soundService = new SoundService(context);
@@ -110,5 +112,6 @@ async function cleanupOrphanedFiles(context: PluginContext) {
         context.logger.error(`Failed to cleanup orphaned files: ${error}`);
     }
 }
+*/
 
 export default soundboardPlugin;

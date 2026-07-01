@@ -1,6 +1,6 @@
 import { FormEvent, React, ReactRouterDOM, useEffect, useState } from '@jasper/elements';
 import { usePluginStorage } from '@jasper/hooks';
-import { Button, Card, Input, Loader } from '@jasper/ui';
+import { Card, Loader } from '@jasper/ui';
 import { ExternalLink, Trash2, Upload } from 'lucide-react';
 
 const PLUGIN_ID = 'media-gallery';

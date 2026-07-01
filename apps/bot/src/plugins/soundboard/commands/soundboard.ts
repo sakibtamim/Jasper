@@ -8,6 +8,7 @@ import {
     ButtonStyle,
     ChatInputCommandInteraction,
     ComponentType,
+    Message,
     MessageFlags,
     ModalBuilder,
     ModalSubmitInteraction,
@@ -520,7 +521,7 @@ export const handleModalSubmit = async (
         return;
     }
 
-    const filter = (m: any) =>
+    const filter = (m: Message) =>
         m.author.id === interaction.user.id &&
         m.attachments.size > 0 &&
         m.mentions.has(context.client.user!.id);
@@ -532,7 +533,7 @@ export const handleModalSubmit = async (
 
     if (!collector) return;
 
-    collector.on('collect', async (m: any) => {
+    collector.on('collect', async (m: Message) => {
         const attachment = m.attachments.first();
         if (!attachment) return;
 
@@ -545,7 +546,7 @@ export const handleModalSubmit = async (
             // Try to delete the large file message
             try {
                 await m.delete();
-            } catch (e) {
+            } catch {
                 /* ignore */
             }
             return;
@@ -565,7 +566,7 @@ export const handleModalSubmit = async (
             });
             try {
                 await m.delete();
-            } catch (e) {
+            } catch {
                 /* ignore */
             }
             return;
@@ -594,7 +595,7 @@ export const handleModalSubmit = async (
             // Try to delete the user's message to keep chat clean
             try {
                 await m.delete();
-            } catch (e) {
+            } catch {
                 /* ignore */
             }
 
@@ -609,7 +610,7 @@ export const handleModalSubmit = async (
         }
     });
 
-    collector.on('end', (collected: any, reason: string) => {
+    collector.on('end', (collected, reason: string) => {
         if (reason === 'time' && collected.size === 0) {
             interaction
                 .followUp({

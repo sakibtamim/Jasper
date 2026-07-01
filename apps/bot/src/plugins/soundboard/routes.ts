@@ -7,7 +7,7 @@ export const registerRoutes = (context: PluginContext) => {
     const soundService = new SoundService(context);
 
     // GET /api/plugins/soundboard/sounds
-    server.get('/sounds', async (req, reply) => {
+    server.get('/sounds', async (_req, _reply) => {
         const sounds = await soundService.getSounds();
         return { sounds };
     });
@@ -69,7 +69,7 @@ export const registerRoutes = (context: PluginContext) => {
     });
 
     // GET /api/plugins/soundboard/stats
-    server.get('/stats', async (req, reply) => {
+    server.get('/stats', async (_req, _reply) => {
         return await soundService.getStats();
     });
 
