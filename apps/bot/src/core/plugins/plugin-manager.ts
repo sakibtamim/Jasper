@@ -796,9 +796,14 @@ export class PluginManager {
                         const entryFile = metadata.entry || 'index.js';
                         let pluginPath = path.join(pluginDir, entryFile);
 
-                        if (!fs.existsSync(pluginPath) && entryFile.endsWith('.js')) {
-                            const tsPath = pluginPath.replace(/\.js$/, '.ts');
-                            if (fs.existsSync(tsPath)) pluginPath = tsPath;
+                        if (!fs.existsSync(pluginPath)) {
+                            if (entryFile.endsWith('.js')) {
+                                const tsPath = pluginPath.replace(/\.js$/, '.ts');
+                                if (fs.existsSync(tsPath)) pluginPath = tsPath;
+                            } else if (entryFile.endsWith('.ts')) {
+                                const jsPath = pluginPath.replace(/\.ts$/, '.js');
+                                if (fs.existsSync(jsPath)) pluginPath = jsPath;
+                            }
                         }
 
                         if (!fs.existsSync(pluginPath)) {
