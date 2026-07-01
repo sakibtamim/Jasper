@@ -24,7 +24,7 @@ const DashboardNotesPlugin: Plugin = {
         };
 
         // GET /api/plugins/dashboard-notes/notes
-        context.server.get('/notes', async (req, reply) => {
+        context.server.get('/notes', async (_req, _reply) => {
             const notes = await getNotes();
             return { notes };
         });

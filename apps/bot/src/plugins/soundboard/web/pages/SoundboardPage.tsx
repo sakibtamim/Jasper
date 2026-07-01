@@ -1,7 +1,7 @@
 import { React, useEffect, useState } from '@jasper/elements';
 import { usePluginStorage } from '@jasper/hooks';
 import { Badge, Button, Card, Input, Loader } from '@jasper/ui';
-import { AlertTriangle, Edit2, Music, Play, Plus, Trash2, Upload, Volume2, X } from 'lucide-react';
+import { Edit2, Music, Play, Plus, Trash2, Upload, X } from 'lucide-react';
 
 interface Sound {
     id: string;
@@ -172,7 +172,7 @@ export const SoundboardPage = () => {
         // Custom emoji format: <:name:id> or <a:name:id>
         const customEmojiMatch = emojiStr.match(/<a?:(\w+):(\d+)>/);
         if (customEmojiMatch) {
-            const [_, name, id] = customEmojiMatch;
+            const [, name, id] = customEmojiMatch;
             return (
                 <img
                     src={`https://cdn.discordapp.com/emojis/${id}.png`}

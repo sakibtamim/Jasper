@@ -1,4 +1,10 @@
-import { Plugin, PluginContext, VoiceStateUpdateData, WorkerAssignedData } from '@jasper/types';
+import {
+    Plugin,
+    PluginContext,
+    ServerReadyData,
+    VoiceStateUpdateData,
+    WorkerAssignedData,
+} from '@jasper/types';
 
 const AdvancedHooksTestPlugin: Plugin = {
     name: 'Advanced Hooks Test Plugin',
@@ -12,8 +18,8 @@ const AdvancedHooksTestPlugin: Plugin = {
         context.server.get(
             '/test-plugin',
             async (
-                request: import('fastify').FastifyRequest,
-                reply: import('fastify').FastifyReply,
+                _request: import('fastify').FastifyRequest,
+                _reply: import('fastify').FastifyReply,
             ) => {
                 return { message: 'Hello from AdvancedHooksTestPlugin!' };
             },
@@ -21,7 +27,7 @@ const AdvancedHooksTestPlugin: Plugin = {
         context.logger.info("Registered /test-plugin route under the plugin's API scope.");
 
         // Hook: SERVER_READY
-        context.on('SERVER_READY', (data: any) => {
+        context.on<ServerReadyData>('SERVER_READY', (_data) => {
             context.logger.info('SERVER_READY hook triggered! Server is listening.');
         });
 

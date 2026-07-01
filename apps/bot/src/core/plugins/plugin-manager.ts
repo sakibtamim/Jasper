@@ -179,7 +179,9 @@ export class DynamicPluginRouter implements IPluginRouter {
             if (route.method === method || route.method === 'ALL') {
                 const match = normalizedPath.match(route.regex);
                 if (match) {
-                    req.params = req.params || {};
+                    if (!req.params) {
+                        req.params = {};
+                    }
                     route.paramNames.forEach((name, i) => {
                         req.params![name] = match[i + 1];
                     });

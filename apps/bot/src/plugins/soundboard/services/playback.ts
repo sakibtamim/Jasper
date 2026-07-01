@@ -37,7 +37,7 @@ export async function playSoundboardClip(
     try {
         const resolved = storage.resolve(fileUri);
         fsPath = resolved.fsPath;
-    } catch (e) {
+    } catch {
         logger.error(`Failed to resolve sound file: ${fileUri}`);
         throw new Error('Sound file not found');
     }
