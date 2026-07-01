@@ -96,7 +96,7 @@ export class CookieManager {
         const MAX_RETRIES = parseInt(process.env.MAX_COOKIE_RETRIES || '5', 10);
         const effectiveRetries = Math.min(retries, MAX_RETRIES);
 
-        let lastError: any;
+        let lastError: unknown = null;
         let attempt = 0;
         const usedCookieIds = new Set<number>();
 
@@ -143,16 +143,17 @@ export class CookieManager {
                 }
 
                 return result;
-            } catch (error: any) {
+            } catch (error) {
                 lastError = error;
-                logger.warn(`[CookieManager] Operation failed: ${error.message}`);
+                const errMessage = error instanceof Error ? error.message : String(error);
+                logger.warn(`[CookieManager] Operation failed: ${errMessage}`);
 
                 if (cookieId) {
                     // Check if error is related to auth
                     const isAuthError =
-                        error.message &&
-                        (error.message.includes('Sign in to confirm you’re not a bot') ||
-                            error.message.includes('cookies'));
+                        typeof errMessage === 'string' &&
+                        (errMessage.includes('Sign in to confirm you’re not a bot') ||
+                            errMessage.includes('cookies'));
 
                     // Only mark as failure if it's an auth error
                     if (isAuthError) {
@@ -162,7 +163,7 @@ export class CookieManager {
                         );
                     } else {
                         logger.warn(
-                            `[CookieManager] Operation failed with cookie ${cookieId}: ${error.message}`,
+                            `[CookieManager] Operation failed with cookie ${cookieId}: ${errMessage}`,
                         );
                     }
                 }

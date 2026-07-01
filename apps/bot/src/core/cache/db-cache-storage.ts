@@ -270,7 +270,8 @@ export class DatabaseCacheStorage implements ICacheStorage {
         });
 
         // Attach process to passThrough stream so caller can manage/kill it if needed
-        (passThrough as any).ytDlpProcess = ytDlpProcess;
+        (passThrough as PassThrough & { ytDlpProcess?: typeof ytDlpProcess }).ytDlpProcess =
+            ytDlpProcess;
 
         return passThrough;
     }

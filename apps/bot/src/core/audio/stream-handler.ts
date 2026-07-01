@@ -56,19 +56,23 @@ export function isAttachmentUrl(text: string): boolean {
 }
 
 export interface VideoData {
+    id?: string;
     title: string;
     url: string;
     webpage_url?: string;
     duration: number;
     thumbnail?: string;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 export interface PlaylistData {
+    id?: string;
     title: string;
+    url?: string;
+    duration?: number;
     entries?: VideoData[];
     _type?: string;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 export function fetchVideoData(url: string): Promise<VideoData> {
@@ -96,7 +100,7 @@ export function fetchVideoData(url: string): Promise<VideoData> {
                     try {
                         const parsed = JSON.parse(data);
                         resolve(parsed);
-                    } catch (err) {
+                    } catch {
                         reject(new Error('Failed to parse video JSON'));
                     }
                 }
@@ -129,7 +133,7 @@ export function fetchPlaylistData(url: string): Promise<PlaylistData> {
                     try {
                         const parsed = JSON.parse(data);
                         resolve(parsed);
-                    } catch (err) {
+                    } catch {
                         reject(new Error('Failed to parse playlist JSON'));
                     }
                 }

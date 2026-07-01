@@ -1,6 +1,4 @@
 import { Client } from 'discord.js';
-import fs from 'node:fs';
-import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PluginManager } from '../plugin-manager.js';
@@ -38,7 +36,7 @@ describe('PluginManager', () => {
     beforeEach(() => {
         pluginManager = new PluginManager();
         mockClient = new Client({ intents: [] });
-        mockClient.commands = new Map() as any;
+        mockClient.commands = new Map() as unknown as Client['commands'];
         mockServer = {
             register: vi.fn(),
         };
@@ -49,13 +47,13 @@ describe('PluginManager', () => {
     });
 
     it('should initialize correctly', () => {
-        pluginManager.init(mockClient, mockServer as any);
+        pluginManager.init(mockClient, mockServer as unknown as import('fastify').FastifyInstance);
         // @ts-expect-error - testing private property
         expect(pluginManager.context).toBeDefined();
     });
 
     it('should register a plugin', async () => {
-        pluginManager.init(mockClient, mockServer as any);
+        pluginManager.init(mockClient, mockServer as unknown as import('fastify').FastifyInstance);
 
         const mockPlugin = {
             name: 'test-plugin',
@@ -78,7 +76,7 @@ describe('PluginManager', () => {
     });
 
     it('should not register the same plugin twice', async () => {
-        pluginManager.init(mockClient, mockServer as any);
+        pluginManager.init(mockClient, mockServer as unknown as import('fastify').FastifyInstance);
 
         const mockPlugin = {
             name: 'test-plugin',
@@ -100,7 +98,7 @@ describe('PluginManager', () => {
     });
 
     it('should unload a plugin', async () => {
-        pluginManager.init(mockClient, mockServer as any);
+        pluginManager.init(mockClient, mockServer as unknown as import('fastify').FastifyInstance);
 
         const mockPlugin = {
             name: 'test-plugin',

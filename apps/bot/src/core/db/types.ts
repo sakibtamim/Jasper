@@ -160,8 +160,8 @@ export interface IDevToolsRepository {
 }
 
 export interface IPluginRepository {
-    getPluginData(pluginName: string, key: string): Promise<any | null>;
-    setPluginData(pluginName: string, key: string, value: any): Promise<void>;
+    getPluginData(pluginName: string, key: string): Promise<unknown | null>;
+    setPluginData(pluginName: string, key: string, value: unknown): Promise<void>;
     deletePluginData(pluginName: string, key: string): Promise<void>;
     clearPluginData(pluginName: string): Promise<void>;
 }
