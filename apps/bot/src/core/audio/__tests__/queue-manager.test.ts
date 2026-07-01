@@ -1,4 +1,4 @@
-import { Queue } from '@jasper/types';
+import { Queue, WorkerState } from '@jasper/types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import * as voiceUtils from '../../utils/voice-utils.js';
@@ -41,15 +41,15 @@ describe('QueueManager', () => {
         textChannel: null,
         connection: {
             destroy: vi.fn(),
-        } as any,
-        player: {} as any,
+        } as unknown as import('@discordjs/voice').VoiceConnection,
+        player: {} as unknown as import('@discordjs/voice').AudioPlayer,
         songs: [],
         nowPlaying: null,
         autoplay: false,
         worker: {
             name: 'TestWorker',
-            client: {} as any,
-        } as any,
+            client: {} as unknown as import('discord.js').Client,
+        } as unknown as WorkerState,
         idleTimeout: null,
         stopping: false,
     };
@@ -112,8 +112,8 @@ describe('QueueManager', () => {
 
             const otherWorker = {
                 name: 'OtherWorker',
-                client: {} as any,
-            } as any;
+                client: {} as unknown as import('discord.js').Client,
+            } as unknown as WorkerState;
 
             cleanupWorkerOldQueues(otherWorker);
 

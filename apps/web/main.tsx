@@ -9,11 +9,11 @@ import { componentRegistry } from './core/ComponentRegistry';
 import './index.css';
 
 // Expose React and Elements for plugins (IIFE/UMD support)
-(window as any).JasperElements = Elements;
-(window as any).JasperUI = JasperUI;
-(window as any).JasperHooks = JasperHooks;
-(window as any).LucideReact = LucideReact;
-(window as any).componentRegistry = componentRegistry;
+window.JasperElements = Elements;
+window.JasperUI = JasperUI;
+window.JasperHooks = JasperHooks;
+window.LucideReact = LucideReact;
+window.componentRegistry = componentRegistry;
 
 ReactDOMClient.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>

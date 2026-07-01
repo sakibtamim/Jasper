@@ -76,8 +76,8 @@ export default function StatsPage() {
 
     // Initialize Lucide icons
     useEffect(() => {
-        if (typeof (window as any).lucide !== 'undefined') {
-            (window as any).lucide.createIcons();
+        if (typeof window.lucide !== 'undefined') {
+            window.lucide.createIcons();
         }
     }, [stats]);
 

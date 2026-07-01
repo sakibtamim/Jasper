@@ -9,8 +9,13 @@ export function usePlugins() {
     const [error, setError] = useState<string | null>(null);
 
     // Glob all potential plugin entry points for dev mode
-    // Glob all potential plugin entry points for dev mode
-    const pluginEntries = (import.meta as any).glob('@plugins/*/web/index.{ts,tsx,js,jsx}');
+    const pluginEntries = (
+        import.meta as unknown as {
+            glob: (
+                pattern: string,
+            ) => Record<string, () => Promise<Record<string, React.ComponentType<unknown>>>>;
+        }
+    ).glob('@plugins/*/web/index.{ts,tsx,js,jsx}');
 
     useEffect(() => {
         async function load() {
@@ -23,7 +28,8 @@ export function usePlugins() {
                     registry.map(async (plugin) => {
                         if (plugin.web && plugin.web.entry) {
                             try {
-                                let module: any;
+                                let module: Record<string, React.ComponentType<unknown>> | null =
+                                    null;
 
                                 // Development: Load source directly via Vite HMR
                                 console.log(`[PluginLoader] Loading ${plugin.id} from source...`);

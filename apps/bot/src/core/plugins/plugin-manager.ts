@@ -8,7 +8,14 @@ import {
     entersState,
     joinVoiceChannel,
 } from '@discordjs/voice';
-import { IPluginRouter, Plugin, PluginContext, PluginRouteHandler } from '@jasper/types';
+import {
+    Command,
+    IPluginRouter,
+    Plugin,
+    PluginContext,
+    PluginRouteHandler,
+    SlashCommandDefinition,
+} from '@jasper/types';
 import { Client, REST, Routes } from 'discord.js';
 import { FastifyInstance } from 'fastify';
 import fs from 'node:fs';
@@ -27,6 +34,40 @@ import coreDataAccessor from './core-data-accessor.js';
 import hookManager from './hook-manager.js';
 import { PluginStorage } from './plugin-storage.js';
 import { ScopedPluginStore } from './plugin-store.js';
+
+interface PluginManifest {
+    id: string;
+    name: string;
+    version: string;
+    entry?: string;
+    description?: string;
+    web?: {
+        entry: string;
+        widgets?: Array<{
+            id: string;
+            slot: string;
+            component: string;
+            order: number;
+        }>;
+        pages?: Array<{
+            id: string;
+            path: string;
+            component: string;
+            title: string;
+        }>;
+    };
+}
+
+interface RequestLike {
+    params?: Record<string, string>;
+    [key: string]: unknown;
+}
+
+interface ReplyLike {
+    sent?: boolean;
+    send: (payload: unknown) => void;
+    [key: string]: unknown;
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -114,13 +155,21 @@ export class DynamicPluginRouter implements IPluginRouter {
         return this;
     }
 
-    async register(pluginFn: any, opts?: any) {
+    async register(
+        pluginFn: (router: DynamicPluginRouter, opts?: unknown) => void | Promise<void>,
+        opts?: unknown,
+    ) {
         if (typeof pluginFn === 'function') {
             await pluginFn(this, opts);
         }
     }
 
-    async handle(method: string, pathStr: string, req: any, reply: any): Promise<boolean> {
+    async handle(
+        method: string,
+        pathStr: string,
+        req: RequestLike,
+        reply: ReplyLike,
+    ): Promise<boolean> {
         let normalizedPath = pathStr.startsWith('/') ? pathStr : `/${pathStr}`;
         if (normalizedPath.length > 1 && normalizedPath.endsWith('/')) {
             normalizedPath = normalizedPath.slice(0, -1);
@@ -132,7 +181,7 @@ export class DynamicPluginRouter implements IPluginRouter {
                 if (match) {
                     req.params = req.params || {};
                     route.paramNames.forEach((name, i) => {
-                        req.params[name] = match[i + 1];
+                        req.params![name] = match[i + 1];
                     });
                     const result = await route.handler(req, reply);
                     if (result !== undefined && !reply.sent) {
@@ -152,7 +201,7 @@ export class PluginManager {
         {
             plugin: Plugin;
             context: PluginContext;
-            metadata: any;
+            metadata: PluginManifest;
             pluginDir: string;
             router: DynamicPluginRouter;
         }
@@ -170,7 +219,7 @@ export class PluginManager {
                 title?: string;
                 requesterId: string;
                 resolve: () => void;
-                reject: (err: any) => void;
+                reject: (err: unknown) => void;
             }>;
             processing: boolean;
             connection?: import('@discordjs/voice').VoiceConnection;
@@ -201,7 +250,7 @@ export class PluginManager {
     ): Promise<boolean> {
         const router = this.pluginRouters.get(pluginId);
         if (router) {
-            return await router.handle(method, pathStr, req, reply);
+            return await router.handle(method, pathStr, req as RequestLike, reply as ReplyLike);
         }
         return false;
     }
@@ -397,7 +446,7 @@ export class PluginManager {
             client,
             workers: workerPool.getWorkers(),
             server: server as unknown as IPluginRouter, // Base context; overridden per-plugin with DynamicPluginRouter
-            registerCommand: (command: any) => {
+            registerCommand: (command: SlashCommandDefinition) => {
                 // Base implementation - just registers to client
                 // This will be wrapped by the scoped context to add tracking
                 logger.info(`[plugins] Registering dynamic command: ${command.data?.name}`);
@@ -406,7 +455,7 @@ export class PluginManager {
                         `[plugins] Command "${command.data.name}" is being overwritten by a plugin.`,
                     );
                 }
-                client.commands.set(command.data.name, command);
+                client.commands.set(command.data.name, command as unknown as Command);
             },
             on: (hook, callback) => hookManager.register(hook, callback),
             db: {
@@ -452,7 +501,7 @@ export class PluginManager {
                     }
                 });
             },
-            scheduleTask: (intervalMs, task) => {
+            scheduleTask: (_intervalMs, _task) => {
                 // Base implementation - overridden by scoped context
                 logger.warn(
                     '[plugins] scheduleTask called on base context. This should not happen.',
@@ -650,7 +699,11 @@ export class PluginManager {
     /**
      * Register and load a single plugin
      */
-    async registerPlugin(plugin: Plugin, metadata: any, pluginDir: string): Promise<void> {
+    async registerPlugin(
+        plugin: Plugin,
+        metadata: PluginManifest,
+        pluginDir: string,
+    ): Promise<void> {
         if (this.plugins.has(plugin.name)) {
             logger.warn(`[plugins] Plugin ${plugin.name} is already registered.`);
             return;
@@ -680,7 +733,7 @@ export class PluginManager {
                     error: (msg: string) => logger.error(`[${metadata.id}] ${msg}`),
                 },
                 // Override registerCommand to track commands
-                registerCommand: (command: any) => {
+                registerCommand: (command: SlashCommandDefinition) => {
                     this.context!.registerCommand(command); // Call base implementation
                     const commands = this.pluginCommands.get(plugin.name) || [];
                     commands.push(command.data.name);
@@ -893,7 +946,7 @@ export class PluginManager {
 
         try {
             logger.info('[plugins] Deploying commands to Discord...');
-            const commandsData = this.context.client.commands.map((cmd: any) => {
+            const commandsData = this.context.client.commands.map((cmd: Command) => {
                 // Handle both Builders (toJSON) and plain objects
                 return typeof cmd.data.toJSON === 'function' ? cmd.data.toJSON() : cmd.data;
             });

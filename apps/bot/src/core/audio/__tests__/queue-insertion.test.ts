@@ -1,9 +1,8 @@
-import { GuildMember } from 'discord.js';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ChatInputCommandInteraction, GuildMember, VoiceBasedChannel } from 'discord.js';
+import { Mock, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import music from '../../music-player.js';
 import * as voiceUtils from '../../utils/voice-utils.js';
-import * as playbackEngine from '../playback-engine.js';
 import * as queueManager from '../queue-manager.js';
 import * as trackResolver from '../track-resolver.js';
 
@@ -138,7 +137,7 @@ vi.mock('discord.js', () => {
 const mockInteraction = {
     user: { id: 'user-123', tag: 'User#1234' },
     guild: { id: 'guild-123' },
-    member: new (GuildMember as any)(),
+    member: new (GuildMember as unknown as new () => GuildMember)(),
     client: {
         user: { id: 'bot-id' },
     },
@@ -150,7 +149,7 @@ const mockInteraction = {
         isDMBased: () => false,
         send: vi.fn().mockResolvedValue({}),
     },
-} as any;
+} as unknown as ChatInputCommandInteraction;
 
 const mockVoiceChannel = {
     id: 'voice-123',
@@ -158,7 +157,7 @@ const mockVoiceChannel = {
     permissionsFor: () => ({
         has: () => true,
     }),
-} as any;
+} as unknown as VoiceBasedChannel;
 
 describe('Queue Insertion Logic', () => {
     beforeEach(() => {
@@ -167,8 +166,8 @@ describe('Queue Insertion Logic', () => {
         const queues = queueManager.getAllQueues();
         queues.clear();
 
-        (voiceUtils.validateInteraction as any).mockResolvedValue(mockVoiceChannel);
-        (trackResolver.resolveTrack as any).mockResolvedValue({
+        (voiceUtils.validateInteraction as Mock).mockResolvedValue(mockVoiceChannel);
+        (trackResolver.resolveTrack as Mock).mockResolvedValue({
             title: 'Test Song',
             url: 'http://test.com',
             thumbnail: 'http://thumb.com',
@@ -205,7 +204,7 @@ describe('Queue Insertion Logic', () => {
         expect(queue!.songs[0].title).toBe('Test Song');
 
         // Add another song
-        (trackResolver.resolveTrack as any).mockResolvedValueOnce({
+        (trackResolver.resolveTrack as Mock).mockResolvedValueOnce({
             title: 'Song 2',
             url: 'http://test2.com',
         });
@@ -219,7 +218,7 @@ describe('Queue Insertion Logic', () => {
         // Setup queue with 2 songs
         await music.enqueue(mockInteraction, 'song1'); // Index 0 (playing)
 
-        (trackResolver.resolveTrack as any).mockResolvedValueOnce({
+        (trackResolver.resolveTrack as Mock).mockResolvedValueOnce({
             title: 'Song 2',
             url: 'http://test2.com',
         });
@@ -229,7 +228,7 @@ describe('Queue Insertion Logic', () => {
         expect(queue!.songs).toHaveLength(2);
 
         // Add Song 3 with position='next'
-        (trackResolver.resolveTrack as any).mockResolvedValueOnce({
+        (trackResolver.resolveTrack as Mock).mockResolvedValueOnce({
             title: 'Song 3',
             url: 'http://test3.com',
         });
@@ -249,7 +248,7 @@ describe('Queue Insertion Logic', () => {
         // Simulate playing
         queue!.nowPlaying = queue!.songs[0];
 
-        (trackResolver.resolveTrack as any).mockResolvedValueOnce({
+        (trackResolver.resolveTrack as Mock).mockResolvedValueOnce({
             title: 'Song 2',
             url: 'http://test2.com',
         });

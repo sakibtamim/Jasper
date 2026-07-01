@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Mock, beforeEach, describe, expect, it, vi } from 'vitest';
 import ytSearch from 'yt-search';
 
 import * as cacheManager from '../../cache-manager.js';
@@ -28,15 +28,15 @@ describe('resolveTrack', () => {
     });
 
     it('should resolve a URL directly', async () => {
-        vi.mocked(streamHandler.isUrl).mockReturnValue(true);
-        vi.mocked(streamHandler.isYoutubeUrl).mockReturnValue(true);
-        vi.mocked(streamHandler.fetchVideoData).mockResolvedValue({
+        (streamHandler.isUrl as Mock).mockReturnValue(true);
+        (streamHandler.isYoutubeUrl as Mock).mockReturnValue(true);
+        (streamHandler.fetchVideoData as Mock).mockResolvedValue({
             title: 'Test Song',
             webpage_url: 'http://example.com/song',
             duration: 120,
             thumbnail: 'thumb.jpg',
             url: 'http://example.com/stream',
-        } as any);
+        } as unknown as streamHandler.VideoData);
 
         const track = await resolveTrack('http://example.com/song');
 
@@ -51,8 +51,8 @@ describe('resolveTrack', () => {
     });
 
     it('should search YouTube if not a URL', async () => {
-        vi.mocked(streamHandler.isUrl).mockReturnValue(false);
-        vi.mocked(ytSearch).mockResolvedValue({
+        (streamHandler.isUrl as Mock).mockReturnValue(false);
+        (ytSearch as unknown as Mock).mockResolvedValue({
             videos: [
                 {
                     title: 'Search Result',
@@ -61,7 +61,7 @@ describe('resolveTrack', () => {
                     thumbnail: 'thumb.jpg',
                 },
             ],
-        } as any);
+        } as unknown as ytSearch.SearchResult);
 
         const track = await resolveTrack('search query');
 
@@ -76,8 +76,8 @@ describe('resolveTrack', () => {
     });
 
     it('should use cache if enabled', async () => {
-        vi.mocked(streamHandler.isUrl).mockReturnValue(false);
-        vi.mocked(cacheManager.isCacheEnabled).mockReturnValue(true);
+        (streamHandler.isUrl as Mock).mockReturnValue(false);
+        (cacheManager.isCacheEnabled as Mock).mockReturnValue(true);
 
         const mockStorage = {
             getCachedSearchResult: vi.fn().mockResolvedValue({
@@ -87,7 +87,9 @@ describe('resolveTrack', () => {
             }),
             setCachedSearchResult: vi.fn(),
         };
-        vi.mocked(cacheManager.getCacheStorage).mockReturnValue(mockStorage as any);
+        (cacheManager.getCacheStorage as Mock).mockReturnValue(
+            mockStorage as unknown as cacheManager.ICacheStorage,
+        );
 
         const track = await resolveTrack('cached query');
 
@@ -100,8 +102,10 @@ describe('resolveTrack', () => {
     });
 
     it('should throw error if no results found', async () => {
-        vi.mocked(streamHandler.isUrl).mockReturnValue(false);
-        vi.mocked(ytSearch).mockResolvedValue({ videos: [] } as any);
+        (streamHandler.isUrl as Mock).mockReturnValue(false);
+        (ytSearch as unknown as Mock).mockResolvedValue({
+            videos: [],
+        } as unknown as ytSearch.SearchResult);
 
         await expect(resolveTrack('no results')).rejects.toThrow('No results found on YouTube.');
     });

@@ -15,6 +15,39 @@ import {
     YtDlpCookie,
 } from './types.js';
 
+interface SqliteSearchCacheRow {
+    query: string;
+    songTitle: string;
+    songUrl: string;
+    duration: number;
+    thumbnail: string | null;
+    cachedAt: string;
+    expiresAt: string;
+}
+
+interface SqliteAudioMetadataRow {
+    videoId: string;
+    title: string;
+    url: string;
+    duration: number;
+    thumbnail: string | null;
+    searchTerms: string;
+    cachedAt: string;
+    expiresAt: string;
+}
+
+interface SqliteCookieRow {
+    id: number;
+    name: string;
+    content: string;
+    is_active: number;
+    success_count: number;
+    failure_count: number;
+    last_used: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
 export class SqliteAdapter implements DatabaseAdapter {
     private db: DatabaseSync | null = null;
     private dbPath: string;
@@ -795,13 +828,13 @@ export class SqliteAdapter implements DatabaseAdapter {
       LIMIT ? OFFSET ?
     `);
 
-        const rows = stmt.all(limit, offset) as any[];
+        const rows = stmt.all(limit, offset) as unknown as SqliteSearchCacheRow[];
         const entries = rows.map((row) => ({
             query: row.query,
             songTitle: row.songTitle,
             songUrl: row.songUrl,
             duration: row.duration,
-            thumbnail: row.thumbnail,
+            thumbnail: row.thumbnail || undefined,
             cachedAt: new Date(row.cachedAt),
             expiresAt: new Date(row.expiresAt),
         }));
@@ -831,13 +864,13 @@ export class SqliteAdapter implements DatabaseAdapter {
       LIMIT ? OFFSET ?
     `);
 
-        const rows = stmt.all(limit, offset) as any[];
+        const rows = stmt.all(limit, offset) as unknown as SqliteAudioMetadataRow[];
         const entries = rows.map((row) => ({
             videoId: row.videoId,
             title: row.title,
             url: row.url,
             duration: row.duration,
-            thumbnail: row.thumbnail,
+            thumbnail: row.thumbnail || undefined,
             searchTerms: JSON.parse(row.searchTerms),
             cachedAt: new Date(row.cachedAt),
             expiresAt: new Date(row.expiresAt),
@@ -883,7 +916,7 @@ export class SqliteAdapter implements DatabaseAdapter {
     }
 
     // Plugin Repository Implementation
-    async getPluginData(pluginName: string, key: string): Promise<any | null> {
+    async getPluginData(pluginName: string, key: string): Promise<unknown | null> {
         if (!this.db) throw new Error('Database not initialized');
         const stmt = this.db.prepare(
             'SELECT value FROM plugin_storage WHERE plugin_name = ? AND key = ?',
@@ -897,7 +930,7 @@ export class SqliteAdapter implements DatabaseAdapter {
         }
     }
 
-    async setPluginData(pluginName: string, key: string, value: any): Promise<void> {
+    async setPluginData(pluginName: string, key: string, value: unknown): Promise<void> {
         if (!this.db) throw new Error('Database not initialized');
         const stmt = this.db.prepare(`
       INSERT INTO plugin_storage (plugin_name, key, value, updated_at)
@@ -974,7 +1007,7 @@ export class SqliteAdapter implements DatabaseAdapter {
     async getCookies(): Promise<YtDlpCookie[]> {
         if (!this.db) throw new Error('Database not initialized');
         const stmt = this.db.prepare('SELECT * FROM yt_dlp_cookies ORDER BY created_at DESC');
-        const rows = stmt.all() as any[];
+        const rows = stmt.all() as unknown as SqliteCookieRow[];
         return rows.map((row) => ({
             id: row.id,
             name: row.name,
@@ -991,7 +1024,7 @@ export class SqliteAdapter implements DatabaseAdapter {
     async getCookie(id: number): Promise<YtDlpCookie | null> {
         if (!this.db) throw new Error('Database not initialized');
         const stmt = this.db.prepare('SELECT * FROM yt_dlp_cookies WHERE id = ?');
-        const row = stmt.get(id) as any;
+        const row = stmt.get(id) as unknown as SqliteCookieRow | undefined;
         if (!row) return null;
         return {
             id: row.id,
@@ -1013,7 +1046,7 @@ export class SqliteAdapter implements DatabaseAdapter {
         if (!this.db) throw new Error('Database not initialized');
 
         const sets: string[] = [];
-        const values: any[] = [];
+        const values: import('node:sqlite').SQLInputValue[] = [];
 
         if (updates.name !== undefined) {
             sets.push('name = ?');
@@ -1079,7 +1112,7 @@ export class SqliteAdapter implements DatabaseAdapter {
       ORDER BY (CAST(success_count AS FLOAT) / (success_count + failure_count + 1)) DESC, last_used ASC
       LIMIT 1
     `);
-        const row = stmt.get() as any;
+        const row = stmt.get() as unknown as SqliteCookieRow | undefined;
         if (!row) return null;
         return {
             id: row.id,

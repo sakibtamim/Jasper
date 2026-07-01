@@ -48,15 +48,22 @@ export default function ExtensionSlot({ slot, context }: ExtensionSlotProps) {
 
     return (
         <>
-            {widgets.map(({ id, Component }) => (
-                <PluginErrorBoundary
-                    key={id}
-                    pluginId={id.split(':')[0]}
-                    componentName={id.split(':')[1]}
-                >
-                    <Component {...({ context: { ...appContext, ...context } } as any)} />
-                </PluginErrorBoundary>
-            ))}
+            {widgets.map(({ id, Component }) => {
+                const TypedComponent = Component as React.ComponentType<{
+                    context: Record<string, unknown>;
+                }>;
+                return (
+                    <PluginErrorBoundary
+                        key={id}
+                        pluginId={id.split(':')[0]}
+                        componentName={id.split(':')[1]}
+                    >
+                        <TypedComponent
+                            context={{ ...appContext, ...context } as Record<string, unknown>}
+                        />
+                    </PluginErrorBoundary>
+                );
+            })}
         </>
     );
 }

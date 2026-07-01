@@ -789,7 +789,7 @@ export class PostgresAdapter implements DatabaseAdapter {
     }
 
     // Plugin Repository Implementation
-    async getPluginData(pluginName: string, key: string): Promise<any | null> {
+    async getPluginData(pluginName: string, key: string): Promise<unknown | null> {
         if (!this.pool) throw new Error('Database not initialized');
         const result = await this.pool.query(
             'SELECT value FROM plugin_storage WHERE plugin_name = $1 AND key = $2',
@@ -805,7 +805,7 @@ export class PostgresAdapter implements DatabaseAdapter {
         }
     }
 
-    async setPluginData(pluginName: string, key: string, value: any): Promise<void> {
+    async setPluginData(pluginName: string, key: string, value: unknown): Promise<void> {
         if (!this.pool) throw new Error('Database not initialized');
         await this.pool.query(
             `
@@ -929,7 +929,7 @@ export class PostgresAdapter implements DatabaseAdapter {
         if (!this.pool) throw new Error('Database not initialized');
 
         const sets: string[] = [];
-        const values: any[] = [];
+        const values: unknown[] = [];
         let paramIndex = 1;
 
         if (updates.name !== undefined) {
