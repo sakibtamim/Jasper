@@ -30,8 +30,8 @@ export default function Header() {
 
     // Initialize Lucide icons after mount
     useEffect(() => {
-        if (typeof (window as any).lucide !== 'undefined') {
-            (window as any).lucide.createIcons();
+        if (typeof window.lucide !== 'undefined') {
+            window.lucide.createIcons();
         }
     }, [user, isDark, pluginNavItems]);
 

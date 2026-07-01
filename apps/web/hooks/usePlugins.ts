@@ -10,7 +10,13 @@ export function usePlugins() {
 
     // Glob all potential plugin entry points for dev mode
     // Glob all potential plugin entry points for dev mode
-    const pluginEntries = (import.meta as any).glob('@plugins/*/web/index.{ts,tsx,js,jsx}');
+    const pluginEntries = (
+        import.meta as unknown as {
+            glob: (
+                pattern: string,
+            ) => Record<string, () => Promise<Record<string, React.ComponentType<unknown>>>>;
+        }
+    ).glob('@plugins/*/web/index.{ts,tsx,js,jsx}');
 
     useEffect(() => {
         async function load() {
@@ -23,7 +29,8 @@ export function usePlugins() {
                     registry.map(async (plugin) => {
                         if (plugin.web && plugin.web.entry) {
                             try {
-                                let module: any;
+                                let module: Record<string, React.ComponentType<unknown>> | null =
+                                    null;
 
                                 if (import.meta.env.DEV) {
                                     // Development: Load source directly via Vite HMR
@@ -64,7 +71,12 @@ export function usePlugins() {
 
                                     // Get the plugin module from the global variable
                                     const varName = 'JasperPlugin_' + plugin.id.replace(/-/g, '_');
-                                    module = (window as any)[varName];
+                                    module = (
+                                        window as unknown as Record<
+                                            string,
+                                            Record<string, React.ComponentType<unknown>>
+                                        >
+                                    )[varName];
                                 }
 
                                 if (!module) {

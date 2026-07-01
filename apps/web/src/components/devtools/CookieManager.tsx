@@ -17,7 +17,6 @@ interface Cookie {
 
 export const CookieManager: React.FC = () => {
     const [cookies, setCookies] = useState<Cookie[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [newCookieName, setNewCookieName] = useState('');
     const [newCookieContent, setNewCookieContent] = useState('');
@@ -32,8 +31,6 @@ export const CookieManager: React.FC = () => {
         } catch (err) {
             setError('Failed to load cookies');
             console.error(err);
-        } finally {
-            setIsLoading(false);
         }
     };
 

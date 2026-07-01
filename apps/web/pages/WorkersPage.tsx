@@ -54,8 +54,8 @@ export default function WorkersPage() {
 
     // Initialize Lucide icons after workers update
     useEffect(() => {
-        if (typeof (window as any).lucide !== 'undefined') {
-            (window as any).lucide.createIcons();
+        if (typeof window.lucide !== 'undefined') {
+            window.lucide.createIcons();
         }
     }, [workers]);
 

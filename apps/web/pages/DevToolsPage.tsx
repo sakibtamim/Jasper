@@ -1,20 +1,8 @@
 import { React, useEffect, useState } from '@jasper/elements';
-import {
-    BarChart2,
-    Clock,
-    Cookie,
-    Database,
-    HardDrive,
-    Package,
-    RefreshCw,
-    Trash2,
-    Upload,
-    Users,
-} from 'lucide-react';
+import { BarChart2, Clock, Cookie, Database, HardDrive, Package, Users } from 'lucide-react';
 import { Lock } from 'lucide-react';
 
 import { useAuth } from '../context/AppContext';
-import { usePluginContext } from '../context/PluginContext';
 import { CookieManager } from '../src/components/devtools/CookieManager';
 
 // Type definitions for DevTools tab data
@@ -133,7 +121,6 @@ function isPluginsData(data: DevToolsData): data is PluginsData {
 }
 
 export default function DevToolsPage() {
-    const { plugins } = usePluginContext();
     const { isAuthenticated, loading: authLoading } = useAuth();
     const [activeTab, setActiveTab] = useState('overview');
     const [loading, setLoading] = useState(false);
@@ -269,7 +256,7 @@ export default function DevToolsPage() {
                 try {
                     const parsed = JSON.parse(text);
                     errMessage = parsed.message || parsed.error || errMessage;
-                } catch (e) {
+                } catch {
                     errMessage = text;
                 }
                 throw new Error(errMessage);
@@ -460,7 +447,7 @@ export default function DevToolsPage() {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {data.users.map((user: any) => (
+                                                {data.users.map((user) => (
                                                     <tr
                                                         key={user.id}
                                                         className="bg-white border-b dark:bg-gray-800 dark:border-gray-700"
@@ -517,7 +504,7 @@ export default function DevToolsPage() {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {data.sessions.map((session: any) => (
+                                                {data.sessions.map((session) => (
                                                     <tr
                                                         key={session.id}
                                                         className="bg-white border-b dark:bg-gray-800 dark:border-gray-700"
@@ -577,7 +564,7 @@ export default function DevToolsPage() {
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {data.search?.map((entry: any) => (
+                                                        {data.search?.map((entry) => (
                                                             <tr
                                                                 key={entry.query}
                                                                 className="bg-white border-b dark:bg-gray-800 dark:border-gray-700"
@@ -633,7 +620,7 @@ export default function DevToolsPage() {
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {data.audio?.map((entry: any) => (
+                                                        {data.audio?.map((entry) => (
                                                             <tr
                                                                 key={entry.videoId}
                                                                 className="bg-white border-b dark:bg-gray-800 dark:border-gray-700"
@@ -706,7 +693,7 @@ export default function DevToolsPage() {
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {data.songs?.map((song: any) => (
+                                                        {data.songs?.map((song) => (
                                                             <tr
                                                                 key={song.songUrl}
                                                                 className="bg-white border-b dark:bg-gray-800 dark:border-gray-700"
@@ -750,7 +737,7 @@ export default function DevToolsPage() {
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {data.users?.map((user: any) => (
+                                                        {data.users?.map((user) => (
                                                             <tr
                                                                 key={user.userId}
                                                                 className="bg-white border-b dark:bg-gray-800 dark:border-gray-700"
