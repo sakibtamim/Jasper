@@ -96,7 +96,7 @@ export class CookieManager {
         const MAX_RETRIES = parseInt(process.env.MAX_COOKIE_RETRIES || '5', 10);
         const effectiveRetries = Math.min(retries, MAX_RETRIES);
 
-        let lastError: unknown = null;
+        let lastError: Error | null = null;
         let attempt = 0;
         const usedCookieIds = new Set<number>();
 
@@ -144,8 +144,9 @@ export class CookieManager {
 
                 return result;
             } catch (error) {
-                lastError = error;
-                const errMessage = error instanceof Error ? error.message : String(error);
+                const actualError = error instanceof Error ? error : new Error(String(error));
+                lastError = actualError;
+                const errMessage = actualError.message;
                 logger.warn(`[CookieManager] Operation failed: ${errMessage}`);
 
                 if (cookieId) {
@@ -176,7 +177,7 @@ export class CookieManager {
             }
         }
 
-        throw lastError;
+        throw lastError || new Error('Cookie retry operation failed');
     }
 }
 

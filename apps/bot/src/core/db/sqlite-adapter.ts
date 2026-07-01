@@ -834,7 +834,7 @@ export class SqliteAdapter implements DatabaseAdapter {
             songTitle: row.songTitle,
             songUrl: row.songUrl,
             duration: row.duration,
-            thumbnail: row.thumbnail || undefined,
+            thumbnail: row.thumbnail ?? undefined,
             cachedAt: new Date(row.cachedAt),
             expiresAt: new Date(row.expiresAt),
         }));
@@ -870,7 +870,7 @@ export class SqliteAdapter implements DatabaseAdapter {
             title: row.title,
             url: row.url,
             duration: row.duration,
-            thumbnail: row.thumbnail || undefined,
+            thumbnail: row.thumbnail ?? undefined,
             searchTerms: JSON.parse(row.searchTerms),
             cachedAt: new Date(row.cachedAt),
             expiresAt: new Date(row.expiresAt),
