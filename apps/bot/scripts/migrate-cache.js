@@ -1,11 +1,10 @@
 // scripts/migrate-cache.js
 // Migration script to transfer file-based cache to database
 // This script is compatible with production environments (no TypeScript/tsx required)
-
-import { readFile, readdir, unlink, mkdir } from 'fs/promises';
+import { mkdir, readFile, readdir, unlink } from 'fs/promises';
+import { DatabaseSync } from 'node:sqlite';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import Database from 'better-sqlite3';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,7 +30,7 @@ async function migrateSearchCache(db, deleteFiles = true) {
         for (const [query, entry] of Object.entries(cache)) {
             const { song, timestamp } = entry;
             const cachedAt = new Date(timestamp);
-            const expiresAt = new Date(cachedAt.getTime() + (7 * 24 * 60 * 60 * 1000)); // 7 days TTL
+            const expiresAt = new Date(cachedAt.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days TTL
 
             stmt.run(
                 query,
@@ -40,7 +39,7 @@ async function migrateSearchCache(db, deleteFiles = true) {
                 song.durationInSec,
                 song.thumbnail || null,
                 cachedAt.toISOString(),
-                expiresAt.toISOString()
+                expiresAt.toISOString(),
             );
             migrated++;
         }
@@ -66,7 +65,7 @@ async function migrateSearchCache(db, deleteFiles = true) {
 async function migrateAudioMetadata(db, deleteFiles = true) {
     try {
         const files = await readdir(AUDIO_METADATA_DIR);
-        const metaFiles = files.filter(f => f.endsWith('.meta.json'));
+        const metaFiles = files.filter((f) => f.endsWith('.meta.json'));
 
         if (metaFiles.length === 0) {
             console.log('[migration] No audio metadata files found, skipping...');
@@ -86,7 +85,7 @@ async function migrateAudioMetadata(db, deleteFiles = true) {
                 const meta = JSON.parse(data);
 
                 const cachedAt = new Date(meta.timestamp);
-                const expiresAt = new Date(cachedAt.getTime() + (3 * 24 * 60 * 60 * 1000)); // 3 days TTL
+                const expiresAt = new Date(cachedAt.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 days TTL
 
                 stmt.run(
                     meta.videoId,
@@ -96,7 +95,7 @@ async function migrateAudioMetadata(db, deleteFiles = true) {
                     meta.thumbnail || null,
                     JSON.stringify(meta.searchTerms || []),
                     cachedAt.toISOString(),
-                    expiresAt.toISOString()
+                    expiresAt.toISOString(),
                 );
                 migrated++;
 
@@ -131,7 +130,7 @@ async function checkMigrationNeeded(db) {
     let hasAudioMeta = false;
     try {
         const files = await readdir(AUDIO_METADATA_DIR);
-        hasAudioMeta = files.some(f => f.endsWith('.meta.json'));
+        hasAudioMeta = files.some((f) => f.endsWith('.meta.json'));
     } catch (e) {
         // Directory might not exist
     }
@@ -210,9 +209,9 @@ async function ensureSchema(db) {
     `);
 
     // Migrate existing plays table if it has old schema (missing channel_id or bot_name)
-    const playsInfo = db.prepare("PRAGMA table_info(plays)").all();
-    const hasChannelId = playsInfo.some(col => col.name === 'channel_id');
-    const hasBotName = playsInfo.some(col => col.name === 'bot_name');
+    const playsInfo = db.prepare('PRAGMA table_info(plays)').all();
+    const hasChannelId = playsInfo.some((col) => col.name === 'channel_id');
+    const hasBotName = playsInfo.some((col) => col.name === 'bot_name');
 
     if (!hasChannelId || !hasBotName) {
         console.log('[migration] Migrating plays table schema...');
@@ -274,7 +273,7 @@ async function runMigration() {
         // Ensure database directory exists
         await mkdir(path.dirname(DB_PATH), { recursive: true });
 
-        const db = new Database(DB_PATH);
+        const db = new DatabaseSync(DB_PATH);
 
         // Ensure schema exists before attempting migration
         ensureSchema(db);
@@ -292,7 +291,9 @@ async function runMigration() {
         const searchMigrated = await migrateSearchCache(db, false);
         const audioMigrated = await migrateAudioMetadata(db, false);
 
-        console.log(`[migration] Migration complete! Total: ${searchMigrated} search + ${audioMigrated} audio entries`);
+        console.log(
+            `[migration] Migration complete! Total: ${searchMigrated} search + ${audioMigrated} audio entries`,
+        );
 
         // Only delete files after successful migration
         console.log('[migration] Deleting old cache files...');
@@ -303,16 +304,18 @@ async function runMigration() {
 
             try {
                 const files = await readdir(AUDIO_METADATA_DIR);
-                const metaFiles = files.filter(f => f.endsWith('.meta.json'));
-                for (const file of metaFiles) {
-                    await unlink(path.join(AUDIO_METADATA_DIR, file));
-                }
+                const metaFiles = files.filter((f) => f.endsWith('.meta.json'));
+                await Promise.allSettled(
+                    metaFiles.map((file) => unlink(path.join(AUDIO_METADATA_DIR, file))),
+                );
             } catch (e) {
                 // Ignore if dir doesn't exist
             }
             console.log('[migration] Cleanup complete');
         } catch (cleanupError) {
-            console.warn(`[migration] Warning: Failed to clean up old files: ${cleanupError.message}`);
+            console.warn(
+                `[migration] Warning: Failed to clean up old files: ${cleanupError.message}`,
+            );
             // Don't fail the build just because cleanup failed, data is safe in DB
         }
 

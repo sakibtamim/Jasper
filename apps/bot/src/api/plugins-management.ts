@@ -5,11 +5,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import logger from '../core/logger.js';
-import pluginManager from '../core/plugins/plugin-manager.js';
+import pluginManager, { PLUGINS_DIR } from '../core/plugins/plugin-manager.js';
 import { PluginStorage } from '../core/plugins/plugin-storage.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PLUGINS_DIR = path.resolve(__dirname, '../../plugins');
 
 export default async function pluginsManagementRoutes(server: FastifyInstance) {
     // List all installed plugins (backend & frontend)
