@@ -33,3 +33,10 @@ trigger: always_on
 
 - **Freshness**: Always keep docs, agent rules, READMES, and comments up to date.
 - **The 5-Minute Rule**: Before every PR, take 5 minutes to reflect on changes. Update any impacted documentation. Verify that all open threads/issues are addressed.
+
+## 5. Agent Environment & Shell Portability
+
+- **Package Manager Pathing**: Always execute commands using the path-resolved `pnpm` binary rather than falling back to `npx pnpm` or standard `npm/npx` (which might invoke system Node versions mismatching `.nvmrc`).
+- **Non-Interactive Shells**: For non-interactive agent runner shells, rely on standalone `pnpm` installed at `~/.local/share/pnpm/pnpm`.
+- **Environment Verification**: When booting a new agent or runner, verify the active binary and Node versions first using:
+  `which pnpm && pnpm node -v`
