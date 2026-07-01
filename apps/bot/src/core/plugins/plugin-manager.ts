@@ -584,8 +584,20 @@ export class PluginManager {
 
                 const entryFile = metadata.entry || 'index.js'; // Default to index.js (or index.ts in dev)
 
-                // Resolve entry file (handle .ts for dev environment, .js for prod)
-                let pluginPath = path.join(pluginDir, entryFile);
+                // Resolve and validate entry file to prevent directory traversal
+                const resolvedPluginDir = path.resolve(pluginDir);
+                let pluginPath = path.resolve(pluginDir, entryFile);
+
+                if (
+                    !pluginPath.startsWith(resolvedPluginDir + path.sep) &&
+                    pluginPath !== resolvedPluginDir
+                ) {
+                    logger.error(
+                        `[plugins] Directory traversal attempt detected in plugin ${entry.name}: ${entryFile}`,
+                    );
+                    continue;
+                }
+
                 if (!fs.existsSync(pluginPath)) {
                     if (entryFile.endsWith('.js')) {
                         // Try .ts if .js missing (dev mode)
@@ -794,7 +806,17 @@ export class PluginManager {
                     if (metadata.id === pluginId) {
                         // Found it, load it
                         const entryFile = metadata.entry || 'index.js';
-                        let pluginPath = path.join(pluginDir, entryFile);
+
+                        // Resolve and validate entry file to prevent directory traversal
+                        const resolvedPluginDir = path.resolve(pluginDir);
+                        let pluginPath = path.resolve(pluginDir, entryFile);
+
+                        if (
+                            !pluginPath.startsWith(resolvedPluginDir + path.sep) &&
+                            pluginPath !== resolvedPluginDir
+                        ) {
+                            return { success: false, message: 'Invalid plugin entry path' };
+                        }
 
                         if (!fs.existsSync(pluginPath)) {
                             if (entryFile.endsWith('.js')) {

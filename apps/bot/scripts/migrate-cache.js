@@ -305,9 +305,9 @@ async function runMigration() {
             try {
                 const files = await readdir(AUDIO_METADATA_DIR);
                 const metaFiles = files.filter((f) => f.endsWith('.meta.json'));
-                for (const file of metaFiles) {
-                    await unlink(path.join(AUDIO_METADATA_DIR, file));
-                }
+                await Promise.allSettled(
+                    metaFiles.map((file) => unlink(path.join(AUDIO_METADATA_DIR, file))),
+                );
             } catch (e) {
                 // Ignore if dir doesn't exist
             }
