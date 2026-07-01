@@ -144,7 +144,14 @@ export class CookieManager {
 
                 return result;
             } catch (error) {
-                const actualError = error instanceof Error ? error : new Error(String(error));
+                const actualError =
+                    error instanceof Error
+                        ? error
+                        : new Error(
+                              error && typeof error === 'object' && 'message' in error
+                                  ? String((error as any).message)
+                                  : String(error),
+                          );
                 lastError = actualError;
                 const errMessage = actualError.message;
                 logger.warn(`[CookieManager] Operation failed: ${errMessage}`);

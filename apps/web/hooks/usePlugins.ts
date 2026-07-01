@@ -70,7 +70,7 @@ export function usePlugins() {
 
                                     // Get the plugin module from the global variable
                                     const varName = 'JasperPlugin_' + plugin.id.replace(/-/g, '_');
-                                    module = window[varName];
+                                    module = (window as any)[varName];
                                 }
 
                                 if (!module) {

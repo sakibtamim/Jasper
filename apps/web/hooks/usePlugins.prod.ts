@@ -34,7 +34,7 @@ export function usePlugins() {
 
                                 // Get the plugin module from the global variable
                                 const varName = 'JasperPlugin_' + plugin.id.replace(/-/g, '_');
-                                const module = window[varName];
+                                const module = (window as any)[varName];
 
                                 if (!module) {
                                     throw new Error(`Plugin module not found`);

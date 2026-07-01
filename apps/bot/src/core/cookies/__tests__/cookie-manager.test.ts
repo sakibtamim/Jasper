@@ -80,4 +80,18 @@ describe('CookieManager withCookieRetry', () => {
         );
         expect(operation).toHaveBeenCalledTimes(2); // Initial (0) + 1 retry = 2
     });
+
+    it('should extract message from plain object errors that are not Instances of Error', async () => {
+        const mockCookie = { id: 303, name: 'object-error-cookie', content: 'content' };
+        vi.mocked(db.getBestCookie).mockResolvedValue(mockCookie as unknown as YtDlpCookie);
+        vi.mocked(fs.promises.writeFile).mockResolvedValue(undefined);
+        vi.mocked(fs.promises.unlink).mockResolvedValue(undefined);
+
+        const customObjectError = { message: 'Custom object error message' };
+        const operation = vi.fn().mockRejectedValue(customObjectError);
+
+        await expect(cookieManager.withCookieRetry(operation, 0)).rejects.toThrow(
+            'Custom object error message',
+        );
+    });
 });
