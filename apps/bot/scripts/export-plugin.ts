@@ -46,7 +46,7 @@ if (!isSourceExport) {
                 cwd: ROOT_DIR,
             },
         );
-    } catch (e) {
+    } catch {
         console.error('Build failed.');
         process.exit(1);
     }

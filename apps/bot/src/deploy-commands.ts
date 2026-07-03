@@ -1,9 +1,11 @@
 import {
+    Client,
     Collection,
     REST,
     RESTPostAPIChatInputApplicationCommandsJSONBody,
     Routes,
 } from 'discord.js';
+import { FastifyInstance } from 'fastify';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'url';
@@ -17,6 +19,7 @@ import {
     validateDeployConfig,
 } from './config/env.js';
 import logger from './core/logger.js';
+import { Command } from './types/command.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -63,28 +66,32 @@ if (skipPlugins) {
 
     // Mock Client & Server for PluginManager
     const mockClient = {
-        commands: new Collection(),
+        commands: new Collection<string, Command>(),
         on: () => {},
         off: () => {},
         emit: () => {},
-    } as any;
+    } as unknown as Client;
     const mockServer = {
-        register: async (fn: any) => await fn(mockServer),
+        async register(fn: (server: FastifyInstance) => Promise<void> | void) {
+            await fn(this as unknown as FastifyInstance);
+        },
         get: () => {},
         post: () => {},
         delete: () => {},
         patch: () => {},
-    } as any;
+    } as unknown as FastifyInstance;
 
     try {
         pluginManager.init(mockClient, mockServer);
         await pluginManager.loadPlugins();
 
-        mockClient.commands.forEach((cmd: any) => {
+        mockClient.commands.forEach((cmd: Command) => {
             if (cmd.data) {
                 // Handle both Builders (toJSON) and plain objects
                 const cmdData =
-                    typeof cmd.data.toJSON === 'function' ? cmd.data.toJSON() : cmd.data;
+                    typeof cmd.data.toJSON === 'function'
+                        ? cmd.data.toJSON()
+                        : (cmd.data as unknown as RESTPostAPIChatInputApplicationCommandsJSONBody);
                 commands.push(cmdData);
                 logger.info(`[commands] Included plugin command: /${cmdData.name}`);
             }

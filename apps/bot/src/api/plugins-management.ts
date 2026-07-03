@@ -2,17 +2,14 @@ import AdmZip from 'adm-zip';
 import { FastifyInstance } from 'fastify';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import logger from '../core/logger.js';
 import pluginManager, { PLUGINS_DIR } from '../core/plugins/plugin-manager.js';
 import { PluginStorage } from '../core/plugins/plugin-storage.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
 export default async function pluginsManagementRoutes(server: FastifyInstance) {
     // List all installed plugins (backend & frontend)
-    server.get('/', async (request, reply) => {
+    server.get('/', async (_request, _reply) => {
         const pluginsMap = pluginManager.getPlugins();
         const pluginsList = Array.from(pluginsMap.values()).map((p) => ({
             id: p.metadata.id,
@@ -47,19 +44,19 @@ export default async function pluginsManagementRoutes(server: FastifyInstance) {
 
             reply.type(contentType);
             return buffer;
-        } catch (error) {
+        } catch {
             return reply.code(404).send({ message: 'File not found' });
         }
     });
 
     // List files
-    server.get('/:pluginId/storage', async (request, reply) => {
+    server.get('/:pluginId/storage', async (request, _reply) => {
         const { pluginId } = request.params as { pluginId: string };
         const storage = new PluginStorage(pluginId);
         try {
             const files = await storage.list();
             return { files };
-        } catch (error) {
+        } catch {
             return { files: [] };
         }
     });
@@ -108,7 +105,7 @@ export default async function pluginsManagementRoutes(server: FastifyInstance) {
         try {
             await storage.delete(filename);
             return { success: true };
-        } catch (error) {
+        } catch {
             return reply.code(500).send({ message: 'Delete failed' });
         }
     });

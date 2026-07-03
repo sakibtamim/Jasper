@@ -65,7 +65,7 @@ async function validatePlugins() {
                         errors.push(`Web entry file "${manifest.web.entry}" not found`);
                     }
                 }
-            } catch (e) {
+            } catch {
                 errors.push('Invalid JSON in jasper-plugin.json');
             }
         }

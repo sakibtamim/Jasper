@@ -28,8 +28,10 @@ export function usePlugins() {
                     registry.map(async (plugin) => {
                         if (plugin.web && plugin.web.entry) {
                             try {
-                                let module: Record<string, React.ComponentType<unknown>> | null =
-                                    null;
+                                let module: Record<
+                                    string,
+                                    import('react').ComponentType<unknown>
+                                > | null = null;
 
                                 if (import.meta.env.DEV) {
                                     // Development: Load source directly via Vite HMR
@@ -70,7 +72,12 @@ export function usePlugins() {
 
                                     // Get the plugin module from the global variable
                                     const varName = 'JasperPlugin_' + plugin.id.replace(/-/g, '_');
-                                    module = (window as any)[varName];
+                                    module = (
+                                        window as unknown as Record<
+                                            string,
+                                            Record<string, import('react').ComponentType<unknown>>
+                                        >
+                                    )[varName];
                                 }
 
                                 if (!module) {

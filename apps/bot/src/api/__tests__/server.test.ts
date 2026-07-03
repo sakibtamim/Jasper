@@ -1,5 +1,4 @@
-import fastify from 'fastify';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import db from '../../core/db/index.js';
 
@@ -41,13 +40,28 @@ describe('API Server', () => {
     // I will mock the route handler logic for now to verify the data transformation.
 
     it('should return stats from the database', async () => {
-        const mockTopSongs = [{ songTitle: 'A', playCount: 10 }];
-        const mockTopUsers = [{ userId: 'U1', playCount: 5 }];
+        const mockTopSongs = [
+            {
+                songTitle: 'A',
+                songUrl: 'https://example.com/A',
+                playCount: 10,
+                totalDuration: 300,
+                lastPlayedAt: new Date(),
+            },
+        ];
+        const mockTopUsers = [
+            {
+                userId: 'U1',
+                playCount: 5,
+                totalDuration: 150,
+                lastPlayedAt: new Date(),
+            },
+        ];
         const mockGlobalStats = { totalPlays: 100, totalDuration: 5000 };
 
-        (db.getTopSongs as any).mockResolvedValue(mockTopSongs);
-        (db.getTopUsers as any).mockResolvedValue(mockTopUsers);
-        (db.getGlobalStats as any).mockResolvedValue(mockGlobalStats);
+        vi.mocked(db.getTopSongs).mockResolvedValue(mockTopSongs);
+        vi.mocked(db.getTopUsers).mockResolvedValue(mockTopUsers);
+        vi.mocked(db.getGlobalStats).mockResolvedValue(mockGlobalStats);
 
         // Simulate the handler logic
         const limitNum = 10;
