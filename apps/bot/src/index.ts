@@ -1,5 +1,10 @@
 // Import env.ts first to ensure environment variables are loaded
-import { Collection, REST, Routes } from 'discord.js';
+import {
+    Collection,
+    REST,
+    RESTPostAPIChatInputApplicationCommandsJSONBody,
+    Routes,
+} from 'discord.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'url';
@@ -12,6 +17,7 @@ import { handleGracefulExit } from './core/graceful-exit.js';
 import logger from './core/logger.js';
 import pluginManager from './core/plugins/plugin-manager.js';
 import workerPool from './core/worker-pool.js';
+import { Command } from './types/command.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -99,9 +105,11 @@ process.on('unhandledRejection', (reason, promise) => {
     if (DISCORD_CLIENT_ID && GUILD_ID) {
         try {
             logger.info('[core] Deploying commands to Discord...');
-            const commandsData = client.commands.map((cmd: any) => {
+            const commandsData = client.commands.map((cmd: Command) => {
                 // Handle both Builders (toJSON) and plain objects
-                return typeof cmd.data.toJSON === 'function' ? cmd.data.toJSON() : cmd.data;
+                return typeof cmd.data.toJSON === 'function'
+                    ? cmd.data.toJSON()
+                    : (cmd.data as unknown as RESTPostAPIChatInputApplicationCommandsJSONBody);
             });
 
             const rest = new REST({ version: '10' }).setToken(DISCORD_TOKEN);

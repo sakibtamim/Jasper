@@ -19,6 +19,34 @@ const question = (query: string): Promise<string> => {
     });
 };
 
+interface NavigationItem {
+    id: string;
+    label: string;
+    icon: string;
+    href: string;
+}
+
+interface PageItem {
+    id: string;
+    path: string;
+    component: string;
+}
+
+interface ScaffoldManifest {
+    id: string;
+    name: string;
+    version: string;
+    description: string;
+    author: string;
+    jasperVersion: string;
+    entry?: string;
+    web?: {
+        entry: string;
+        navItems: NavigationItem[];
+        pages: PageItem[];
+    };
+}
+
 async function main() {
     console.log('🚀 Jasper Plugin Scaffolder\n');
 
@@ -56,7 +84,7 @@ async function main() {
     fs.mkdirSync(pluginDir, { recursive: true });
 
     // 4. Create Manifest
-    const manifest: any = {
+    const manifest: ScaffoldManifest = {
         id,
         name,
         version: '1.0.0',

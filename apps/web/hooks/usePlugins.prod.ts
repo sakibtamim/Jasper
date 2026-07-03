@@ -34,7 +34,12 @@ export function usePlugins() {
 
                                 // Get the plugin module from the global variable
                                 const varName = 'JasperPlugin_' + plugin.id.replace(/-/g, '_');
-                                const module = (window as any)[varName];
+                                const module = (
+                                    window as unknown as Record<
+                                        string,
+                                        Record<string, React.ComponentType<unknown>>
+                                    >
+                                )[varName];
 
                                 if (!module) {
                                     throw new Error(`Plugin module not found`);

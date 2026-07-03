@@ -131,7 +131,7 @@ async function checkMigrationNeeded(db) {
     try {
         const files = await readdir(AUDIO_METADATA_DIR);
         hasAudioMeta = files.some((f) => f.endsWith('.meta.json'));
-    } catch (e) {
+    } catch {
         // Directory might not exist
     }
 
@@ -308,7 +308,7 @@ async function runMigration() {
                 await Promise.allSettled(
                     metaFiles.map((file) => unlink(path.join(AUDIO_METADATA_DIR, file))),
                 );
-            } catch (e) {
+            } catch {
                 // Ignore if dir doesn't exist
             }
             console.log('[migration] Cleanup complete');

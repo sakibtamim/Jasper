@@ -149,7 +149,7 @@ export class CookieManager {
                         ? error
                         : new Error(
                               error && typeof error === 'object' && 'message' in error
-                                  ? String((error as any).message)
+                                  ? String((error as Record<string, unknown>).message)
                                   : String(error),
                           );
                 lastError = actualError;
