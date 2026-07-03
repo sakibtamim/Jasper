@@ -37,7 +37,7 @@ export function usePlugins() {
                                 const module = (
                                     window as unknown as Record<
                                         string,
-                                        Record<string, React.ComponentType<unknown>>
+                                        Record<string, import('react').ComponentType<unknown>>
                                     >
                                 )[varName];
 

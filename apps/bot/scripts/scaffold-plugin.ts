@@ -36,9 +36,9 @@ interface ScaffoldManifest {
     id: string;
     name: string;
     version: string;
-    description: string;
-    author: string;
-    jasperVersion: string;
+    description?: string;
+    author?: string;
+    jasperVersion?: string;
     entry?: string;
     web?: {
         entry: string;

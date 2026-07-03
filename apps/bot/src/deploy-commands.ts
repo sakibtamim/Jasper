@@ -72,8 +72,8 @@ if (skipPlugins) {
         emit: () => {},
     } as unknown as Client;
     const mockServer = {
-        register: async (fn: (server: FastifyInstance) => Promise<void> | void) => {
-            await fn(mockServer as unknown as FastifyInstance);
+        async register(fn: (server: FastifyInstance) => Promise<void> | void) {
+            await fn(this as unknown as FastifyInstance);
         },
         get: () => {},
         post: () => {},

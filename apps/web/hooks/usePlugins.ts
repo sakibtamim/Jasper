@@ -28,8 +28,10 @@ export function usePlugins() {
                     registry.map(async (plugin) => {
                         if (plugin.web && plugin.web.entry) {
                             try {
-                                let module: Record<string, React.ComponentType<unknown>> | null =
-                                    null;
+                                let module: Record<
+                                    string,
+                                    import('react').ComponentType<unknown>
+                                > | null = null;
 
                                 if (import.meta.env.DEV) {
                                     // Development: Load source directly via Vite HMR
@@ -73,7 +75,7 @@ export function usePlugins() {
                                     module = (
                                         window as unknown as Record<
                                             string,
-                                            Record<string, React.ComponentType<unknown>>
+                                            Record<string, import('react').ComponentType<unknown>>
                                         >
                                     )[varName];
                                 }
