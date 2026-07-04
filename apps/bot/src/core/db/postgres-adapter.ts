@@ -747,7 +747,7 @@ export class PostgresAdapter implements DatabaseAdapter {
             url: row.url,
             duration: row.duration,
             thumbnail: row.thumbnail ?? undefined,
-            searchTerms: row.searchTerms, // Postgres handles JSON automatically
+            searchTerms: JSON.parse(row.searchTerms),
             cachedAt: new Date(row.cachedAt),
             expiresAt: new Date(row.expiresAt),
         }));

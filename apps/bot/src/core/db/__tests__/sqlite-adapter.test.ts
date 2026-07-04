@@ -112,4 +112,39 @@ describe('SqliteAdapter', () => {
         expect(globalStats.totalPlays).toBe(3);
         expect(globalStats.totalDuration).toBe(560);
     });
+
+    it('should map null DB thumbnails to undefined in cache getters', async () => {
+        // Test search cache
+        await adapter.setCachedSearchResult(
+            'test query',
+            'Song A',
+            'https://example.com/a',
+            180,
+            undefined,
+            1,
+        );
+
+        const cachedSearch = await adapter.getCachedSearchResult('test query');
+        expect(cachedSearch).not.toBeNull();
+        expect(cachedSearch!.thumbnail).toBeUndefined();
+
+        // Test audio metadata
+        await adapter.setAudioMetadata(
+            'video123',
+            'Song A',
+            'https://example.com/a',
+            180,
+            undefined,
+            ['tag1'],
+            1,
+        );
+
+        const metadata = await adapter.getAudioMetadata('video123');
+        expect(metadata).not.toBeNull();
+        expect(metadata!.thumbnail).toBeUndefined();
+
+        const randomSong = await adapter.getRandomCachedSong();
+        expect(randomSong).not.toBeNull();
+        expect(randomSong!.thumbnail).toBeUndefined();
+    });
 });
