@@ -22,6 +22,12 @@ trigger: always_on
 - **Props**: Explicit Interfaces (no `any`).
 - **State**: Use `useMemo`/`useCallback` for expensive computations.
 - **Server Actions**: Use `server-only` package for data logic.
+- **Mock Initializers**: When defining mock objects that need self-references (e.g., in `deploy-commands.ts`), avoid using arrow functions that refer to the block-scoped variable before its declaration. Instead, use shorthand method syntax and reference `this`.
+- **Global React Imports**: For hooks or utilities loaded in environment contexts where React may not be in the global namespace scope, use inline dynamic imports (e.g. `import('react').ComponentType`) instead of referencing `React.ComponentType` directly.
+- **Type Safety over `any` Casts**: When casting the global `window` object for dynamic module checks, use structured record castings (e.g., `Record<string, Record<string, import('react').ComponentType<unknown>>>`) instead of coarse `as any` type-casts to preserve ESLint rules and TypeScript validation.
+- **Fastify Route Parameter Typing**: Since `IPluginRouter` methods do not accept generic types directly, annotate type parameters on the callback parameters: `async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => { ... }`.
+- **Date Conversion on Adapters**: Database rows fetched from sqlite adapters must explicitly parse Date fields (e.g., `new Date(row.date)`) to guarantee identical types across SQLite and PostgreSQL databases.
+- **Nullish Coalescing for Optional Fields**: When mapping database query results containing nullable fields to typescript interfaces with optional keys (e.g. `prop?: type`), always map them explicitly as `prop: row.prop ?? undefined` to prevent raw `null` values from leaking as `undefined`.
 
 ## 3. Communication
 
