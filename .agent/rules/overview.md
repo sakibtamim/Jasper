@@ -2,106 +2,68 @@
 trigger: model_decision
 ---
 
-# Jasper Music Bot - Project Overview
+# 📖 Project Overview & Architecture
 
-> **Note**: This document provides a comprehensive overview of the Jasper Music Bot project for AI agents and developers.
+This document provides a cohesive reference for Jasper's technologies, project directory structure, core architectures, and development roadmap.
 
-## Project Description
+## 🛠️ Technology Stack
 
-**Jasper** is a Discord music bot themed after a big black Persian cat, featuring a "Multi-Cat" architecture that allows concurrent playback across multiple voice channels. It includes a web dashboard for monitoring and statistics tracking.
+- **Runtime**: Node.js v24+ (ES Modules enabled).
+- **Package Manager**: pnpm (with Turborepo monorepo workspaces).
+- **Discord Bot**: `discord.js` v14, `@discordjs/voice`.
+- **Audio Streaming**: `yt-dlp` (spawned as a child process stream), `yt-search`.
+- **API Server**: Fastify (session cookies via `@fastify/cookie`, OAuth via `@fastify/oauth2`).
+- **Web Dashboard**: React 18, Vite (dev server and build tool), Tailwind CSS.
+- **Database Adapters**: Abstraction layer in `apps/bot/src/core/db/types.ts`.
+    - **SQLite**: Local adapter using a lightweight file database.
+    - **PostgreSQL**: Production adapter using the `pg` driver (Direct queries, **no Prisma ORM**).
 
-## Key Technologies
-
-- **Runtime**: Node.js (v18+)
-- **Language**: TypeScript (strict mode)
-- **Architecture**: Monorepo (Turborepo + pnpm workspaces)
-- **Module System**: ES Modules (`import`/`export`)
-- **Framework**: discord.js v14
-- **Voice Library**: @discordjs/voice
-- **Audio Source**: `yt-dlp` (spawned as a child process)
-- **Search**: `yt-search`
-- **Web Server**: Fastify
-- **Frontend**: React 18 + Vite + Tailwind CSS
-- **Database**: SQLite (default) / PostgreSQL (production)
-- **Architecture**: Multi-bot Worker Pool (supports multiple simultaneous voice channels)
-- **Dev Tooling**: tsx, Turbo
-
-## Architecture Overview
-
-### Core Components
-
-1. **Controller Bot (Jasper)**: Handles slash commands and orchestrates workers
-2. **Worker Bots**: Dedicated bot instances for audio playback in different channels
-3. **Worker Pool**: Manages worker allocation using AFR (Automatic Feline Rotation)
-4. **Music Player**: Facade for audio operations
-5. **Database**: Tracks plays, stats, and caching metadata
-6. **Web Dashboard**: Real-time monitoring of bot status and statistics (React-based)
-
-### Directory Structure
+## 🗺️ Workspace Structure Map
 
 ```
 Jasper/
 ├── apps/
-│   ├── bot/            # Discord bot (Node.js)
+│   ├── bot/                # Discord bot & Fastify API server
 │   │   ├── src/
 │   │   │   ├── commands/   # Slash command definitions
-│   │   │   ├── config/     # Configuration
-│   │   │   ├── core/       # Core logic
-│   │   │   ├── api/        # Fastify server
-│   │   │   └── ...
-│   └── web/            # React Dashboard (Vite)
-│       ├── src/
-│       ├── public/
-│       └── ...
-├── packages/           # Shared packages
-│   ├── ui/             # UI components
-│   └── ...
-├── .agent/             # Agent instructions and workflows
-├── turbo.json          # Turborepo config
-└── scripts/            # Maintenance scripts
+│   │   │   ├── api/        # Fastify router & OAuth endpoints
+│   │   │   ├── core/       # Music Player, DB adapters, Worker Pool
+│   │   │   └── plugins/    # Manifest-based pluggable extensions
+│   │   └── scripts/        # yt-dlp installer and plugin helpers
+│   └── web/                # React dashboard (Vite + Tailwind)
+│       ├── components/     # UI elements
+│       └── pages/          # Web dashboard views
+└── packages/               # Shared Workspace Packages
+    ├── ui/                 # Core React UI primitives (Button, Table, Card)
+    ├── elements/           # Shared plugin components and registries
+    ├── hooks/              # Shared React hooks (auth, plugin context)
+    └── types/              # Unified TypeScript interface definitions
 ```
 
-## Development Setup
+## 🏗️ Architecture Details
 
-### Prerequisites
+### 1. Multi-Cat Worker Pool & AFR
 
-- Node.js v18+
-- FFmpeg
-- `yt-dlp` binary (auto-downloaded by postinstall script)
+- **Controller (Jasper)**: Listens for slash commands, manages worker assignments, and coordinates events. Never handles audio playback directly.
+- **Worker Bots**: Spawned dynamically from environment variables ending in `_TOKEN` (e.g., `MISTY_TOKEN`). Each handles one voice channel.
+- **AFR (Automatic Feline Rotation)**: Allocates workers. Weighted random selection handles new channels, while reuse logic assigns workers already in the target channel.
 
-### Environment Variables
+### 2. Audio Pipeline
 
-Required:
+- **Music Player**: Facade orchestrating Queue Manager, Stream Handler (`yt-dlp`), and Playback Engine.
+- **Queue Manager**: State-safe queues keyed by `voiceChannelId` (enables multi-channel audio within the same Discord guild).
+- **Stream Handler**: Spawns `yt-dlp` processes for audio playback and metadata fetching (truncates auto-generated playlists at 50 songs).
 
-- `DISCORD_TOKEN` - Main bot token
-- `DISCORD_CLIENT_ID` - Discord application ID
-- `COOKIE_SECRET` - For web dashboard sessions
-- `ENCRYPTION_KEY` - For encrypting OAuth tokens (32+ characters)
+### 3. Database & Encryption
 
-Optional:
+- Adapters translate unified types like `PlayRecord` and `User` to database rows. Date fields fetched from SQLite must be explicitly parsed: `new Date(row.date)`.
+- OAuth tokens are encrypted at rest using AES-256-GCM (`apps/bot/src/utils/encryption.ts`). Format: `salt:iv:authTag:encrypted`.
 
-- `<NAME>_TOKEN` - Additional worker bot tokens (e.g., `MISTY_TOKEN`)
-- `DATABASE_URL` - PostgreSQL connection string (defaults to SQLite)
-- `BASE_URL` - For OAuth callbacks (defaults to `http://localhost:3000`)
-- `FRONTEND_URL` - For React frontend redirects (defaults to `http://localhost:5173` in dev)
+---
 
-### Installation
+## 🗺️ Roadmap & Priorities
 
-```bash
-pnpm install
-cp .env.example .env
-# Edit .env with your tokens
-pnpm run deploy:commands
-pnpm run dev
-```
-
-## Key Features
-
-- Multi-channel concurrent playback
-- Web dashboard with real-time stats
-- Discord OAuth authentication
-- Play tracking and statistics
-- Audio caching system
-- Automatic worker rotation (AFR)
-- YouTube playlist support
-- Interactive player controls
+- [ ] **Test Coverage**: Unit tests for `QueueManager` state, `WorkerPool` AFR logic, and database adapters.
+- [ ] **Real-Time Data**: Transition web dashboard from polling to WebSocket updates.
+- [ ] **Security**: Rate limiting on API endpoints, CSRF protection, and token refresh logic.
+- [ ] **Audio Enhancements**: Audio equalizer/filters, queue persistence across restarts.
