@@ -67,11 +67,12 @@ async function buildPlugins() {
 
                     if (stat.isDirectory()) {
                         // Skip web source, hidden folders, and output dirs
-                        if (['web', 'node_modules', 'dist', '.git'].includes(item)) continue;
+                        if (['web', 'node_modules', 'dist'].includes(item) || item.startsWith('.'))
+                            continue;
                         copyAssets(srcPath, destPath);
                     } else if (stat.isFile()) {
                         const ext = path.extname(item).toLowerCase();
-                        // Skip source code and config files
+                        // Skip source code, config files, and hidden/system files
                         if (
                             [
                                 '.ts',
@@ -84,7 +85,7 @@ async function buildPlugins() {
                                 '.yaml',
                                 '.yml',
                             ].includes(ext) ||
-                            item === '.git'
+                            item.startsWith('.')
                         ) {
                             continue;
                         }
