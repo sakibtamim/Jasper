@@ -1,5 +1,6 @@
 import react from '@vitejs/plugin-react';
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'vite';
@@ -7,6 +8,7 @@ import { build } from 'vite';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PLUGINS_DIR = path.resolve(__dirname, '../src/plugins');
 const DIST_DIR = path.resolve(__dirname, '../dist/plugins');
+const require = createRequire(import.meta.url);
 
 async function buildPlugins() {
     if (!fs.existsSync(PLUGINS_DIR)) {
@@ -108,13 +110,31 @@ async function buildPlugins() {
             if (fs.existsSync(pluginPkgPath)) {
                 try {
                     const pkg = JSON.parse(fs.readFileSync(pluginPkgPath, 'utf-8'));
-                    const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+                    const deps = {
+                        ...(pkg && typeof pkg.dependencies === 'object' ? pkg.dependencies : null),
+                        ...(pkg && typeof pkg.devDependencies === 'object'
+                            ? pkg.devDependencies
+                            : null),
+                    };
                     for (const dep of Object.keys(deps)) {
-                        aliases[dep] = path.resolve(pluginDir, 'node_modules', dep);
+                        if (dep.startsWith('@types/')) continue;
+                        try {
+                            const resolvedPath = require.resolve(dep, { paths: [pluginDir] });
+                            aliases[dep] = resolvedPath;
+                        } catch (resolveError) {
+                            console.warn(
+                                `[plugins] Warning: Could not resolve dependency "${dep}" for plugin "${pluginId}":`,
+                                resolveError instanceof Error ? resolveError.message : resolveError,
+                            );
+                        }
                     }
                 } catch (e) {
                     console.warn(`Warning: Failed to parse package.json for alias mapping:`, e);
                 }
+            } else {
+                console.warn(
+                    `[plugins] Warning: Plugin "${pluginId}" has frontend code but no package.json was found in ${pluginDir}.`,
+                );
             }
 
             try {
