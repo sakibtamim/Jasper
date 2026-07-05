@@ -6,12 +6,12 @@
 
 All core rules and development protocols have been consolidated under `.agent/rules/`:
 
-- **Main Agent Instructions**: [rules/README.md](file:///home/kuasha/Dev/Jasper/.agent/rules/README.md)
-- **Project Architecture & Tech Stack**: [rules/overview.md](file:///home/kuasha/Dev/Jasper/.agent/rules/overview.md)
-- **Development Standards & Coding Rules**: [rules/development.md](file:///home/kuasha/Dev/Jasper/.agent/rules/development.md)
-- **PR & Code Review Guardrails**: [rules/code-review.md](file:///home/kuasha/Dev/Jasper/.agent/rules/code-review.md)
-- **Plugin System Rules**: [rules/plugins.md](file:///home/kuasha/Dev/Jasper/.agent/rules/plugins.md)
-- **GitHub Workflow & Onboarding**: [rules/workflow.md](file:///home/kuasha/Dev/Jasper/.agent/rules/workflow.md)
+- **Main Agent Instructions**: [rules/README.md](rules/README.md)
+- **Project Architecture & Tech Stack**: [rules/overview.md](rules/overview.md)
+- **Development Standards & Coding Rules**: [rules/development.md](rules/development.md)
+- **PR & Code Review Guardrails**: [rules/code-review.md](rules/code-review.md)
+- **Plugin System Rules**: [rules/plugins.md](rules/plugins.md)
+- **GitHub Workflow & Onboarding**: [rules/workflow.md](rules/workflow.md)
 
 ## 🚀 Quick Start
 

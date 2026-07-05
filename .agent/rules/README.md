@@ -8,11 +8,11 @@ Welcome! This directory contains the consolidated workspace guidelines for Jaspe
 
 ## 🧭 Navigation Index
 
-- [Project Overview](file:///home/kuasha/Dev/Jasper/.agent/rules/overview.md) - Tech stack, codebase structure, architecture details, and project roadmap.
-- [Development Standards](file:///home/kuasha/Dev/Jasper/.agent/rules/development.md) - Guardrails, TypeScript guidelines, code styles, and common workflows.
-- [Code Review Guidelines](file:///home/kuasha/Dev/Jasper/.agent/rules/code-review.md) - PR delay rules, review fetching commands, and comment address guidelines.
-- [Plugin Development](file:///home/kuasha/Dev/Jasper/.agent/rules/plugins.md) - Manifest format, sandbox boundaries, and security rules for plugin development.
-- [Issue Workflow](file:///home/kuasha/Dev/Jasper/.agent/rules/workflow.md) - Onboarding rules, GitHub issue lifecycle, templates, and execution protocols.
+- [Project Overview](overview.md) - Tech stack, codebase structure, architecture details, and project roadmap.
+- [Development Standards](development.md) - Guardrails, TypeScript guidelines, code styles, and common workflows.
+- [Code Review Guidelines](code-review.md) - PR delay rules, review fetching commands, and comment address guidelines.
+- [Plugin Development](plugins.md) - Manifest format, sandbox boundaries, and security rules for plugin development.
+- [Issue Workflow](workflow.md) - Onboarding rules, GitHub issue lifecycle, templates, and execution protocols.
 
 ## ⚡ Core Agent Directives
 

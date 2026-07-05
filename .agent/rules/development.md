@@ -9,7 +9,7 @@ trigger: always_on
 1. **Branching Strategy**: **NEVER** commit directly to `main` or `master`. Always create feature (`feat/`), bugfix (`fix/`), or chore (`chore/`) branches.
 2. **Environment & Sync**: Run `git status` to ensure a clean slate before any commits. Propose gitignoring newly discovered temporary files instead of committing them.
 3. **Dependencies & CVEs**: Do not install packages without approval. Run `pnpm audit` before upgrades/additions to check for vulnerability alerts.
-4. **Shell Portability**: Use path-resolved `pnpm` (typically `~/.local/share/pnpm/pnpm`) rather than generic `npx pnpm` or `npm`. Verify version with `which pnpm && pnpm node -v` on startup.
+4. **Shell Portability**: Prefer PATH-based discovery for `pnpm`. Verify active package manager and runtime versions on startup using `pnpm -v && node -v`.
 5. **Fail Early**: Stop execution immediately on any non-zero exit code. Never ignore lint, test, or build errors.
 
 ## 📝 Code Standards & TypeScript Guidelines
@@ -19,7 +19,7 @@ trigger: always_on
 - **React & Styling**: Use functional components with named exports. Utilize design primitives from `@jasper/ui` rather than custom systems.
 - **Fastify Type Safety**: Annotate parameters directly on route callbacks:
   `async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => { ... }`
-- **Database Parity**:SQLite data adapter dates must be parsed explicitly: `new Date(row.date)`. Map nullable columns using explicit nullish coalescing to prevent raw `null` leaks: `prop: row.prop ?? undefined`.
+- **Database Parity**: SQLite data adapter dates must be parsed explicitly: `new Date(row.date)`. Map nullable columns using explicit nullish coalescing to prevent raw `null` leaks: `prop: row.prop ?? undefined`.
 - **Mock Initializers**: Do not use arrow functions referencing block-scoped variables before declaration. Use shorthand methods and reference `this`.
 
 ---
