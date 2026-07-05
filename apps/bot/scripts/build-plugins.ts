@@ -110,11 +110,18 @@ async function buildPlugins() {
                     const pkg = JSON.parse(fs.readFileSync(pluginPkgPath, 'utf-8'));
                     const deps = { ...pkg.dependencies, ...pkg.devDependencies };
                     for (const dep of Object.keys(deps)) {
-                        aliases[dep] = path.resolve(pluginDir, 'node_modules', dep);
+                        const depPath = path.resolve(pluginDir, 'node_modules', dep);
+                        if (fs.existsSync(depPath)) {
+                            aliases[dep] = depPath;
+                        }
                     }
                 } catch (e) {
                     console.warn(`Warning: Failed to parse package.json for alias mapping:`, e);
                 }
+            } else {
+                console.warn(
+                    `[plugins] Warning: Plugin "${pluginId}" has frontend code but no package.json was found in ${pluginDir}.`,
+                );
             }
 
             try {
