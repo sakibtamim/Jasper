@@ -2,55 +2,20 @@
 trigger: always_on
 ---
 
-# Agent Instructions
+# 🤖 Agent Instructions & Workspace Entry
 
-> **META-INSTRUCTION**: Read this file at the start of each session to understand the project context. Update as needed with critical details.
+Welcome! This directory contains the consolidated workspace guidelines for Jasper. Review these instructions to align with project standards.
 
-## Quick Reference
+## 🧭 Navigation Index
 
-- **Project Docs**: See `.agent/overview.md` for project description
-- **Architecture**: See `.agent/architecture.md` for system design
-- **Development**: See `.agent/development.md` for workflows
-- **Code Review**: See `.agent/code-review.md` for PR review process
-- **Roadmap**: See `.agent/roadmap.md` for improvement plans
+- [Project Overview](file:///home/kuasha/Dev/Jasper/.agent/rules/overview.md) - Tech stack, codebase structure, architecture details, and project roadmap.
+- [Development Standards](file:///home/kuasha/Dev/Jasper/.agent/rules/development.md) - Guardrails, TypeScript guidelines, code styles, and common workflows.
+- [Code Review Guidelines](file:///home/kuasha/Dev/Jasper/.agent/rules/code-review.md) - PR delay rules, review fetching commands, and comment address guidelines.
+- [Plugin Development](file:///home/kuasha/Dev/Jasper/.agent/rules/plugins.md) - Manifest format, sandbox boundaries, and security rules for plugin development.
+- [Issue Workflow](file:///home/kuasha/Dev/Jasper/.agent/rules/workflow.md) - Onboarding rules, GitHub issue lifecycle, templates, and execution protocols.
 
-## File Organization
+## ⚡ Core Agent Directives
 
-The `.agent/` directory contains:
-
-- `overview.md` - Project overview and tech stack
-- `architecture.md` - Architectural details and patterns
-- `development.md` - Development workflows and standards
-- `code-review.md` - PR review process
-- `roadmap.md` - Improvement roadmap and priorities
-
-## Key Project Characteristics
-
-1. **TypeScript Strict Mode**: All code must be fully typed
-2. **ES Modules**: Use `import`/`export` with `.js` extensions
-3. **Multi-Bot Architecture**: Controller + worker pool pattern
-4. **Database Agnostic**: Support both SQLite and PostgreSQL
-5. **Security First**: Encrypt sensitive data, validate inputs
-
-## Critical Dependencies
-
-- `yt-dlp` binary MUST be in root or system PATH
-- FFmpeg required for audio processing
-- Environment variables must be validated at startup
-- OAuth tokens MUST be encrypted at rest
-
-## Development Rules
-
-1. **Atomic Commits**: One logical change per commit
-2. **Type Safety**: No `any` types without justification
-3. **Testing**: Run tests before committing
-4. **Documentation**: Update docs with code changes
-5. **Error Handling**: Use custom error classes
-
-## Agent Behavior
-
-- Read all `.agent/*.md` files before making significant changes
-- Update documentation when architecture changes
-- Ask for clarification on ambiguous requirements
-- Suggest improvements but respect existing patterns
-- Keep commits focused and well-described
+1. **Safety First**: Never commit directly to `main` or `master`. Execute `pnpm audit` before updates. Stop execution immediately on command errors.
+2. **Context Integrity**: Keep all documentation, rules, and tests updated as code changes.
+3. **No Placeholders**: Do not write stub/placeholder logic. Write complete, functional implementations.

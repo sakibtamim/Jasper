@@ -4,34 +4,25 @@
 
 ## 📚 Documentation Index
 
-- **Architecture**: `architecture.md`
-- **Development**: `development.md`
-- **Standards**:
-    - `rules/coding-standards.md`
-    - `rules/guardrails.md`
-    - `rules/issue-execution.md`
-    - `rules/security-standards.md`
-    - `rules/tech-stack.md`
-- **Roadmap**: `roadmap.md`
+All core rules and development protocols have been consolidated under `.agent/rules/`:
+
+- **Main Agent Instructions**: [rules/README.md](file:///home/kuasha/Dev/Jasper/.agent/rules/README.md)
+- **Project Architecture & Tech Stack**: [rules/overview.md](file:///home/kuasha/Dev/Jasper/.agent/rules/overview.md)
+- **Development Standards & Coding Rules**: [rules/development.md](file:///home/kuasha/Dev/Jasper/.agent/rules/development.md)
+- **PR & Code Review Guardrails**: [rules/code-review.md](file:///home/kuasha/Dev/Jasper/.agent/rules/code-review.md)
+- **Plugin System Rules**: [rules/plugins.md](file:///home/kuasha/Dev/Jasper/.agent/rules/plugins.md)
+- **GitHub Workflow & Onboarding**: [rules/workflow.md](file:///home/kuasha/Dev/Jasper/.agent/rules/workflow.md)
 
 ## 🚀 Quick Start
 
 1.  **Install**: `pnpm install`
-2.  **Env**: `cp .env.example .env` (Populate secrets)
-3.  **MCP**: `pnpm mcp:sync` (Syncs global config)
-4.  **Dev**: `pnpm dev`
+2.  **Env**: `cp .env.example .env` (Populate credentials)
+3.  **MCP**: `pnpm run mcp:sync` (Syncs global settings)
+4.  **Dev**: `pnpm run dev`
 
 ## 🏗️ Monorepo Structure
 
-- `apps/web`: Next.js Dashboard
-- `apps/bot`: Discord Bot (Node.js)
-- `packages/ui`: Shared Design System
-- `packages/database`: Prisma Client
-
-## 🤖 Agent Protocols (PSL 2.0)
-
-This project follows strict agentic protocols defined in `.agent/rules`.
-
-- **Issues**: Must use templates and follow the Execution Protocol.
-- **Commits**: Must follow Conventional Commits (`feat:`, `fix:`).
-- **Safety**: Respect Guardrails (No direct main commits, no broken builds).
+- `apps/bot`: Discord Bot and Fastify API Server.
+- `apps/web`: React Dashboard (Vite).
+- `packages/ui`: Shared React UI Primitive components.
+- `packages/elements`, `packages/hooks`, `packages/types`: Shared plugin elements, hooks, and typescript types.
