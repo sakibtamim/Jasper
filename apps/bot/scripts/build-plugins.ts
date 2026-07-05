@@ -102,10 +102,28 @@ async function buildPlugins() {
             // ... (rest of the build logic)
             const outDir = path.join(DIST_DIR, pluginId, 'web');
 
+            // Read dependencies from the plugin's package.json to configure Vite resolve aliases
+            const pluginPkgPath = path.join(pluginDir, 'package.json');
+            const aliases: Record<string, string> = {};
+            if (fs.existsSync(pluginPkgPath)) {
+                try {
+                    const pkg = JSON.parse(fs.readFileSync(pluginPkgPath, 'utf-8'));
+                    const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+                    for (const dep of Object.keys(deps)) {
+                        aliases[dep] = path.resolve(pluginDir, 'node_modules', dep);
+                    }
+                } catch (e) {
+                    console.warn(`Warning: Failed to parse package.json for alias mapping:`, e);
+                }
+            }
+
             try {
                 await build({
                     mode: 'production',
                     configFile: false,
+                    resolve: {
+                        alias: aliases,
+                    },
                     plugins: [react({ jsxRuntime: 'classic' })],
                     define: {
                         'process.env.NODE_ENV': JSON.stringify('production'),
