@@ -110,7 +110,12 @@ async function buildPlugins() {
             if (fs.existsSync(pluginPkgPath)) {
                 try {
                     const pkg = JSON.parse(fs.readFileSync(pluginPkgPath, 'utf-8'));
-                    const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+                    const deps = {
+                        ...(pkg && typeof pkg.dependencies === 'object' ? pkg.dependencies : null),
+                        ...(pkg && typeof pkg.devDependencies === 'object'
+                            ? pkg.devDependencies
+                            : null),
+                    };
                     for (const dep of Object.keys(deps)) {
                         if (dep.startsWith('@types/')) continue;
                         try {
