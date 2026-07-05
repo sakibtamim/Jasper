@@ -1,9 +1,8 @@
 #!/usr/bin/env node
-/* eslint-disable */
+/* eslint-disable @typescript-eslint/no-require-imports */
 
 const { execSync } = require('child_process');
 const fs = require('fs');
-const path = require('path');
 
 function showHelp() {
     console.log(`
@@ -68,7 +67,7 @@ function getCurrentUser() {
             encoding: 'utf8',
             stdio: ['pipe', 'pipe', 'pipe'],
         }).trim();
-    } catch (e) {
+    } catch {
         console.warn('⚠️ Could not determine current user. Delta mode might be inaccurate.');
         return null;
     }
@@ -85,15 +84,15 @@ function getLastAddressedTime(prNum, user) {
 
         const marker = comments.find(
             (c) =>
-                c.user.login === user &&
+                c.user?.login === user &&
+                c.body &&
                 (c.body.includes('Code Review Feedback Addressed') ||
                     c.body.includes('Code Review Addressed') ||
-                    c.body.includes('CR Feedback Addressed') ||
-                    c.body.includes('addressed a total of')),
+                    c.body.includes('CR Feedback Addressed')),
         );
 
         return marker ? new Date(marker.created_at) : null;
-    } catch (e) {
+    } catch {
         return null;
     }
 }
@@ -144,7 +143,7 @@ try {
                 if (!reviews[c.pull_request_review_id]) {
                     reviews[c.pull_request_review_id] = {
                         id: c.pull_request_review_id,
-                        author: c.user.login,
+                        author: c.user?.login || 'ghost',
                         count: 0,
                         lastDate: c.created_at,
                     };
@@ -206,8 +205,9 @@ try {
 
     comments.forEach((c) => {
         const originalLine = c.original_line || c.line || 'N/A';
+        const author = c.user?.login || 'ghost';
         const header = `------------------------------------------------------------
-Comment #${c.id} by ${c.user.login} on ${c.path}:${originalLine}
+Comment #${c.id} by ${author} on ${c.path}:${originalLine}
 State: ${c.state || 'N/A'} | Created: ${c.created_at}
 
 ${c.body}
