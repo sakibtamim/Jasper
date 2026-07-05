@@ -37,18 +37,20 @@ node scripts/gh-pr-review-comments.js <PR_NUMBER> --delta --file ./tmp/new_feedb
 
 After addressing comments, post a top-level summary reply on the PR using this exact format:
 
-### 1. High-Level Brief
+### 📝 Code Review Addressed
+
+#### 1. High-Level Brief
 
 - **Topic A**: Summary of fix.
 - **Topic B**: Summary of fix.
 
-### 2. Reviewer Stats Table
+#### 2. Reviewer Stats Table
 
 | Reviewer        | Comments | Status     | Latest  |
 | :-------------- | :------- | :--------- | :------ |
 | **`@username`** | 3        | ✅ 3 Fixed | 10m ago |
 
-### 3. Condensed Stats Panel (Required Details Block)
+#### 3. Condensed Stats Panel (Required Details Block)
 
 Include a `<details>` block with this specific format:
 
