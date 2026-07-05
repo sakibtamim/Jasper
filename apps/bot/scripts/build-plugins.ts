@@ -67,8 +67,12 @@ async function buildPlugins() {
 
                     if (stat.isDirectory()) {
                         // Skip web source, hidden folders, and output dirs
-                        if (['web', 'node_modules', 'dist'].includes(item) || item.startsWith('.'))
+                        if (
+                            ['web', 'node_modules', 'dist'].includes(item) ||
+                            item.startsWith('.')
+                        ) {
                             continue;
+                        }
                         copyAssets(srcPath, destPath);
                     } else if (stat.isFile()) {
                         const ext = path.extname(item).toLowerCase();
