@@ -324,6 +324,20 @@ Before installing, ensure you have:
 
 ## Installation
 
+### Quick Start
+
+The fastest way to get started is by running the interactive quick-setup script:
+
+```bash
+pnpm quick-start
+```
+
+This script will verify your Node/pnpm versions, install all dependencies, copy and update your `.env` configuration file, generate cryptographically secure keys for the Web UI, and verify the `yt-dlp` binary.
+
+### Manual Installation
+
+If you prefer to set up the project manually:
+
 ### 1\. Clone the Repository
 
 ```bash

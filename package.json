@@ -7,6 +7,9 @@
         "dev": "turbo run dev",
         "lint": "turbo run lint",
         "clean": "turbo run clean",
+        "quick-start": "bash scripts/quick-start.sh",
+        "env:pull": "pawthy pull -f .env --merge",
+        "env:push": "pawthy push -f .env",
         "prod:build": "turbo run build",
         "prod:start": "PORT=3000 NODE_ENV=production node apps/bot/dist/index.js",
         "prod:preview": "turbo run build && PORT=3000 NODE_ENV=production node apps/bot/dist/index.js",
@@ -21,6 +24,7 @@
     "devDependencies": {
         "@commitlint/cli": "^20.3.0",
         "@commitlint/config-conventional": "^20.3.0",
+        "@kuasha420/pawthy": "^0.4.0",
         "@trivago/prettier-plugin-sort-imports": "^6.0.2",
         "@types/node": "^24.10.1",
         "eslint-config-prettier": "^10.1.8",
