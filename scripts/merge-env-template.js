@@ -68,12 +68,9 @@ function main() {
 
     let nextContent = targetContent;
 
-    if (nextContent.length > 0 && !nextContent.endsWith('\n')) {
-        nextContent += '\n';
-    }
-
-    if (nextContent.length > 0 && !nextContent.endsWith('\n\n')) {
-        nextContent += '\n';
+    nextContent = nextContent.trimEnd();
+    if (nextContent.length > 0) {
+        nextContent += '\n\n';
     }
 
     nextContent += `${APPEND_HEADER}\n${linesToAppend.join('\n')}\n`;

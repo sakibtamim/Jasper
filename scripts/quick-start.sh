@@ -201,10 +201,8 @@ fi
 # Pawthy Secrets Sync
 log_info "=== 3.1 Pawthy Secrets Sync ==="
 FORCE_MANUAL=false
-if [ -f "$ROOT_DIR/node_modules/.bin/pawthy" ]; then
-    PAWTHY_CMD="$ROOT_DIR/node_modules/.bin/pawthy"
-elif command -v pawthy &> /dev/null; then
-    PAWTHY_CMD="pawthy"
+if pnpm exec pawthy --version &> /dev/null; then
+    PAWTHY_CMD="pnpm exec pawthy"
 else
     log_warn "Pawthy CLI not found. Proceeding with Manual Mode..."
     FORCE_MANUAL=true
@@ -229,7 +227,7 @@ if [ "$FORCE_MANUAL" = false ]; then
         if [ ! -f "$ROOT_DIR/.pawthy/config.json" ]; then
             log_warn "No local Pawthy session found."
             echo -e "${YELLOW}Action Required:${NC} Please log in to sync secrets for this project."
-            "$PAWTHY_CMD" login --local
+            "$PAWTHY_CMD" login --local || true
         else
             log_success "Local Pawthy session found."
         fi
@@ -242,7 +240,7 @@ if [ "$FORCE_MANUAL" = false ]; then
             echo -e "${YELLOW}Reason:${NC} Your session may be expired or you lack permission."
             read -p "Retry login? (Y/n): " LOGIN_YN
             if [[ ! "$LOGIN_YN" =~ ^[Nn]$ ]]; then
-                "$PAWTHY_CMD" login --local
+                "$PAWTHY_CMD" login --local || true
                 if pull_and_merge; then
                     log_success "Secrets synced successfully!"
                     PAWTHY_SUCCESS=true
@@ -254,7 +252,7 @@ fi
 
 # Generate Cryptographic Secrets if placeholders exist
 log_info "Generating secure random keys in .env..."
-node -e "
+node <<'EOF'
 const fs = require('fs');
 const crypto = require('crypto');
 let content = fs.readFileSync('.env', 'utf8');
@@ -277,7 +275,7 @@ if (updated) {
 } else {
     console.log('Secrets already set or customized.');
 }
-"
+EOF
 
 # 4. Verify yt-dlp Executable
 log_info "=== 4. Verifying yt-dlp (Downloader) ==="
