@@ -202,7 +202,7 @@ fi
 log_info "=== 3.1 Pawthy Secrets Sync ==="
 FORCE_MANUAL=false
 if pnpm exec pawthy --version &> /dev/null; then
-    PAWTHY_CMD="pnpm exec pawthy"
+    PAWTHY_CMD=(pnpm exec pawthy)
 else
     log_warn "Pawthy CLI not found. Proceeding with Manual Mode..."
     FORCE_MANUAL=true
@@ -216,7 +216,7 @@ if [ "$FORCE_MANUAL" = false ]; then
     else
         pull_and_merge() {
             log_info "Merging Pawthy-managed environment variables into .env..."
-            if "$PAWTHY_CMD" pull -f "$ENV_FILE" --merge; then
+            if "${PAWTHY_CMD[@]}" pull -f "$ENV_FILE" --merge; then
                 return 0
             else
                 return 1
@@ -227,7 +227,7 @@ if [ "$FORCE_MANUAL" = false ]; then
         if [ ! -f "$ROOT_DIR/.pawthy/config.json" ]; then
             log_warn "No local Pawthy session found."
             echo -e "${YELLOW}Action Required:${NC} Please log in to sync secrets for this project."
-            "$PAWTHY_CMD" login --local || true
+            "${PAWTHY_CMD[@]}" login --local || true
         else
             log_success "Local Pawthy session found."
         fi
@@ -240,7 +240,7 @@ if [ "$FORCE_MANUAL" = false ]; then
             echo -e "${YELLOW}Reason:${NC} Your session may be expired or you lack permission."
             read -p "Retry login? (Y/n): " LOGIN_YN
             if [[ ! "$LOGIN_YN" =~ ^[Nn]$ ]]; then
-                "$PAWTHY_CMD" login --local || true
+                "${PAWTHY_CMD[@]}" login --local || true
                 if pull_and_merge; then
                     log_success "Secrets synced successfully!"
                     PAWTHY_SUCCESS=true
