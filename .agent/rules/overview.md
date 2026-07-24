@@ -14,9 +14,9 @@ This document provides a cohesive reference for Jasper's technologies, project d
 - **Audio Streaming**: `yt-dlp` (spawned as a child process stream), `yt-search`.
 - **API Server**: Fastify (session cookies via `@fastify/cookie`, OAuth via `@fastify/oauth2`).
 - **Web Dashboard**: React 18, Vite (dev server and build tool), Tailwind CSS.
-- **Database Adapters**: Abstraction layer in `apps/bot/src/core/db/types.ts`.
-    - **SQLite**: Local adapter using a lightweight file database.
-    - **PostgreSQL**: Production adapter using the `pg` driver (Direct queries, **no Prisma ORM**).
+- **Database Adapters**: Abstraction layer in `apps/bot/src/core/db/types.ts` maintaining 100% feature parity.
+    - **PostgreSQL**: Production & staging engine using the `pg` driver (Direct queries, **no Prisma ORM**). Strongly encouraged for live deployments.
+    - **SQLite**: Local DX & testing adapter using Node's native `node:sqlite` (`DatabaseSync`). Zero-config local development infra.
 
 ## 🗺️ Workspace Structure Map
 

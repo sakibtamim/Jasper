@@ -266,22 +266,24 @@ Cache statistics are logged on bot startup and during cleanup:
 - **yt-dlp Issues:** If you encounter "Sign in to confirm you’re not a bot" errors, please refer to our [Cookie Management & Troubleshooting Guide](./YT-DLP_TROUBLESHOOTING.md).
 - **Database:** Ensure your database (SQLite or Postgres) is correctly configured in `.env`.
 
-### Supported Databases
+### Supported Database Engines
 
-1.  **SQLite (Default):** Zero-configuration, stores data in `data/jasper.db`. Perfect for small servers and development.
-2.  **PostgreSQL:** Recommended for production and large servers.
+Jasper supports dual database drivers out of the box via an abstraction layer with 100% feature parity:
+
+1. **PostgreSQL (Strongly Recommended for Production & Staging)**: High performance, durable ACID persistence, and support for concurrent web dashboard queries. **Required for production and live staging environments with real users.**
+2. **SQLite (Local DX & Testing)**: Zero-configuration file-based database stored in `data/jasper.db`. Ideal for local developer workflows, automated test suites, and single-instance environments.
 
 ### Configuration
 
-To use PostgreSQL, add these to your `.env` file:
+To enable PostgreSQL for production/staging deployments, configure your `.env` file:
 
 ```env
-# Database Configuration
+# Database Configuration (PostgreSQL Recommended for Live Deployments)
 DB_TYPE=postgres
 DATABASE_URL=postgresql://user:password@localhost:5432/jasper_db
 ```
 
-If `DB_TYPE` is not set or set to `sqlite`, it defaults to SQLite.
+If `DB_TYPE` is omitted, Jasper defaults to `sqlite` for seamless local developer onboarding.
 
 ### Viewing Statistics
 
