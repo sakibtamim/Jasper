@@ -1,6 +1,6 @@
 # Hosted Jasper product brief
 
-Status: **Draft for review**
+Status: **Accepted**
 Related: [PRD](prd.md) · [MVP design](mvp-design.md) ·
 [Plugin decision](plugin-feasibility.md)
 
@@ -177,7 +177,7 @@ Jasper and worker applications. It supports:
 - documented deletion, backup, restore, incident, and support paths; and
 - a real-guild soak and load-validation program.
 
-## Proposed success threshold
+## Accepted MVP success threshold
 
 The private preview is successful when all launch gates in the PRD pass,
 including:
@@ -198,7 +198,7 @@ including:
   security or data-loss defect; and
 - a restore drill and previous-release rollback both succeed.
 
-These are proposed review targets, not claims about the present system.
+These are accepted MVP targets, not claims about the present system.
 
 ## Product risks
 
@@ -212,14 +212,15 @@ These are proposed review targets, not claims about the present system.
 | Hosted work degrades self-hosting                            | Require local adapters, migration docs, Compose, and self-host acceptance tests for every new core seam                            |
 | Commerce leaks into OSS or arrives too early                 | Use a provider-neutral entitlement contract and a free resolver; defer payment implementation until post-preview evidence          |
 
-## Immediate decisions requested
+## Decision record
 
-1. Approve plugin-led/private-control-plane architecture.
-2. Approve a one-guild-to-one-tenant MVP model.
-3. Confirm controller-only service is acceptable while workers are installed or
-   degraded.
-4. Confirm the private preview targets and one-region constraint.
-5. Confirm `purrfectsoft/jasper-hosted` as the proposed private repository name.
-6. Confirm that hosted marketing, portal, control plane, staff console, and
-   future commerce remain proprietary while their integration contracts remain
-   open.
+On 2026-07-25, product ownership approved:
+
+1. the plugin-led/private-control-plane architecture;
+2. the one-guild-to-one-tenant MVP model;
+3. controller-only service while workers are being installed or are degraded;
+4. the private-preview targets and one-region constraint;
+5. [`purrfectsoft/jasper-hosted`](https://github.com/purrfectsoft/jasper-hosted)
+   as the private delivery repository; and
+6. proprietary marketing, portal, control plane, staff console, and future
+   commerce with open integration contracts.

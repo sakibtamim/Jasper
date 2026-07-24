@@ -1,11 +1,12 @@
 # Hosted Jasper private-plugin feasibility and boundary
 
-Decision status: **Proposed / review required**
+Decision status: **Accepted**
 Decision: **Use a plugin-led distribution; reject a plugin-only SaaS
 architecture**
-Proposed private repository: `purrfectsoft/jasper-hosted`
-Repository creation status: **Intentionally not created before definition
-approval**
+Private repository:
+[`purrfectsoft/jasper-hosted`](https://github.com/purrfectsoft/jasper-hosted)
+Repository creation status: **Created private and intentionally empty; HJ-PRV-01
+owns the first implementation scaffold**
 
 ## Decision in one sentence
 
@@ -175,7 +176,7 @@ core patches:
 These changes improve ordinary multi-guild self-hosting and plugin quality even
 if the proprietary product never launches.
 
-## Proposed private repository
+## Accepted private repository shape
 
 ```text
 purrfectsoft/jasper-hosted/
@@ -335,8 +336,7 @@ dependency.
 
 Live GitHub verification found:
 
-- `purrfectsoft` membership can create a private repository and no existing
-  hosted-Jasper repository collides with the proposed name;
+- `purrfectsoft/jasper-hosted` was created as a private repository;
 - the organization is currently on GitHub Free, where branch
   protection/rulesets are unavailable for a private repository;
 - the current contributor has admin on the Garage Band repositories but only

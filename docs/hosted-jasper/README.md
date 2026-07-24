@@ -1,11 +1,12 @@
 # Hosted Jasper definition pack
 
-Status: **Draft for review**
-Version: **0.1**
-Last repository and live-state verification: **2026-07-24**
-Implementation status: **No implementation issues have been filed and no product code has been changed**
+Status: **Accepted**
+Version: **1.0**
+Last repository and live-state verification: **2026-07-25**
+Implementation status: **MVP issues filed; implementation has not started and no
+product code has been changed**
 
-This directory is the proposed definition of Hosted Jasper: a provider-operated,
+This directory is the accepted definition of Hosted Jasper: a provider-operated,
 zero-infrastructure Jasper experience that preserves the complete, first-class
 self-hosted product and its open implementation.
 
@@ -24,17 +25,18 @@ installation ceremony.
 | [Product requirements](prd.md)                | Live PRD, complete MVP requirements and acceptance gates, plus the short-, medium-, and long-term feature index                              |
 | [Plugin feasibility](plugin-feasibility.md)   | Decision and scorecard for packaging the proprietary distribution around Jasper’s out-of-tree plugin workflow                                |
 | [MVP technical design](mvp-design.md)         | Runtime, control-plane, tenancy, onboarding, security, data, deployment, and testing design                                                  |
-| [MVP issue plan](mvp-issue-plan.md)           | Proposed issue-by-issue source of truth, ownership, dependencies, sequencing, and acceptance outcomes                                        |
+| [MVP issue plan](mvp-issue-plan.md)           | Filed issue-by-issue source of truth, ownership, dependencies, sequencing, and acceptance outcomes                                           |
 | [Future phases](future-phases.md)             | Concrete design briefs for public beta, commercial launch, and the longer-term hosting platform                                              |
 
-## Proposed decision
+## Accepted decision
 
 Proceed with a **plugin-led, not plugin-only** hosted distribution:
 
 - Keep Jasper core, its multi-cat runtime, AFR, self-hosting, generic hosting
   contracts, and single-instance orchestration open.
-- Create a private `purrfectsoft/jasper-hosted` repository after this definition
-  is approved.
+- Use the private
+  [`purrfectsoft/jasper-hosted`](https://github.com/purrfectsoft/jasper-hosted)
+  repository for proprietary delivery.
 - Make that repository plugin-shaped at its Jasper integration boundary, while
   also housing independently deployed proprietary marketing, customer,
   control-plane, staff, and operations applications.
@@ -90,23 +92,27 @@ application and serves multiple guilds. A cat may serve one voice channel in
 each guild at the same time. It must not be represented by the current
 process-global `busy` flag.
 
-## Review and approval gates
+## Approval record and execution gates
 
-Approval of this pack authorizes issue filing and repository scaffolding, not a
-production launch. Before issues are filed:
+The team approved this pack on 2026-07-25. Approval authorized repository
+scaffolding and issue filing; it did not authorize a production launch.
 
-- confirm the proposed public/private boundary;
-- confirm the private repository name and ownership;
-- confirm the provider-owned Discord application inventory and which cats are
-  required versus optional;
-- agree on the proposed private-preview acceptance targets;
-- decide whether the existing `deploy` branch remains a legacy self-hosted
-  staging lane or is renamed after a replacement sandbox exists; and
-- re-scope the overlapping open issues listed in the audit.
-
-After approval, replace every proposed issue ID in the issue plan with its real
-GitHub link while retaining the stable ID, add execution-order guidance to the
-epic, and only then merge the definition PR.
+- Public/private ownership, the plugin-led boundary, the one-region private
+  preview, and its acceptance targets are accepted.
+- [`purrfectsoft/jasper-hosted`](https://github.com/purrfectsoft/jasper-hosted)
+  is the private delivery repository. It remains intentionally empty until
+  HJ-PRV-01 owns the first reviewed scaffold.
+- [HJ-EPIC](https://github.com/sakibtamim/Jasper/issues/124) is the public
+  coordination point and
+  [HJ-PRV-00](https://github.com/purrfectsoft/jasper-hosted/issues/1) is the
+  complete authorized delivery index.
+- All 50 stable IDs are filed: 22 public Jasper items, 24 private hosted items,
+  and 4 private Garage Band items. HJ-OSS-07 deliberately reuses and re-scopes
+  existing issue #122.
+- The existing `deploy` branch remains a legacy self-hosted staging lane until
+  HJ-OPS-03 establishes and validates its replacement.
+- Real-guild admission remains blocked on the PRD safety, product, security,
+  privacy, recovery, and operations gates.
 
 ## Terms used here
 

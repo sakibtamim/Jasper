@@ -1,6 +1,6 @@
 # Hosted Jasper MVP technical design
 
-Design status: **Draft / review required**
+Design status: **Accepted for MVP implementation**
 Implements: [Hosted Jasper PRD](prd.md)
 Boundary decision: [Private-plugin feasibility](plugin-feasibility.md)
 Issue mapping: [MVP issue plan](mvp-issue-plan.md)
@@ -277,6 +277,8 @@ interface GuildInstallationContext {
     guildId: string;
     installationId: string;
     state: InstallationState;
+    admissionRevision: number;
+    admissionExpiresAt?: Date;
     configRevision: number;
     enabledWorkerIds: ReadonlySet<string>;
     enabledPluginIds: ReadonlySet<string>;
@@ -299,12 +301,24 @@ queue/voice admission and every outbound guild side effect. Hosted startup
 announcements are disabled or deferred until the target guild/channel resolves
 an admitted installation; client login alone never authorizes a message.
 
-The hosted adapter caches signed/authenticated last-known-good policies. During
-a policy/config delivery outage, an **already valid shard owner** may admit new
-work for at most 15 minutes by default. The authoritative 30-second shard lease
-is separate and always wins: an expired lease stops admission immediately.
-After policy expiry the valid owner fails closed for new work while allowing
-bounded active work to drain.
+The hosted adapter caches signed/authenticated last-known-good configuration and
+non-revocation policy for up to 15 minutes, but that cache does not independently
+authorize new work. Each hosted installation also carries a short-lived,
+monotonic admission grant, renewable in batches and valid for at most 60 seconds
+in the MVP. Every new Discord side effect checks the current grant. Missing or
+expired admission fails closed while bounded active work drains.
+
+Suspension or removal immediately stops grant renewal and writes a higher
+revocation revision. The control plane records the request and denies its own
+customer operations immediately, but does not tell the customer runtime denial
+is complete until the runtime acknowledges that revision or the last grant has
+expired. The portal exposes this bounded `revoking runtime` stage. Thus a
+partition cannot preserve cached `active` admission for 15 minutes.
+
+The authoritative 30-second shard lease is separate and always wins: an expired
+shard lease stops admission immediately even when installation admission and
+configuration caches are still fresh. Self-hosted local policy may use a
+non-expiring local grant because its operator is the authority.
 
 ### 5.4 Guild-scoped services
 
@@ -1339,24 +1353,24 @@ Test/dev plugins are excluded from production image and command discovery.
 
 ## 17. Failure behavior
 
-| Failure                                  | Required behavior                                                                                                                                            |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| One worker unavailable/removed           | Mark cat unavailable, continue with eligible cats/controller, update portal, no global readiness failure                                                     |
-| Controller unavailable                   | Runtime unready; acknowledge safely if possible, no new playback; alert and restart/rollback                                                                 |
-| Runtime crash or forced fence loss       | In-memory queues/audio stop; next owner emits best-effort installation interruption from minimal markers, clears them, and never auto-replays                |
-| Partial worker authorization             | Activate degraded after controller; installer resumes at missing cat                                                                                         |
-| Policy/config delivery unreachable       | While the independent shard lease remains valid, use authenticated last-known-good policy up to 15 minutes and buffer bounded observations; then fail closed |
-| Shard lease renewal unavailable/expired  | Lease rule overrides policy cache; become unready, deny Discord side effects, drain/disconnect, and let a later epoch start only after expiry/safety margin  |
-| Control-plane PostgreSQL unavailable     | Customer/staff mutations fail safely; runtime continues bounded cached policy; outbox recovers idempotently                                                  |
-| Runtime PostgreSQL incompatible          | Readiness fails before Discord admission                                                                                                                     |
-| Object store unavailable                 | Existing public cache/playback may continue where safe; uploads/private-asset operations fail retryably                                                      |
-| Discord gateway outage/rate limit        | Preserve durable control-plane state, back off within library/API rules, report provider incident                                                            |
-| Media extraction/provider failure        | Classify upstream versus internal, do not churn cats, offer safe user error, alert on aggregate regression                                                   |
-| Stale cell/task                          | Fence/version rejection; no mutation or duplicate leave/config action                                                                                        |
-| Plugin incompatibility/integrity failure | Hosted runtime unready; retain/rollback the previous compatible signed release manifest through a verified environment envelope                              |
-| Unsolicited or expired provisional cat   | Quarantine with no command admission; attach only through verified onboarding or leave on the bounded cleanup timer                                          |
-| Tenant suspension/deletion               | Stop new work promptly, drain/clear only that guild, cats leave through idempotent tasks, deletion workflow continues                                        |
-| Cross-tenant authorization assertion     | Fail closed, page security ownership, halt promotion and preserve evidence                                                                                   |
+| Failure                                  | Required behavior                                                                                                                                                                                |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| One worker unavailable/removed           | Mark cat unavailable, continue with eligible cats/controller, update portal, no global readiness failure                                                                                         |
+| Controller unavailable                   | Runtime unready; acknowledge safely if possible, no new playback; alert and restart/rollback                                                                                                     |
+| Runtime crash or forced fence loss       | In-memory queues/audio stop; next owner emits best-effort installation interruption from minimal markers, clears them, and never auto-replays                                                    |
+| Partial worker authorization             | Activate degraded after controller; installer resumes at missing cat                                                                                                                             |
+| Policy/config delivery unreachable       | Configuration may use authenticated last-known-good state up to 15 minutes, but new work stops when the independent ≤60-second installation admission grant expires; bounded observations buffer |
+| Shard lease renewal unavailable/expired  | Lease rule overrides policy cache; become unready, deny Discord side effects, drain/disconnect, and let a later epoch start only after expiry/safety margin                                      |
+| Control-plane PostgreSQL unavailable     | Customer/staff mutations fail safely; runtime continues bounded cached policy; outbox recovers idempotently                                                                                      |
+| Runtime PostgreSQL incompatible          | Readiness fails before Discord admission                                                                                                                                                         |
+| Object store unavailable                 | Existing public cache/playback may continue where safe; uploads/private-asset operations fail retryably                                                                                          |
+| Discord gateway outage/rate limit        | Preserve durable control-plane state, back off within library/API rules, report provider incident                                                                                                |
+| Media extraction/provider failure        | Classify upstream versus internal, do not churn cats, offer safe user error, alert on aggregate regression                                                                                       |
+| Stale cell/task                          | Fence/version rejection; no mutation or duplicate leave/config action                                                                                                                            |
+| Plugin incompatibility/integrity failure | Hosted runtime unready; retain/rollback the previous compatible signed release manifest through a verified environment envelope                                                                  |
+| Unsolicited or expired provisional cat   | Quarantine with no command admission; attach only through verified onboarding or leave on the bounded cleanup timer                                                                              |
+| Tenant suspension/deletion               | Stop new work promptly, drain/clear only that guild, cats leave through idempotent tasks, deletion workflow continues                                                                            |
+| Cross-tenant authorization assertion     | Fail closed, page security ownership, halt promotion and preserve evidence                                                                                                                       |
 
 ## 18. Test and verification strategy
 

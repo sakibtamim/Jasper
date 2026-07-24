@@ -1,6 +1,6 @@
 # Hosted Jasper MVP issue plan
 
-Status: **Proposed source of truth; no issues filed**
+Status: **Accepted source of truth; all 50 stable IDs filed**
 Scope: OSS core, private distribution, Garage Band, operations, documentation,
 and private-preview validation
 Requirements: [PRD](prd.md)
@@ -8,19 +8,20 @@ Technical design: [MVP design](mvp-design.md)
 
 ## How to use this plan
 
-Stable IDs survive issue moves and splits. After the definition PR is approved:
+Stable IDs survive issue moves and splits. The public
+[HJ-EPIC](https://github.com/sakibtamim/Jasper/issues/124) reports public work
+and safe private status. The private
+[HJ-PRV-00](https://github.com/purrfectsoft/jasper-hosted/issues/1) contains the
+complete authorized cross-repository index. During execution:
 
-1. create one public Hosted Jasper epic in `sakibtamim/Jasper`;
-2. create one linked private delivery epic in the approved
-   `purrfectsoft/jasper-hosted` repository;
-3. re-scope or close the existing issues in the final section;
-4. file the work below in dependency order;
-5. add every public issue URL beside its stable ID; keep private child URLs in
-   the private epic while reporting their stable ID, status, and safe outcome
-   publicly; and
-6. update both epics and this plan when scope or sequence changes.
-
-Until then, “proposed” is intentional—not a missing link.
+1. file bounded children under their umbrella before implementation where this
+   plan requires a split;
+2. preserve stable IDs in issue titles, commits, pull requests, evidence, and
+   status updates;
+3. implement in dependency order and keep the public/private boundary intact;
+4. update both epics and this plan when scope or sequence changes; and
+5. attach test, rollout, security, operational, and preview evidence to the
+   owning issue.
 
 Every filed issue should include:
 
@@ -36,9 +37,9 @@ Every filed issue should include:
 
 | Repository                                                                                                              | Visibility           | Work                                                                                                    |
 | ----------------------------------------------------------------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------- |
-| `sakibtamim/Jasper`                                                                                                     | Public               | Public epic, core contracts and implementation, built-in plugins, public image, self-host/provider docs |
-| `purrfectsoft/jasper-hosted`                                                                                            | Private, proposed    | Private epic, runtime adapter, control plane, web products, provider ops and preview                    |
-| `purrfectsoft/jasper-plugin-garage-band`                                                                                | Private source       | Tenant-safe Garage Band implementation and release                                                      |
+| [`sakibtamim/Jasper`](https://github.com/sakibtamim/Jasper)                                                             | Public               | Public epic, core contracts and implementation, built-in plugins, public image, self-host/provider docs |
+| [`purrfectsoft/jasper-hosted`](https://github.com/purrfectsoft/jasper-hosted)                                           | Private              | Private epic, runtime adapter, control plane, web products, provider ops and preview                    |
+| [`purrfectsoft/jasper-plugin-garage-band`](https://github.com/purrfectsoft/jasper-plugin-garage-band)                   | Private source       | Tenant-safe Garage Band implementation and release                                                      |
 | [`purrfectsoft/jasper-plugin-garage-band-releases`](https://github.com/purrfectsoft/jasper-plugin-garage-band-releases) | Public artifact only | Immutable compiled releases; no implementation issue unless policy changes                              |
 
 The public epic should disclose architectural outcomes, current phase, public
@@ -47,13 +48,44 @@ must not copy secrets, exploit details under active remediation, customer data,
 or private source. Private issue completion is reflected in the public epic by
 stable ID and outcome.
 
-None of the three repositories in the live issue/PR audit currently has a Hosted
-Jasper milestone or hosted/tenant label. After approval, propose a
-`Hosted Jasper MVP` milestone in Jasper, retain the existing `type: ...` and
-`priority: P0–P3` taxonomy, and add one `area: hosted` label only if repository
-ownership approves it. Create the missing mirrored labels in the private and
-Garage Band repositories before filing there, even if private GitHub branch
-rules cannot yet be enforced.
+All three implementation repositories now have a `Hosted Jasper MVP` milestone
+and `area: hosted` label. Existing `type: ...` and `priority: P0–P3` taxonomies
+were reused where present and the required mirrored labels were created in the
+private repositories. Private GitHub branch rules remain unavailable on the
+organization’s current plan, so HJ-PRV-01 owns the compensating governance
+control.
+
+## Filed issue index
+
+Public work links directly below. Proprietary child URLs remain in HJ-PRV-00;
+this public document retains their stable IDs, requirements, outcomes, and
+dependencies without exposing private implementation metadata.
+
+| Stable ID                                                           | Repository                   |
+| ------------------------------------------------------------------- | ---------------------------- |
+| [HJ-EPIC](https://github.com/sakibtamim/Jasper/issues/124)          | `sakibtamim/Jasper`          |
+| [HJ-PRV-00](https://github.com/purrfectsoft/jasper-hosted/issues/1) | `purrfectsoft/jasper-hosted` |
+| [HJ-OSS-01](https://github.com/sakibtamim/Jasper/issues/125)        | `sakibtamim/Jasper`          |
+| [HJ-OSS-02](https://github.com/sakibtamim/Jasper/issues/126)        | `sakibtamim/Jasper`          |
+| [HJ-OSS-03](https://github.com/sakibtamim/Jasper/issues/127)        | `sakibtamim/Jasper`          |
+| [HJ-OSS-04](https://github.com/sakibtamim/Jasper/issues/128)        | `sakibtamim/Jasper`          |
+| [HJ-OSS-05](https://github.com/sakibtamim/Jasper/issues/129)        | `sakibtamim/Jasper`          |
+| [HJ-OSS-06](https://github.com/sakibtamim/Jasper/issues/130)        | `sakibtamim/Jasper`          |
+| [HJ-OSS-07](https://github.com/sakibtamim/Jasper/issues/122)        | `sakibtamim/Jasper` (reused) |
+| [HJ-OSS-08](https://github.com/sakibtamim/Jasper/issues/131)        | `sakibtamim/Jasper`          |
+| [HJ-OSS-09](https://github.com/sakibtamim/Jasper/issues/132)        | `sakibtamim/Jasper`          |
+| [HJ-OSS-10](https://github.com/sakibtamim/Jasper/issues/133)        | `sakibtamim/Jasper`          |
+| [HJ-OSS-11](https://github.com/sakibtamim/Jasper/issues/134)        | `sakibtamim/Jasper`          |
+| [HJ-OSS-12](https://github.com/sakibtamim/Jasper/issues/135)        | `sakibtamim/Jasper`          |
+| [HJ-OSS-13](https://github.com/sakibtamim/Jasper/issues/136)        | `sakibtamim/Jasper`          |
+| [HJ-OSS-17](https://github.com/sakibtamim/Jasper/issues/137)        | `sakibtamim/Jasper`          |
+| [HJ-SB-01](https://github.com/sakibtamim/Jasper/issues/138)         | `sakibtamim/Jasper`          |
+| [HJ-OSS-14](https://github.com/sakibtamim/Jasper/issues/139)        | `sakibtamim/Jasper`          |
+| [HJ-OSS-19](https://github.com/sakibtamim/Jasper/issues/140)        | `sakibtamim/Jasper`          |
+| [HJ-OSS-20](https://github.com/sakibtamim/Jasper/issues/141)        | `sakibtamim/Jasper`          |
+| [HJ-OSS-15](https://github.com/sakibtamim/Jasper/issues/142)        | `sakibtamim/Jasper`          |
+| [HJ-OSS-16](https://github.com/sakibtamim/Jasper/issues/143)        | `sakibtamim/Jasper`          |
+| [HJ-OSS-18](https://github.com/sakibtamim/Jasper/issues/144)        | `sakibtamim/Jasper`          |
 
 ## Priority and sequencing
 
@@ -109,7 +141,7 @@ parent’s contract.
 ### HJ-EPIC — Hosted Jasper MVP
 
 - **Repository:** `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P1`, `type: epic`
+- **Labels:** `priority: P1`, `type: epic`
 - **Outcome:** Public coordination point for this accepted definition, all
   public child issues, private stable-ID status, launch gates, decision log, and
   preview report.
@@ -122,8 +154,8 @@ parent’s contract.
 
 ### HJ-PRV-00 — Hosted Jasper private delivery epic
 
-- **Repository:** proposed `purrfectsoft/jasper-hosted`
-- **Proposed labels:** `priority: P1`, `type: epic`
+- **Repository:** `purrfectsoft/jasper-hosted`
+- **Labels:** `priority: P1`, `type: epic`
 - **Outcome:** Private coordination point with the real links, owners, sensitive
   operational dependencies, release evidence, and delivery status for every
   proprietary and provider-operations issue.
@@ -136,7 +168,7 @@ parent’s contract.
 ### HJ-GOV-01 — Inventory and approve provider Discord applications
 
 - **Repository:** private hosted repository, with a safe summary in HJ-EPIC
-- **Proposed labels:** `priority: P0`, `type: infra`
+- **Labels:** `priority: P0`, `type: infra`
 - **Outcome:** Exact controller/worker catalog per environment, ownership,
   install URLs, required/optional classification, permission bitsets, intents,
   verification status/owners, token-rotation path, sandbox guilds, and aligned
@@ -154,7 +186,7 @@ parent’s contract.
 
 - **Repository:** private hosted repository; publish a safe architectural
   summary
-- **Proposed labels:** `priority: P1`, `type: docs`
+- **Labels:** `priority: P1`, `type: docs`
 - **Outcome:** Reviewed trust boundaries, abuse cases, privacy/retention
   inventory, terms, subprocessors, upstream media/cookie posture, severity
   model, and real-guild launch checklist.
@@ -169,7 +201,7 @@ parent’s contract.
 ### HJ-OSS-01 — Add clean pull-request CI and production-package verification
 
 - **Repository:** `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P0`, `type: infra`
+- **Labels:** `priority: P0`, `type: infra`
 - **Outcome:** Required build-before-typecheck, tests, lint, plugin validation,
   SQLite/PostgreSQL integration hook, clean packaging smoke, and artifact
   checks run independently of deployment. Untrusted/fork PR checks require no
@@ -187,7 +219,7 @@ parent’s contract.
 ### HJ-OSS-02 — Introduce runtime profiles and explicit token-safe bot identities
 
 - **Repository:** `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P0`, `type: feature`
+- **Labels:** `priority: P0`, `type: feature`
 - **Outcome:** `self-hosted`/`hosted` profiles, explicit controller/worker
   catalog/provider, namespaced legacy migration, secret references, and
   token-free public/plugin state.
@@ -200,7 +232,7 @@ parent’s contract.
 ### HJ-OSS-03 — Minimize Discord intents and separate controller/worker events
 
 - **Repository:** `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P0`, `type: enhancement` (security-critical)
+- **Labels:** `priority: P0`, `type: enhancement` (security-critical)
 - **Outcome:** Each app requests only used intents and handles only appropriate
   events/interactions. Soundboard upload no longer forces hosted
   `MessageContent`, or that path is disabled in hosted mode.
@@ -212,7 +244,7 @@ parent’s contract.
 ### HJ-OSS-04 — Replace global worker busy state with per-guild AFR leases
 
 - **Repository:** `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P0`, `type: feature`
+- **Labels:** `priority: P0`, `type: feature`
 - **Outcome:** Atomic per-guild/cat/channel/generation lease state, eligible-cat
   filtering/retry, retained-connection ownership, and preserved weighted AFR.
 - **Acceptance:** Same cat serves two guilds concurrently; never two channels in
@@ -226,22 +258,23 @@ parent’s contract.
 ### HJ-OSS-05 — Add provider-neutral guild installation and access policy
 
 - **Repository:** `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P0`, `type: feature`
+- **Labels:** `priority: P0`, `type: feature`
 - **Outcome:** Required guild/installation context at Discord entry, active /
   degraded / suspended / deleting policy, local self-host resolver, hosted
   adapter port, and unregistered/DM rejection.
 - **Acceptance:** No command/queue/plugin work begins without resolved scope;
-  policy cache and expiry semantics are contract-tested; local mode requires no
-  private service; announcements, autocomplete/components, hooks, tasks and all
-  outbound Discord side effects share the guard; `/catastrophic-reset` and
-  `/music-status` are installation-scoped and authorized, and controller state
-  is counted once.
+  separate 15-minute configuration cache and ≤60-second hosted admission-grant
+  semantics are contract-tested; expired/revoked admission fails closed; local
+  mode requires no private service; announcements, autocomplete/components,
+  hooks, tasks and all outbound Discord side effects share the guard;
+  `/catastrophic-reset` and `/music-status` are installation-scoped and
+  authorized, and controller state is counted once.
 - **Depends on:** HJ-OSS-01.
 
 ### HJ-OSS-06 — Build release-time global/guild command publisher
 
 - **Repository:** `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P0`, `type: infra`
+- **Labels:** `priority: P0`, `type: infra`
 - **Outcome:** Typed command manifest/digest with `dry-run`, sandbox `guild`,
   and hosted `global` strategies; no startup or tenant-toggle publication.
 - **Acceptance:** Only controller credentials publish; production-disabled test
@@ -258,7 +291,7 @@ parent’s contract.
 - **Repository:** `sakibtamim/Jasper`; prefer updating existing
   [#122](https://github.com/sakibtamim/Jasper/issues/122) and filing bounded
   children
-- **Proposed labels:** `priority: P0`, `type: infra`
+- **Labels:** `priority: P0`, `type: infra`
 - **Outcome:** Checksum-tracked locked migrations, PostgreSQL/SQLite parity,
   installation-scoped repository APIs/aggregates, verified TLS configuration,
   and expand-contract/rollback policy.
@@ -274,7 +307,7 @@ parent’s contract.
 ### HJ-OSS-08 — Add installation-scoped storage providers and safe media ingestion
 
 - **Repository:** `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P0`, `type: feature` (security-critical)
+- **Labels:** `priority: P0`, `type: feature` (security-critical)
 - **Outcome:** Separate tenant asset, plugin asset, and shared cache interfaces;
   local and S3-compatible implementations; central SSRF/redirect/time/size/MIME
   policy and quota hooks.
@@ -290,7 +323,7 @@ parent’s contract.
 ### HJ-OSS-09 — Make HTTP/API authorization default-deny and close hosted legacy admin
 
 - **Repository:** `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P0`, `type: feature` (security-critical)
+- **Labels:** `priority: P0`, `type: feature` (security-critical)
 - **Outcome:** Principal/action/guild middleware, separate operator API, signed
   session behavior, installation-scoped status/stats/logs, and hosted-profile
   disable for DevTools, plugin upload and global dashboard data.
@@ -304,7 +337,7 @@ parent’s contract.
 ### HJ-OSS-10 — Version the plugin SDK for typed policy, lifecycle and capabilities
 
 - **Repository:** `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P0`, `type: feature`
+- **Labels:** `priority: P0`, `type: feature`
 - **Outcome:** Stable manifest ID/SDK range/capabilities; schema-typed,
   default-deny routes; guild/principal context; health and guild lifecycle;
   owned disposal handles; safe client/worker facades; scoped stores, assets,
@@ -327,7 +360,7 @@ parent’s contract.
 ### HJ-OSS-11 — Add runtime identity, sharding, health, degraded and drain contract
 
 - **Repository:** `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P0`, `type: infra`
+- **Labels:** `priority: P0`, `type: infra`
 - **Outcome:** Cell/release/shard/fence identity, aligned multi-client shard
   startup, live/ready/internal health, component contributors, bounded drain,
   structured logs and metrics vocabulary.
@@ -347,7 +380,7 @@ parent’s contract.
 ### HJ-OSS-12 — Produce deterministic complete plugin artifacts and trust policy
 
 - **Repository:** `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P0`, `type: infra`
+- **Labels:** `priority: P0`, `type: infra`
 - **Outcome:** Recursive/bundled backend, frontend/assets, hashes, SDK metadata,
   SBOM/provenance/signature hooks, allowlist/integrity enforcement, install and
   boot smoke.
@@ -363,7 +396,7 @@ parent’s contract.
 ### HJ-OSS-13 — Expose stable plugin audio enqueue service
 
 - **Repository:** `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P1`, `type: feature`
+- **Labels:** `priority: P1`, `type: feature`
 - **Outcome:** Public installation-scoped enqueue/play service supporting Garage
   Band without relative imports into `core/music-player`.
 - **Acceptance:** Contract covers requester, ordering, errors, lease/policy and
@@ -374,7 +407,7 @@ parent’s contract.
 ### HJ-OSS-17 — Add provider-neutral capability decision port and all-free resolver
 
 - **Repository:** `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P0`, `type: feature`
+- **Labels:** `priority: P0`, `type: feature`
 - **Outcome:** Small execution-time capability decision interface with an
   unconditional local/self-hosted resolver and explicit separation from
   operational quotas.
@@ -387,7 +420,7 @@ parent’s contract.
 ### HJ-SB-01 — Make Soundboard guild-safe and hosted-intent-safe
 
 - **Repository:** `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P1`, `type: enhancement` (security-critical)
+- **Labels:** `priority: P1`, `type: enhancement` (security-critical)
 - **Outcome:** Installation-scoped sounds/plays/assets, authenticated mutations,
   real owner attribution, safe upload, and no unjustified hosted
   MessageContent dependency.
@@ -399,7 +432,7 @@ parent’s contract.
 ### HJ-OSS-14 — Publish Jasper base image and one-container SQLite quick path
 
 - **Repository:** `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P0`, `type: infra`
+- **Labels:** `priority: P0`, `type: infra`
 - **Outcome:** Non-root immutable OCI base with pinned verified media tools and
   a zero-private-dependency one-container path using SQLite and local volumes.
 - **Acceptance:** A clean host boots controller plus optional workers with an
@@ -414,7 +447,7 @@ parent’s contract.
 ### HJ-OSS-19 — Publish production-like self-host Compose and recovery path
 
 - **Repository:** `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P1`, `type: infra`
+- **Labels:** `priority: P1`, `type: infra`
 - **Outcome:** Tested Jasper/PostgreSQL/S3-compatible-storage Compose profile
   with isolated migrations, health, backup/restore, upgrade and rollback.
 - **Acceptance:** A clean host completes controller/optional-worker boot,
@@ -426,7 +459,7 @@ parent’s contract.
 ### HJ-OSS-20 — Enforce installation and provider operational safety policy
 
 - **Repository:** `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P0`, `type: feature` (reliability-critical)
+- **Labels:** `priority: P0`, `type: feature` (reliability-critical)
 - **Outcome:** Provider-neutral safety-policy interface and local defaults for
   per-installation command, queue, playback, extraction, download and upload
   limits plus cell/global provider budgets.
@@ -439,7 +472,7 @@ parent’s contract.
 ### HJ-OSS-15 — Correct onboarding docs and publish independent-provider contract
 
 - **Repository:** `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P1`, `type: docs`
+- **Labels:** `priority: P1`, `type: docs`
 - **Outcome:** Fix verified README/AUTH/DEPLOY/ENV/plugin contradictions; document
   runtime profiles, explicit cats, shard alignment, scopes, migrations, storage,
   command release, health/drain, secrets, image, Compose and provider operation.
@@ -453,7 +486,7 @@ parent’s contract.
 ### HJ-OSS-16 — Freeze or minimally stabilize the unsafe legacy `deploy` lane
 
 - **Repository:** `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P0`, `type: infra`
+- **Labels:** `priority: P0`, `type: infra`
 - **Outcome:** Wave-0 decision prevents the active unprotected in-place lane
   from remaining an unattended path while hosted foundations are built.
 - **Acceptance:** Either freeze bot deployments until replacement, or—before
@@ -469,7 +502,7 @@ parent’s contract.
 ### HJ-OSS-18 — Retire or migrate the legacy lane after the public image is proven
 
 - **Repository:** `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P1`, `type: infra`
+- **Labels:** `priority: P1`, `type: infra`
 - **Outcome:** Final, documented choice to move the existing staging guild to
   the immutable public container path or retain PM2 as an explicitly supported
   manual lane.
@@ -484,7 +517,7 @@ parent’s contract.
 ### HJ-GB-01 — Make playlists tenant-safe, authorized and concurrency-safe
 
 - **Repository:** `purrfectsoft/jasper-plugin-garage-band`
-- **Proposed labels:** `priority: P1`, `type: feature`
+- **Labels:** `priority: P1`, `type: feature`
 - **Outcome:** Guild/installation scope, enforced owner/member/admin policy,
   normalized or optimistic-concurrency-safe persistence, and authenticated
   command/API behavior.
@@ -496,7 +529,7 @@ parent’s contract.
 ### HJ-GB-02 — Move Garage Band media and playback to public safe services
 
 - **Repository:** `purrfectsoft/jasper-plugin-garage-band`
-- **Proposed labels:** `priority: P1`, `type: feature` (security-critical)
+- **Labels:** `priority: P1`, `type: feature` (security-critical)
 - **Outcome:** Public enqueue API, scoped object storage, streaming safe fetch,
   type/size/quota policy, and authenticated upload/thumbnail/direct URL flow.
 - **Acceptance:** No relative core import or unbounded remote `arrayBuffer`;
@@ -507,7 +540,7 @@ parent’s contract.
 ### HJ-GB-03 — Immediately repair Garage Band release authentication and versioning
 
 - **Repository:** `purrfectsoft/jasper-plugin-garage-band`
-- **Proposed labels:** `priority: P0`, `type: infra`
+- **Labels:** `priority: P0`, `type: infra`
 - **Outcome:** Restore the already-broken private-to-public release path without
   waiting for the tenant-safe feature release: short-lived authentication,
   manifest/runtime version parity, immutable current-format artifact and install
@@ -521,7 +554,7 @@ parent’s contract.
 ### HJ-GB-04 — Promote the tenant-safe Garage Band preview artifact
 
 - **Repository:** `purrfectsoft/jasper-plugin-garage-band`
-- **Proposed labels:** `priority: P1`, `type: infra`
+- **Labels:** `priority: P1`, `type: infra`
 - **Outcome:** Apply the complete recursive package, hashes, SBOM/provenance,
   compatibility and source/artifact/Jasper-release parity contract to the
   guild-safe Garage Band version.
@@ -534,8 +567,8 @@ parent’s contract.
 
 ### HJ-PRV-01 — Establish private repository governance and adapter spike
 
-- **Repository:** proposed `purrfectsoft/jasper-hosted`
-- **Proposed labels:** `priority: P0`, `type: infra`
+- **Repository:** `purrfectsoft/jasper-hosted`
+- **Labels:** `priority: P0`, `type: infra`
 - **Outcome:** Repository governance, ownership/review policy, secret-free
   developer bootstrap, minimal stack-neutral Jasper plugin entry/manifest,
   contract-fixture CI, compatibility/version policy, and a time-boxed
@@ -552,9 +585,9 @@ parent’s contract.
 
 ### HJ-PRV-13 — Approve the hosted provider-stack and portability ADR
 
-- **Repository:** proposed `purrfectsoft/jasper-hosted`; publish a safe decision
+- **Repository:** `purrfectsoft/jasper-hosted`; publish a safe decision
   summary
-- **Proposed labels:** `priority: P0`, `type: docs`
+- **Labels:** `priority: P0`, `type: docs`
 - **Outcome:** Construction-ready ADR selects the web/API/workspace stack,
   database access/migration/RLS approach, orchestrator and declarative IaC,
   customer/staff/workload identity, KMS/secrets, object storage, telemetry,
@@ -568,8 +601,8 @@ parent’s contract.
 
 ### HJ-PRV-14 — Scaffold the approved private application workspace
 
-- **Repository:** proposed `purrfectsoft/jasper-hosted`
-- **Proposed labels:** `priority: P0`, `type: infra`
+- **Repository:** `purrfectsoft/jasper-hosted`
+- **Labels:** `priority: P0`, `type: infra`
 - **Outcome:** Implement the accepted HJ-PRV-13 workspace baseline for the
   control-plane API/worker, customer portal, staff console, marketing app and
   shared packages without coupling their deploy lifecycle to the runtime plugin.
@@ -583,7 +616,7 @@ parent’s contract.
 ### HJ-PRV-02 — Implement control-plane schema, migrations, outbox and audit
 
 - **Repository:** private hosted repository
-- **Proposed labels:** `priority: P0`, `type: infra`
+- **Labels:** `priority: P0`, `type: infra`
 - **Outcome:** Records from design section 10, transactional lifecycle,
   idempotency, optimistic versions, outbox/inbox/task leases, row-scope defense,
   append-only audit, and retention jobs.
@@ -598,7 +631,7 @@ parent’s contract.
 ### HJ-PRV-03 — Build customer Discord identity, tenant and membership service
 
 - **Repository:** private hosted repository
-- **Proposed labels:** `priority: P0`, `type: feature`
+- **Labels:** `priority: P0`, `type: feature`
 - **Outcome:** Secure Discord OAuth/session/revocation, manageable-guild lookup,
   tenant owner/admin/viewer policy, invites, ownership transfer and account
   access.
@@ -612,7 +645,7 @@ parent’s contract.
 ### HJ-PRV-04 — Build staff OIDC, RBAC and privileged-action service
 
 - **Repository:** private hosted repository
-- **Proposed labels:** `priority: P0`, `type: feature` (security-critical)
+- **Labels:** `priority: P0`, `type: feature` (security-critical)
 - **Outcome:** Separate MFA-backed staff issuer/session and support/product/
   DevOps/security roles with audited safe operations.
 - **Acceptance:** Customer tokens cannot reach staff routes; absent/incorrect
@@ -623,7 +656,7 @@ parent’s contract.
 ### HJ-PRV-05 — Implement application catalog and resumable onboarding engine
 
 - **Repository:** private hosted repository
-- **Proposed labels:** `priority: P0`, `type: feature`
+- **Labels:** `priority: P0`, `type: feature`
 - **Outcome:** Server-generated per-cat authorization, durable state machine,
   observation matching, optional workers, repair/resume, duplicate-guild
   handling and activation.
@@ -640,13 +673,16 @@ parent’s contract.
 ### HJ-PRV-06 — Implement the hosted runtime adapter plugin
 
 - **Repository:** private hosted repository
-- **Proposed labels:** `priority: P0`, `type: feature`
+- **Labels:** `priority: P0`, `type: feature`
 - **Outcome:** Workload identity, cell registration/heartbeat, app/guild/health
   observations, desired config and task polling, policy cache, fence enforcement
   and config acknowledgement through public Jasper interfaces.
-- **Acceptance:** The plugin PoC exit criteria all pass; 15-minute
-  last-known-good expiry fails closed; observation batching/dedup works; stale
-  cell/task/config cannot mutate state; records and acknowledgements use
+- **Acceptance:** The plugin PoC exit criteria all pass; configuration may use
+  15-minute last-known-good state, but new work requires a renewable
+  ≤60-second installation admission grant; removal/suspension stops renewal,
+  acknowledges the higher revocation revision, and never reports completion
+  before acknowledgement or grant expiry. Observation batching/dedup works;
+  stale cell/task/config cannot mutate state; records and acknowledgements use
   `(cell,fence,boot,sequence)` and persist a bounded restart-safe spool; clean
   unload and artifact boot pass.
 - **Depends on:** HJ-PRV-01, HJ-PRV-02, HJ-OSS-05, HJ-OSS-10, HJ-OSS-11,
@@ -655,7 +691,7 @@ parent’s contract.
 ### HJ-PRV-07 — Implement revisioned tenant configuration and free resolver
 
 - **Repository:** private hosted repository
-- **Proposed labels:** `priority: P0`, `type: feature`
+- **Labels:** `priority: P0`, `type: feature`
 - **Outcome:** Validated versioned settings, desired-state convergence and
   provider-neutral entitlement decision whose MVP implementation grants the
   complete product to every admitted tenant.
@@ -667,7 +703,7 @@ parent’s contract.
 ### HJ-PRV-08 — Build customer portal critical paths
 
 - **Repository:** private hosted repository
-- **Proposed labels:** `priority: P1`, `type: feature`
+- **Labels:** `priority: P1`, `type: feature`
 - **Outcome:** Sign-in, guild chooser, live/resumable installer, per-cat capacity
   and repair, configuration, members, usage/status, removal and deletion UX.
 - **Acceptance:** All PRD customer journeys pass on mobile/desktop and keyboard/
@@ -680,7 +716,7 @@ parent’s contract.
 ### HJ-PRV-09 — Build transparent marketing and preview acquisition funnel
 
 - **Repository:** private hosted repository
-- **Proposed labels:** `priority: P1`, `type: feature`
+- **Labels:** `priority: P1`, `type: feature`
 - **Outcome:** Public product/OSS boundary, multi-cat consent explanation,
   permissions/privacy/terms/support, approved cohort CTA and minimized funnel
   events.
@@ -694,7 +730,7 @@ parent’s contract.
 ### HJ-PRV-10 — Build staff tenant and fleet console
 
 - **Repository:** private hosted repository
-- **Proposed labels:** `priority: P1`, `type: feature`
+- **Labels:** `priority: P1`, `type: feature`
 - **Outcome:** Role-scoped onboarding/tenant/config/cell/shard/release/health
   views and named idempotent recovery operations.
 - **Acceptance:** Read-only support cannot mutate; operators cannot deploy/
@@ -705,21 +741,24 @@ parent’s contract.
 ### HJ-PRV-11 — Implement removal, deletion, retention and account privacy jobs
 
 - **Repository:** private hosted repository
-- **Proposed labels:** `priority: P1`, `type: feature` (security-critical)
-- **Outcome:** Reauthenticated removal, immediate admission denial, per-guild
-  drain/leave, 30-day recovery window, purge/tombstones, account/session/OAuth
-  cleanup, holds and customer-visible state.
+- **Labels:** `priority: P1`, `type: feature` (security-critical)
+- **Outcome:** Reauthenticated removal, immediate revocation start, bounded
+  acknowledged runtime denial, per-guild drain/leave, 30-day recovery window,
+  purge/tombstones, account/session/OAuth cleanup, holds and customer-visible
+  state.
 - **Acceptance:** Deletion never affects another tenant or shared-safe cache;
-  restored backup cannot reactivate a purged tenant; every stage is retryable,
-  idempotent and audited; the immutable installation ID and external tombstone
-  prevent same-guild reinstall from seeing old records; published retention
-  matches jobs/object lifecycle.
+  the control plane denies immediately and shows `revoking runtime` until deny
+  acknowledgement or ≤60-second admission expiry; restored backup cannot
+  reactivate a purged tenant; every stage is retryable, idempotent and audited;
+  the immutable installation ID and external tombstone prevent same-guild
+  reinstall from seeing old records; published retention matches jobs/object
+  lifecycle.
 - **Depends on:** HJ-PRV-02, HJ-PRV-03, HJ-PRV-06.
 
 ### HJ-PRV-12 — Add privacy-preserving product and usage measurement
 
 - **Repository:** private hosted repository
-- **Proposed labels:** `priority: P1`, `type: feature`
+- **Labels:** `priority: P1`, `type: feature`
 - **Outcome:** Funnel, readiness, command/playback outcome, aggregate AFR/
   capacity, retention and support events with documented minimization.
 - **Acceptance:** Event schema/dedup/retention exists; no message content, OAuth
@@ -734,7 +773,7 @@ parent’s contract.
 ### HJ-OPS-01 — Build immutable hosted distribution and supply-chain pipeline
 
 - **Repository:** private hosted repository, consuming public base
-- **Proposed labels:** `priority: P0`, `type: infra`
+- **Labels:** `priority: P0`, `type: infra`
 - **Outcome:** Exact public-base/private-plugin image, pinned verified media
   tools, non-root runtime, environment-independent signed release-manifest
   promotion, signed per-environment deployment envelopes, SBOM/provenance/scans
@@ -753,7 +792,7 @@ parent’s contract.
 ### HJ-OPS-02 — Provision isolated sandbox, staging and preview environments
 
 - **Repository:** private hosted repository
-- **Proposed labels:** `priority: P0`, `type: infra`
+- **Labels:** `priority: P0`, `type: infra`
 - **Outcome:** Named environments with separate Discord apps/guilds, network,
   PostgreSQL, object store, secret/KMS, workload identity, DNS/TLS, capacity and
   access policy, expressed as declarative infrastructure.
@@ -770,7 +809,7 @@ parent’s contract.
 
 - **Repository:** private hosted repository umbrella; linked public command/
   drain contract children in `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P0`, `type: infra`
+- **Labels:** `priority: P0`, `type: infra`
 - **Outcome:** Orchestrated independently locked data/control migration sets,
   atomic aligned shard-set ownership, bounded drain, target canary, compatible
   command publication, identical release-manifest promotion, signed environment
@@ -790,7 +829,7 @@ parent’s contract.
 
 - **Repository:** private hosted repository umbrella; linked public core
   instrumentation child in `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P0`, `type: infra`
+- **Labels:** `priority: P0`, `type: infra`
 - **Outcome:** Metrics/logs/traces, dashboards, preview objectives, alert
   routing and every runbook named in design section 13.
 - **Acceptance:** Synthetic failures page the correct owner; traces cross
@@ -805,7 +844,7 @@ parent’s contract.
 
 - **Repository:** private hosted repository umbrella; reusable public contract
   fixture children in `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P1`, `type: infra`; mark the harness-foundation
+- **Labels:** `priority: P1`, `type: infra`; mark the harness-foundation
   child `priority: P0`
 - **Outcome:** Real Fastify auth matrix, two-tenant DB/object/API/plugin tests,
   Discord sandbox onboarding/repair fixtures, SSRF/upload tests, secret scans and
@@ -814,8 +853,10 @@ parent’s contract.
   controlled environment; destructive Discord tests cannot target preview apps/
   guilds; a seeded cross-tenant bug proves the gate fails; fencing covers
   delayed renewal, network partition, replacement epochs and boot-scoped
-  observations. The harness skeleton starts after the foundation dependencies;
-  final matrices wait for the explicitly listed feature dependencies.
+  observations. A partitioned removal/suspension proves no new side effect after
+  the ≤60-second admission expiry and no premature customer completion. The
+  harness skeleton starts after the foundation dependencies; final matrices wait
+  for the explicitly listed feature dependencies.
 - **Depends on (foundation):** HJ-OSS-01, HJ-PRV-01, HJ-OPS-02.
 - **Depends on (final matrices):** HJ-OSS-05, HJ-OSS-07, HJ-OSS-08,
   HJ-OSS-09, HJ-OSS-10, HJ-OSS-11, HJ-OSS-12, HJ-OSS-17, HJ-OSS-20,
@@ -826,7 +867,7 @@ parent’s contract.
 
 - **Repository:** private hosted repository umbrella; linked public self-host
   recovery children in `sakibtamim/Jasper`
-- **Proposed labels:** `priority: P1`, `type: infra`
+- **Labels:** `priority: P1`, `type: infra`
 - **Outcome:** Encrypted backups/PITR for both PostgreSQL domains, tenant-object
   policy, config/catalog and key recovery, proposed RPO/RTO, restore isolation,
   scheduled exercises, and tombstone replay from a separate failure domain.
@@ -841,7 +882,7 @@ parent’s contract.
 ### HJ-OPS-07 — Run private-preview load, soak and failure program
 
 - **Repository:** private hosted repository; summary in public epic
-- **Proposed labels:** `priority: P2`, `type: epic`
+- **Labels:** `priority: P2`, `type: epic`
 - **Outcome:** Staged employee/external cohort with consent, capacity model,
   failure drills, feedback and MVP evidence.
 - **Acceptance:** 10 guilds, at least 3 full-cat guilds and 1,000 starts/14 days
@@ -888,17 +929,17 @@ and state that limitation; do not weaken the isolation gate.
 
 ## Existing open-issue disposition
 
-No issue is changed during this definition phase.
+The approved disposition was recorded on each affected issue on 2026-07-25.
 
-| Existing issue                                                                                     | Action after approval                                                                     | Hosted relationship           |
-| -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------- |
-| [#122 PostgreSQL production migration and backup](https://github.com/sakibtamim/Jasper/issues/122) | Re-scope as HJ-OSS-07 umbrella; split provider backup into HJ-OPS-06                      | Include and prioritize        |
-| [#101 Garage Band Phase 3 epic](https://github.com/sakibtamim/Jasper/issues/101)                   | Mark completed child #100; split/defer #98/#99; do not use as hosted epic                 | Discuss and narrow            |
-| [#99 collaborative playlists](https://github.com/sakibtamim/Jasper/issues/99)                      | Defer until tenant-authenticated horizontally scalable realtime contract                  | Later feature                 |
-| [#98 Stripe/premium tiers](https://github.com/sakibtamim/Jasper/issues/98)                         | Defer/supersede in proprietary commercial phase; remove proposed core Stripe coupling     | Conflicts with MVP            |
-| [#48 agentic infrastructure](https://github.com/sakibtamim/Jasper/issues/48)                       | Verify merged PRs #49/#116 satisfy it, then close or identify one residual issue          | Housekeeping                  |
-| [#38 automatic JSX runtime](https://github.com/sakibtamim/Jasper/issues/38)                        | Time-box in HJ-PRV-01/HJ-OSS-12 compatibility spike; implement only on reproduced blocker | Relevant, not default blocker |
-| [#36 realtime soundboard mixing](https://github.com/sakibtamim/Jasper/issues/36)                   | Defer until isolation, quotas and measured capacity                                       | Out of MVP                    |
+| Existing issue                                                                                     | Recorded action                                                                                      | Status                |
+| -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | --------------------- |
+| [#122 PostgreSQL production migration and backup](https://github.com/sakibtamim/Jasper/issues/122) | Re-scoped and prioritized as HJ-OSS-07; provider backup split to HJ-OPS-06                           | Open in MVP           |
+| [#101 Garage Band Phase 3 epic](https://github.com/sakibtamim/Jasper/issues/101)                   | Completed child #100 recorded; #98/#99 deferred; mixed umbrella superseded by HJ-EPIC                | Closed as not planned |
+| [#99 collaborative playlists](https://github.com/sakibtamim/Jasper/issues/99)                      | Deferred until a tenant-authenticated, horizontally scalable realtime contract is justified          | Open, outside MVP     |
+| [#98 Stripe/premium tiers](https://github.com/sakibtamim/Jasper/issues/98)                         | Deferred; direct Stripe-in-core design superseded by the proprietary future commercial boundary      | Open, outside MVP     |
+| [#48 agentic infrastructure](https://github.com/sakibtamim/Jasper/issues/48)                       | PRs #49 and #116 verified against the residual checklist                                             | Closed as completed   |
+| [#38 automatic JSX runtime](https://github.com/sakibtamim/Jasper/issues/38)                        | Time-boxed in HJ-PRV-01/HJ-OSS-12; implementation is required only if the spike reproduces a blocker | Open, conditional     |
+| [#36 realtime soundboard mixing](https://github.com/sakibtamim/Jasper/issues/36)                   | Deferred until isolation, quotas, and measured capacity exist                                        | Open, outside MVP     |
 
 At the 2026-07-24 pre-definition-PR audit baseline there were no open PRs in
 Jasper or the two Garage Band repositories and no other open issue matching
@@ -906,7 +947,7 @@ hosted, tenant, multi-tenant, or orchestration.
 
 ## Requirement-to-issue traceability
 
-| Requirement group                                   | Primary proposed issues                                                 |
+| Requirement group                                   | Primary issues                                                          |
 | --------------------------------------------------- | ----------------------------------------------------------------------- |
 | Repository/provider foundation                      | HJ-PRV-00, HJ-PRV-01, HJ-PRV-13, HJ-PRV-14                              |
 | FR-MKT / acquisition                                | HJ-PRV-09, HJ-PRV-12, HJ-GOV-02                                         |

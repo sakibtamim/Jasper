@@ -1,8 +1,8 @@
 # Hosted Jasper product requirements document
 
-Document state: **Draft / review required**
-Version: **0.1**
-Last updated: **2026-07-24**
+Document state: **Accepted**
+Version: **1.0**
+Last updated: **2026-07-25**
 Decision owner: Jasper product ownership
 Technical owners: Jasper maintainers and Hosted Jasper maintainers
 Source definition: [Hosted Jasper pack](README.md)
@@ -15,9 +15,8 @@ limited free-preview MVP and indexes later work without committing the MVP to
 commerce.
 
 Changes to an accepted requirement must update its ID, rationale, acceptance
-criteria, related design section, and affected proposed issues. Once GitHub
-issues exist, their links are added beside the stable requirement and planning
-IDs rather than replacing them.
+criteria, related design section, and affected issues. GitHub links sit beside
+stable requirement and planning IDs rather than replacing them.
 
 ## 2. Executive requirement
 
@@ -112,9 +111,11 @@ without affecting their other tenants.
 ### 5.4 Removal and deletion
 
 An owner requests removal, reauthenticates, sees the consequences, and confirms.
-The service immediately blocks new work, asks all provider cats to leave the
-guild, and begins the documented deletion workflow. A staff security hold can
-pause data erasure but cannot silently reactivate service.
+The control plane immediately marks the tenant deleting, stops admission-grant
+renewal, and asks all provider cats to leave. It confirms runtime denial only
+after acknowledgement or expiry of the last ≤60-second grant, then continues
+the documented deletion workflow. A staff security hold can pause data erasure
+but cannot silently reactivate service.
 
 ### 5.5 Staff recovery
 
@@ -173,7 +174,7 @@ unless evidence justifies an explicit waiver; **Could** is opportunistic.
 | FR-RUN-02 | Must     | A cat has at most one active/retained voice lease per guild and may hold leases in different guilds concurrently. Allocation and release are keyed by immutable installation ID, guild, cat, channel, and generation so stale work from a purged install cannot affect a reinstall.                                                                                                                                                 |
 | FR-RUN-03 | Must     | AFR preserves channel reuse, configured Jasper weighting, random eligible-worker choice, and controller fallback within each guild. It filters membership, readiness, visibility, `Connect`, and `Speak`, and retries another eligible cat after a selection failure.                                                                                                                                                               |
 | FR-RUN-04 | Must     | Commands, queues, status, resets, stats, plugins, assets, and persisted product records are installation-scoped with guild correlation. No guild command can inspect or destroy another installation’s work, including data from an earlier install of the same guild.                                                                                                                                                              |
-| FR-RUN-05 | Must     | DMs and guilds without an admitted installation are rejected before any Discord side effect, announcement, autocomplete/component handler, hook, task, queue, media, or plugin work begins. Provisioning, suspended, and deleting tenants cannot start new work.                                                                                                                                                                    |
+| FR-RUN-05 | Must     | DMs and guilds without an admitted installation are rejected before any Discord side effect, announcement, autocomplete/component handler, hook, task, queue, media, or plugin work begins. Hosted new work also requires a current installation admission grant valid for at most 60 seconds; provisioning, suspended, deleting, revoked, or expired-grant tenants cannot start work.                                              |
 | FR-RUN-06 | Must     | Hosted releases publish a stable global command set in a dedicated idempotent release job. Sandbox builds can publish guild commands. Runtime startup and tenant toggles do not mutate global definitions.                                                                                                                                                                                                                          |
 | FR-RUN-07 | Must     | The hosted profile disables the legacy core OAuth/session routes, global dashboard, DevTools, customer plugin upload, and unauthenticated operational endpoints.                                                                                                                                                                                                                                                                    |
 | FR-RUN-08 | Must     | All provider applications use aligned shard count and shard IDs. One stable environment/shard lease atomically owns the complete controller/worker set and fences by epoch, boot, catalog revision, and expiry; one process per guild with duplicate tokens is prohibited.                                                                                                                                                          |
@@ -217,17 +218,17 @@ unless evidence justifies an explicit waiver; **Could** is opportunistic.
 
 ### 6.8 Data lifecycle and privacy
 
-| ID        | Priority | Requirement and acceptance                                                                                                                                                                                                                                                           |
-| --------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| FR-DAT-01 | Must     | Public data-plane and private control-plane PostgreSQL schemas use separate owners, credentials and independently locked/checksummed migrations orchestrated in declared expand-contract order. SQLite remains supported for self-hosted shared behavior.                            |
-| FR-DAT-02 | Must     | Data-plane object keys begin with immutable `installationId`; private control-plane objects may use its opaque tenant UUID. Neither uses a raw guild/name as ownership. Access uses short-lived server-side credentials or signed URLs with bounded scope and lifetime.              |
-| FR-DAT-03 | Must     | The service publishes a data inventory, purpose, retention, subprocessors, deletion behavior, and contact route before external preview onboarding.                                                                                                                                  |
-| FR-DAT-04 | Must     | Tenant removal immediately denies service and schedules durable data deletion. The preview policy uses a configurable 30-day recovery window, after which tenant records and private objects are purged; legal/security holds are explicit and audited.                              |
-| FR-DAT-05 | Must     | Backups inherit encryption and retention policy. A deletion tombstone prevents a deleted tenant from being silently restored into active service.                                                                                                                                    |
-| FR-DAT-06 | Must     | Product analytics records funnel events and aggregate service outcomes, not Discord message content or unneeded raw media URLs. Identifiers are minimized and access-controlled.                                                                                                     |
-| FR-DAT-07 | Must     | Remote media and upload handling enforces scheme and destination policy, private-network denial, redirects, timeouts, byte limits, MIME inspection, quotas, filename safety, and malware-policy review.                                                                              |
-| FR-DAT-08 | Must     | Runtime core credentials cannot read control-plane identity/session/audit records; control-plane services do not query Jasper tables directly. Durable restore covers both database domains, tenant objects, config/catalog and an independently retained deletion-tombstone ledger. |
-| FR-DAT-09 | Must     | Every tenant-owned core/plugin row and object carries immutable `installationId` scope in addition to Discord guild correlation, so deletion/reinstall or ownership recovery cannot resurrect an earlier installation’s data.                                                        |
+| ID        | Priority | Requirement and acceptance                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| --------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| FR-DAT-01 | Must     | Public data-plane and private control-plane PostgreSQL schemas use separate owners, credentials and independently locked/checksummed migrations orchestrated in declared expand-contract order. SQLite remains supported for self-hosted shared behavior.                                                                                                                                                                                                                            |
+| FR-DAT-02 | Must     | Data-plane object keys begin with immutable `installationId`; private control-plane objects may use its opaque tenant UUID. Neither uses a raw guild/name as ownership. Access uses short-lived server-side credentials or signed URLs with bounded scope and lifetime.                                                                                                                                                                                                              |
+| FR-DAT-03 | Must     | The service publishes a data inventory, purpose, retention, subprocessors, deletion behavior, and contact route before external preview onboarding.                                                                                                                                                                                                                                                                                                                                  |
+| FR-DAT-04 | Must     | Tenant removal immediately records `deleting`, denies control-plane operations, stops admission-grant renewal, and schedules durable deletion. Runtime denial is confirmed only after revocation acknowledgement or expiry of the last ≤60-second grant; the portal shows the intervening revocation stage. The preview policy uses a configurable 30-day recovery window, after which tenant records and private objects are purged; legal/security holds are explicit and audited. |
+| FR-DAT-05 | Must     | Backups inherit encryption and retention policy. A deletion tombstone prevents a deleted tenant from being silently restored into active service.                                                                                                                                                                                                                                                                                                                                    |
+| FR-DAT-06 | Must     | Product analytics records funnel events and aggregate service outcomes, not Discord message content or unneeded raw media URLs. Identifiers are minimized and access-controlled.                                                                                                                                                                                                                                                                                                     |
+| FR-DAT-07 | Must     | Remote media and upload handling enforces scheme and destination policy, private-network denial, redirects, timeouts, byte limits, MIME inspection, quotas, filename safety, and malware-policy review.                                                                                                                                                                                                                                                                              |
+| FR-DAT-08 | Must     | Runtime core credentials cannot read control-plane identity/session/audit records; control-plane services do not query Jasper tables directly. Durable restore covers both database domains, tenant objects, config/catalog and an independently retained deletion-tombstone ledger.                                                                                                                                                                                                 |
+| FR-DAT-09 | Must     | Every tenant-owned core/plugin row and object carries immutable `installationId` scope in addition to Discord guild correlation, so deletion/reinstall or ownership recovery cannot resurrect an earlier installation’s data.                                                                                                                                                                                                                                                        |
 
 ## 7. Non-functional requirements
 
@@ -449,9 +450,10 @@ design work.
   application.
 - Discord application verification and intent approval planning as the service
   approaches scale thresholds.
-- A private `purrfectsoft/jasper-hosted` repository and appropriate private-repo
-  governance. The organization currently permits creation, but GitHub Free does
-  not provide private-repo branch protection/rulesets.
+- The private
+  [`purrfectsoft/jasper-hosted`](https://github.com/purrfectsoft/jasper-hosted)
+  repository and appropriate private-repo governance. GitHub Free does not
+  provide private-repo branch protection/rulesets.
 - Jasper repository admin help for new Actions environments, secrets, rules, or
   GitHub App grants; the active contributor has write but not admin.
 - Terms/privacy and upstream media-platform review before real-guild preview.
@@ -463,11 +465,12 @@ design work.
 - Current limitations and evidence: [current-state audit](current-state-audit.md)
 - Public/private and plugin decision: [plugin feasibility](plugin-feasibility.md)
 - Technical realization: [MVP design](mvp-design.md)
-- Proposed issue ownership and dependencies: [MVP issue plan](mvp-issue-plan.md)
+- Filed issue ownership and dependencies: [MVP issue plan](mvp-issue-plan.md)
 - Deferred designs and triggers: [future phases](future-phases.md)
 
 ## 15. Change log
 
-| Version | Date       | Change                                                 |
-| ------- | ---------- | ------------------------------------------------------ |
-| 0.1     | 2026-07-24 | Initial audited definition for review; no issues filed |
+| Version | Date       | Change                                                                     |
+| ------- | ---------- | -------------------------------------------------------------------------- |
+| 0.1     | 2026-07-24 | Initial audited definition for review; no issues filed                     |
+| 1.0     | 2026-07-25 | Accepted definition; filed 50 stable IDs and incorporated final review fix |
