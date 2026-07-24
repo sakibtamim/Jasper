@@ -23,6 +23,18 @@ It uses **yt-dlp** (an external command-line tool) to stream high-quality audio,
 - **Plugin System:** 🆕 Extend functionality with custom commands, hooks, and web routes. See [PLUGINS.md](PLUGINS.md).
 - **Web Dashboard:** Real-time monitoring of queues, workers, and statistics.
 
+## Quick Start
+
+The fastest way to get started is by running the interactive quick-setup script:
+
+```bash
+pnpm quick-start
+```
+
+This script will verify your Node/pnpm versions, install all dependencies, copy and update your `.env` configuration file, generate cryptographically secure keys for the Web UI, and verify the `yt-dlp` binary.
+
+---
+
 ## Sponsorship & Licensing
 
 This project is classified under the **Purrfect Universe Licensing Directive** as:
@@ -322,7 +334,9 @@ Before installing, ensure you have:
 2.  **FFmpeg** (The bot attempts to use a static binary, but having it installed globally is recommended).
 3.  **yt-dlp.exe** (Required for streaming).
 
-## Installation
+## Manual Installation
+
+If you prefer to set up the project manually:
 
 ### 1\. Clone the Repository
 
@@ -393,6 +407,20 @@ Fill in your details in the `.env` file:
 DISCORD_TOKEN=your_bot_token_here
 DISCORD_CLIENT_ID=your_client_id
 GUILD_ID=your_guild_id_for_testing
+```
+
+#### Synchronizing Environment Variables via Pawthy
+
+If the project environment is linked via Pawthy (by configuring `.pawthyrc`), you can easily pull the shared developer secrets using:
+
+```bash
+pnpm run env:pull
+```
+
+To push your local environment updates back to the shared team environment:
+
+```bash
+pnpm run env:push
 ```
 
 > **Note:** See [ENV.md](ENV.md) for complete documentation of all environment variables.
