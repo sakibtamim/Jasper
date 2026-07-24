@@ -33,6 +33,7 @@ export interface Song {
     fromCache?: boolean;
     startTime?: number;
     sourceType?: 'youtube' | 'attachment' | 'direct';
+    gain?: number;
 }
 
 export interface Queue {
@@ -54,6 +55,7 @@ export interface Queue {
     loopTrack?: boolean;
     loopQueue?: boolean;
     skipping?: boolean;
+    gain?: number;
 }
 
 // --- Database Types (Shared) ---
