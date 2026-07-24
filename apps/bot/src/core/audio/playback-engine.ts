@@ -272,8 +272,11 @@ export async function playSong(queue: Queue): Promise<void> {
 
         const resource = createAudioResource(audioSource, {
             inputType: StreamType.Arbitrary,
-            inlineVolume: false,
+            inlineVolume: true,
         });
+
+        const effectiveGain = typeof song.gain === 'number' ? song.gain : (typeof queue.gain === 'number' ? queue.gain : 1.0);
+        resource.volume?.setVolume(effectiveGain);
 
         queue.player.play(resource);
 
