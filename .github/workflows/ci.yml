@@ -113,8 +113,12 @@ jobs:
                   YT_DLP_SKIP_POSTINSTALL: 1
               run: pnpm install --frozen-lockfile
 
-            - name: Run test suite
+            - name: Run test suite (SQLite)
+              run: pnpm test
+
+            - name: Run test suite (PostgreSQL)
               env:
+                  DB_TYPE: postgres
                   DATABASE_URL: postgres://jasper:jasper_password@localhost:5432/jasper_test
               run: pnpm test
 

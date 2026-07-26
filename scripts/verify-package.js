@@ -26,7 +26,10 @@ const forbiddenPatterns = [
 
 function checkDirectory(dirPath) {
     if (!fs.existsSync(dirPath)) {
-        console.warn(`⚠️ Directory does not exist (may not be built yet): ${dirPath}`);
+        console.error(
+            `❌ ERROR: Production output directory missing: ${path.relative(rootDir, dirPath)}`,
+        );
+        errorsFound++;
         return;
     }
 
@@ -73,6 +76,22 @@ if (!fs.existsSync(botEntry)) {
     errorsFound++;
 } else {
     console.log(`✅ Found bot entry: ${path.relative(rootDir, botEntry)}`);
+}
+
+// Check web dist specifically
+const webDist = path.join(rootDir, 'apps', 'web', 'dist');
+if (!fs.existsSync(webDist)) {
+    console.error(`❌ ERROR: Web build directory missing: ${path.relative(rootDir, webDist)}`);
+    console.error('Please run "pnpm run build" before running package verification.');
+    errorsFound++;
+} else {
+    const webEntry = path.join(webDist, 'index.html');
+    if (!fs.existsSync(webEntry)) {
+        console.error(`❌ ERROR: Web entry file missing: ${path.relative(rootDir, webEntry)}`);
+        errorsFound++;
+    } else {
+        console.log(`✅ Found web entry: ${path.relative(rootDir, webEntry)}`);
+    }
 }
 
 for (const dir of distDirs) {
