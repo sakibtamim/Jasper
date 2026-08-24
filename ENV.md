@@ -80,10 +80,10 @@ The bot name is derived from the variable name:
 > [!IMPORTANT]
 > **PostgreSQL (`DB_TYPE=postgres`)** is strongly encouraged for all live production and staging deployments to ensure ACID durability and support concurrent web dashboard queries. **SQLite** is provided as zero-config local developer experience (DX) and testing infrastructure.
 
-| Variable       | Description                                                             | Default  |
-| -------------- | ----------------------------------------------------------------------- | -------- |
-| `DB_TYPE`      | Database driver: `postgres` (encouraged for live/staging) or `sqlite`   | `sqlite` |
-| `DATABASE_URL` | PostgreSQL connection string (required when `DB_TYPE=postgres`)         | (none)   |
+| Variable       | Description                                                           | Default  |
+| -------------- | --------------------------------------------------------------------- | -------- |
+| `DB_TYPE`      | Database driver: `postgres` (encouraged for live/staging) or `sqlite` | `sqlite` |
+| `DATABASE_URL` | PostgreSQL connection string (required when `DB_TYPE=postgres`)       | (none)   |
 
 **Example PostgreSQL URL:**
 
