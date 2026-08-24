@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+// Mock dotenv to ensure test hermeticity and prevent local .env files from overriding test env
+vi.mock('dotenv', () => ({
+    default: {
+        config: vi.fn(),
+    },
+}));
+
 describe('yt-dlp-helper.ts', () => {
     const originalEnv = process.env;
 
@@ -36,6 +43,23 @@ describe('yt-dlp-helper.ts', () => {
                 '--extractor-args',
                 'youtube:player_client=tv,web_creator',
             ]);
+        });
+    });
+
+    describe('findYtDlpPath', () => {
+        it('should find local binary if present in project roots', async () => {
+            const fs = await import('fs');
+            const existsSpy = vi.spyOn(fs.default, 'existsSync').mockImplementation((p) => {
+                return String(p).endsWith('yt-dlp');
+            });
+
+            const { findYtDlpPath } = await import('../yt-dlp-helper.js');
+            const result = findYtDlpPath();
+
+            expect(result).toBeTruthy();
+            expect(result?.endsWith('yt-dlp')).toBe(true);
+
+            existsSpy.mockRestore();
         });
     });
 });

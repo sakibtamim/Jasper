@@ -15,23 +15,7 @@ export function findYtDlpPath(): string | null {
     const isWin = process.platform === 'win32';
     const candidates = isWin ? ['yt-dlp.exe', 'yt-dlp'] : ['yt-dlp'];
 
-    // 1. Try to find system-installed yt-dlp
-    try {
-        const whichCmd = isWin ? 'where' : 'which';
-        // Prefer the standard binary name for the platform
-
-        for (const bin of candidates) {
-            const res = spawnSync(whichCmd, [bin], { encoding: 'utf8' });
-            if (res.status === 0 && res.stdout) {
-                const p = res.stdout.split(/\r?\n/)[0].trim();
-                if (p) return p;
-            }
-        }
-    } catch {
-        // Ignore system check failure
-    }
-
-    // 2. Check for local static binary in the project root
+    // 1. Check for local static binary in the project root first
     // Use process.cwd() for more robust path resolution in both development and production
     const roots = [
         process.cwd(), // Current working directory (could be app or monorepo root)
@@ -46,6 +30,22 @@ export function findYtDlpPath(): string | null {
                 return localPath;
             }
         }
+    }
+
+    // 2. Try to find system-installed yt-dlp on PATH
+    try {
+        const whichCmd = isWin ? 'where' : 'which';
+        // Prefer the standard binary name for the platform
+
+        for (const bin of candidates) {
+            const res = spawnSync(whichCmd, [bin], { encoding: 'utf8' });
+            if (res.status === 0 && res.stdout) {
+                const p = res.stdout.split(/\r?\n/)[0].trim();
+                if (p) return p;
+            }
+        }
+    } catch {
+        // Ignore system check failure
     }
 
     return null;
