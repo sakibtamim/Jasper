@@ -169,24 +169,28 @@ describe('env.ts', () => {
             delete process.env.CACHE_ENABLED;
             delete process.env.AFR_JASPER_WEIGHT;
             delete process.env.PORT;
+            delete process.env.YT_DLP_PLAYER_CLIENT;
 
             const env = await import('../env.js');
 
             expect(env.CACHE_ENABLED).toBe(false);
             expect(env.AFR_JASPER_WEIGHT).toBe(0.5);
             expect(env.PORT).toBe(0);
+            expect(env.YT_DLP_PLAYER_CLIENT).toBe('default');
         });
 
         it('should parse env var values correctly', async () => {
             process.env.CACHE_ENABLED = 'true';
             process.env.AFR_JASPER_WEIGHT = '0.75';
             process.env.PORT = '3000';
+            process.env.YT_DLP_PLAYER_CLIENT = 'custom_client';
 
             const env = await import('../env.js');
 
             expect(env.CACHE_ENABLED).toBe(true);
             expect(env.AFR_JASPER_WEIGHT).toBe(0.75);
             expect(env.PORT).toBe(3000);
+            expect(env.YT_DLP_PLAYER_CLIENT).toBe('custom_client');
         });
     });
 

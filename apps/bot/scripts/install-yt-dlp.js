@@ -105,8 +105,9 @@ async function downloadFile(url, dest) {
 }
 
 (async () => {
+    const force = process.argv.includes('--force') || Boolean(process.env.YT_DLP_FORCE_DOWNLOAD);
     const existing = findYtDlpPath();
-    if (existing) {
+    if (existing && !force) {
         console.log(`yt-dlp already available at: ${existing}`);
         return;
     }

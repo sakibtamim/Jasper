@@ -56,10 +56,9 @@ export function findYtDlpPath(): string | null {
  * Reads from environment variables with sensible defaults.
  */
 export function getBaseYtDlpArgs(): string[] {
-    return [
-        '--js-runtimes',
-        YT_DLP_JS_RUNTIME,
-        '--extractor-args',
-        `youtube:player_client=${YT_DLP_PLAYER_CLIENT}`,
-    ];
+    const args = ['--js-runtimes', YT_DLP_JS_RUNTIME];
+    if (YT_DLP_PLAYER_CLIENT && YT_DLP_PLAYER_CLIENT !== 'default') {
+        args.push('--extractor-args', `youtube:player_client=${YT_DLP_PLAYER_CLIENT}`);
+    }
+    return args;
 }
