@@ -56,6 +56,47 @@
             "overlay": ".agents/overlays/to-spec.md",
             "files": ["SKILL.md"]
         },
+        "grill-with-docs": {
+            "source": "mattpocock",
+            "sourcePath": "productivity/grilling",
+            "name": "grill-with-docs",
+            "scope": "project",
+            "overlay": ".agents/overlays/grill-with-docs.md",
+            "files": ["SKILL.md"]
+        },
+        "why": {
+            "source": "pstack",
+            "sourcePath": "why",
+            "scope": "project",
+            "files": [
+                "SKILL.md",
+                "references/epistemics.md",
+                "references/source-playbook.md",
+                "references/sources/code-archaeology.md",
+                "references/sources/incident-postmortem.md"
+            ]
+        },
+        "make-operations-idempotent": {
+            "source": "pstack",
+            "sourcePath": "principle-make-operations-idempotent",
+            "name": "make-operations-idempotent",
+            "scope": "project",
+            "files": ["SKILL.md"]
+        },
+        "separate-before-serializing-shared-state": {
+            "source": "pstack",
+            "sourcePath": "principle-separate-before-serializing-shared-state",
+            "name": "separate-before-serializing-shared-state",
+            "scope": "project",
+            "files": ["SKILL.md"]
+        },
+        "to-tickets": {
+            "source": "mattpocock",
+            "sourcePath": "engineering/to-tickets",
+            "scope": "project",
+            "overlay": ".agents/overlays/to-tickets.md",
+            "files": ["SKILL.md"]
+        },
         "grill-me": {
             "source": "mattpocock",
             "sourcePath": "productivity/grilling",
