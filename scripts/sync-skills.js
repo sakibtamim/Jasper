@@ -115,20 +115,19 @@ async function syncSkills() {
         try {
             fs.mkdirSync(targetDir, { recursive: true });
 
+            let skillUpdated = false;
             for (const file of config.files) {
-                const fileUrl = `${source.baseUrl}/${config.sourcePath}/${file}`;
                 const destPath = path.join(targetDir, file);
                 const destDir = path.dirname(destPath);
-
                 fs.mkdirSync(destDir, { recursive: true });
 
-                console.log(`   ⬇️  Fetching: ${file}`);
-                let content = await fetchUrl(fileUrl);
+                const fileUrl = `${source.baseUrl}/${config.sourcePath}/${file}`;
+                let newContent = await fetchUrl(fileUrl);
 
                 if (file === 'SKILL.md') {
                     // Update name in frontmatter if aliased
                     if (config.name) {
-                        content = content.replace(/^name:\s*.+$/m, `name: ${config.name}`);
+                        newContent = newContent.replace(/^name:\s*.+$/m, `name: ${config.name}`);
                     }
 
                     // Apply overlay if specified
@@ -136,19 +135,39 @@ async function syncSkills() {
                         const overlayPath = path.join(__dirname, '..', config.overlay);
                         if (fs.existsSync(overlayPath)) {
                             const overlayContent = fs.readFileSync(overlayPath, 'utf8');
-                            content = `${content.trim()}\n\n---\n${overlayContent.trim()}\n`;
-                            console.log(`   🧩 Applied project overlay: ${config.overlay}`);
+                            newContent = `${newContent.trim()}\n\n---\n${overlayContent.trim()}\n`;
                         }
                     }
 
                     // Validate frontmatter
-                    validateFrontmatter(content, targetName);
+                    validateFrontmatter(newContent, targetName);
                 }
 
-                fs.writeFileSync(destPath, content, 'utf8');
+                // Check if file is already identical on disk
+                let isOutdated = true;
+                if (fs.existsSync(destPath)) {
+                    const existingContent = fs.readFileSync(destPath, 'utf8');
+                    if (existingContent === newContent) {
+                        isOutdated = false;
+                    }
+                }
+
+                if (isOutdated) {
+                    fs.writeFileSync(destPath, newContent, 'utf8');
+                    console.log(
+                        `   ⬇️  ${fs.existsSync(destPath) ? 'Updated' : 'Installed'}: ${file}`,
+                    );
+                    skillUpdated = true;
+                } else {
+                    console.log(`   ⏩ Up to date: ${file}`);
+                }
             }
 
-            console.log(`   ✅ Successfully synced ${targetName}`);
+            if (skillUpdated) {
+                console.log(`   ✅ Synced changes for ${targetName}`);
+            } else {
+                console.log(`   ✨ ${targetName} is already up to date`);
+            }
             successCount++;
         } catch (err) {
             console.error(`   ❌ Failed to sync ${targetName}: ${err.message}`);
