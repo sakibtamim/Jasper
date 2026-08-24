@@ -20,21 +20,7 @@ function findYtDlpPath() {
     const isWin = process.platform === 'win32';
     const candidates = isWin ? ['yt-dlp.exe', 'yt-dlp'] : ['yt-dlp'];
 
-    // 1. Try to find system-installed yt-dlp
-    try {
-        const whichCmd = isWin ? 'where' : 'which';
-        for (const bin of candidates) {
-            const res = spawnSync(whichCmd, [bin], { encoding: 'utf8' });
-            if (res.status === 0 && res.stdout) {
-                const p = res.stdout.split(/\r?\n/)[0].trim();
-                if (p) return p;
-            }
-        }
-    } catch {
-        // Ignore system check failure
-    }
-
-    // 2. Check for local static binary in the project root
+    // 1. Check for local static binary in the project root first
     // Check both app root and monorepo root
     const roots = [
         path.resolve(__dirname, '..'), // App root
@@ -50,7 +36,30 @@ function findYtDlpPath() {
         }
     }
 
+    // 2. Try to find system-installed yt-dlp on PATH
+    try {
+        const whichCmd = isWin ? 'where' : 'which';
+        for (const bin of candidates) {
+            const res = spawnSync(whichCmd, [bin], { encoding: 'utf8' });
+            if (res.status === 0 && res.stdout) {
+                const p = res.stdout.split(/\r?\n/)[0].trim();
+                if (p) return p;
+            }
+        }
+    } catch {
+        // Ignore system check failure
+    }
+
     return null;
+}
+
+function isForceDownload() {
+    if (process.argv.includes('--force')) {
+        return true;
+    }
+    const envVal = process.env.YT_DLP_FORCE_DOWNLOAD;
+    if (!envVal) return false;
+    return !['0', 'false', 'no', 'off'].includes(envVal.trim().toLowerCase());
 }
 
 // Where to write the binary:
@@ -105,8 +114,9 @@ async function downloadFile(url, dest) {
 }
 
 (async () => {
+    const force = isForceDownload();
     const existing = findYtDlpPath();
-    if (existing) {
+    if (existing && !force) {
         console.log(`yt-dlp already available at: ${existing}`);
         return;
     }

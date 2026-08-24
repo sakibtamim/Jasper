@@ -131,10 +131,7 @@ export const ANNOUNCE_CHANNEL_ID = getOptionalEnv('ANNOUNCE_CHANNEL_ID');
  * yt-dlp Configuration
  */
 export const YT_DLP_JS_RUNTIME = getOptionalEnv('YT_DLP_JS_RUNTIME', 'node');
-export const YT_DLP_PLAYER_CLIENT = getOptionalEnv(
-    'YT_DLP_PLAYER_CLIENT',
-    'android_vr,android,web',
-);
+export const YT_DLP_PLAYER_CLIENT = getOptionalEnv('YT_DLP_PLAYER_CLIENT', 'default');
 
 /**
  * AFR (Automatic Feline Rotation) Configuration
