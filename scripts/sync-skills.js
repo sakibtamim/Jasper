@@ -47,20 +47,31 @@ function validateFrontmatter(content, skillName) {
 }
 
 function ensureSymlink(targetPath, linkPath) {
+    const linkDir = path.dirname(linkPath);
+    if (!fs.existsSync(linkDir)) {
+        fs.mkdirSync(linkDir, { recursive: true });
+    }
+
+    const relTarget = path.relative(path.dirname(linkPath), targetPath);
+
     try {
-        const linkDir = path.dirname(linkPath);
-        if (!fs.existsSync(linkDir)) {
-            fs.mkdirSync(linkDir, { recursive: true });
-        }
-        if (fs.existsSync(linkPath) || fs.lstatSync(linkPath).isSymbolicLink()) {
+        const stats = fs.lstatSync(linkPath);
+        if (stats.isSymbolicLink()) {
+            const currentTarget = fs.readlinkSync(linkPath);
+            if (currentTarget === relTarget) {
+                return; // Symlink already correct
+            }
+            // Symlink points to wrong target, replace it
+            fs.unlinkSync(linkPath);
+        } else {
+            console.warn(`   ⚠️ Warning: Non-symlink already exists at ${linkPath}. Skipping.`);
             return;
         }
     } catch {
-        // Link doesn't exist, proceed
+        // Path doesn't exist, proceed to create
     }
 
     try {
-        const relTarget = path.relative(path.dirname(linkPath), targetPath);
         fs.symlinkSync(relTarget, linkPath);
         console.log(`   🔗 Linked: ${path.relative(process.cwd(), linkPath)} -> ${relTarget}`);
     } catch (err) {
@@ -101,12 +112,36 @@ async function syncSkills() {
         console.log(`   Source: ${source.repo} (${config.sourcePath})`);
 
         if (isCheckOnly) {
-            const skillFile = path.join(targetDir, 'SKILL.md');
-            if (fs.existsSync(skillFile)) {
-                console.log(`   ✅ Validated (already present)`);
+            // In repo-level check mode, skip global skills unless explicitly running with --global
+            if (config.scope === 'global' && !process.argv.includes('--global')) {
+                console.log(`   ⏩ Skipped global scope in repo check mode`);
+                continue;
+            }
+
+            let allFilesValid = true;
+            for (const file of config.files) {
+                const destPath = path.join(targetDir, file);
+                if (!fs.existsSync(destPath)) {
+                    console.error(`   ❌ Missing declared file: ${file}`);
+                    allFilesValid = false;
+                    continue;
+                }
+
+                if (file === 'SKILL.md') {
+                    try {
+                        const content = fs.readFileSync(destPath, 'utf8');
+                        validateFrontmatter(content, targetName);
+                    } catch (err) {
+                        console.error(`   ❌ Invalid frontmatter in ${file}: ${err.message}`);
+                        allFilesValid = false;
+                    }
+                }
+            }
+
+            if (allFilesValid) {
+                console.log(`   ✅ Validated (all files present & valid)`);
                 successCount++;
             } else {
-                console.error(`   ❌ Missing on disk`);
                 errorCount++;
             }
             continue;
@@ -125,10 +160,8 @@ async function syncSkills() {
                 let newContent = await fetchUrl(fileUrl);
 
                 if (file === 'SKILL.md') {
-                    // Update name in frontmatter if aliased
-                    if (config.name) {
-                        newContent = newContent.replace(/^name:\s*.+$/m, `name: ${config.name}`);
-                    }
+                    // Ensure name in frontmatter matches registered targetName
+                    newContent = newContent.replace(/^name:\s*.+$/m, `name: ${targetName}`);
 
                     // Apply overlay if specified
                     if (config.overlay) {
