@@ -518,3 +518,11 @@ In production (`NODE_ENV=production`), test plugins are automatically disabled:
 The `soundboard` and `sound-effect-plugin` plugins remain enabled as they are functional features.
 
 You can override these defaults using the CLI commands above.
+
+---
+
+## 🛡️ Security & Trust Guidelines
+
+- **In-Process Execution**: Plugins run in the primary Node.js process and share memory and environment variables. Do not install untrusted third-party plugin ZIP archives.
+- **Tenant Scope (vNext)**: When building plugins for multi-guild or hosted deployments, avoid storing global state in `context.db.plugin`. Always namespace persistent data by guild or installation context ([`HJ-OSS-10`](docs/hosted-jasper/mvp-issue-plan.md#hj-oss-10--version-the-plugin-sdk-for-typed-policy-lifecycle-and-capabilities)).
+- **Safe Remote Fetching**: Never fetch remote URLs directly with `axios` or raw `fetch` without validating destination hostnames against private IP ranges (SSRF prevention). Use the centralized safe-fetch utility when available ([`HJ-OSS-08`](docs/hosted-jasper/mvp-issue-plan.md#hj-oss-08--add-installation-scoped-storage-providers-and-safe-media-ingestion)).

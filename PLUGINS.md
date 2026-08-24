@@ -56,3 +56,22 @@ apps/bot/src/plugins/
 
 - **Sample Plugin** (`sample-plugin`): A reference implementation demonstrating frontend widgets and pages.
 - **Sound Effect Plugin** (`sound-effect-plugin`): Plays sound effects when bots join channels.
+- **Garage Band** (`garage-band`): Playlist creation and audio enhancement (managed via out-of-tree submodule).
+- **Soundboard** (`soundboard`): Sound effect management and playback.
+
+---
+
+## 🛡️ Security & Execution Boundary
+
+> [!IMPORTANT]
+> **Plugins are Trusted Node Code**: Plugins run in-process with ordinary Node.js authority and share the process memory and runtime environment. Fastify route encapsulation is an organizational primitive, not a security sandbox.
+> In hosted multi-tenant profiles, only build-time allowlisted and integrity-verified plugins are admitted.
+
+### Plugin SDK vNext Roadmap
+
+Under [`HJ-OSS-10`](docs/hosted-jasper/mvp-issue-plan.md#hj-oss-10--version-the-plugin-sdk-for-typed-policy-lifecycle-and-capabilities), the Plugin SDK is evolving to include:
+
+1. **Mandatory `GuildScope`**: Explicit `(guildId, installationId)` scoping on all database, asset, and hook interfaces.
+2. **Typed Default-Deny Routes**: JSON Schema validation and action-based access declarations for all plugin HTTP endpoints.
+3. **Lifecycle Disposal Handles**: Clean unbind handles for all registered hooks and scheduled tasks upon plugin unload.
+4. **Isolated Audio Enqueue**: Stable audio enqueue service ([`HJ-OSS-13`](docs/hosted-jasper/mvp-issue-plan.md#hj-oss-13--expose-stable-plugin-audio-enqueue-service)) replacing direct imports into core music player code.
