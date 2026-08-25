@@ -10,6 +10,8 @@
         "quick-start": "bash scripts/quick-start.sh",
         "env:pull": "pawthy pull -f .env --merge",
         "env:push": "pawthy push -f .env",
+        "start": "pnpm --filter jasper-bot start",
+        "deploy:commands": "pnpm --filter jasper-bot run deploy:commands",
         "prod:build": "turbo run build",
         "prod:start": "PORT=3000 NODE_ENV=production node apps/bot/dist/index.js",
         "prod:preview": "turbo run build && PORT=3000 NODE_ENV=production node apps/bot/dist/index.js",

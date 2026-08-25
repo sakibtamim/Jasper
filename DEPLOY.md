@@ -80,13 +80,12 @@ The deployment is handled automatically by GitHub Actions when you push to the `
 
 ## Troubleshooting
 
-### Node Version Mismatch
+### Node Version & Database Support
 
-If you encounter `ERR_DLOPEN_FAILED` related to `better-sqlite3`, ensure that the Node.js version used to run the bot matches the version used to build dependencies.
+Jasper uses Node.js built-in `node:sqlite` for single-instance storage by default, and supports PostgreSQL for multi-instance or scaled production deployments (configured via `DB_TYPE=postgres` and `DATABASE_URL`). Ensure the runtime environment matches Node.js **v24+** (as specified in `.nvmrc`).
 
 - Recommended Node Version: **v24+**
 - If using `pnpm`, ensure it uses the same Node version as your runtime.
-- To rebuild native dependencies: `pnpm rebuild`
 
 ### Plugin Loading Issues
 
@@ -102,8 +101,10 @@ To start the production server:
 pnpm prod:start
 ```
 
-Ensure `PORT` is set (default is 3000).
+Ensure `PORT` is set (e.g., `PORT=3000`; defaults to `0` / disabled if unset).
 
-- **Restart**: `pm2 restart jasper-bot`
-- **Stop**: `pm2 stop jasper-bot`
+- **Restart**: `pm2 restart Jasper`
+- **Stop**: `pm2 stop Jasper`
 - **Status**: `pm2 status`
+
+> **Note on Deployment Architecture**: This PM2 SSH deployment lane represents the legacy single-host manual path. Production-grade containerization with immutable OCI base images, Docker Compose profiles, and signed release promotion are being established under [`HJ-OSS-14`](docs/hosted-jasper/mvp-issue-plan.md#hj-oss-14--publish-jasper-base-image-and-one-container-sqlite-quick-path) and [`HJ-OSS-19`](docs/hosted-jasper/mvp-issue-plan.md#hj-oss-19--publish-production-like-self-host-compose-and-recovery-path).

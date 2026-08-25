@@ -13,7 +13,7 @@ It uses **yt-dlp** (an external command-line tool) to stream high-quality audio,
 - **Slash Commands:** Modern, easy-to-use interface.
 - **Reliable Search:** Uses `yt-search` for accurate video results.
 - **Direct URL Support:** Plays YouTube links directly, skipping search.
-- **Queue System:** View, skip, stop, and manage music queues per server.
+- **Queue System:** View, skip, stop, and manage music queues per voice channel.
 - **Autoplay:** Automatically finds and plays related songs when the queue ends.
 - **Voice Status Updates:** Updates the voice channel status to show the currently playing song.
 - **Now Playing:** Shows rich embeds with video thumbnails, duration, and interactive controls.
@@ -90,14 +90,14 @@ This ensures the project remains open, resilient, supported, and future-proof wh
 
 Jasper supports a unique **Controller + Worker** architecture.
 
-- **Jasper (Controller):** The main bot you interact with via Slash Commands (`/play`, `/stop`).
-- **Workers (Misty, Tuki, etc.):** Additional bot accounts that handle the actual audio playback.
+- **Jasper (Controller):** The primary bot coordinating slash commands (`/play`, `/stop`), and an active AFR participant that also provides fallback playback when workers are unavailable.
+- **Workers (Misty, Tuki, etc.):** Additional bot accounts that handle concurrent audio playback across voice channels.
 
 **How it works:**
 
 1. You send a command to Jasper: `/play song`.
-2. With **Automatic Feline Rotation (AFR)**, Jasper has a 50% chance of joining your channel himself.
-3. The other 50% of the time, he'll summon a random **Worker Bot** (e.g., Misty or Tuki) to handle the music.
+2. With **Automatic Feline Rotation (AFR)**, Jasper probabilistically selects who joins your channel (default 50% Jasper, 50% distributed among available worker cats).
+3. If all workers are occupied or unavailable, Jasper himself steps in as the fallback player.
 4. Each cat announces their arrival with unique, randomized messages! 🐾
 5. This allows multiple voice channels to have music simultaneously, all controlled via Jasper!
 
@@ -268,10 +268,10 @@ Cache statistics are logged on bot startup and during cleanup:
 
 ### Supported Database Engines
 
-Jasper supports dual database drivers out of the box via an abstraction layer with 100% feature parity:
+Jasper supports dual database drivers out of the box via a unified persistence abstraction:
 
-1. **PostgreSQL (Strongly Recommended for Production & Staging)**: High performance, durable ACID persistence, and support for concurrent web dashboard queries. **Required for production and live staging environments with real users.**
-2. **SQLite (Local DX & Testing)**: Zero-configuration file-based database stored in `data/jasper.db`. Ideal for local developer workflows, automated test suites, and single-instance environments.
+1. **SQLite (Default / Local DX & Single-Instance)**: Zero-configuration file-based database powered by Node.js built-in `node:sqlite` (stored in `data/jasper.db`). Ideal for local developer workflows, automated test suites, and single-instance self-hosters.
+2. **PostgreSQL (Production & Multi-Tenant Staging)**: High performance, durable ACID persistence with connection pooling. Comprehensive migration locking, column parity, and strict TLS enforcement are tracked under [`HJ-OSS-07`](docs/hosted-jasper/mvp-issue-plan.md#hj-oss-07--re-scope-122-migrations-postgresql-parity-and-installation-safe-data).
 
 ### Configuration
 
@@ -283,7 +283,7 @@ DB_TYPE=postgres
 DATABASE_URL=postgresql://user:password@localhost:5432/jasper_db
 ```
 
-If `DB_TYPE` is omitted, Jasper defaults to `sqlite` for seamless local developer onboarding.
+If `DB_TYPE` is omitted, Jasper defaults to `sqlite` for zero-configuration onboarding.
 
 ### Viewing Statistics
 
@@ -318,7 +318,7 @@ Once enabled, start the bot and visit:
 
 ## Tech Stack
 
-- **Runtime:** Node.js (v18+)
+- **Runtime:** Node.js (v24+)
 - **Language:** TypeScript (strict mode)
 - **Architecture:** Monorepo (Turborepo + pnpm/pnpm workspaces)
 - **Bot Framework:** [discord.js](https://discord.js.org/) v14
@@ -331,7 +331,7 @@ Once enabled, start the bot and visit:
 
 Before installing, ensure you have:
 
-1.  **Node.js** (v18 or higher) installed.
+1.  **Node.js** (v24 or higher, as specified in `.nvmrc` and `package.json`).
     - **Note:** Node.js is also used by yt-dlp for JavaScript execution during YouTube extraction.
 2.  **FFmpeg** (The bot attempts to use a static binary, but having it installed globally is recommended).
 3.  **yt-dlp.exe** (Required for streaming).
