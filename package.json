@@ -15,6 +15,8 @@
         "prod:preview": "turbo run build && PORT=3000 NODE_ENV=production node apps/bot/dist/index.js",
         "mcp:inspect": "node scripts/test-mcp.js",
         "mcp:sync": "node scripts/sync-mcp.js",
+        "skills:sync": "node scripts/sync-skills.js",
+        "skills:check": "node scripts/sync-skills.js --check",
         "typecheck": "turbo run typecheck",
         "format": "prettier --write \"**/*.{ts,tsx,md}\"",
         "format:plugins": "prettier --write \"apps/bot/src/plugins/**/*.{ts,tsx,md}\"",

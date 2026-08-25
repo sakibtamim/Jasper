@@ -301,7 +301,9 @@ async function createQueue(
                     !queue.textChannel.isDMBased()
                 ) {
                     try {
-                        const channel = await queue.worker.client.channels.fetch(queue.voiceChannelId);
+                        const channel = await queue.worker.client.channels.fetch(
+                            queue.voiceChannelId,
+                        );
                         const channelName =
                             channel && 'name' in channel
                                 ? (channel as { name: string }).name
@@ -935,7 +937,9 @@ async function toggleLoop(interaction: ChatInputCommandInteraction): Promise<voi
         queue.loopQueue = false;
     }
 
-    await interaction.reply(`🔂 **Looping is now ${queue.loopTrack ? 'ENABLED (repeating current track)' : 'DISABLED'}**`);
+    await interaction.reply(
+        `🔂 **Looping is now ${queue.loopTrack ? 'ENABLED (repeating current track)' : 'DISABLED'}**`,
+    );
 }
 
 async function toggleRepeat(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -955,7 +959,9 @@ async function toggleRepeat(interaction: ChatInputCommandInteraction): Promise<v
         queue.loopTrack = false;
     }
 
-    await interaction.reply(`🔁 **Queue repeating is now ${queue.loopQueue ? 'ENABLED (repeating the entire queue)' : 'DISABLED'}**`);
+    await interaction.reply(
+        `🔁 **Queue repeating is now ${queue.loopQueue ? 'ENABLED (repeating the entire queue)' : 'DISABLED'}**`,
+    );
 }
 
 async function shuffleQueue(interaction: ChatInputCommandInteraction): Promise<void> {
