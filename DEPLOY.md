@@ -80,9 +80,9 @@ The deployment is handled automatically by GitHub Actions when you push to the `
 
 ## Troubleshooting
 
-### Node Version & SQLite Engine
+### Node Version & Database Support
 
-Jasper uses Node.js built-in `node:sqlite` for local single-instance storage and PostgreSQL for production environments. Ensure the runtime environment matches Node.js **v24+** (as specified in `.nvmrc`).
+Jasper uses Node.js built-in `node:sqlite` for single-instance storage by default, and supports PostgreSQL for multi-instance or scaled production deployments (configured via `DB_TYPE=postgres` and `DATABASE_URL`). Ensure the runtime environment matches Node.js **v24+** (as specified in `.nvmrc`).
 
 - Recommended Node Version: **v24+**
 - If using `pnpm`, ensure it uses the same Node version as your runtime.

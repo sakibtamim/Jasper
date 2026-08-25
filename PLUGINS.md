@@ -65,7 +65,7 @@ apps/bot/src/plugins/
 
 > [!IMPORTANT]
 > **Plugins are Trusted Node Code**: Plugins run in-process with ordinary Node.js authority and share the process memory and runtime environment. Fastify route encapsulation is an organizational primitive, not a security sandbox.
-> In hosted multi-tenant profiles, only build-time allowlisted and integrity-verified plugins are admitted.
+> In target hosted multi-tenant profiles ([`HJ-OSS-10`](docs/hosted-jasper/mvp-issue-plan.md#hj-oss-10--version-the-plugin-sdk-for-typed-policy-lifecycle-and-capabilities) / [`HJ-OSS-20`](docs/hosted-jasper/mvp-issue-plan.md#hj-oss-20--enforce-installation-and-provider-operational-safety-policy)), only build-time allowlisted and integrity-verified plugins will be admitted.
 
 ### Plugin SDK vNext Roadmap
 
