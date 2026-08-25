@@ -8,7 +8,8 @@
         "lint": {},
         "typecheck": {},
         "test": {
-            "dependsOn": ["^build"]
+            "dependsOn": ["^build"],
+            "env": ["DB_TYPE", "DATABASE_URL"]
         },
         "dev": {
             "cache": false,
