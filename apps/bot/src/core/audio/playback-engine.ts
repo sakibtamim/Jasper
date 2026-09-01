@@ -234,13 +234,15 @@ export async function playSong(queue: Queue, customSeekSeconds: number = 0): Pro
             if (storage) {
                 const videoId = extractVideoId(song.url);
                 const cachedPath = path.join(process.cwd(), 'cache', 'audio', `${videoId}.webm`);
-                const hasCachedFile = await fsPromises
-                    .access(cachedPath)
-                    .then(() => true)
-                    .catch(() => false);
+                const cachedStream = await storage.getCachedAudioStream(
+                    videoId,
+                    song.requesterId,
+                    song.requestedBy,
+                );
 
-                if (hasCachedFile && seekSeconds > 0) {
-                    // Seek within cached file on disk via ffmpeg
+                if (cachedStream && seekSeconds > 0) {
+                    // Close the initial read stream and seek within verified cached file on disk
+                    cachedStream.destroy();
                     const process = createFfmpegSeekStream(cachedPath, seekSeconds);
                     if (!process.stdout) {
                         throw new Error('Failed to create ffmpeg seek process stdout');
@@ -254,58 +256,47 @@ export async function playSong(queue: Queue, customSeekSeconds: number = 0): Pro
                             queue.streamProcess = null;
                         }
                     });
-                } else {
-                    const cachedStream =
-                        seekSeconds === 0
-                            ? await storage.getCachedAudioStream(
-                                  videoId,
-                                  song.requesterId,
-                                  song.requestedBy,
-                              )
-                            : null;
-
-                    if (cachedStream) {
-                        // Cache hit: stream from disk
-                        audioSource = cachedStream;
-                        song.fromCache = true;
-                        logger.info(`[cache] Streaming from cache for: ${song.title}`);
-                        queue.streamProcess = null;
-                    } else if (seekSeconds === 0) {
-                        // Cache miss: stream from memory while writing to disk (async)
-                        audioSource = await storage.cacheAudioStream(
-                            song.url,
-                            videoId,
-                            [song.title],
-                            song.durationInSec,
-                        );
-                        const proc = (
-                            audioSource as { ytDlpProcess?: import('child_process').ChildProcess }
-                        ).ytDlpProcess;
-                        if (proc) {
-                            queue.streamProcess = proc;
-                            proc.on('exit', () => {
-                                if (queue.streamProcess === proc) {
-                                    queue.streamProcess = null;
-                                }
-                            });
-                        } else {
-                            queue.streamProcess = null;
-                        }
-                        logger.info(`[cache] Downloading and caching: ${song.title}`);
-                    } else {
-                        // Seek on non-cached track: stream from yt-dlp
-                        const process = createStreamProcess(song.url, seekSeconds);
-                        if (!process.stdout) {
-                            throw new Error('Failed to create yt-dlp process stdout');
-                        }
-                        audioSource = process.stdout;
-                        queue.streamProcess = process;
-                        process.on('exit', () => {
-                            if (queue.streamProcess === process) {
+                } else if (cachedStream) {
+                    // Cache hit: stream from disk
+                    audioSource = cachedStream;
+                    song.fromCache = true;
+                    logger.info(`[cache] Streaming from cache for: ${song.title}`);
+                    queue.streamProcess = null;
+                } else if (seekSeconds === 0) {
+                    // Cache miss: stream from memory while writing to disk (async)
+                    audioSource = await storage.cacheAudioStream(
+                        song.url,
+                        videoId,
+                        [song.title],
+                        song.durationInSec,
+                    );
+                    const proc = (
+                        audioSource as { ytDlpProcess?: import('child_process').ChildProcess }
+                    ).ytDlpProcess;
+                    if (proc) {
+                        queue.streamProcess = proc;
+                        proc.on('exit', () => {
+                            if (queue.streamProcess === proc) {
                                 queue.streamProcess = null;
                             }
                         });
+                    } else {
+                        queue.streamProcess = null;
                     }
+                    logger.info(`[cache] Downloading and caching: ${song.title}`);
+                } else {
+                    // Seek on non-cached track: stream from yt-dlp
+                    const process = createStreamProcess(song.url, seekSeconds);
+                    if (!process.stdout) {
+                        throw new Error('Failed to create yt-dlp process stdout');
+                    }
+                    audioSource = process.stdout;
+                    queue.streamProcess = process;
+                    process.on('exit', () => {
+                        if (queue.streamProcess === process) {
+                            queue.streamProcess = null;
+                        }
+                    });
                 }
             } else {
                 // Cache storage not available, fallback to direct stream

@@ -13,6 +13,8 @@ describe('time-parser: parseSeekPosition', () => {
         expect(parseSeekPosition('33.3%', TRACK_DURATION)).toBe(99);
         expect(parseSeekPosition('150%', TRACK_DURATION)).toBeNull();
         expect(parseSeekPosition('-10%', TRACK_DURATION)).toBeNull();
+        expect(parseSeekPosition('50%', 0)).toBeNull();
+        expect(parseSeekPosition('0%', 0)).toBe(0);
     });
 
     it('should parse timestamps (MM:SS and HH:MM:SS) correctly', () => {

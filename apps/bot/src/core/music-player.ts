@@ -473,6 +473,11 @@ async function enqueue(
             const parsedSeek = parseSeekPosition(options.seek, track.durationInSec);
             if (parsedSeek !== null && parsedSeek >= 0) {
                 songToAdd.initialSeek = parsedSeek;
+            } else {
+                await interaction.editReply({
+                    content: `❌ Invalid seek position \`${options.seek}\`. Total duration for **${track.title}** is **${formatDuration(track.durationInSec)}**.`,
+                });
+                return;
             }
         }
 

@@ -17,7 +17,9 @@ export function parseSeekPosition(input: string, totalDurationInSec: number = 0)
     if (percentMatch) {
         const percent = parseFloat(percentMatch[1]);
         if (isNaN(percent) || percent < 0 || percent > 100) return null;
-        if (totalDurationInSec <= 0) return 0;
+        if (totalDurationInSec <= 0) {
+            return percent === 0 ? 0 : null;
+        }
         return Math.floor((percent / 100) * totalDurationInSec);
     }
 
