@@ -64,6 +64,8 @@ describe('WorkerPool', () => {
         for (const worker of workers) {
             // @ts-expect-error - token should not exist on WorkerState
             expect(worker.token).toBeUndefined();
+            expect('token' in worker).toBe(false);
+            expect(Object.prototype.hasOwnProperty.call(worker, 'token')).toBe(false);
         }
     });
 

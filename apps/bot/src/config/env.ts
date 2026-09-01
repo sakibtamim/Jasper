@@ -1,3 +1,4 @@
+import { RuntimeProfile } from '@jasper/types';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -143,8 +144,6 @@ export const AFR_JASPER_WEIGHT = getOptionalFloat('AFR_JASPER_WEIGHT', 0.5, 0, 1
 /**
  * Runtime Profile & Environment
  */
-export type RuntimeProfile = 'self-hosted' | 'hosted';
-
 export const RUNTIME_PROFILE: RuntimeProfile = ((): RuntimeProfile => {
     const raw = getOptionalEnv(
         'RUNTIME_PROFILE',
@@ -191,29 +190,75 @@ const IGNORED_TOKEN_KEYS = new Set([
     'SESSION_TOKEN',
     'BEARER_TOKEN',
     'WEBHOOK_TOKEN',
+    'SENTRY_AUTH_TOKEN',
+    'SENTRY_TOKEN',
+    'DOCKER_TOKEN',
+    'VERCEL_TOKEN',
+    'NETLIFY_TOKEN',
+    'TURBO_TOKEN',
+    'CI_TOKEN',
+    'HONEYCOMB_TOKEN',
+    'CODECOV_TOKEN',
+    'DATABASE_TOKEN',
+    'POSTGRES_TOKEN',
+    'REDIS_TOKEN',
+    'JWT_TOKEN',
+    'OAUTH_TOKEN',
+    'STRIPE_TOKEN',
 ]);
+
+const IGNORED_TOKEN_PREFIXES = [
+    'NPM_',
+    'GITHUB_',
+    'GH_',
+    'AWS_',
+    'PAWTHY_',
+    'SENTRY_',
+    'DOCKER_',
+    'VERCEL_',
+    'NETLIFY_',
+    'TURBO_',
+    'CI_',
+    'HONEYCOMB_',
+    'CODECOV_',
+    'DATABASE_',
+    'POSTGRES_',
+    'REDIS_',
+    'DISCORD_',
+    'FASTIFY_',
+    'VITE_',
+    'COOKIE_',
+];
 
 /**
  * Dynamically discover worker bot tokens.
  *
- * 1. Supports explicit `JASPER_WORKER_<NAME>_TOKEN` in all profiles.
+ * 1. Supports case-insensitive explicit `JASPER_WORKER_<NAME>_TOKEN` in all profiles.
  * 2. In self-hosted profile, retains backward-compatible discovery for legacy worker
  *    environment variables (e.g., `MISTY_TOKEN`, `TUKI_TOKEN`), while strictly ignoring
  *    infrastructure and system tokens.
  */
 export function getWorkerTokens(
     env: Record<string, string | undefined> = process.env,
+    profile?: RuntimeProfile,
 ): WorkerToken[] {
+    const effectiveProfile: RuntimeProfile =
+        profile ||
+        (env.RUNTIME_PROFILE as RuntimeProfile) ||
+        (env.JASPER_PROFILE as RuntimeProfile) ||
+        RUNTIME_PROFILE;
+
     const workers: WorkerToken[] = [];
     const seenNames = new Set<string>();
 
-    // 1. Explicit prefixed tokens: JASPER_WORKER_<NAME>_TOKEN
+    // 1. Explicit prefixed tokens: JASPER_WORKER_<NAME>_TOKEN (case-insensitive)
     Object.keys(env).forEach((key) => {
-        if (key.startsWith('JASPER_WORKER_') && key.endsWith('_TOKEN')) {
+        const upperKey = key.toUpperCase();
+        if (upperKey.startsWith('JASPER_WORKER_') && upperKey.endsWith('_TOKEN')) {
             const token = env[key]?.trim();
             if (!token) return;
 
-            const name = key
+            const name = upperKey
                 .replace(/^JASPER_WORKER_/, '')
                 .replace(/_TOKEN$/, '')
                 .toLowerCase()
@@ -229,24 +274,21 @@ export function getWorkerTokens(
     });
 
     // 2. Backward-compatible discovery for self-hosted mode
-    if (RUNTIME_PROFILE === 'self-hosted') {
+    if (effectiveProfile === 'self-hosted') {
         Object.keys(env).forEach((key) => {
             const upperKey = key.toUpperCase();
+            const isIgnoredPrefix = IGNORED_TOKEN_PREFIXES.some((p) => upperKey.startsWith(p));
             if (
                 upperKey.endsWith('_TOKEN') &&
                 !upperKey.startsWith('JASPER_WORKER_') &&
                 !IGNORED_TOKEN_KEYS.has(upperKey) &&
-                !upperKey.startsWith('NPM_') &&
-                !upperKey.startsWith('GITHUB_') &&
-                !upperKey.startsWith('GH_') &&
-                !upperKey.startsWith('AWS_') &&
-                !upperKey.startsWith('PAWTHY_')
+                !isIgnoredPrefix
             ) {
                 const token = env[key]?.trim();
                 if (!token) return;
 
-                const name = key
-                    .replace(/_TOKEN$/i, '')
+                const name = upperKey
+                    .replace(/_TOKEN$/, '')
                     .toLowerCase()
                     .split('_')
                     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))

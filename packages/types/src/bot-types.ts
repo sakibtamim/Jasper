@@ -13,11 +13,19 @@ import {
 
 export type RuntimeProfile = 'self-hosted' | 'hosted';
 
-export interface BotIdentityConfig {
+/** Safe public identity metadata (never carries credentials) */
+export interface BotIdentityInfo {
     name: string;
-    token: string;
     role: 'controller' | 'worker';
 }
+
+/** Internal bot identity credentials used during startup login */
+export interface BotCredentials extends BotIdentityInfo {
+    token: string;
+}
+
+/** @deprecated Use BotCredentials for internal config or BotIdentityInfo for public metadata */
+export type BotIdentityConfig = BotCredentials;
 
 // --- Worker Pool Types ---
 
