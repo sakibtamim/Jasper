@@ -265,8 +265,30 @@ export async function playSong(queue: Queue, seekSeconds: number = 0): Promise<v
                         song.fromCache = true;
                         logger.info(`[cache] Streaming from cache for: ${song.title}`);
                         queue.streamProcess = null;
+                    } else if (seekSeconds === 0) {
+                        // Cache miss: stream from memory while writing to disk (async)
+                        audioSource = await storage.cacheAudioStream(
+                            song.url,
+                            videoId,
+                            [song.title],
+                            song.durationInSec,
+                        );
+                        const proc = (
+                            audioSource as { ytDlpProcess?: import('child_process').ChildProcess }
+                        ).ytDlpProcess;
+                        if (proc) {
+                            queue.streamProcess = proc;
+                            proc.on('exit', () => {
+                                if (queue.streamProcess === proc) {
+                                    queue.streamProcess = null;
+                                }
+                            });
+                        } else {
+                            queue.streamProcess = null;
+                        }
+                        logger.info(`[cache] Downloading and caching: ${song.title}`);
                     } else {
-                        // Cache miss or seek on non-cached track: stream from yt-dlp
+                        // Seek on non-cached track: stream from yt-dlp
                         const process = createStreamProcess(song.url, seekSeconds);
                         if (!process.stdout) {
                             throw new Error('Failed to create yt-dlp process stdout');
@@ -278,9 +300,6 @@ export async function playSong(queue: Queue, seekSeconds: number = 0): Promise<v
                                 queue.streamProcess = null;
                             }
                         });
-                        if (seekSeconds === 0) {
-                            logger.info(`[cache] Downloading and caching: ${song.title}`);
-                        }
                     }
                 }
             } else {
@@ -523,6 +542,11 @@ export async function playSong(queue: Queue, seekSeconds: number = 0): Promise<v
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         logger.error(`[playback] Failed to play song: ${message}`);
+
+        if (seekSeconds > 0) {
+            throw error;
+        }
+
         queue.songs.shift();
 
         // If Radio mode is active and we failed, try next song immediately

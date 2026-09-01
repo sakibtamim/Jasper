@@ -170,7 +170,7 @@ export function createFfmpegSeekStream(
     seekSeconds: number = 0,
 ): ChildProcess {
     const ffmpeg = (ffmpegPath as unknown as string) || 'ffmpeg';
-    const args: string[] = [];
+    const args: string[] = ['-protocol_whitelist', 'file,http,https,tcp,tls'];
 
     if (seekSeconds > 0) {
         args.push('-ss', String(seekSeconds));
