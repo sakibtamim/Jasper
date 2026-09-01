@@ -153,4 +153,14 @@ describe('musicPlayer.seek', () => {
             expect.stringContaining('Seeked to **1:30** (30%) in **Test Song**'),
         );
     });
+
+    it('should support initial seek option in createPlayCommand builder', async () => {
+        const { createPlayCommand } = await import('../../../utils/play-command-factory.js');
+        const playCommand = createPlayCommand('play', 'Play a song');
+        const json = playCommand.data.toJSON();
+
+        const seekOpt = json.options?.find((opt) => opt.name === 'seek');
+        expect(seekOpt).toBeDefined();
+        expect(seekOpt?.description).toContain('Start playback from timestamp or offset');
+    });
 });

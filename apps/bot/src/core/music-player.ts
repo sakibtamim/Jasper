@@ -427,6 +427,8 @@ async function ensureQueue(
 interface EnqueueOptions {
     position?: 'next' | 'end';
     skipCurrent?: boolean;
+    seek?: string;
+    initialSeek?: number;
 }
 
 async function enqueue(
@@ -459,11 +461,20 @@ async function enqueue(
             logger.info(`Cleared idle timeout for ${queue.voiceChannelId} - new song added`);
         }
 
-        const songToAdd = {
+        const songToAdd: Song = {
             ...track,
             requestedBy: interaction.user.tag,
             requesterId: interaction.user.id,
         };
+
+        if (options.initialSeek !== undefined && options.initialSeek >= 0) {
+            songToAdd.initialSeek = options.initialSeek;
+        } else if (options.seek) {
+            const parsedSeek = parseSeekPosition(options.seek, track.durationInSec);
+            if (parsedSeek !== null && parsedSeek >= 0) {
+                songToAdd.initialSeek = parsedSeek;
+            }
+        }
 
         if (options.position === 'next') {
             // splice(1, 0, item) inserts at index 1 for non-empty arrays, or index 0 for empty arrays

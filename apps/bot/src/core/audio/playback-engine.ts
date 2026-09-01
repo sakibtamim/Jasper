@@ -160,7 +160,7 @@ export async function handleAutoplay(queue: Queue, lastSong: Song): Promise<void
     }
 }
 
-export async function playSong(queue: Queue, seekSeconds: number = 0): Promise<void> {
+export async function playSong(queue: Queue, customSeekSeconds: number = 0): Promise<void> {
     // Kill any existing stream process before playing a new track
     if (queue.streamProcess) {
         try {
@@ -184,8 +184,13 @@ export async function playSong(queue: Queue, seekSeconds: number = 0): Promise<v
         return;
     }
 
+    const seekSeconds = customSeekSeconds > 0 ? customSeekSeconds : (song.initialSeek ?? 0);
+    if (song.initialSeek !== undefined) {
+        delete song.initialSeek;
+    }
+
     // Hook: PRE_MUSIC_PLAY (Async to avoid blocking playback) - only trigger on initial play
-    if (seekSeconds === 0) {
+    if (customSeekSeconds === 0) {
         await hookManager.triggerAsync('PRE_MUSIC_PLAY', { queue, song });
     }
 
@@ -341,7 +346,7 @@ export async function playSong(queue: Queue, seekSeconds: number = 0): Promise<v
         queue.nowPlaying = song;
         queue.nowPlaying.startTime = Date.now() - seekSeconds * 1000;
 
-        if (seekSeconds === 0) {
+        if (customSeekSeconds === 0) {
             // Hook: POST_MUSIC_PLAY (Async)
             await hookManager.triggerAsync('POST_MUSIC_PLAY', { queue, song });
 

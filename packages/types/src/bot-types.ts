@@ -33,6 +33,7 @@ export interface Song {
     fromCache?: boolean;
     startTime?: number;
     sourceType?: 'youtube' | 'attachment' | 'direct';
+    initialSeek?: number;
 }
 
 export interface Queue {
