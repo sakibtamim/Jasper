@@ -327,18 +327,22 @@ export async function playSong(queue: Queue, customSeekSeconds: number = 0): Pro
             });
         }
 
-        const resource = createAudioResource(audioSource, {
-            inputType,
-            inlineVolume: true,
-        });
-
         const effectiveGain =
-            typeof song.gain === 'number'
+            typeof song.gain === 'number' && Number.isFinite(song.gain)
                 ? song.gain
-                : typeof queue.gain === 'number'
+                : typeof queue.gain === 'number' && Number.isFinite(queue.gain)
                   ? queue.gain
                   : 1.0;
-        resource.volume?.setVolume(effectiveGain);
+
+        const needsVolume = effectiveGain !== 1.0;
+        const resource = createAudioResource(audioSource, {
+            inputType,
+            inlineVolume: needsVolume,
+        });
+
+        if (needsVolume && resource.volume) {
+            resource.volume.setVolume(effectiveGain);
+        }
 
         queue.player.play(resource);
 

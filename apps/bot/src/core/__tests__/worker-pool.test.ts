@@ -59,6 +59,14 @@ describe('WorkerPool', () => {
         expect(workers.find((w) => w.name === 'Misty')?.role).toBe('worker');
     });
 
+    it('should never expose token on WorkerState objects', () => {
+        const workers = workerPool.createBots();
+        for (const worker of workers) {
+            // @ts-expect-error - token should not exist on WorkerState
+            expect(worker.token).toBeUndefined();
+        }
+    });
+
     it('should get the controller', () => {
         workerPool.createBots();
         const controller = workerPool.getController();

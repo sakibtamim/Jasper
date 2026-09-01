@@ -141,14 +141,31 @@ export const YT_DLP_PLAYER_CLIENT = getOptionalEnv('YT_DLP_PLAYER_CLIENT', 'defa
 export const AFR_JASPER_WEIGHT = getOptionalFloat('AFR_JASPER_WEIGHT', 0.5, 0, 1);
 
 /**
- * Runtime Environment
+ * Runtime Profile & Environment
  */
+export type RuntimeProfile = 'self-hosted' | 'hosted';
+
+export function getRuntimeProfile(
+    env: Record<string, string | undefined> = process.env,
+): RuntimeProfile {
+    const raw = (env.RUNTIME_PROFILE || env.JASPER_PROFILE || 'self-hosted').toLowerCase();
+    if (raw !== 'self-hosted' && raw !== 'hosted') {
+        throw new Error(`Invalid RUNTIME_PROFILE: "${raw}". Must be "self-hosted" or "hosted".`);
+    }
+    return raw as RuntimeProfile;
+}
+
+export const RUNTIME_PROFILE: RuntimeProfile = getRuntimeProfile();
+
+export const isHostedProfile = RUNTIME_PROFILE === 'hosted';
+export const isSelfHostedProfile = RUNTIME_PROFILE === 'self-hosted';
+
 export const NODE_ENV = getOptionalEnv('NODE_ENV', 'production');
 export const isProduction = NODE_ENV === 'production';
 export const isDevelopment = NODE_ENV === 'development';
 
 // ============================================================================
-// Worker Bot Tokens (Dynamic)
+// Worker Bot Tokens (Token-Safe Discovery)
 // ============================================================================
 
 export interface WorkerToken {
@@ -156,29 +173,94 @@ export interface WorkerToken {
     token: string;
 }
 
-/**
- * Dynamically loaded worker bot tokens
- * Finds all environment variables ending in _TOKEN (excluding DISCORD_TOKEN)
- */
-export function getWorkerTokens(): WorkerToken[] {
-    const workers: WorkerToken[] = [];
+// System, cloud, or package manager tokens that must NEVER be parsed as bot workers
+const IGNORED_TOKEN_KEYS = new Set([
+    'DISCORD_TOKEN',
+    'NPM_TOKEN',
+    'GITHUB_TOKEN',
+    'GH_TOKEN',
+    'API_TOKEN',
+    'SLACK_TOKEN',
+    'AWS_SESSION_TOKEN',
+    'PAWTHY_TOKEN',
+    'ACCESS_TOKEN',
+    'REFRESH_TOKEN',
+    'SECRET_TOKEN',
+    'AUTH_TOKEN',
+    'BOT_TOKEN',
+    'CSRF_TOKEN',
+    'SESSION_TOKEN',
+    'BEARER_TOKEN',
+    'WEBHOOK_TOKEN',
+]);
 
-    Object.keys(process.env).forEach((key) => {
-        if (key.endsWith('_TOKEN') && key !== 'DISCORD_TOKEN') {
-            const token = process.env[key];
+/**
+ * Dynamically discover worker bot tokens.
+ *
+ * 1. Supports explicit `JASPER_WORKER_<NAME>_TOKEN` in all profiles.
+ * 2. In self-hosted profile, retains backward-compatible discovery for legacy worker
+ *    environment variables (e.g., `MISTY_TOKEN`, `TUKI_TOKEN`), while strictly ignoring
+ *    infrastructure and system tokens.
+ */
+export function getWorkerTokens(
+    env: Record<string, string | undefined> = process.env,
+): WorkerToken[] {
+    const workers: WorkerToken[] = [];
+    const seenNames = new Set<string>();
+    const profile = getRuntimeProfile(env);
+
+    // 1. Explicit prefixed tokens: JASPER_WORKER_<NAME>_TOKEN
+    Object.keys(env).forEach((key) => {
+        if (key.startsWith('JASPER_WORKER_') && key.endsWith('_TOKEN')) {
+            const token = env[key]?.trim();
             if (!token) return;
 
-            // Extract name: MISTY_TOKEN -> Misty, MY_BOT_TOKEN -> My Bot
             const name = key
-                .replace('_TOKEN', '')
+                .replace(/^JASPER_WORKER_/, '')
+                .replace(/_TOKEN$/, '')
                 .toLowerCase()
                 .split('_')
                 .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
                 .join(' ');
 
-            workers.push({ name, token });
+            if (name && !seenNames.has(name.toLowerCase())) {
+                seenNames.add(name.toLowerCase());
+                workers.push({ name, token });
+            }
         }
     });
+
+    // 2. Backward-compatible discovery for self-hosted mode
+    if (profile === 'self-hosted') {
+        Object.keys(env).forEach((key) => {
+            const upperKey = key.toUpperCase();
+            if (
+                upperKey.endsWith('_TOKEN') &&
+                !upperKey.startsWith('JASPER_WORKER_') &&
+                !IGNORED_TOKEN_KEYS.has(upperKey) &&
+                !upperKey.startsWith('NPM_') &&
+                !upperKey.startsWith('GITHUB_') &&
+                !upperKey.startsWith('GH_') &&
+                !upperKey.startsWith('AWS_') &&
+                !upperKey.startsWith('PAWTHY_')
+            ) {
+                const token = env[key]?.trim();
+                if (!token) return;
+
+                const name = key
+                    .replace(/_TOKEN$/i, '')
+                    .toLowerCase()
+                    .split('_')
+                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ');
+
+                if (name && !seenNames.has(name.toLowerCase())) {
+                    seenNames.add(name.toLowerCase());
+                    workers.push({ name, token });
+                }
+            }
+        });
+    }
 
     return workers;
 }

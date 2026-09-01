@@ -65,7 +65,6 @@ function createBots(): WorkerState[] {
             name: botConfig.name,
             client: client,
             role: botConfig.role,
-            token: botConfig.token,
             busy: false,
             guildId: null,
             voiceChannelId: null,
@@ -81,12 +80,20 @@ function createBots(): WorkerState[] {
  * @returns {Promise<void>}
  */
 async function loginBots(): Promise<void> {
-    const loginPromises = workers.map(async (worker) => {
+    const loginPromises = bots.map(async (botConfig) => {
+        const worker = workers.find((w) => w.name === botConfig.name);
+        if (!worker) {
+            logger.warn(
+                `[workerpool] No initialized WorkerState found for configured bot "${botConfig.name}". Skipping login.`,
+            );
+            return;
+        }
+
         try {
             // Load events for this worker
             await loadEvents(worker.client, worker.name);
 
-            await worker.client.login(worker.token);
+            await worker.client.login(botConfig.token);
             logger.info(
                 `[${worker.name}] Logged in as ${worker.role}${worker.role === 'controller' ? ' (Leader)' : ''}`,
             );
