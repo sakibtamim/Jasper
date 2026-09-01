@@ -66,9 +66,17 @@ async function buildPlugins() {
                     const stat = fs.statSync(srcPath);
 
                     if (stat.isDirectory()) {
-                        // Skip web source, hidden folders, and output dirs
+                        // Skip web source, hidden folders, test dirs, and output dirs
                         if (
-                            ['web', 'node_modules', 'dist'].includes(item) ||
+                            [
+                                'web',
+                                'node_modules',
+                                'dist',
+                                '__tests__',
+                                'test',
+                                'tests',
+                                'coverage',
+                            ].includes(item) ||
                             item.startsWith('.')
                         ) {
                             continue;

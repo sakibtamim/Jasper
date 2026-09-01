@@ -47,3 +47,9 @@ pnpm-debug.log*
 # Teamwork Session Files & Workspace Customizations
 .agents/*
 !.agents/skills/
+!.agents/skills.manifest.json
+!.agents/overlays/
+
+# Pawthy CLI Credentials & Local Secrets
+.pawthy/
+

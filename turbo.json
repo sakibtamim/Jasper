@@ -7,6 +7,10 @@
         },
         "lint": {},
         "typecheck": {},
+        "test": {
+            "dependsOn": ["^build"],
+            "env": ["DB_TYPE", "DATABASE_URL"]
+        },
         "dev": {
             "cache": false,
             "persistent": true

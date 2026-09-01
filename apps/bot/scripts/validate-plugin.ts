@@ -22,6 +22,7 @@ async function validatePlugins() {
         const pluginDir = path.join(PLUGINS_DIR, pluginId);
 
         if (!fs.statSync(pluginDir).isDirectory()) continue;
+        if (fs.readdirSync(pluginDir).length === 0) continue;
 
         const errors: string[] = [];
         const manifestPath = path.join(pluginDir, 'jasper-plugin.json');

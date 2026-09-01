@@ -1,0 +1,150 @@
+name: CI
+
+on:
+    pull_request:
+        branches:
+            - master
+            - deploy
+    push:
+        branches:
+            - master
+            - deploy
+
+jobs:
+    build-and-typecheck:
+        name: Build & Typecheck
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version-file: '.nvmrc'
+                  cache: 'pnpm'
+
+            - name: Install dependencies
+              env:
+                  YT_DLP_SKIP_POSTINSTALL: 1
+              run: pnpm install --frozen-lockfile
+
+            - name: Build monorepo outputs
+              run: pnpm run build
+
+            - name: Typecheck monorepo
+              run: pnpm run typecheck
+
+            - name: Check for git status drift
+              run: |
+                  if [ -n "$(git status --porcelain)" ]; then
+                      echo "❌ ERROR: Git working directory is dirty after build and typecheck."
+                      echo "Stale generated files or uncommitted build side-effects detected:"
+                      git status --porcelain
+                      exit 1
+                  else
+                      echo "✅ Git working directory clean."
+                  fi
+
+    lint-and-validate:
+        name: Lint & Plugin Validation
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version-file: '.nvmrc'
+                  cache: 'pnpm'
+
+            - name: Install dependencies
+              env:
+                  YT_DLP_SKIP_POSTINSTALL: 1
+              run: pnpm install --frozen-lockfile
+
+            - name: Lint monorepo
+              run: pnpm run lint
+
+            - name: Validate bot plugins
+              run: pnpm --filter jasper-bot run plugin:validate
+
+    test-suite:
+        name: Test Suite (SQLite & PostgreSQL)
+        runs-on: ubuntu-latest
+
+        services:
+            postgres:
+                image: postgres:16-alpine
+                env:
+                    POSTGRES_DB: jasper_test
+                    POSTGRES_USER: jasper
+                    POSTGRES_PASSWORD: jasper_password
+                ports:
+                    - 5432:5432
+                options: >-
+                    --health-cmd pg_isready
+                    --health-interval 10s
+                    --health-timeout 5s
+                    --health-retries 5
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version-file: '.nvmrc'
+                  cache: 'pnpm'
+
+            - name: Install dependencies
+              env:
+                  YT_DLP_SKIP_POSTINSTALL: 1
+              run: pnpm install --frozen-lockfile
+
+            - name: Run test suite (SQLite)
+              run: pnpm test
+
+            - name: Run test suite (PostgreSQL)
+              env:
+                  DB_TYPE: postgres
+                  DATABASE_URL: postgres://jasper:jasper_password@localhost:5432/jasper_test
+              run: pnpm test
+
+    package-smoke:
+        name: Production Package Verification
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version-file: '.nvmrc'
+                  cache: 'pnpm'
+
+            - name: Install dependencies
+              env:
+                  YT_DLP_SKIP_POSTINSTALL: 1
+              run: pnpm install --frozen-lockfile
+
+            - name: Build production bundle
+              run: pnpm run prod:build
+
+            - name: Verify package cleanliness
+              run: pnpm run ci:package-verify

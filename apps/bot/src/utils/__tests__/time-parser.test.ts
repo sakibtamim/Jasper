@@ -13,16 +13,25 @@ describe('time-parser: parseSeekPosition', () => {
         expect(parseSeekPosition('33.3%', TRACK_DURATION)).toBe(99);
         expect(parseSeekPosition('150%', TRACK_DURATION)).toBeNull();
         expect(parseSeekPosition('-10%', TRACK_DURATION)).toBeNull();
+        expect(parseSeekPosition('50%', 0)).toBeNull();
+        expect(parseSeekPosition('0%', 0)).toBe(0);
     });
 
-    it('should parse timestamps (MM:SS and HH:MM:SS) correctly', () => {
+    it('should parse timestamps (MM:SS, MMM:SS and HH:MM:SS) correctly', () => {
         expect(parseSeekPosition('1:30', TRACK_DURATION)).toBe(90);
         expect(parseSeekPosition('01:30', TRACK_DURATION)).toBe(90);
         expect(parseSeekPosition('0:45', TRACK_DURATION)).toBe(45);
         expect(parseSeekPosition('4:59', TRACK_DURATION)).toBe(299);
         expect(parseSeekPosition('01:02:03', 4000)).toBe(3723);
         expect(parseSeekPosition('1:00:00', 4000)).toBe(3600);
+        expect(parseSeekPosition('66:30', 14000)).toBe(3990);
+        expect(parseSeekPosition('1:06:30', 14000)).toBe(3990);
+        expect(parseSeekPosition('112:30', 14000)).toBe(6750);
+        expect(parseSeekPosition('1:52:30', 14000)).toBe(6750);
+        expect(parseSeekPosition('138:15', 14000)).toBe(8295);
+        expect(parseSeekPosition('2:18:15', 14000)).toBe(8295);
         expect(parseSeekPosition('1:75', TRACK_DURATION)).toBeNull(); // Invalid seconds >= 60
+        expect(parseSeekPosition('1:65:00', 14000)).toBeNull(); // Invalid minutes >= 60 in HH:MM:SS
         expect(parseSeekPosition('5:01', TRACK_DURATION)).toBeNull(); // Exceeds duration
     });
 

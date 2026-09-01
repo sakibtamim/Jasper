@@ -1,0 +1,120 @@
+{
+    "version": "1.0.0",
+    "sources": {
+        "mattpocock": {
+            "repo": "mattpocock/skills",
+            "branch": "main",
+            "baseUrl": "https://raw.githubusercontent.com/mattpocock/skills/main/skills"
+        },
+        "pstack": {
+            "repo": "cursor/plugins",
+            "branch": "main",
+            "baseUrl": "https://raw.githubusercontent.com/cursor/plugins/main/pstack/skills"
+        }
+    },
+    "skills": {
+        "typescript-best-practices": {
+            "source": "pstack",
+            "sourcePath": "typescript-best-practices",
+            "scope": "project",
+            "files": ["SKILL.md", "references/patterns.md"]
+        },
+        "boundary-discipline": {
+            "source": "pstack",
+            "sourcePath": "principle-boundary-discipline",
+            "scope": "project",
+            "files": ["SKILL.md"]
+        },
+        "unslop": {
+            "source": "pstack",
+            "sourcePath": "unslop",
+            "scope": "project",
+            "files": ["SKILL.md"]
+        },
+        "tdd": {
+            "source": "mattpocock",
+            "sourcePath": "engineering/tdd",
+            "scope": "project",
+            "files": ["SKILL.md", "mocking.md", "tests.md"]
+        },
+        "migrate-then-delete-legacy-apis": {
+            "source": "pstack",
+            "sourcePath": "principle-migrate-callers-then-delete-legacy-apis",
+            "scope": "project",
+            "files": ["SKILL.md"]
+        },
+        "resolving-merge-conflicts": {
+            "source": "mattpocock",
+            "sourcePath": "engineering/resolving-merge-conflicts",
+            "scope": "project",
+            "files": ["SKILL.md"]
+        },
+        "to-spec": {
+            "source": "mattpocock",
+            "sourcePath": "engineering/to-spec",
+            "scope": "project",
+            "overlay": ".agents/overlays/to-spec.md",
+            "files": ["SKILL.md"]
+        },
+        "grill-with-docs": {
+            "source": "mattpocock",
+            "sourcePath": "productivity/grilling",
+            "name": "grill-with-docs",
+            "scope": "project",
+            "overlay": ".agents/overlays/grill-with-docs.md",
+            "files": ["SKILL.md"]
+        },
+        "why": {
+            "source": "pstack",
+            "sourcePath": "why",
+            "scope": "project",
+            "files": [
+                "SKILL.md",
+                "references/epistemics.md",
+                "references/source-playbook.md",
+                "references/sources/code-archaeology.md",
+                "references/sources/incident-postmortem.md"
+            ]
+        },
+        "make-operations-idempotent": {
+            "source": "pstack",
+            "sourcePath": "principle-make-operations-idempotent",
+            "name": "make-operations-idempotent",
+            "scope": "project",
+            "files": ["SKILL.md"]
+        },
+        "separate-before-serializing-shared-state": {
+            "source": "pstack",
+            "sourcePath": "principle-separate-before-serializing-shared-state",
+            "name": "separate-before-serializing-shared-state",
+            "scope": "project",
+            "files": ["SKILL.md"]
+        },
+        "to-tickets": {
+            "source": "mattpocock",
+            "sourcePath": "engineering/to-tickets",
+            "scope": "project",
+            "overlay": ".agents/overlays/to-tickets.md",
+            "files": ["SKILL.md"]
+        },
+        "grill-me": {
+            "source": "mattpocock",
+            "sourcePath": "productivity/grilling",
+            "scope": "global",
+            "name": "grill-me",
+            "files": ["SKILL.md"]
+        },
+        "reflect": {
+            "source": "pstack",
+            "sourcePath": "reflect",
+            "scope": "global",
+            "files": [
+                "SKILL.md",
+                "references/divergent-reviewer.md",
+                "references/judgment-reviewer.md",
+                "references/synthesizer.md",
+                "references/tooling-reviewer.md"
+            ]
+        }
+    }
+}

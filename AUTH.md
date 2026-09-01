@@ -107,10 +107,8 @@ Logs out the user.
 
 ## Roadmap & Future Work
 
-- [ ] **Middleware**: Implement a Fastify middleware/hook to protect specific routes (e.g., admin dashboard).
-- [ ] **Role-Based Access Control (RBAC)**:
-    - Fetch user's guilds and roles.
-    - Define permissions (e.g., "DJ", "Admin").
-- [ ] **Token Refresh**: Implement logic to use the `refresh_token` when the `access_token` expires.
-- [ ] **Postgres Implementation**: Fully implement the `upsertUser` and session methods in `PostgresAdapter`.
-- [ ] **State Parameter**: Ensure `@fastify/oauth2` is correctly handling the `state` parameter for CSRF protection (it does by default, but verify).
+- [x] **PostgreSQL Implementation**: `upsertUser` and session methods are implemented in `PostgresAdapter`. Automated integration tests, locked migrations, and strict TLS verification are tracked under [`HJ-OSS-07`](docs/hosted-jasper/mvp-issue-plan.md#hj-oss-07--re-scope-122-migrations-postgresql-parity-and-installation-safe-data).
+- [ ] **Default-Deny Route Middleware**: Implement Fastify middleware to enforce default-deny action policies and disable legacy admin surfaces in hosted mode ([`HJ-OSS-09`](docs/hosted-jasper/mvp-issue-plan.md#hj-oss-09--make-httpapi-authorization-default-deny-and-close-hosted-legacy-admin)).
+- [ ] **Customer & Staff Auth Separation**: Implement private Discord OAuth (`identify guilds`) with tenant membership and corporate OIDC/MFA for staff ([`HJ-PRV-03`](docs/hosted-jasper/mvp-issue-plan.md#hj-prv-03--build-customer-discord-identity-tenant-and-membership-service) / [`HJ-PRV-04`](docs/hosted-jasper/mvp-issue-plan.md#hj-prv-04--build-staff-oidc-rbac-and-privileged-action-service)).
+- [ ] **Token Refresh**: Automatic refresh of expired Discord OAuth access tokens.
+- [ ] **State Parameter**: Verify `@fastify/oauth2` CSRF state handling in all deployment topologies.

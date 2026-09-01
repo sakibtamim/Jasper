@@ -1,162 +1,57 @@
 ---
-trigger: model_decision
+trigger: always_on
 ---
 
-# Development Workflows
+# 🛠️ Development Standards & Workflows
 
-## Common Tasks
+## 🛡️ Guardrails & Safety First
 
-### Adding a New Command
+1. **Branching Strategy**: **NEVER** commit directly to `main` or `master`. Always create feature (`feat/`), bugfix (`fix/`), or chore (`chore/`) branches.
+2. **Environment & Sync**: Run `git status` to ensure a clean slate before any commits. Propose gitignoring newly discovered temporary files instead of committing them.
+3. **Dependencies & CVEs**: Do not install packages without approval. Run `pnpm audit` before upgrades/additions to check for vulnerability alerts.
+4. **Shell Portability**: Prefer PATH-based discovery for `pnpm`. Verify active package manager and runtime versions on startup using `pnpm -v && node -v`.
+5. **Fail Early**: Stop execution immediately on any non-zero exit code. Never ignore lint, test, or build errors.
 
-1. Create file in `apps/bot/src/commands/` (e.g., `mycommand.ts`)
-2. Use this boilerplate:
+## 📝 Code Standards & TypeScript Guidelines
 
-    ```typescript
-    import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
+- **Strict TypeScript**: Do not use `any`. Use `unknown` with type guards.
+- **ES Modules (ESM)**: All imports must end with `.js` extensions (even for `.ts` files).
+- **React & Styling**: Use functional components with named exports. Utilize design primitives from `@jasper/ui` rather than custom systems.
+- **Fastify Type Safety**: Annotate parameters directly on route callbacks:
+  `async (req: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => { ... }`
+- **Database Parity**: SQLite data adapter dates must be parsed explicitly: `new Date(row.date)`. Map nullable columns using explicit nullish coalescing to prevent raw `null` leaks: `prop: row.prop ?? undefined`.
+- **Mock Initializers**: Do not use arrow functions referencing block-scoped variables before declaration. Use shorthand methods and reference `this`.
 
-    import { Command } from '../types/command.js';
+---
 
-    export default {
-        data: new SlashCommandBuilder().setName('mycommand').setDescription('Does something cool'),
-        async execute(interaction: ChatInputCommandInteraction) {
-            await interaction.reply('Hello!');
-        },
-    } satisfies Command;
-    ```
+## 🚀 Key Workflows
 
-3. Run `pnpm run deploy:commands`
-4. Restart the bot
+### 1. Adding a Slash Command
 
-### Modifying Audio Logic
+Create `apps/bot/src/commands/mycommand.ts` using this boilerplate:
 
-- Edit `apps/bot/src/core/music-player.ts` or sub-modules in `apps/bot/src/core/audio/`
-- Stream handler: `apps/bot/src/core/audio/stream-handler.ts` (yt-dlp integration)
-- Always use `workerPool.allocateWorker()` before creating queue
-- Always release workers with `workerPool.releaseWorker()` when done
-- Queue Map is keyed by `voiceChannelId` for multi-channel support
+```typescript
+import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
 
-### Adding Database Models
+import { Command } from '../types/command.js';
 
-1. Add interface to `apps/bot/src/core/db/types.ts`
-2. Add methods to `DatabaseAdapter` interface
-3. Implement in both `sqlite-adapter.ts` and `postgres-adapter.ts`
-4. Use proper TypeScript types for all fields
-
-### Handling Interactions
-
-- Button/select menu handlers go in `interaction-create.ts` or in the command that spawned them
-- Use `ComponentCollector` for ephemeral interactions
-- `playback-engine.ts` uses collectors for playback buttons
-
-## Code Standards
-
-### TypeScript
-
-- Strict mode enabled
-- Explicit type annotations required
-- Avoid `any` types (use `unknown` with type guards)
-- Use defined interfaces for type safety
-- File extensions (`.js`) required in imports (ESM)
-
-### Error Handling
-
-- Use custom error classes for domain-specific errors
-- Add type guards for runtime validation
-- Log errors with `logger.error()` not `console.error()`
-- Provide user-friendly error messages
-
-### Async/Await
-
-- Used for all Discord API calls and file I/O
-- Proper error handling in try-catch blocks
-- Avoid callback-based patterns
-
-### Import Patterns
-
-- ES Modules only (`import`/`export`)
-- Use `.js` extensions even for `.ts` files
-- Organize imports: external → internal → types
-
-## Testing
-
-### Running Tests
-
-```bash
-pnpm test              # Run all tests (Turbo)
-pnpm run test:watch    # Watch mode
-pnpm run test:coverage # Coverage report
+export default {
+    data: new SlashCommandBuilder().setName('mycommand').setDescription('Boilerplate desc'),
+    async execute(interaction: ChatInputCommandInteraction) {
+        await interaction.reply('Hello World!');
+    },
+} satisfies Command;
 ```
 
-### Writing Tests
+After creating, run `pnpm run deploy:commands` to register it.
 
-- Use Vitest framework
-- Unit tests for business logic
-- Integration tests for database adapters
-- Mock external dependencies (Discord API, yt-dlp)
+### 2. Audio playback & Worker Management
 
-## Debugging
+- Always wrap audio queue creation with `workerPool.allocateWorker()`.
+- Always release workers via `workerPool.releaseWorker()` when playback completes or fails.
+- Key the queue map by `voiceChannelId` to support concurrent voice channels.
 
-### Common Issues
+### 3. Verification & Testing
 
-**"yt-dlp not found"**
-
-- Binary missing from root
-- Fix: `pnpm run postinstall` or manual download
-
-**Audio Stops / 403 Errors**
-
-- YouTube anti-bot measures
-- Fix: Update `yt-dlp` binary to latest
-
-**Permissions**
-
-- Bot needs: `Connect`, `Speak`, `Send Messages`, `Embed Links`, `Manage Channels`
-- Worker bots need same permissions
-- Ensure all bots invited to server
-
-### Logging
-
-- Use `apps/bot/src/core/logger.ts` instead of `console.log`
-- AFR decisions logged for debugging
-- Database queries logged in development
-- Web API requests logged with `fastify.log`
-
-## Deployment
-
-### Building
-
-```bash
-pnpm run build  # Compiles all apps/packages via Turbo
-pnpm start      # Runs compiled JavaScript
-```
-
-### Environment
-
-- Production should use PostgreSQL (set `DATABASE_URL`)
-- Set `AFR_JASPER_WEIGHT` for production behavior
-- Ensure `ENCRYPTION_KEY` is 32+ characters
-- Use `BASE_URL` for OAuth redirect URI
-- Use `FRONTEND_URL` for React redirects
-
-### Monitoring
-
-- Web dashboard at `/` shows bot status
-- `/api/status` endpoint for health checks
-- Check worker pool state with `/music-status` command
-
-## Agent Guidelines
-
-### File Updates
-
-- **.gemini/** and **.agent/rules/**: Always use command line tools (e.g., `cat`, `sed`) or full file rewrites to update these files. Do NOT use partial replacement tools.
-
-### Commit Practices
-
-- **Atomic Commits**: Prefer small, focused commits that address a single logical change.
-- **Descriptive Messages**: Write clear, concise commit messages explaining the "why" and "what".
-
-### Temporary Files
-
-- **Workspace Hygiene**: Never save temporary files (logs, diffs, review comments) in the root or source directories.
-- **Location**: Always use the `tmp/` directory, which is gitignored.
-- **Cleanup**: Delete temporary files when they are no longer needed.
+- **Test execution**: `pnpm test` (Vitest via Turborepo), `pnpm run test:watch`, `pnpm run test:coverage`.
+- **Formatting**: Run `pnpm run format` to clean up source files.

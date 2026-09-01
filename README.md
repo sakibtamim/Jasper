@@ -13,7 +13,7 @@ It uses **yt-dlp** (an external command-line tool) to stream high-quality audio,
 - **Slash Commands:** Modern, easy-to-use interface.
 - **Reliable Search:** Uses `yt-search` for accurate video results.
 - **Direct URL Support:** Plays YouTube links directly, skipping search.
-- **Queue System:** View, skip, stop, and manage music queues per server.
+- **Queue System:** View, skip, stop, and manage music queues per voice channel.
 - **Autoplay:** Automatically finds and plays related songs when the queue ends.
 - **Voice Status Updates:** Updates the voice channel status to show the currently playing song.
 - **Now Playing:** Shows rich embeds with video thumbnails, duration, and interactive controls.
@@ -22,6 +22,18 @@ It uses **yt-dlp** (an external command-line tool) to stream high-quality audio,
 - **Database & Statistics:** 🆕 Tracks song plays, user activity, and global stats using SQLite (default) or PostgreSQL.
 - **Plugin System:** 🆕 Extend functionality with custom commands, hooks, and web routes. See [PLUGINS.md](PLUGINS.md).
 - **Web Dashboard:** Real-time monitoring of queues, workers, and statistics.
+
+## Quick Start
+
+The fastest way to get started is by running the interactive quick-setup script:
+
+```bash
+pnpm quick-start
+```
+
+This script will verify your Node/pnpm versions, install all dependencies, copy and update your `.env` configuration file, generate cryptographically secure keys for the Web UI, and verify the `yt-dlp` binary.
+
+---
 
 ## Sponsorship & Licensing
 
@@ -78,14 +90,14 @@ This ensures the project remains open, resilient, supported, and future-proof wh
 
 Jasper supports a unique **Controller + Worker** architecture.
 
-- **Jasper (Controller):** The main bot you interact with via Slash Commands (`/play`, `/stop`).
-- **Workers (Misty, Tuki, etc.):** Additional bot accounts that handle the actual audio playback.
+- **Jasper (Controller):** The primary bot coordinating slash commands (`/play`, `/stop`), and an active AFR participant that also provides fallback playback when workers are unavailable.
+- **Workers (Misty, Tuki, etc.):** Additional bot accounts that handle concurrent audio playback across voice channels.
 
 **How it works:**
 
 1. You send a command to Jasper: `/play song`.
-2. With **Automatic Feline Rotation (AFR)**, Jasper has a 50% chance of joining your channel himself.
-3. The other 50% of the time, he'll summon a random **Worker Bot** (e.g., Misty or Tuki) to handle the music.
+2. With **Automatic Feline Rotation (AFR)**, Jasper probabilistically selects who joins your channel (default 50% Jasper, 50% distributed among available worker cats).
+3. If all workers are occupied or unavailable, Jasper himself steps in as the fallback player.
 4. Each cat announces their arrival with unique, randomized messages! 🐾
 5. This allows multiple voice channels to have music simultaneously, all controlled via Jasper!
 
@@ -254,22 +266,24 @@ Cache statistics are logged on bot startup and during cleanup:
 - **yt-dlp Issues:** If you encounter "Sign in to confirm you’re not a bot" errors, please refer to our [Cookie Management & Troubleshooting Guide](./YT-DLP_TROUBLESHOOTING.md).
 - **Database:** Ensure your database (SQLite or Postgres) is correctly configured in `.env`.
 
-### Supported Databases
+### Supported Database Engines
 
-1.  **SQLite (Default):** Zero-configuration, stores data in `data/jasper.db`. Perfect for small servers and development.
-2.  **PostgreSQL:** Recommended for production and large servers.
+Jasper supports dual database drivers out of the box via a unified persistence abstraction:
+
+1. **SQLite (Default / Local DX & Single-Instance)**: Zero-configuration file-based database powered by Node.js built-in `node:sqlite` (stored in `data/jasper.db`). Ideal for local developer workflows, automated test suites, and single-instance self-hosters.
+2. **PostgreSQL (Production & Multi-Tenant Staging)**: High performance, durable ACID persistence with connection pooling. Comprehensive migration locking, column parity, and strict TLS enforcement are tracked under [`HJ-OSS-07`](docs/hosted-jasper/mvp-issue-plan.md#hj-oss-07--re-scope-122-migrations-postgresql-parity-and-installation-safe-data).
 
 ### Configuration
 
-To use PostgreSQL, add these to your `.env` file:
+To enable PostgreSQL for production/staging deployments, configure your `.env` file:
 
 ```env
-# Database Configuration
+# Database Configuration (PostgreSQL Recommended for Live Deployments)
 DB_TYPE=postgres
 DATABASE_URL=postgresql://user:password@localhost:5432/jasper_db
 ```
 
-If `DB_TYPE` is not set or set to `sqlite`, it defaults to SQLite.
+If `DB_TYPE` is omitted, Jasper defaults to `sqlite` for zero-configuration onboarding.
 
 ### Viewing Statistics
 
@@ -304,7 +318,7 @@ Once enabled, start the bot and visit:
 
 ## Tech Stack
 
-- **Runtime:** Node.js (v18+)
+- **Runtime:** Node.js (v24+)
 - **Language:** TypeScript (strict mode)
 - **Architecture:** Monorepo (Turborepo + pnpm/pnpm workspaces)
 - **Bot Framework:** [discord.js](https://discord.js.org/) v14
@@ -317,12 +331,14 @@ Once enabled, start the bot and visit:
 
 Before installing, ensure you have:
 
-1.  **Node.js** (v18 or higher) installed.
+1.  **Node.js** (v24 or higher, as specified in `.nvmrc` and `package.json`).
     - **Note:** Node.js is also used by yt-dlp for JavaScript execution during YouTube extraction.
 2.  **FFmpeg** (The bot attempts to use a static binary, but having it installed globally is recommended).
 3.  **yt-dlp.exe** (Required for streaming).
 
-## Installation
+## Manual Installation
+
+If you prefer to set up the project manually:
 
 ### 1\. Clone the Repository
 
@@ -393,6 +409,20 @@ Fill in your details in the `.env` file:
 DISCORD_TOKEN=your_bot_token_here
 DISCORD_CLIENT_ID=your_client_id
 GUILD_ID=your_guild_id_for_testing
+```
+
+#### Synchronizing Environment Variables via Pawthy
+
+If the project environment is linked via Pawthy (by configuring `.pawthyrc`), you can easily pull the shared developer secrets using:
+
+```bash
+pnpm run env:pull
+```
+
+To push your local environment updates back to the shared team environment:
+
+```bash
+pnpm run env:push
 ```
 
 > **Note:** See [ENV.md](ENV.md) for complete documentation of all environment variables.
