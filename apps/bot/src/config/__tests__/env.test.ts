@@ -139,15 +139,30 @@ describe('env.ts', () => {
             expect(workers).toContainEqual({ name: 'Tuki', token: 'tuki-token' });
         });
 
-        it('should not include DISCORD_TOKEN as a worker', async () => {
+        it('should not include DISCORD_TOKEN or system tokens like NPM_TOKEN or GITHUB_TOKEN as workers', async () => {
             process.env.DISCORD_TOKEN = 'main-token';
             process.env.MISTY_TOKEN = 'misty-token';
+            process.env.NPM_TOKEN = 'npm_123456';
+            process.env.GITHUB_TOKEN = 'ghp_123456';
+            process.env.API_TOKEN = 'api_123456';
+            process.env.PAWTHY_TOKEN = 'pawthy_123456';
 
             const { getWorkerTokens } = await import('../env.js');
             const workers = getWorkerTokens();
 
             expect(workers).toHaveLength(1);
             expect(workers[0].name).toBe('Misty');
+        });
+
+        it('should support explicit JASPER_WORKER_<NAME>_TOKEN prefix', async () => {
+            process.env.JASPER_WORKER_KIKI_TOKEN = 'kiki-token';
+            process.env.JASPER_WORKER_SHADOW_CAT_TOKEN = 'shadow-token';
+
+            const { getWorkerTokens } = await import('../env.js');
+            const workers = getWorkerTokens();
+
+            expect(workers).toContainEqual({ name: 'Kiki', token: 'kiki-token' });
+            expect(workers).toContainEqual({ name: 'Shadow Cat', token: 'shadow-token' });
         });
 
         it('should convert multi-word names correctly', async () => {
@@ -160,6 +175,37 @@ describe('env.ts', () => {
                 name: 'My Cool Bot',
                 token: 'cool-bot-token',
             });
+        });
+    });
+
+    describe('RUNTIME_PROFILE', () => {
+        it('should default to self-hosted profile', async () => {
+            delete process.env.RUNTIME_PROFILE;
+            delete process.env.JASPER_PROFILE;
+
+            const { RUNTIME_PROFILE, isSelfHostedProfile, isHostedProfile } =
+                await import('../env.js');
+
+            expect(RUNTIME_PROFILE).toBe('self-hosted');
+            expect(isSelfHostedProfile).toBe(true);
+            expect(isHostedProfile).toBe(false);
+        });
+
+        it('should parse hosted profile correctly', async () => {
+            process.env.RUNTIME_PROFILE = 'hosted';
+
+            const { RUNTIME_PROFILE, isSelfHostedProfile, isHostedProfile } =
+                await import('../env.js');
+
+            expect(RUNTIME_PROFILE).toBe('hosted');
+            expect(isSelfHostedProfile).toBe(false);
+            expect(isHostedProfile).toBe(true);
+        });
+
+        it('should throw on invalid RUNTIME_PROFILE', async () => {
+            process.env.RUNTIME_PROFILE = 'invalid-profile';
+
+            await expect(import('../env.js')).rejects.toThrow(/Invalid RUNTIME_PROFILE/);
         });
     });
 
