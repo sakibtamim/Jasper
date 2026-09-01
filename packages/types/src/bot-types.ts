@@ -9,13 +9,22 @@ import {
     TextBasedChannel,
 } from 'discord.js';
 
+// --- Runtime Profile & Identity Types ---
+
+export type RuntimeProfile = 'self-hosted' | 'hosted';
+
+export interface BotIdentityConfig {
+    name: string;
+    token: string;
+    role: 'controller' | 'worker';
+}
+
 // --- Worker Pool Types ---
 
 export interface WorkerState {
     name: string;
     client: Client;
     role: 'controller' | 'worker';
-    token: string;
     busy: boolean;
     guildId: string | null;
     voiceChannelId: string | null;

@@ -1,29 +1,36 @@
+import { BotIdentityConfig } from '@jasper/types';
+
 import { DISCORD_TOKEN, getWorkerTokens } from './env.js';
 
-export interface BotConfig {
-    name: string;
-    token: string;
-    role: 'controller' | 'worker';
+export type BotConfig = BotIdentityConfig;
+
+/**
+ * Builds the bot configuration catalog for controller and worker instances.
+ */
+export function getBotConfigs(): BotConfig[] {
+    const configs: BotConfig[] = [];
+
+    // Controller (Jasper) is required if DISCORD_TOKEN is set
+    if (DISCORD_TOKEN) {
+        configs.push({
+            name: 'Jasper',
+            token: DISCORD_TOKEN,
+            role: 'controller',
+        });
+    }
+
+    // Load worker bots dynamically from verified worker tokens
+    const workerTokens = getWorkerTokens();
+    for (const worker of workerTokens) {
+        configs.push({
+            name: worker.name,
+            token: worker.token,
+            role: 'worker',
+        });
+    }
+
+    return configs;
 }
 
-const bots: BotConfig[] = [
-    {
-        name: 'Jasper',
-        token: DISCORD_TOKEN,
-        role: 'controller',
-    },
-];
-
-// Dynamically load worker bots from environment variables
-// Looks for any env var ending in _TOKEN (excluding DISCORD_TOKEN)
-// Example: MISTY_TOKEN -> Name: Misty, Role: worker
-const workerTokens = getWorkerTokens();
-for (const worker of workerTokens) {
-    bots.push({
-        name: worker.name,
-        token: worker.token,
-        role: 'worker',
-    });
-}
-
+const bots: BotConfig[] = getBotConfigs();
 export default bots;
