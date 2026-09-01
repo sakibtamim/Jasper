@@ -8,6 +8,8 @@ import { Queue, Song } from '@jasper/types';
 import { APIActionRowComponent, APIButtonComponent } from 'discord-api-types/v10';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, Message } from 'discord.js';
 import { GuildMember } from 'discord.js';
+import fsPromises from 'fs/promises';
+import path from 'path';
 import { Readable } from 'stream';
 import ytSearch from 'yt-search';
 
@@ -21,7 +23,11 @@ import { createControlButtons, getAutoplayButton } from '../ui/player-controls.j
 import { setVoiceStatus } from '../utils/voice-utils.js';
 import workerPool from '../worker-pool.js';
 import { deleteQueue } from './queue-manager.js';
-import { createDirectUrlStream, createStreamProcess } from './stream-handler.js';
+import {
+    createDirectUrlStream,
+    createFfmpegSeekStream,
+    createStreamProcess,
+} from './stream-handler.js';
 
 // Constants for Autoplay
 const AUTOPLAY_SEARCH_QUERIES = [
@@ -154,7 +160,7 @@ export async function handleAutoplay(queue: Queue, lastSong: Song): Promise<void
     }
 }
 
-export async function playSong(queue: Queue): Promise<void> {
+export async function playSong(queue: Queue, customSeekSeconds: number = 0): Promise<void> {
     // Kill any existing stream process before playing a new track
     if (queue.streamProcess) {
         try {
@@ -178,20 +184,41 @@ export async function playSong(queue: Queue): Promise<void> {
         return;
     }
 
-    // Hook: PRE_MUSIC_PLAY (Async to avoid blocking playback)
-    await hookManager.triggerAsync('PRE_MUSIC_PLAY', { queue, song });
+    const seekSeconds = customSeekSeconds > 0 ? customSeekSeconds : (song.initialSeek ?? 0);
+    if (song.initialSeek !== undefined) {
+        delete song.initialSeek;
+    }
+
+    // Hook: PRE_MUSIC_PLAY (Async to avoid blocking playback) - only trigger on initial play
+    if (customSeekSeconds === 0) {
+        await hookManager.triggerAsync('PRE_MUSIC_PLAY', { queue, song });
+    }
 
     try {
         logger.info(
-            `[playback] Attempting to stream: ${song.title} (source: ${song.sourceType ?? 'youtube'})`,
+            `[playback] Attempting to stream: ${song.title} (source: ${song.sourceType ?? 'youtube'}${seekSeconds > 0 ? `, seek: ${seekSeconds}s` : ''})`,
         );
 
         let audioSource: Readable;
+        let inputType: StreamType = StreamType.Arbitrary;
 
-        // Handle file attachments (direct URL streaming or local files)
-        if (song.sourceType === 'attachment') {
+        // Handle file attachments & direct streams (direct URL streaming or local files)
+        if (song.sourceType === 'attachment' || song.sourceType === 'direct') {
             logger.info(`[playback] Streaming attachment file: ${song.title}`);
-            if (song.url.startsWith('http')) {
+            if (seekSeconds > 0) {
+                const process = createFfmpegSeekStream(song.url, seekSeconds);
+                if (!process.stdout) {
+                    throw new Error('Failed to create ffmpeg seek process stdout');
+                }
+                audioSource = process.stdout;
+                queue.streamProcess = process;
+                inputType = StreamType.Raw;
+                process.on('exit', () => {
+                    if (queue.streamProcess === process) {
+                        queue.streamProcess = null;
+                    }
+                });
+            } else if (song.url.startsWith('http')) {
                 audioSource = await createDirectUrlStream(song.url);
             } else {
                 const fs = await import('node:fs');
@@ -206,44 +233,83 @@ export async function playSong(queue: Queue): Promise<void> {
             const storage = getCacheStorage();
             if (storage) {
                 const videoId = extractVideoId(song.url);
-                const cachedStream = await storage.getCachedAudioStream(
-                    videoId,
-                    song.requesterId,
-                    song.requestedBy,
-                );
+                const cachedPath = path.join(process.cwd(), 'cache', 'audio', `${videoId}.webm`);
+                const hasCachedFile = await fsPromises
+                    .access(cachedPath)
+                    .then(() => true)
+                    .catch(() => false);
 
-                if (cachedStream) {
-                    // Cache hit: stream from disk
-                    audioSource = cachedStream;
+                if (hasCachedFile && seekSeconds > 0) {
+                    // Seek within cached file on disk via ffmpeg
+                    const process = createFfmpegSeekStream(cachedPath, seekSeconds);
+                    if (!process.stdout) {
+                        throw new Error('Failed to create ffmpeg seek process stdout');
+                    }
+                    audioSource = process.stdout;
+                    queue.streamProcess = process;
+                    inputType = StreamType.Raw;
                     song.fromCache = true;
-                    logger.info(`[cache] Streaming from cache for: ${song.title}`);
-                    queue.streamProcess = null;
+                    process.on('exit', () => {
+                        if (queue.streamProcess === process) {
+                            queue.streamProcess = null;
+                        }
+                    });
                 } else {
-                    // Cache miss: stream from memory while writing to disk (async)
-                    audioSource = await storage.cacheAudioStream(
-                        song.url,
-                        videoId,
-                        [song.title],
-                        song.durationInSec,
-                    );
-                    const proc = (
-                        audioSource as { ytDlpProcess?: import('child_process').ChildProcess }
-                    ).ytDlpProcess;
-                    if (proc) {
-                        queue.streamProcess = proc;
-                        proc.on('exit', () => {
-                            if (queue.streamProcess === proc) {
+                    const cachedStream =
+                        seekSeconds === 0
+                            ? await storage.getCachedAudioStream(
+                                  videoId,
+                                  song.requesterId,
+                                  song.requestedBy,
+                              )
+                            : null;
+
+                    if (cachedStream) {
+                        // Cache hit: stream from disk
+                        audioSource = cachedStream;
+                        song.fromCache = true;
+                        logger.info(`[cache] Streaming from cache for: ${song.title}`);
+                        queue.streamProcess = null;
+                    } else if (seekSeconds === 0) {
+                        // Cache miss: stream from memory while writing to disk (async)
+                        audioSource = await storage.cacheAudioStream(
+                            song.url,
+                            videoId,
+                            [song.title],
+                            song.durationInSec,
+                        );
+                        const proc = (
+                            audioSource as { ytDlpProcess?: import('child_process').ChildProcess }
+                        ).ytDlpProcess;
+                        if (proc) {
+                            queue.streamProcess = proc;
+                            proc.on('exit', () => {
+                                if (queue.streamProcess === proc) {
+                                    queue.streamProcess = null;
+                                }
+                            });
+                        } else {
+                            queue.streamProcess = null;
+                        }
+                        logger.info(`[cache] Downloading and caching: ${song.title}`);
+                    } else {
+                        // Seek on non-cached track: stream from yt-dlp
+                        const process = createStreamProcess(song.url, seekSeconds);
+                        if (!process.stdout) {
+                            throw new Error('Failed to create yt-dlp process stdout');
+                        }
+                        audioSource = process.stdout;
+                        queue.streamProcess = process;
+                        process.on('exit', () => {
+                            if (queue.streamProcess === process) {
                                 queue.streamProcess = null;
                             }
                         });
-                    } else {
-                        queue.streamProcess = null;
                     }
-                    logger.info(`[cache] Downloading and caching: ${song.title}`);
                 }
             } else {
                 // Cache storage not available, fallback to direct stream
-                const process = createStreamProcess(song.url);
+                const process = createStreamProcess(song.url, seekSeconds);
                 if (!process.stdout) {
                     throw new Error('Failed to create yt-dlp process stdout');
                 }
@@ -257,7 +323,7 @@ export async function playSong(queue: Queue): Promise<void> {
             }
         } else {
             // Caching disabled: stream directly from yt-dlp
-            const process = createStreamProcess(song.url);
+            const process = createStreamProcess(song.url, seekSeconds);
             if (!process.stdout) {
                 throw new Error('Failed to create yt-dlp process stdout');
             }
@@ -271,7 +337,7 @@ export async function playSong(queue: Queue): Promise<void> {
         }
 
         const resource = createAudioResource(audioSource, {
-            inputType: StreamType.Arbitrary,
+            inputType,
             inlineVolume: true,
         });
 
@@ -286,197 +352,214 @@ export async function playSong(queue: Queue): Promise<void> {
         queue.player.play(resource);
 
         queue.nowPlaying = song;
-        queue.nowPlaying.startTime = Date.now();
+        queue.nowPlaying.startTime = Date.now() - seekSeconds * 1000;
 
-        // Hook: POST_MUSIC_PLAY (Async)
-        await hookManager.triggerAsync('POST_MUSIC_PLAY', { queue, song });
+        if (customSeekSeconds === 0) {
+            // Hook: POST_MUSIC_PLAY (Async)
+            await hookManager.triggerAsync('POST_MUSIC_PLAY', { queue, song });
 
-        // Track play in DB - only if we have a valid requester
-        if (song.requesterId && song.requesterId.trim() !== '') {
-            db.trackPlay({
-                userId: song.requesterId,
-                guildId: queue.guildId,
-                channelId: queue.voiceChannelId,
-                botName: queue.worker.name,
-                songTitle: song.title,
-                songUrl: song.url,
-                duration: song.durationInSec,
-                thumbnail: song.thumbnail,
-                playedAt: new Date(),
-            }).catch((err) => logger.error(`[db] Failed to track play: ${err}`));
-        } else {
-            logger.warn(`[db] Skipping play tracking for "${song.title}" - no valid requesterId`);
-        }
-
-        logger.info(`[playback] Now playing in ${queue.guildId}: ${song.title}`);
-
-        setVoiceStatus(queue.worker.client, queue.voiceChannelId, `[Playing] ${song.title}`);
-
-        // -------------------------------------------------------
-        // BUTTONS SETUP
-        // -------------------------------------------------------
-        const row = createControlButtons(queue.autoplay);
-
-        let playingMessage: Message | undefined;
-        if (queue.textChannel && 'send' in queue.textChannel) {
-            const devPrefix = getDevPrefix();
-
-            if (queue.isRadio) {
-                const embed = radioEmbed(
-                    song.title,
-                    song.url,
-                    song.thumbnail,
-                    queue.worker.name,
-                    devPrefix,
-                );
-                playingMessage = (await queue.textChannel
-                    .send({
-                        embeds: [embed],
-                        components: [row],
-                    })
-                    .catch((error: unknown) =>
-                        logger.warn(
-                            `Failed to send playing message: ${error instanceof Error ? error.message : String(error)}`,
-                        ),
-                    )) as Message | undefined;
+            // Track play in DB - only if we have a valid requester
+            if (song.requesterId && song.requesterId.trim() !== '') {
+                db.trackPlay({
+                    userId: song.requesterId,
+                    guildId: queue.guildId,
+                    channelId: queue.voiceChannelId,
+                    botName: queue.worker.name,
+                    songTitle: song.title,
+                    songUrl: song.url,
+                    duration: song.durationInSec,
+                    thumbnail: song.thumbnail,
+                    playedAt: new Date(),
+                }).catch((err) => logger.error(`[db] Failed to track play: ${err}`));
             } else {
-                const prefix = song.fromCache ? '⚡⚡ ' : '';
-                const embed = nowPlayingEmbed(
-                    song.title,
-                    song.url,
-                    song.thumbnail,
-                    queue.worker.name,
-                    `${prefix}${devPrefix}`,
+                logger.warn(
+                    `[db] Skipping play tracking for "${song.title}" - no valid requesterId`,
                 );
-                playingMessage = (await queue.textChannel
-                    .send({
-                        embeds: [embed],
-                        components: [row],
-                    })
-                    .catch((error: unknown) =>
-                        logger.warn(
-                            `Failed to send playing message: ${error instanceof Error ? error.message : String(error)}`,
-                        ),
-                    )) as Message | undefined;
             }
 
-            if (playingMessage) {
-                queue.playingMessage = playingMessage;
-            }
-        }
+            logger.info(`[playback] Now playing in ${queue.guildId}: ${song.title}`);
 
-        // Setup Collector to handle button clicks
-        if (playingMessage) {
-            const collector = playingMessage.createMessageComponentCollector({
-                componentType: ComponentType.Button,
-                time: song.durationInSec > 0 ? song.durationInSec * 1000 : 3600000, // Listen until song ends
-            });
+            setVoiceStatus(queue.worker.client, queue.voiceChannelId, `[Playing] ${song.title}`);
 
-            collector.on('collect', async (i) => {
-                if (!(i.member instanceof GuildMember)) {
-                    await i.reply({
-                        content: 'This command can only be used in a guild.',
-                        ephemeral: true,
-                    });
-                    return;
-                }
+            // -------------------------------------------------------
+            // BUTTONS SETUP
+            // -------------------------------------------------------
+            const row = createControlButtons(queue.autoplay);
 
-                // Security: Ensure clicker is in the same voice channel
-                const memberVoiceChannelId = i.member.voice.channelId;
-                if (!memberVoiceChannelId || memberVoiceChannelId !== queue.voiceChannelId) {
-                    return i.reply({
-                        content: 'You need to be in the voice channel to control music!',
-                        ephemeral: true,
-                    });
-                }
+            let playingMessage: Message | undefined;
+            if (queue.textChannel && 'send' in queue.textChannel) {
+                const devPrefix = getDevPrefix();
 
-                if (i.customId === 'pause_resume') {
-                    if (queue.player.state.status === AudioPlayerStatus.Paused) {
-                        queue.player.unpause();
-                        setVoiceStatus(
-                            queue.worker.client,
-                            queue.voiceChannelId,
-                            `[Playing] ${queue.nowPlaying!.title}`,
-                        );
-                        // Update button to show "Pause" again
-                        const newRow = ActionRowBuilder.from<ButtonBuilder>(
-                            playingMessage!
-                                .components[0] as APIActionRowComponent<APIButtonComponent>,
-                        );
-                        newRow.components[0].setLabel('⏸️ Pause').setStyle(ButtonStyle.Secondary);
-                        await i.update({ components: [newRow] });
-                    } else {
-                        queue.player.pause();
-                        setVoiceStatus(
-                            queue.worker.client,
-                            queue.voiceChannelId,
-                            `[PAUSED] ${queue.nowPlaying!.title}`,
-                        );
-                        // Update button to show "Resume"
-                        const newRow = ActionRowBuilder.from<ButtonBuilder>(
-                            playingMessage!
-                                .components[0] as APIActionRowComponent<APIButtonComponent>,
-                        );
-                        newRow.components[0].setLabel('▶️ Resume').setStyle(ButtonStyle.Success);
-                        await i.update({ components: [newRow] });
-                    }
-                } else if (i.customId === 'skip') {
-                    await i.reply({ content: `⏭️ **Skipped** by ${i.user.username}` });
-                    queue.player.stop();
-                    collector.stop();
-                } else if (i.customId === 'stop') {
-                    await i.reply({ content: `⏹️ **Stopped** by ${i.user.username}` });
-                    queue.stopping = true;
-                    setVoiceStatus(queue.worker.client, queue.voiceChannelId, '');
-                    queue.songs = [];
-                    queue.player.stop();
-                    if (
-                        queue.connection &&
-                        queue.connection.state.status !== VoiceConnectionStatus.Destroyed
-                    ) {
-                        try {
-                            queue.connection.destroy();
-                        } catch (error) {
-                            logger.warn(`[PlaybackEngine] Failed to destroy connection: ${error}`);
-                        }
-                    }
-                    deleteQueue(queue.voiceChannelId);
-                    workerPool.releaseWorker(queue.voiceChannelId);
-                    collector.stop();
-                } else if (i.customId === 'toggle_autoplay') {
-                    queue.autoplay = !queue.autoplay;
-                    const newRow = ActionRowBuilder.from<ButtonBuilder>(
-                        playingMessage!.components[0] as APIActionRowComponent<APIButtonComponent>,
+                if (queue.isRadio) {
+                    const embed = radioEmbed(
+                        song.title,
+                        song.url,
+                        song.thumbnail,
+                        queue.worker.name,
+                        devPrefix,
                     );
-                    // Replace the last component (autoplay button) with the updated one
-                    newRow.components.pop();
-                    newRow.addComponents(getAutoplayButton(queue.autoplay));
-                    await i.update({ components: [newRow] });
-                }
-            });
-
-            // Disable buttons when the song ends
-            collector.on('end', () => {
-                try {
-                    const disabledRow = ActionRowBuilder.from<ButtonBuilder>(
-                        playingMessage!.components[0] as APIActionRowComponent<APIButtonComponent>,
-                    );
-                    disabledRow.components.forEach((btn) => btn.setDisabled(true));
-                    playingMessage!
-                        .edit({ components: [disabledRow] })
+                    playingMessage = (await queue.textChannel
+                        .send({
+                            embeds: [embed],
+                            components: [row],
+                        })
                         .catch((error: unknown) =>
                             logger.warn(
-                                `Failed to disable buttons: ${error instanceof Error ? error.message : String(error)}`,
+                                `Failed to send playing message: ${error instanceof Error ? error.message : String(error)}`,
                             ),
-                        );
-                } catch {
-                    // Message might have been deleted, ignore
+                        )) as Message | undefined;
+                } else {
+                    const prefix = song.fromCache ? '⚡⚡ ' : '';
+                    const embed = nowPlayingEmbed(
+                        song.title,
+                        song.url,
+                        song.thumbnail,
+                        queue.worker.name,
+                        `${prefix}${devPrefix}`,
+                    );
+                    playingMessage = (await queue.textChannel
+                        .send({
+                            embeds: [embed],
+                            components: [row],
+                        })
+                        .catch((error: unknown) =>
+                            logger.warn(
+                                `Failed to send playing message: ${error instanceof Error ? error.message : String(error)}`,
+                            ),
+                        )) as Message | undefined;
                 }
-            });
+
+                if (playingMessage) {
+                    queue.playingMessage = playingMessage;
+                }
+            }
+
+            // Setup Collector to handle button clicks
+            if (playingMessage) {
+                const collector = playingMessage.createMessageComponentCollector({
+                    componentType: ComponentType.Button,
+                    time: song.durationInSec > 0 ? song.durationInSec * 1000 : 3600000, // Listen until song ends
+                });
+
+                collector.on('collect', async (i) => {
+                    if (!(i.member instanceof GuildMember)) {
+                        await i.reply({
+                            content: 'This command can only be used in a guild.',
+                            ephemeral: true,
+                        });
+                        return;
+                    }
+
+                    // Security: Ensure clicker is in the same voice channel
+                    const memberVoiceChannelId = i.member.voice.channelId;
+                    if (!memberVoiceChannelId || memberVoiceChannelId !== queue.voiceChannelId) {
+                        return i.reply({
+                            content: 'You need to be in the voice channel to control music!',
+                            ephemeral: true,
+                        });
+                    }
+
+                    if (i.customId === 'pause_resume') {
+                        if (queue.player.state.status === AudioPlayerStatus.Paused) {
+                            queue.player.unpause();
+                            setVoiceStatus(
+                                queue.worker.client,
+                                queue.voiceChannelId,
+                                `[Playing] ${queue.nowPlaying!.title}`,
+                            );
+                            // Update button to show "Pause" again
+                            const newRow = ActionRowBuilder.from<ButtonBuilder>(
+                                playingMessage!
+                                    .components[0] as APIActionRowComponent<APIButtonComponent>,
+                            );
+                            newRow.components[0]
+                                .setLabel('⏸️ Pause')
+                                .setStyle(ButtonStyle.Secondary);
+                            await i.update({ components: [newRow] });
+                        } else {
+                            queue.player.pause();
+                            setVoiceStatus(
+                                queue.worker.client,
+                                queue.voiceChannelId,
+                                `[PAUSED] ${queue.nowPlaying!.title}`,
+                            );
+                            // Update button to show "Resume"
+                            const newRow = ActionRowBuilder.from<ButtonBuilder>(
+                                playingMessage!
+                                    .components[0] as APIActionRowComponent<APIButtonComponent>,
+                            );
+                            newRow.components[0]
+                                .setLabel('▶️ Resume')
+                                .setStyle(ButtonStyle.Success);
+                            await i.update({ components: [newRow] });
+                        }
+                    } else if (i.customId === 'skip') {
+                        await i.reply({ content: `⏭️ **Skipped** by ${i.user.username}` });
+                        queue.player.stop();
+                        collector.stop();
+                    } else if (i.customId === 'stop') {
+                        await i.reply({ content: `⏹️ **Stopped** by ${i.user.username}` });
+                        queue.stopping = true;
+                        setVoiceStatus(queue.worker.client, queue.voiceChannelId, '');
+                        queue.songs = [];
+                        queue.player.stop();
+                        if (
+                            queue.connection &&
+                            queue.connection.state.status !== VoiceConnectionStatus.Destroyed
+                        ) {
+                            try {
+                                queue.connection.destroy();
+                            } catch (error) {
+                                logger.warn(
+                                    `[PlaybackEngine] Failed to destroy connection: ${error}`,
+                                );
+                            }
+                        }
+                        deleteQueue(queue.voiceChannelId);
+                        workerPool.releaseWorker(queue.voiceChannelId);
+                        collector.stop();
+                    } else if (i.customId === 'toggle_autoplay') {
+                        queue.autoplay = !queue.autoplay;
+                        const newRow = ActionRowBuilder.from<ButtonBuilder>(
+                            playingMessage!
+                                .components[0] as APIActionRowComponent<APIButtonComponent>,
+                        );
+                        // Replace the last component (autoplay button) with the updated one
+                        newRow.components.pop();
+                        newRow.addComponents(getAutoplayButton(queue.autoplay));
+                        await i.update({ components: [newRow] });
+                    }
+                });
+
+                // Disable buttons when the song ends
+                collector.on('end', () => {
+                    try {
+                        const disabledRow = ActionRowBuilder.from<ButtonBuilder>(
+                            playingMessage!
+                                .components[0] as APIActionRowComponent<APIButtonComponent>,
+                        );
+                        disabledRow.components.forEach((btn) => btn.setDisabled(true));
+                        playingMessage!
+                            .edit({ components: [disabledRow] })
+                            .catch((error: unknown) =>
+                                logger.warn(
+                                    `Failed to disable buttons: ${error instanceof Error ? error.message : String(error)}`,
+                                ),
+                            );
+                    } catch {
+                        // Message might have been deleted, ignore
+                    }
+                });
+            }
         }
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         logger.error(`[playback] Failed to play song: ${message}`);
+
+        if (seekSeconds > 0) {
+            throw error;
+        }
+
         queue.songs.shift();
 
         // If Radio mode is active and we failed, try next song immediately

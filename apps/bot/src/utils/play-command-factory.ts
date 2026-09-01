@@ -49,6 +49,12 @@ export function createPlayCommand(
                     .setName('file')
                     .setDescription('Audio file to play (mp3, ogg, wav, flac, m4a, webm, opus)')
                     .setRequired(false),
+            )
+            .addStringOption((option) =>
+                option
+                    .setName('seek')
+                    .setDescription('Start playback from timestamp or offset (e.g. 1:30, 50%, 90s)')
+                    .setRequired(false),
             ),
 
         async autocomplete(interaction: AutocompleteInteraction) {
@@ -138,7 +144,8 @@ export function createPlayCommand(
                 return;
             }
 
-            await music.enqueue(interaction, query, options);
+            const seek = interaction.options.getString('seek') || undefined;
+            await music.enqueue(interaction, query, { ...options, seek });
 
             if (playlistWarning) {
                 await interaction.followUp({

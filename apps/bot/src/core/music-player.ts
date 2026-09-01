@@ -18,6 +18,7 @@ import {
 import { getEntryMessage } from '../config/afr-config.js';
 import { getDevPrefix } from '../utils/dev-mode.js';
 import { songAddedEmbed } from '../utils/embed-factory.js';
+import { parseSeekPosition } from '../utils/time-parser.js';
 import { handleAutoplay, handleRadio, playSong } from './audio/playback-engine.js';
 import {
     cleanupWorkerOldQueues,
@@ -249,7 +250,7 @@ async function createQueue(
     }
 
     player.on(AudioPlayerStatus.Idle, async () => {
-        if (queue.stopping) return;
+        if (queue.stopping || queue.seeking) return;
 
         // Ignore idle events if nothing was "officially" playing (e.g. plugin sounds)
         // This prevents "Queue Finished" messages when a plugin plays a sound effect.
@@ -426,6 +427,8 @@ async function ensureQueue(
 interface EnqueueOptions {
     position?: 'next' | 'end';
     skipCurrent?: boolean;
+    seek?: string;
+    initialSeek?: number;
 }
 
 async function enqueue(
@@ -458,11 +461,20 @@ async function enqueue(
             logger.info(`Cleared idle timeout for ${queue.voiceChannelId} - new song added`);
         }
 
-        const songToAdd = {
+        const songToAdd: Song = {
             ...track,
             requestedBy: interaction.user.tag,
             requesterId: interaction.user.id,
         };
+
+        if (options.initialSeek !== undefined && options.initialSeek >= 0) {
+            songToAdd.initialSeek = options.initialSeek;
+        } else if (options.seek) {
+            const parsedSeek = parseSeekPosition(options.seek, track.durationInSec);
+            if (parsedSeek !== null && parsedSeek >= 0) {
+                songToAdd.initialSeek = parsedSeek;
+            }
+        }
 
         if (options.position === 'next') {
             // splice(1, 0, item) inserts at index 1 for non-empty arrays, or index 0 for empty arrays
@@ -1001,6 +1013,70 @@ async function shuffleQueue(interaction: ChatInputCommandInteraction): Promise<v
     await interaction.reply('🔀 **Queue shuffled successfully!**');
 }
 
+async function seek(interaction: ChatInputCommandInteraction): Promise<void> {
+    const voiceChannel = await validateInteraction(interaction);
+    if (!voiceChannel) return;
+
+    const queue = getQueue(voiceChannel.id);
+    if (!queue || !queue.nowPlaying) {
+        await interaction.reply({
+            content: 'There is nothing currently playing to seek in.',
+            ephemeral: true,
+        });
+        return;
+    }
+
+    const positionStr = interaction.options.getString('position', true);
+    const targetSeconds = parseSeekPosition(positionStr, queue.nowPlaying.durationInSec);
+
+    if (targetSeconds === null || targetSeconds < 0) {
+        const durationHint =
+            queue.nowPlaying.durationInSec > 0
+                ? ` (duration: \`${formatDuration(queue.nowPlaying.durationInSec)}\`)`
+                : '';
+        await interaction.reply({
+            content: `❌ Invalid seek position: **"${positionStr}"**. Please provide a valid timestamp (e.g. \`1:30\`, \`90s\`, \`2m\`, \`50%\`)${durationHint}.`,
+            ephemeral: true,
+        });
+        return;
+    }
+
+    await interaction.deferReply();
+
+    // Mark seeking flag so onIdle does not advance queue
+    queue.seeking = true;
+
+    if (queue.streamProcess) {
+        try {
+            queue.streamProcess.kill('SIGKILL');
+        } catch {
+            // Ignore error
+        }
+        queue.streamProcess = null;
+    }
+
+    queue.player.stop(true);
+
+    try {
+        await playSong(queue, targetSeconds);
+        queue.seeking = false;
+
+        const percent =
+            queue.nowPlaying.durationInSec > 0
+                ? ` (${Math.round((targetSeconds / queue.nowPlaying.durationInSec) * 100)}%)`
+                : '';
+
+        await interaction.editReply(
+            `⏩ Seeked to **${formatDuration(targetSeconds)}**${percent} in **${queue.nowPlaying.title}**.`,
+        );
+    } catch (err) {
+        queue.seeking = false;
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error(`[seek] Failed to seek: ${message}`);
+        await interaction.editReply(`❌ Failed to seek: ${message}`);
+    }
+}
+
 export default {
     enqueue,
     enqueuePlaylist,
@@ -1018,4 +1094,5 @@ export default {
     toggleLoop,
     toggleRepeat,
     shuffleQueue,
+    seek,
 };
