@@ -18,6 +18,7 @@ import {
 import { getEntryMessage } from '../config/afr-config.js';
 import { getDevPrefix } from '../utils/dev-mode.js';
 import { songAddedEmbed } from '../utils/embed-factory.js';
+import { parseSeekPosition } from '../utils/time-parser.js';
 import { handleAutoplay, handleRadio, playSong } from './audio/playback-engine.js';
 import {
     cleanupWorkerOldQueues,
@@ -249,7 +250,7 @@ async function createQueue(
     }
 
     player.on(AudioPlayerStatus.Idle, async () => {
-        if (queue.stopping) return;
+        if (queue.stopping || queue.seeking) return;
 
         // Ignore idle events if nothing was "officially" playing (e.g. plugin sounds)
         // This prevents "Queue Finished" messages when a plugin plays a sound effect.
@@ -301,7 +302,9 @@ async function createQueue(
                     !queue.textChannel.isDMBased()
                 ) {
                     try {
-                        const channel = await queue.worker.client.channels.fetch(queue.voiceChannelId);
+                        const channel = await queue.worker.client.channels.fetch(
+                            queue.voiceChannelId,
+                        );
                         const channelName =
                             channel && 'name' in channel
                                 ? (channel as { name: string }).name
@@ -935,7 +938,9 @@ async function toggleLoop(interaction: ChatInputCommandInteraction): Promise<voi
         queue.loopQueue = false;
     }
 
-    await interaction.reply(`🔂 **Looping is now ${queue.loopTrack ? 'ENABLED (repeating current track)' : 'DISABLED'}**`);
+    await interaction.reply(
+        `🔂 **Looping is now ${queue.loopTrack ? 'ENABLED (repeating current track)' : 'DISABLED'}**`,
+    );
 }
 
 async function toggleRepeat(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -955,7 +960,9 @@ async function toggleRepeat(interaction: ChatInputCommandInteraction): Promise<v
         queue.loopTrack = false;
     }
 
-    await interaction.reply(`🔁 **Queue repeating is now ${queue.loopQueue ? 'ENABLED (repeating the entire queue)' : 'DISABLED'}**`);
+    await interaction.reply(
+        `🔁 **Queue repeating is now ${queue.loopQueue ? 'ENABLED (repeating the entire queue)' : 'DISABLED'}**`,
+    );
 }
 
 async function shuffleQueue(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -995,6 +1002,70 @@ async function shuffleQueue(interaction: ChatInputCommandInteraction): Promise<v
     await interaction.reply('🔀 **Queue shuffled successfully!**');
 }
 
+async function seek(interaction: ChatInputCommandInteraction): Promise<void> {
+    const voiceChannel = await validateInteraction(interaction);
+    if (!voiceChannel) return;
+
+    const queue = getQueue(voiceChannel.id);
+    if (!queue || !queue.nowPlaying) {
+        await interaction.reply({
+            content: 'There is nothing currently playing to seek in.',
+            ephemeral: true,
+        });
+        return;
+    }
+
+    const positionStr = interaction.options.getString('position', true);
+    const targetSeconds = parseSeekPosition(positionStr, queue.nowPlaying.durationInSec);
+
+    if (targetSeconds === null || targetSeconds < 0) {
+        const durationHint =
+            queue.nowPlaying.durationInSec > 0
+                ? ` (duration: \`${formatDuration(queue.nowPlaying.durationInSec)}\`)`
+                : '';
+        await interaction.reply({
+            content: `❌ Invalid seek position: **"${positionStr}"**. Please provide a valid timestamp (e.g. \`1:30\`, \`90s\`, \`2m\`, \`50%\`)${durationHint}.`,
+            ephemeral: true,
+        });
+        return;
+    }
+
+    await interaction.deferReply();
+
+    // Mark seeking flag so onIdle does not advance queue
+    queue.seeking = true;
+
+    if (queue.streamProcess) {
+        try {
+            queue.streamProcess.kill('SIGKILL');
+        } catch {
+            // Ignore error
+        }
+        queue.streamProcess = null;
+    }
+
+    queue.player.stop(true);
+
+    try {
+        await playSong(queue, targetSeconds);
+        queue.seeking = false;
+
+        const percent =
+            queue.nowPlaying.durationInSec > 0
+                ? ` (${Math.round((targetSeconds / queue.nowPlaying.durationInSec) * 100)}%)`
+                : '';
+
+        await interaction.editReply(
+            `⏩ Seeked to **${formatDuration(targetSeconds)}**${percent} in **${queue.nowPlaying.title}**.`,
+        );
+    } catch (err) {
+        queue.seeking = false;
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error(`[seek] Failed to seek: ${message}`);
+        await interaction.editReply(`❌ Failed to seek: ${message}`);
+    }
+}
+
 export default {
     enqueue,
     enqueuePlaylist,
@@ -1012,4 +1083,5 @@ export default {
     toggleLoop,
     toggleRepeat,
     shuffleQueue,
+    seek,
 };

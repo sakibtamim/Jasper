@@ -54,6 +54,7 @@ export interface Queue {
     loopTrack?: boolean;
     loopQueue?: boolean;
     skipping?: boolean;
+    seeking?: boolean;
 }
 
 // --- Database Types (Shared) ---
