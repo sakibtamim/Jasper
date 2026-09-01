@@ -5,7 +5,7 @@ import fastify from 'fastify';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import { COOKIE_SECRET, PORT, isDevelopment } from '../config/env.js';
+import { COOKIE_SECRET, MAX_UPLOAD_FILE_SIZE_BYTES, PORT, isDevelopment } from '../config/env.js';
 import { getCacheStats } from '../core/cache-manager.js';
 import db from '../core/db/index.js';
 import logger, { getRecentLogs } from '../core/logger.js';
@@ -26,7 +26,7 @@ export const server = fastify({ logger: false });
 // Register Multipart Globally
 server.register(multipart, {
     limits: {
-        fileSize: 100 * 1024 * 1024, // 100MB limit
+        fileSize: MAX_UPLOAD_FILE_SIZE_BYTES,
     },
 });
 
