@@ -145,16 +145,17 @@ export const AFR_JASPER_WEIGHT = getOptionalFloat('AFR_JASPER_WEIGHT', 0.5, 0, 1
  */
 export type RuntimeProfile = 'self-hosted' | 'hosted';
 
-export const RUNTIME_PROFILE: RuntimeProfile = ((): RuntimeProfile => {
-    const raw = getOptionalEnv(
-        'RUNTIME_PROFILE',
-        getOptionalEnv('JASPER_PROFILE', 'self-hosted'),
-    ).toLowerCase();
+export function getRuntimeProfile(
+    env: Record<string, string | undefined> = process.env,
+): RuntimeProfile {
+    const raw = (env.RUNTIME_PROFILE || env.JASPER_PROFILE || 'self-hosted').toLowerCase();
     if (raw !== 'self-hosted' && raw !== 'hosted') {
         throw new Error(`Invalid RUNTIME_PROFILE: "${raw}". Must be "self-hosted" or "hosted".`);
     }
     return raw as RuntimeProfile;
-})();
+}
+
+export const RUNTIME_PROFILE: RuntimeProfile = getRuntimeProfile();
 
 export const isHostedProfile = RUNTIME_PROFILE === 'hosted';
 export const isSelfHostedProfile = RUNTIME_PROFILE === 'self-hosted';
@@ -206,6 +207,7 @@ export function getWorkerTokens(
 ): WorkerToken[] {
     const workers: WorkerToken[] = [];
     const seenNames = new Set<string>();
+    const profile = getRuntimeProfile(env);
 
     // 1. Explicit prefixed tokens: JASPER_WORKER_<NAME>_TOKEN
     Object.keys(env).forEach((key) => {
@@ -229,7 +231,7 @@ export function getWorkerTokens(
     });
 
     // 2. Backward-compatible discovery for self-hosted mode
-    if (RUNTIME_PROFILE === 'self-hosted') {
+    if (profile === 'self-hosted') {
         Object.keys(env).forEach((key) => {
             const upperKey = key.toUpperCase();
             if (
