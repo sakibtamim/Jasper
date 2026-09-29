@@ -82,7 +82,12 @@ function createBots(): WorkerState[] {
 async function loginBots(): Promise<void> {
     const loginPromises = bots.map(async (botConfig) => {
         const worker = workers.find((w) => w.name === botConfig.name);
-        if (!worker) return;
+        if (!worker) {
+            logger.warn(
+                `[workerpool] No initialized WorkerState found for configured bot "${botConfig.name}". Skipping login.`,
+            );
+            return;
+        }
 
         try {
             // Load events for this worker

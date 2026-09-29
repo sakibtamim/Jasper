@@ -23,15 +23,16 @@ export function parseSeekPosition(input: string, totalDurationInSec: number = 0)
         return Math.floor((percent / 100) * totalDurationInSec);
     }
 
-    // 2. Colon-separated timestamps: "MM:SS" or "HH:MM:SS"
-    const colonMatch = trimmed.match(/^(?:(\d+):)?(\d{1,2}):(\d{2})$/);
+    // 2. Colon-separated timestamps: "MM:SS", "MMM:SS", or "HH:MM:SS"
+    const colonMatch = trimmed.match(/^(?:(\d+):)?(\d+):(\d{2})$/);
     if (colonMatch) {
-        const hours = colonMatch[1] ? parseInt(colonMatch[1], 10) : 0;
+        const hasHours = colonMatch[1] !== undefined;
+        const hours = hasHours ? parseInt(colonMatch[1], 10) : 0;
         const minutes = parseInt(colonMatch[2], 10);
         const seconds = parseInt(colonMatch[3], 10);
 
-        if (minutes >= 60 && hours > 0) return null;
         if (seconds >= 60) return null;
+        if (hasHours && minutes >= 60) return null;
 
         const total = hours * 3600 + minutes * 60 + seconds;
         return validateDuration(total, totalDurationInSec);

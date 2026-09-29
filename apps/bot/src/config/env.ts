@@ -144,16 +144,17 @@ export const AFR_JASPER_WEIGHT = getOptionalFloat('AFR_JASPER_WEIGHT', 0.5, 0, 1
 /**
  * Runtime Profile & Environment
  */
-export const RUNTIME_PROFILE: RuntimeProfile = ((): RuntimeProfile => {
-    const raw = getOptionalEnv(
-        'RUNTIME_PROFILE',
-        getOptionalEnv('JASPER_PROFILE', 'self-hosted'),
-    ).toLowerCase();
+export function getRuntimeProfile(
+    env: Record<string, string | undefined> = process.env,
+): RuntimeProfile {
+    const raw = (env.RUNTIME_PROFILE || env.JASPER_PROFILE || 'self-hosted').toLowerCase();
     if (raw !== 'self-hosted' && raw !== 'hosted') {
         throw new Error(`Invalid RUNTIME_PROFILE: "${raw}". Must be "self-hosted" or "hosted".`);
     }
     return raw as RuntimeProfile;
-})();
+}
+
+export const RUNTIME_PROFILE: RuntimeProfile = getRuntimeProfile();
 
 export const isHostedProfile = RUNTIME_PROFILE === 'hosted';
 export const isSelfHostedProfile = RUNTIME_PROFILE === 'self-hosted';

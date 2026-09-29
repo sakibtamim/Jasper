@@ -50,7 +50,7 @@ function checkDirectory(dirPath) {
         } else if (entry.isFile()) {
             checkedFilesCount++;
             for (const pattern of forbiddenPatterns) {
-                if (pattern.test(entry.name)) {
+                if (pattern.test(relativePath)) {
                     console.error(
                         `❌ FORBIDDEN: Found test source/artifact in production bundle: ${relativePath}`,
                     );

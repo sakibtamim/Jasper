@@ -26,7 +26,6 @@ export interface BotCredentials extends BotIdentityInfo {
 
 /** @deprecated Use BotCredentials for internal config or BotIdentityInfo for public metadata */
 export type BotIdentityConfig = BotCredentials;
-
 // --- Worker Pool Types ---
 
 export interface WorkerState {

@@ -16,7 +16,9 @@ function fetchUrl(url) {
         https
             .get(url, (res) => {
                 if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-                    return resolve(fetchUrl(res.headers.location));
+                    res.resume();
+                    const redirectUrl = new URL(res.headers.location, url).toString();
+                    return resolve(fetchUrl(redirectUrl));
                 }
                 if (res.statusCode !== 200) {
                     return reject(new Error(`HTTP ${res.statusCode} fetching ${url}`));

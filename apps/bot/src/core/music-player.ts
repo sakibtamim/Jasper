@@ -474,8 +474,15 @@ async function enqueue(
             if (parsedSeek !== null && parsedSeek >= 0) {
                 songToAdd.initialSeek = parsedSeek;
             } else {
+                const isPercentage = options.seek.trim().endsWith('%');
+                const durationHint =
+                    track.durationInSec > 0
+                        ? ` Total duration for **${track.title}** is **${formatDuration(track.durationInSec)}**.`
+                        : isPercentage
+                          ? ` (percentage seeks require a track with known duration).`
+                          : ` Please provide a valid timestamp (e.g. \`1:30\`, \`90s\`).`;
                 await interaction.editReply({
-                    content: `❌ Invalid seek position \`${options.seek}\`. Total duration for **${track.title}** is **${formatDuration(track.durationInSec)}**.`,
+                    content: `❌ Invalid seek position \`${options.seek}\`.${durationHint}`,
                 });
                 return;
             }
