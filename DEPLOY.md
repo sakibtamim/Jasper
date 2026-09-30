@@ -107,4 +107,50 @@ Ensure `PORT` is set (e.g., `PORT=3000`; defaults to `0` / disabled if unset).
 - **Stop**: `pm2 stop Jasper`
 - **Status**: `pm2 status`
 
-> **Note on Deployment Architecture**: This PM2 SSH deployment lane represents the legacy single-host manual path. Production-grade containerization with immutable OCI base images, Docker Compose profiles, and signed release promotion are being established under [`HJ-OSS-14`](docs/hosted-jasper/mvp-issue-plan.md#hj-oss-14--publish-jasper-base-image-and-one-container-sqlite-quick-path) and [`HJ-OSS-19`](docs/hosted-jasper/mvp-issue-plan.md#hj-oss-19--publish-production-like-self-host-compose-and-recovery-path).
+## Production Self-Hosting with Docker Compose (Recommended)
+
+For production, staging, and multi-tenant self-hosted environments, Jasper provides a containerized Docker Compose stack featuring:
+
+- **`jasper-bot`**: Controller with Web Dashboard API (`PORT=3000`)
+- **`jasper-worker`**: Optional multi-client audio playback worker pool (`profiles: ["workers"]`)
+- **`postgres`**: PostgreSQL 16 database with advisory migration locking
+- **`minio`**: S3-compatible object storage for persistent media and plugin assets
+
+### Quick Launch
+
+```bash
+# 1. Prepare configuration
+cp .env.compose.example .env
+
+# 2. Launch stack
+docker compose up -d
+
+# 3. (Optional) Launch audio worker pool
+docker compose --profile workers up -d
+```
+
+For complete architectural details, network isolation specifications, resource limits, and rolling upgrade procedures, see the [Self-Hosting & Disaster Recovery Guide](docs/hosted-jasper/self-hosting.md).
+
+---
+
+## Disaster Recovery & Backups
+
+Jasper provides automated, cryptographically verified backup and restore utilities in `scripts/`:
+
+### Automated Backup
+
+```bash
+# Atomic dump with SHA-256 manifest
+./scripts/backup.sh --container
+```
+
+### Idempotent Restore
+
+```bash
+# Pre-flight verified idempotent restoration
+./scripts/restore.sh ./backups/jasper-backup_YYYYMMDD_HHMMSS.tar.gz --container -f
+```
+
+---
+
+> **Note on Deployment Architecture**: The legacy PM2 SSH deployment lane documented below represents a single-host manual path. Production-grade containerization with immutable OCI base images, Docker Compose profiles, and signed release promotion are defined under [`HJ-OSS-14`](docs/hosted-jasper/mvp-issue-plan.md#hj-oss-14--publish-jasper-base-image-and-one-container-sqlite-quick-path) and [`HJ-OSS-19`](docs/hosted-jasper/self-hosting.md).

@@ -1,0 +1,220 @@
+name: jasper
+
+services:
+    # ============================================================================
+    # 1. Controller Service (Jasper Bot + Dashboard API)
+    # ============================================================================
+    jasper-bot:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        image: jasper-bot:latest
+        container_name: jasper-controller
+        restart: unless-stopped
+        user: '10001:10001'
+        ports:
+            - '${PORT:-3000}:3000'
+        environment:
+            - NODE_ENV=production
+            - PORT=3000
+            - DB_TYPE=postgres
+            - DATABASE_URL=postgresql://${POSTGRES_USER:-jasper}:${POSTGRES_PASSWORD:-jasper_secure_password}@postgres:5432/${POSTGRES_DB:-jasper}
+            - STORAGE_PROVIDER=s3
+            - S3_ENDPOINT=http://minio:9000
+            - S3_BUCKET=${S3_BUCKET:-jasper-media}
+            - S3_ACCESS_KEY_ID=${MINIO_ROOT_USER:-jasper_admin}
+            - S3_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD:-jasper_secret_key_123}
+            - S3_FORCE_PATH_STYLE=true
+            - DISCORD_TOKEN=${DISCORD_TOKEN:?DISCORD_TOKEN is required}
+            - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID:?DISCORD_CLIENT_ID is required}
+            - DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET:-}
+            - GUILD_ID=${GUILD_ID:-}
+            - COOKIE_SECRET=${COOKIE_SECRET:-jasper_default_insecure_cookie_secret_change_me}
+            - ENCRYPTION_KEY=${ENCRYPTION_KEY:-jasper_default_encryption_key_32bytes_min!}
+            - ANNOUNCE_CHANNEL_ID=${ANNOUNCE_CHANNEL_ID:-}
+            - CACHE_ENABLED=${CACHE_ENABLED:-true}
+        depends_on:
+            postgres:
+                condition: service_healthy
+            minio:
+                condition: service_healthy
+        networks:
+            - jasper-public
+            - jasper-internal
+        volumes:
+            - jasper_data:/app/data
+        healthcheck:
+            test: ['CMD-SHELL', 'curl -f http://localhost:3000/health/ready || exit 1']
+            interval: 15s
+            timeout: 5s
+            retries: 5
+            start_period: 20s
+        deploy:
+            resources:
+                limits:
+                    cpus: '2.0'
+                    memory: 2048M
+                reservations:
+                    cpus: '0.25'
+                    memory: 512M
+
+    # ============================================================================
+    # 2. Optional Audio Worker Service (Multi-client playback pool)
+    # ============================================================================
+    jasper-worker:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        image: jasper-bot:latest
+        container_name: jasper-worker
+        restart: unless-stopped
+        user: '10001:10001'
+        profiles:
+            - workers
+            - all
+        environment:
+            - NODE_ENV=production
+            - PORT=3001
+            - DB_TYPE=postgres
+            - DATABASE_URL=postgresql://${POSTGRES_USER:-jasper}:${POSTGRES_PASSWORD:-jasper_secure_password}@postgres:5432/${POSTGRES_DB:-jasper}
+            - STORAGE_PROVIDER=s3
+            - S3_ENDPOINT=http://minio:9000
+            - S3_BUCKET=${S3_BUCKET:-jasper-media}
+            - S3_ACCESS_KEY_ID=${MINIO_ROOT_USER:-jasper_admin}
+            - S3_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD:-jasper_secret_key_123}
+            - S3_FORCE_PATH_STYLE=true
+            - DISCORD_TOKEN=${WORKER_DISCORD_TOKEN:-${MISTY_TOKEN:-${DISCORD_TOKEN:-}}}
+            - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID:-}
+            - MISTY_TOKEN=${MISTY_TOKEN:-}
+            - TUKI_TOKEN=${TUKI_TOKEN:-}
+            - JAFREEN_TOKEN=${JAFREEN_TOKEN:-}
+            - CACHE_ENABLED=${CACHE_ENABLED:-true}
+        depends_on:
+            postgres:
+                condition: service_healthy
+            minio:
+                condition: service_healthy
+        networks:
+            - jasper-internal
+        volumes:
+            - jasper_worker_data:/app/data
+        healthcheck:
+            test: ['CMD-SHELL', 'curl -f http://localhost:3001/health/live || exit 1']
+            interval: 15s
+            timeout: 5s
+            retries: 3
+            start_period: 20s
+        deploy:
+            resources:
+                limits:
+                    cpus: '1.5'
+                    memory: 1536M
+                reservations:
+                    cpus: '0.25'
+                    memory: 256M
+
+    # ============================================================================
+    # 3. PostgreSQL Database (PostgreSQL 16)
+    # ============================================================================
+    postgres:
+        image: postgres:16-alpine
+        container_name: jasper-postgres
+        restart: unless-stopped
+        user: postgres
+        environment:
+            - POSTGRES_USER=${POSTGRES_USER:-jasper}
+            - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-jasper_secure_password}
+            - POSTGRES_DB=${POSTGRES_DB:-jasper}
+            - PGDATA=/var/lib/postgresql/data/pgdata
+        networks:
+            - jasper-internal
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test:
+                ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER:-jasper} -d $${POSTGRES_DB:-jasper}']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 10s
+        deploy:
+            resources:
+                limits:
+                    cpus: '1.5'
+                    memory: 1024M
+                reservations:
+                    cpus: '0.25'
+                    memory: 256M
+
+    # ============================================================================
+    # 4. S3-Compatible Media Storage (MinIO)
+    # ============================================================================
+    minio:
+        image: minio/minio:RELEASE.2024-03-30T09-41-56Z
+        container_name: jasper-minio
+        restart: unless-stopped
+        user: '10001:10001'
+        command: server /data --console-address ":9001"
+        environment:
+            - MINIO_ROOT_USER=${MINIO_ROOT_USER:-jasper_admin}
+            - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-jasper_secret_key_123}
+        ports:
+            - '${MINIO_CONSOLE_PORT:-9001}:9001'
+        networks:
+            - jasper-internal
+            - jasper-public
+        volumes:
+            - minio_data:/data
+        healthcheck:
+            test:
+                [
+                    'CMD-SHELL',
+                    'mc ready local || curl -f http://localhost:9000/minio/health/live || exit 1',
+                ]
+            interval: 15s
+            timeout: 5s
+            retries: 5
+            start_period: 10s
+        deploy:
+            resources:
+                limits:
+                    cpus: '1.0'
+                    memory: 1024M
+                reservations:
+                    cpus: '0.25'
+                    memory: 256M
+
+    # MinIO bucket provisioner helper
+    minio-init:
+        image: minio/mc:RELEASE.2024-03-30T15-31-07Z
+        container_name: jasper-minio-init
+        depends_on:
+            minio:
+                condition: service_healthy
+        networks:
+            - jasper-internal
+        entrypoint: >
+            /bin/sh -c "
+            mc alias set minio http://minio:9000 $${MINIO_ROOT_USER:-jasper_admin} $${MINIO_ROOT_PASSWORD:-jasper_secret_key_123} &&
+            mc mb --ignore-existing minio/$${S3_BUCKET:-jasper-media} &&
+            echo 'MinIO media bucket is ready.'
+            "
+        restart: 'no'
+
+networks:
+    # Isolated private backend network for intra-service communication
+    jasper-internal:
+        internal: true
+    # Ingress network for public-facing dashboard & webhook routes
+    jasper-public:
+        driver: bridge
+
+volumes:
+    postgres_data:
+        name: jasper_postgres_data
+    minio_data:
+        name: jasper_minio_data
+    jasper_data:
+        name: jasper_data
+    jasper_worker_data:
+        name: jasper_worker_data
