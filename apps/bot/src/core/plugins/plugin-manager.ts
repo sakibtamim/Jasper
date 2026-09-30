@@ -741,8 +741,10 @@ export class PluginManager {
                 registerCommand: (command: SlashCommandDefinition) => {
                     this.context!.registerCommand(command); // Call base implementation
                     const commands = this.pluginCommands.get(plugin.name) || [];
-                    commands.push(command.data.name);
-                    this.pluginCommands.set(plugin.name, commands);
+                    if (!commands.includes(command.data.name)) {
+                        commands.push(command.data.name);
+                        this.pluginCommands.set(plugin.name, commands);
+                    }
                 },
                 scheduleTask: (intervalMs, task) => {
                     if (intervalMs <= 0) {
@@ -766,6 +768,13 @@ export class PluginManager {
                     );
                 },
             };
+
+            // Automatically register any pure declarative commands provided by the plugin
+            if (Array.isArray(plugin.commands)) {
+                for (const cmd of plugin.commands) {
+                    pluginContext.registerCommand(cmd);
+                }
+            }
 
             await plugin.onLoad(pluginContext);
             this.plugins.set(plugin.name, {

@@ -1,4 +1,4 @@
-import { PluginContext } from '@jasper/types';
+import { Plugin, PluginContext } from '@jasper/types';
 import { Interaction } from 'discord.js';
 
 import {
@@ -7,6 +7,7 @@ import {
     handleButtonInteraction,
     handleModalSubmit,
     registerCommand,
+    soundboardCommandDescriptor,
 } from './commands/soundboard.js';
 import { registerRoutes } from './routes.js';
 
@@ -14,9 +15,10 @@ import { registerRoutes } from './routes.js';
 
 let interactionHandler: (interaction: Interaction) => Promise<void>;
 
-const soundboardPlugin = {
+const soundboardPlugin: Plugin = {
     name: 'soundboard',
     version: '1.0.0',
+    commands: [soundboardCommandDescriptor],
     onLoad: async (context: PluginContext) => {
         context.logger.info('Jasper Soundboard loaded!');
         registerRoutes(context);

@@ -171,6 +171,7 @@ export interface Plugin {
     name: string;
     version: string;
     description?: string;
+    commands?: SlashCommandDefinition[];
     onLoad: (context: PluginContext) => Promise<void>;
     onUnload: (context: PluginContext) => Promise<void>;
 }

@@ -1,118 +1,104 @@
-import {
-    Client,
-    Collection,
-    REST,
-    RESTPostAPIChatInputApplicationCommandsJSONBody,
-    Routes,
-} from 'discord.js';
-import { FastifyInstance } from 'fastify';
+import { CommandPublishStrategy } from '@jasper/types';
 import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'url';
 
-import {
-    DATABASE_URL,
-    DB_TYPE,
-    DISCORD_CLIENT_ID,
-    DISCORD_TOKEN,
-    GUILD_ID,
-    validateDeployConfig,
-} from './config/env.js';
+import { DISCORD_CLIENT_ID, DISCORD_TOKEN, GUILD_ID, getRuntimeProfile } from './config/env.js';
+import { publishCommands } from './core/command-publisher.js';
 import logger from './core/logger.js';
-import { Command } from './types/command.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Validate required environment variables for deployment
-validateDeployConfig();
-
-const commands: RESTPostAPIChatInputApplicationCommandsJSONBody[] = [];
-const commandsPath = path.join(__dirname, 'commands');
-// Support both .js (production) and .ts (development)
-const commandFiles = fs
-    .readdirSync(commandsPath)
-    .filter((file) => (file.endsWith('.js') || file.endsWith('.ts')) && !file.endsWith('.d.ts'));
-
-for (const file of commandFiles) {
-    const filePath = path.join(commandsPath, file);
-    const commandModule = await import(filePath);
-    const command = commandModule.default;
-    if ('data' in command && 'execute' in command) {
-        commands.push(command.data.toJSON());
-    } else {
-        logger.warn(
-            `[commands] The command at ${filePath} is missing a required "data" or "execute" property.`,
-        );
-    }
+interface CliArgs {
+    strategy?: CommandPublishStrategy;
+    guildId?: string;
+    applicationId?: string;
+    token?: string;
+    environment?: string;
+    outPath?: string;
+    allowTestPlugins?: boolean;
 }
 
-// --- Load Plugin Commands ---
-// Skip plugin loading if:
-// 1. SKIP_PLUGINS env var is set
-// 2. DB_TYPE is postgres but DATABASE_URL is missing (would hang on DB connection)
-const skipPlugins =
-    process.env.SKIP_PLUGINS === 'true' || (DB_TYPE === 'postgres' && !DATABASE_URL);
-
-if (skipPlugins) {
-    logger.info(
-        '[commands] Skipping plugin command loading (SKIP_PLUGINS or missing DATABASE_URL)',
-    );
-} else {
-    logger.info('[commands] Loading plugin commands...');
-
-    // Dynamic import to avoid eager database initialization
-    const { default: pluginManager } = await import('./core/plugins/plugin-manager.js');
-
-    // Mock Client & Server for PluginManager
-    const mockClient = {
-        commands: new Collection<string, Command>(),
-        on: () => {},
-        off: () => {},
-        emit: () => {},
-    } as unknown as Client;
-    const mockServer = {
-        async register(fn: (server: FastifyInstance) => Promise<void> | void) {
-            await fn(this as unknown as FastifyInstance);
-        },
-        get: () => {},
-        post: () => {},
-        delete: () => {},
-        patch: () => {},
-    } as unknown as FastifyInstance;
-
-    try {
-        pluginManager.init(mockClient, mockServer);
-        await pluginManager.loadPlugins();
-
-        mockClient.commands.forEach((cmd: Command) => {
-            if (cmd.data) {
-                // Handle both Builders (toJSON) and plain objects
-                const cmdData =
-                    typeof cmd.data.toJSON === 'function'
-                        ? cmd.data.toJSON()
-                        : (cmd.data as unknown as RESTPostAPIChatInputApplicationCommandsJSONBody);
-                commands.push(cmdData);
-                logger.info(`[commands] Included plugin command: /${cmdData.name}`);
-            }
-        });
-    } catch (error) {
-        logger.error(`[commands] Failed to load plugin commands: ${error}`);
+function parseCliArgs(argv: string[]): CliArgs {
+    const args: CliArgs = {};
+    for (let i = 2; i < argv.length; i++) {
+        const arg = argv[i];
+        if (arg === '--strategy' || arg === '-s') {
+            args.strategy = argv[++i] as CommandPublishStrategy;
+        } else if (arg === '--guild' || arg === '-g') {
+            args.guildId = argv[++i];
+        } else if (arg === '--client-id' || arg === '-c') {
+            args.applicationId = argv[++i];
+        } else if (arg === '--token' || arg === '-t') {
+            args.token = argv[++i];
+        } else if (arg === '--env' || arg === '-e') {
+            args.environment = argv[++i];
+        } else if (arg === '--out' || arg === '-o') {
+            args.outPath = argv[++i];
+        } else if (arg === '--allow-test-plugins') {
+            args.allowTestPlugins = true;
+        }
     }
+    return args;
 }
 
-const rest = new REST({ version: '10' }).setToken(DISCORD_TOKEN);
+const cliArgs = parseCliArgs(process.argv);
+
+const runtimeProfile = getRuntimeProfile();
+
+// Strategy resolution priority:
+// 1. Explicit CLI argument (--strategy)
+// 2. Environment variable (COMMAND_DEPLOY_STRATEGY or DEPLOY_STRATEGY)
+// 3. Runtime profile default: 'global' for hosted, 'guild' if GUILD_ID is provided, else 'dry-run'
+const strategy: CommandPublishStrategy =
+    cliArgs.strategy ||
+    (process.env.COMMAND_DEPLOY_STRATEGY as CommandPublishStrategy) ||
+    (process.env.DEPLOY_STRATEGY as CommandPublishStrategy) ||
+    (runtimeProfile === 'hosted' ? 'global' : GUILD_ID ? 'guild' : 'dry-run');
+
+const applicationId = cliArgs.applicationId || DISCORD_CLIENT_ID;
+const token = cliArgs.token || DISCORD_TOKEN;
+const guildId = cliArgs.guildId || GUILD_ID;
+const environment = cliArgs.environment || process.env.NODE_ENV || runtimeProfile || 'development';
+const filterTestPlugins =
+    !cliArgs.allowTestPlugins && (environment === 'production' || runtimeProfile === 'hosted');
 
 (async () => {
     try {
-        logger.info(`[commands] Started refreshing ${commands.length} application (/) commands.`);
-        const data = (await rest.put(Routes.applicationGuildCommands(DISCORD_CLIENT_ID, GUILD_ID), {
-            body: commands,
-        })) as unknown[];
-        logger.info(`[commands] Successfully reloaded ${data.length} application (/) commands.`);
+        logger.info(
+            `[deploy-commands] Initializing command publisher (strategy: "${strategy}", profile: "${runtimeProfile}")...`,
+        );
+
+        const result = await publishCommands({
+            strategy,
+            applicationId,
+            token,
+            guildId,
+            environment,
+            filterTestPlugins,
+        });
+
+        logger.info('========================================================');
+        logger.info(`[deploy-commands] Command Manifest Published Successfully`);
+        logger.info(`  • Strategy:        ${result.strategy}`);
+        logger.info(`  • Target:          ${result.target}`);
+        logger.info(`  • Deployed:        ${result.deployedCount} command(s)`);
+        logger.info(`  • Payload Digest:  ${result.manifest.digest}`);
+        logger.info(
+            `  • Commands:        ${result.manifest.commands.map((c) => '/' + c.name).join(', ')}`,
+        );
+        logger.info('========================================================');
+
+        if (cliArgs.outPath) {
+            await fs.promises.writeFile(
+                cliArgs.outPath,
+                JSON.stringify(result.manifest, null, 2),
+                'utf8',
+            );
+            logger.info(`[deploy-commands] Manifest written to ${cliArgs.outPath}`);
+        }
+
         process.exit(0);
     } catch (error) {
-        logger.error(`[commands] ${error instanceof Error ? error.message : String(error)}`);
+        logger.error(
+            `[deploy-commands] Publication failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
         process.exit(1);
     }
 })();

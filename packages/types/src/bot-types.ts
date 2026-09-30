@@ -308,3 +308,29 @@ export interface StorageProvider {
     readonly pluginAssets: PluginAssetStore;
     readonly sharedCache: SharedMediaCache;
 }
+
+// --- Command Publisher Types (HJ-OSS-06) ---
+
+export type CommandPublishStrategy = 'dry-run' | 'guild' | 'global';
+
+export interface CommandManifest {
+    schemaVersion: string;
+    environment: string;
+    releaseVersion: string;
+    generatedAt: string;
+    strategy: CommandPublishStrategy;
+    applicationId: string;
+    guildId?: string;
+    digest: string;
+    commandCount: number;
+    commands: RESTPostAPIChatInputApplicationCommandsJSONBody[];
+}
+
+export interface PublishResult {
+    success: boolean;
+    manifest: CommandManifest;
+    deployedCount: number;
+    strategy: CommandPublishStrategy;
+    target: 'global' | `guild:${string}` | 'dry-run';
+    error?: string;
+}
