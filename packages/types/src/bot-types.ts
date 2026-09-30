@@ -26,12 +26,27 @@ export interface BotCredentials extends BotIdentityInfo {
 
 /** @deprecated Use BotCredentials for internal config or BotIdentityInfo for public metadata */
 export type BotIdentityConfig = BotCredentials;
-// --- Worker Pool Types ---
+// --- Worker Pool & Voice Lease Types ---
+
+export type VoiceLeaseState = 'acquiring' | 'active' | 'retained' | 'releasing';
+
+export interface VoiceLease {
+    state: VoiceLeaseState;
+    installationId: string;
+    guildId: string;
+    workerId: string;
+    voiceChannelId: string;
+    queueId?: string;
+    generation: number;
+    acquiredAt: Date;
+    lastActivityAt: Date;
+}
 
 export interface WorkerState {
     name: string;
     client: Client;
     role: 'controller' | 'worker';
+    leases: Map<string, VoiceLease>;
     busy: boolean;
     guildId: string | null;
     voiceChannelId: string | null;

@@ -12,6 +12,7 @@ export default {
         const workers = workerPool.getWorkers();
         const controller = workerPool.getController();
         const queues = musicPlayer.getQueues();
+        const guildId = interaction.guildId;
 
         const activeLines: string[] = [];
         const idleLines: string[] = [];
@@ -23,25 +24,26 @@ export default {
             return queue.nowPlaying.title || 'Unknown Track';
         };
 
-        // Controller status
-        if (controller) {
-            if (controller.busy && controller.voiceChannelId) {
-                const track = getTrackInfo(controller.voiceChannelId);
-                activeLines.push(
-                    `**${controller.name}** → <#${controller.voiceChannelId}>\n🎵 *${track}*`,
-                );
-            } else {
-                idleLines.push(`**${controller.name}**`);
-            }
-        }
+        // Combine cats without duplicating the controller
+        const allCats = controller
+            ? [controller, ...workers.filter((w) => w.name !== controller.name)]
+            : workers;
 
-        // Worker statuses
-        for (const worker of workers) {
-            if (worker.busy && worker.voiceChannelId) {
-                const track = getTrackInfo(worker.voiceChannelId);
-                activeLines.push(`**${worker.name}** → <#${worker.voiceChannelId}>\n🎵 *${track}*`);
+        for (const cat of allCats) {
+            let voiceChannelId: string | null = null;
+            if (guildId && cat.leases?.has(guildId)) {
+                voiceChannelId = cat.leases.get(guildId)!.voiceChannelId;
+            } else if (guildId && cat.guildId === guildId && cat.voiceChannelId) {
+                voiceChannelId = cat.voiceChannelId;
+            } else if (!guildId && cat.busy && cat.voiceChannelId) {
+                voiceChannelId = cat.voiceChannelId;
+            }
+
+            if (voiceChannelId) {
+                const track = getTrackInfo(voiceChannelId);
+                activeLines.push(`**${cat.name}** → <#${voiceChannelId}>\n🎵 *${track}*`);
             } else {
-                idleLines.push(`**${worker.name}**`);
+                idleLines.push(`**${cat.name}**`);
             }
         }
 
