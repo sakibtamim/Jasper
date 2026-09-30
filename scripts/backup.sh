@@ -9,6 +9,24 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+# Source .env if present for configuration before parsing CLI options, without overriding explicit environment
+if [[ -f "${ROOT_DIR}/.env" ]]; then
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        line="${line#"${line%%[![:space:]]*}"}"
+        [[ -z "$line" || "$line" =~ ^# ]] && continue
+        if [[ "$line" =~ ^([a-zA-Z_][a-zA-Z0-9_]*)=(.*)$ ]]; then
+            key="${BASH_REMATCH[1]}"
+            val="${BASH_REMATCH[2]}"
+            if [[ "$val" =~ ^\"(.*)\"$ ]] || [[ "$val" =~ ^\'(.*)\'$ ]]; then
+                val="${BASH_REMATCH[1]}"
+            fi
+            if [[ -z "${!key+x}" ]]; then
+                export "$key"="$val"
+            fi
+        fi
+    done < "${ROOT_DIR}/.env"
+fi
+
 # Default configurations
 OUTPUT_DIR="${BACKUP_OUTPUT_DIR:-${ROOT_DIR}/backups}"
 CONTAINER_MODE="${CONTAINER_MODE:-false}"
@@ -74,15 +92,6 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
-
-# Source .env if present for configuration
-if [[ -f "${ROOT_DIR}/.env" ]]; then
-    # Export non-comment lines without overriding explicit environment
-    set -a
-    # shellcheck disable=SC1091
-    source "${ROOT_DIR}/.env" || true
-    set +a
-fi
 
 POSTGRES_USER="${POSTGRES_USER:-jasper}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-jasper_secure_password}"

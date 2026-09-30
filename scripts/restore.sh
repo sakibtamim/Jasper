@@ -9,6 +9,24 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+# Source .env if present for configuration before parsing CLI options, without overriding explicit environment
+if [[ -f "${ROOT_DIR}/.env" ]]; then
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        line="${line#"${line%%[![:space:]]*}"}"
+        [[ -z "$line" || "$line" =~ ^# ]] && continue
+        if [[ "$line" =~ ^([a-zA-Z_][a-zA-Z0-9_]*)=(.*)$ ]]; then
+            key="${BASH_REMATCH[1]}"
+            val="${BASH_REMATCH[2]}"
+            if [[ "$val" =~ ^\"(.*)\"$ ]] || [[ "$val" =~ ^\'(.*)\'$ ]]; then
+                val="${BASH_REMATCH[1]}"
+            fi
+            if [[ -z "${!key+x}" ]]; then
+                export "$key"="$val"
+            fi
+        fi
+    done < "${ROOT_DIR}/.env"
+fi
+
 CONTAINER_MODE="${CONTAINER_MODE:-false}"
 COMPOSE_FILE="${COMPOSE_FILE:-${ROOT_DIR}/docker-compose.yml}"
 DATA_DIR="${DATA_DIR:-${ROOT_DIR}/data}"
@@ -90,14 +108,6 @@ done
 if [[ ! -e "${BACKUP_SOURCE}" ]]; then
     log_error "Backup source does not exist: ${BACKUP_SOURCE}"
     exit 1
-fi
-
-# Source .env if present
-if [[ -f "${ROOT_DIR}/.env" ]]; then
-    set -a
-    # shellcheck disable=SC1091
-    source "${ROOT_DIR}/.env" || true
-    set +a
 fi
 
 POSTGRES_USER="${POSTGRES_USER:-jasper}"

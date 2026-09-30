@@ -208,5 +208,41 @@ print(json.dumps({
             // Cleanup
             fs.rmSync(sandboxDir, { recursive: true, force: true });
         });
+
+        it('should prioritize CLI flags and existing environment variables over .env configuration', () => {
+            const sandboxDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dr-env-test-'));
+            const dataDir = path.join(sandboxDir, 'data');
+            const storageDir = path.join(dataDir, 'storage');
+            const pluginsDir = path.join(dataDir, 'plugins');
+            const backupOutputDir = path.join(sandboxDir, 'backups');
+            const sqlitePath = path.join(dataDir, 'jasper.sqlite');
+
+            fs.mkdirSync(storageDir, { recursive: true });
+            fs.mkdirSync(pluginsDir, { recursive: true });
+            fs.mkdirSync(backupOutputDir, { recursive: true });
+            fs.writeFileSync(sqlitePath, 'MOCK_DATA\n');
+
+            // Run backup with CLI --db-type sqlite and --output-dir, ensuring CLI flags take precedence
+            const backupRes = execSync(
+                `"${backupScriptPath}" --db-type sqlite --sqlite-path "${sqlitePath}" -o "${backupOutputDir}"`,
+                {
+                    encoding: 'utf8',
+                    env: {
+                        ...process.env,
+                        DATA_DIR: dataDir,
+                        STORAGE_DIR: storageDir,
+                        PLUGINS_DIR: pluginsDir,
+                    },
+                },
+            );
+
+            expect(backupRes).toMatch(/Backup created successfully!/);
+            const backupFiles = fs.readdirSync(backupOutputDir);
+            expect(
+                backupFiles.some((f) => f.startsWith('jasper-backup_') && f.endsWith('.tar.gz')),
+            ).toBe(true);
+
+            fs.rmSync(sandboxDir, { recursive: true, force: true });
+        });
     });
 });

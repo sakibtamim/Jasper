@@ -19,6 +19,9 @@ services:
             - PORT=3000
             - DB_TYPE=postgres
             - DATABASE_URL=postgresql://${POSTGRES_USER:-jasper}:${POSTGRES_PASSWORD:-jasper_secure_password}@postgres:5432/${POSTGRES_DB:-jasper}
+            # Optional companion object store settings (MinIO is provisioned as an optional companion
+            # store for upcoming remote asset persistence; current self-hosted runtime persists media
+            # and plugin assets directly to the local volume mounted at /app/data / jasper_data).
             - STORAGE_PROVIDER=s3
             - S3_ENDPOINT=http://minio:9000
             - S3_BUCKET=${S3_BUCKET:-jasper-media}
@@ -77,6 +80,9 @@ services:
             - PORT=3001
             - DB_TYPE=postgres
             - DATABASE_URL=postgresql://${POSTGRES_USER:-jasper}:${POSTGRES_PASSWORD:-jasper_secure_password}@postgres:5432/${POSTGRES_DB:-jasper}
+            # Optional companion object store settings (MinIO is provisioned as an optional companion
+            # store for upcoming remote asset persistence; current self-hosted runtime persists media
+            # and plugin assets directly to the local volume mounted at /app/data / jasper_worker_data).
             - STORAGE_PROVIDER=s3
             - S3_ENDPOINT=http://minio:9000
             - S3_BUCKET=${S3_BUCKET:-jasper-media}
@@ -184,7 +190,7 @@ services:
                     cpus: '0.25'
                     memory: 256M
 
-    # MinIO bucket provisioner helper
+    # MinIO bucket provisioner helper (provisions optional companion S3 bucket for upcoming remote storage)
     minio-init:
         image: minio/mc:RELEASE.2024-03-30T15-31-07Z
         container_name: jasper-minio-init

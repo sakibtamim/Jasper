@@ -39,13 +39,16 @@ The production self-hosted topology is orchestrated via [`docker-compose.yml`](.
 
 ### Services Summary
 
-| Service             | Role                                  | Network                        | Health Check                            | User / Security          |
-| :------------------ | :------------------------------------ | :----------------------------- | :-------------------------------------- | :----------------------- |
-| **`jasper-bot`**    | Primary controller & Web Dashboard    | `public`, `internal`           | `GET /health/ready` (15s)               | Non-root (`10001:10001`) |
-| **`jasper-worker`** | Optional audio worker pool            | `internal`                     | `GET /health/live` (15s)                | Non-root (`10001:10001`) |
-| **`postgres`**      | Relational state & migration lock     | `internal` (isolated)          | `pg_isready` (10s)                      | `postgres` (`70:70`)     |
-| **`minio`**         | S3-compatible media & asset storage   | `public` (console), `internal` | `mc ready local` / `/minio/health/live` | Non-root (`10001:10001`) |
-| **`minio-init`**    | Auto-provisions media buckets on boot | `internal`                     | N/A (runs once to completion)           | Non-root                 |
+| Service             | Role                                              | Network                        | Health Check                            | User / Security          |
+| :------------------ | :------------------------------------------------ | :----------------------------- | :-------------------------------------- | :----------------------- |
+| **`jasper-bot`**    | Primary controller & Web Dashboard                | `public`, `internal`           | `GET /health/ready` (15s)               | Non-root (`10001:10001`) |
+| **`jasper-worker`** | Optional audio worker pool                        | `internal`                     | `GET /health/live` (15s)                | Non-root (`10001:10001`) |
+| **`postgres`**      | Relational state & migration lock                 | `internal` (isolated)          | `pg_isready` (10s)                      | `postgres` (`70:70`)     |
+| **`minio`**         | S3-compatible companion object storage (optional) | `public` (console), `internal` | `mc ready local` / `/minio/health/live` | Non-root (`10001:10001`) |
+| **`minio-init`**    | Auto-provisions media buckets on boot             | `internal`                     | N/A (runs once to completion)           | Non-root                 |
+
+> [!NOTE]
+> **Media & Asset Persistence**: MinIO is provisioned in Docker Compose as an optional companion S3 object store for upcoming remote asset persistence. The current self-hosted runtime persists media assets, soundboard uploads, and plugin files directly to the local filesystem volume (`jasper_data` mounted at `/app/data`). Configuration variables `STORAGE_PROVIDER=s3` and `S3_*` are provided as companion settings in `docker-compose.yml` for upcoming remote persistence adapters.
 
 ---
 
@@ -164,7 +167,7 @@ Jasper supports rolling upgrades between compatible minor versions without inter
     ```
 
 2. **Trigger Database Migration**:
-   Jasper's migration engine automatically acquires an advisory lock (`POSTGRES_ADVISORY_LOCK_ID = 48291048`) and table lock on `schema_migration_lock`. This prevents race conditions when multiple instances start simultaneously.
+   Jasper's migration engine automatically acquires an advisory lock (`POSTGRES_ADVISORY_LOCK_ID = 742938472`) and table lock on `schema_migration_lock`. This prevents race conditions when multiple instances start simultaneously.
 
 3. **Rolling Restart of Controller**:
    Restart the controller container with zero downtime for existing workers:
