@@ -234,3 +234,77 @@ export interface Command {
     execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
     autocomplete?: (interaction: AutocompleteInteraction) => Promise<void>;
 }
+
+// --- Storage Interfaces (Installation-Scoped & Shared) ---
+
+export interface StoredAsset {
+    key: string;
+    size: number;
+    mimeType: string;
+    updatedAt: Date;
+    metadata?: Record<string, string>;
+}
+
+export interface AssetPutOptions {
+    mimeType?: string;
+    metadata?: Record<string, string>;
+}
+
+export interface TenantAssetStore {
+    put(
+        installationId: string,
+        path: string,
+        data: Buffer | Uint8Array | NodeJS.ReadableStream,
+        options?: AssetPutOptions,
+    ): Promise<StoredAsset>;
+    get(installationId: string, path: string): Promise<Buffer | null>;
+    getStream(installationId: string, path: string): Promise<NodeJS.ReadableStream | null>;
+    delete(installationId: string, path: string): Promise<boolean>;
+    list(installationId: string, prefix?: string): Promise<StoredAsset[]>;
+    stat(installationId: string, path: string): Promise<StoredAsset | null>;
+    resolve(installationId: string, path: string): { fsPath?: string; uri: string };
+}
+
+export interface PluginAssetStore {
+    put(
+        pluginId: string,
+        installationId: string,
+        path: string,
+        data: Buffer | Uint8Array | NodeJS.ReadableStream,
+        options?: AssetPutOptions,
+    ): Promise<StoredAsset>;
+    get(pluginId: string, installationId: string, path: string): Promise<Buffer | null>;
+    getStream(
+        pluginId: string,
+        installationId: string,
+        path: string,
+    ): Promise<NodeJS.ReadableStream | null>;
+    delete(pluginId: string, installationId: string, path: string): Promise<boolean>;
+    list(pluginId: string, installationId: string, prefix?: string): Promise<StoredAsset[]>;
+    stat(pluginId: string, installationId: string, path: string): Promise<StoredAsset | null>;
+    resolve(
+        pluginId: string,
+        installationId: string,
+        path: string,
+    ): { fsPath?: string; uri: string };
+}
+
+export interface SharedMediaCache {
+    put(
+        cacheKey: string,
+        data: Buffer | Uint8Array | NodeJS.ReadableStream,
+        options?: AssetPutOptions,
+    ): Promise<StoredAsset>;
+    get(cacheKey: string): Promise<Buffer | null>;
+    getStream(cacheKey: string): Promise<NodeJS.ReadableStream | null>;
+    delete(cacheKey: string): Promise<boolean>;
+    has(cacheKey: string): Promise<boolean>;
+    stat(cacheKey: string): Promise<StoredAsset | null>;
+    prune(olderThan: Date): Promise<number>;
+}
+
+export interface StorageProvider {
+    readonly tenantAssets: TenantAssetStore;
+    readonly pluginAssets: PluginAssetStore;
+    readonly sharedCache: SharedMediaCache;
+}
