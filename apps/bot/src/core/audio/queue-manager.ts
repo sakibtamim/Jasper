@@ -123,3 +123,46 @@ export function clearAllQueues() {
     queues.clear();
     logger.info('[catastrophicreset] All queues cleared');
 }
+
+/**
+ * Clear all queues and voice connections belonging strictly to a specific guild
+ */
+export function clearGuildQueues(guildId: string) {
+    logger.info(`[reset] Clearing active queues for guild ${guildId}`);
+
+    for (const [channelId, queue] of queues.entries()) {
+        if (queue.guildId === guildId) {
+            // Clear idle timeout
+            if (queue.idleTimeout) {
+                clearTimeout(queue.idleTimeout);
+            }
+
+            // Clear voice status
+            setVoiceStatus(queue.worker.client, channelId, '');
+
+            // Kill stream process
+            if (queue.streamProcess) {
+                try {
+                    logger.info(
+                        `[cleanup] Killing stream process (PID: ${queue.streamProcess.pid}) for channel ${channelId}`,
+                    );
+                    queue.streamProcess.kill('SIGKILL');
+                } catch {
+                    // Ignore error when killing process
+                }
+                queue.streamProcess = null;
+            }
+
+            // Destroy connection
+            if (queue.connection) {
+                queue.connection.destroy();
+            }
+
+            // Release worker
+            workerPool.releaseWorker(channelId, { guildId });
+
+            // Remove from queue map
+            queues.delete(channelId);
+        }
+    }
+}

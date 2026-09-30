@@ -116,4 +116,15 @@ describe('music-status command', () => {
         // Tuki is also idle
         expect(idleField?.value).toContain('**Tuki**');
     });
+
+    it('rejects DM execution when guildId is missing', async () => {
+        mockInteraction.guildId = null;
+
+        await musicStatusCommand.execute(mockInteraction as ChatInputCommandInteraction);
+
+        expect(mockInteraction.reply).toHaveBeenCalledWith({
+            content: expect.stringContaining('This command can only be executed in a server.'),
+            ephemeral: true,
+        });
+    });
 });
