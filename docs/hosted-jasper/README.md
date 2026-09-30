@@ -27,6 +27,7 @@ installation ceremony.
 | [MVP technical design](mvp-design.md)               | Runtime, control-plane, tenancy, onboarding, security, data, deployment, and testing design                                                  |
 | [MVP issue plan](mvp-issue-plan.md)                 | Filed issue-by-issue source of truth, ownership, dependencies, sequencing, and acceptance outcomes                                           |
 | [Self-hosting & disaster recovery](self-hosting.md) | Production Docker Compose deployment architecture, automated backup/restore, and rolling upgrade runbook                                     |
+| [Legacy deployment freeze](deployment-freeze.md)    | Policy and rollback runbook for the frozen legacy PM2 deployment workflow (HJ-OSS-16)                                                        |
 | [Future phases](future-phases.md)                   | Concrete design briefs for public beta, commercial launch, and the longer-term hosting platform                                              |
 
 ## Accepted decision

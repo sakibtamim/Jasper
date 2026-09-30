@@ -1,32 +1,43 @@
-name: Deploy Bot
+# ==============================================================================
+# ⚠️ DEPRECATION & FREEZE NOTICE (HJ-OSS-16)
+#
+# This legacy PM2/SSH push-deployment workflow has been FROZEN to prevent
+# unattended in-place mutation of live bot hosts during hosted evolution.
+#
+# Automatic push triggers on branch 'deploy' have been DISABLED.
+# This workflow can now ONLY be triggered manually via workflow_dispatch with
+# an explicit owner confirmation: confirm_frozen_deploy=true.
+#
+# For production and staging deployments, operators MUST use the immutable
+# OCI container path orchestrated via docker-compose.yml.
+# See: docs/hosted-jasper/self-hosting.md and docs/hosted-jasper/deployment-freeze.md
+# ==============================================================================
+
+name: Deploy Bot (Legacy Frozen Lane)
 
 on:
-    push:
-        branches:
-            - deploy
-        paths:
-            # Bot application
-            - 'apps/bot/**'
-            # Web dashboard
-            - 'apps/web/**'
-            # Shared packages
-            - 'packages/**'
-            # Root configuration
-            - 'package.json'
-            - 'pnpm-lock.yaml'
-            - 'pnpm-workspace.yaml'
-            - 'turbo.json'
-            - 'ecosystem.config.cjs'
-            # Node version
-            - '.nvmrc'
-            # Workflow itself
-            - '.github/workflows/deploy.yml'
+    workflow_dispatch:
+        inputs:
+            confirm_frozen_deploy:
+                description: 'MANDATORY: Confirm manual trigger of frozen legacy PM2 deployment lane (must be true)'
+                type: boolean
+                required: true
+                default: false
 
 jobs:
     build:
         runs-on: ubuntu-latest
 
         steps:
+            - name: Verify Frozen Deployment Confirmation Gate (HJ-OSS-16)
+              run: |
+                  echo "Checking legacy deployment freeze gate (HJ-OSS-16)..."
+                  if [ "${{ inputs.confirm_frozen_deploy }}" != "true" ]; then
+                      echo "::error::Deployment rejected! confirm_frozen_deploy is false. The legacy PM2 deployment lane is frozen under HJ-OSS-16. Use docker-compose.yml instead."
+                      exit 1
+                  fi
+                  echo "Legacy deployment gate confirmed by operator."
+
             - name: Generate GitHub App Token
               id: generate-token
               uses: actions/create-github-app-token@v1
@@ -94,6 +105,13 @@ jobs:
         runs-on: ubuntu-latest
 
         steps:
+            - name: Verify Frozen Deployment Confirmation Gate (HJ-OSS-16)
+              run: |
+                  if [ "${{ inputs.confirm_frozen_deploy }}" != "true" ]; then
+                      echo "::error::Deployment rejected! confirm_frozen_deploy is false. The legacy PM2 deployment lane is frozen under HJ-OSS-16."
+                      exit 1
+                  fi
+
             - name: Download artifact
               uses: actions/download-artifact@v4
               with:
