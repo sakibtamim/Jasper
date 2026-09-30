@@ -72,26 +72,39 @@ class MetricsRegistry {
 
     public toPrometheusText(): string {
         const lines: string[] = [];
+        const emittedTypes = new Set<string>();
 
         // Counters
         for (const [key, item] of this.counters.entries()) {
-            lines.push(`# TYPE ${key.split('{')[0]} counter`);
+            const baseName = key.split('{')[0];
+            if (!emittedTypes.has(baseName)) {
+                lines.push(`# TYPE ${baseName} counter`);
+                emittedTypes.add(baseName);
+            }
             lines.push(`${key} ${item.value}`);
         }
 
         // Gauges
         for (const [key, item] of this.gauges.entries()) {
-            lines.push(`# TYPE ${key.split('{')[0]} gauge`);
+            const baseName = key.split('{')[0];
+            if (!emittedTypes.has(baseName)) {
+                lines.push(`# TYPE ${baseName} gauge`);
+                emittedTypes.add(baseName);
+            }
             lines.push(`${key} ${item.value}`);
         }
 
         // Histograms (count & sum summary)
         for (const [key, item] of this.histograms.entries()) {
             const baseName = key.split('{')[0];
+            const labelPart = key.includes('{') ? key.slice(key.indexOf('{')) : '';
+            if (!emittedTypes.has(baseName)) {
+                lines.push(`# TYPE ${baseName} histogram`);
+                emittedTypes.add(baseName);
+            }
             const sum = item.values.reduce((acc, v) => acc + v, 0);
-            lines.push(`# TYPE ${baseName} histogram`);
-            lines.push(`${baseName}_count ${item.values.length}`);
-            lines.push(`${baseName}_sum ${sum}`);
+            lines.push(`${baseName}_count${labelPart} ${item.values.length}`);
+            lines.push(`${baseName}_sum${labelPart} ${sum}`);
         }
 
         return lines.join('\n') + (lines.length > 0 ? '\n' : '');

@@ -34,6 +34,7 @@ export interface ShardLeaseCoordinatorOptions {
     runtimeIdentity: RuntimeIdentity;
     renewalIntervalMs?: number;
     leaseTtlMs?: number;
+    maxSeenIdempotencyKeys?: number;
     onLeaseAcquired?: (lease: ShardLeaseRecord) => void;
     onLeaseLost?: (reason: string) => void;
 }

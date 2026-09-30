@@ -285,4 +285,129 @@ describe('ShardLeaseCoordinator & CAS Lease Contract (HJ-OSS-11)', () => {
 
         await coordinator.stop();
     });
+
+    it('bounds seenIdempotencyKeys and evicts oldest entries at capacity', async () => {
+        const coordinator = new ShardLeaseCoordinator({
+            store,
+            runtimeIdentity: baseIdentity,
+            activeWorkRegistry,
+            maxSeenIdempotencyKeys: 3, // Capacity of 3
+        });
+        await coordinator.start();
+
+        // Add 3 keys
+        coordinator.validateObservation({
+            fenceEpoch: 1,
+            bootId: 'boot-1',
+            sequence: 1,
+            type: 'cmd',
+            idempotencyKey: 'key-1',
+            receivedAt: new Date(),
+        });
+        coordinator.validateObservation({
+            fenceEpoch: 1,
+            bootId: 'boot-1',
+            sequence: 2,
+            type: 'cmd',
+            idempotencyKey: 'key-2',
+            receivedAt: new Date(),
+        });
+        coordinator.validateObservation({
+            fenceEpoch: 1,
+            bootId: 'boot-1',
+            sequence: 3,
+            type: 'cmd',
+            idempotencyKey: 'key-3',
+            receivedAt: new Date(),
+        });
+
+        expect(coordinator.getSeenIdempotencyKeysSize()).toBe(3);
+
+        // Add 4th key -> key-1 is evicted
+        coordinator.validateObservation({
+            fenceEpoch: 1,
+            bootId: 'boot-1',
+            sequence: 4,
+            type: 'cmd',
+            idempotencyKey: 'key-4',
+            receivedAt: new Date(),
+        });
+
+        expect(coordinator.getSeenIdempotencyKeysSize()).toBe(3);
+
+        // key-2 and key-3 are still present and rejected
+        const dupKey2 = coordinator.validateObservation({
+            fenceEpoch: 1,
+            bootId: 'boot-1',
+            sequence: 5,
+            type: 'cmd',
+            idempotencyKey: 'key-2',
+            receivedAt: new Date(),
+        });
+        expect(dupKey2.valid).toBe(false);
+
+        // key-1 was evicted, so it can be accepted again
+        const reKey1 = coordinator.validateObservation({
+            fenceEpoch: 1,
+            bootId: 'boot-1',
+            sequence: 6,
+            type: 'cmd',
+            idempotencyKey: 'key-1',
+            receivedAt: new Date(),
+        });
+        expect(reKey1.valid).toBe(true);
+
+        await coordinator.stop();
+    });
+
+    it('prunes lastSeenSequences entries for obsolete fenceEpochs lower than current', async () => {
+        const coordinator = new ShardLeaseCoordinator({
+            store,
+            runtimeIdentity: {
+                ...baseIdentity,
+                fenceEpoch: 1,
+            },
+            activeWorkRegistry,
+        });
+        await coordinator.start();
+
+        // Record sequences under epoch 1
+        coordinator.validateObservation({
+            fenceEpoch: 1,
+            bootId: 'boot-x',
+            sequence: 10,
+            type: 'event',
+            receivedAt: new Date(),
+        });
+        coordinator.validateObservation({
+            fenceEpoch: 1,
+            bootId: 'boot-y',
+            sequence: 20,
+            type: 'event',
+            receivedAt: new Date(),
+        });
+
+        expect(coordinator.getSeenSequencesSize()).toBe(2);
+
+        // Simulate epoch advancement (e.g. topology cutover / renewal at epoch 2)
+        store.overrideEpoch(baseIdentity.environment, baseIdentity.shardId, 2);
+        await coordinator.renew();
+        expect(coordinator.getFenceEpoch()).toBe(2);
+
+        // Validate observation on new epoch 2
+        const obsEpoch2 = coordinator.validateObservation({
+            fenceEpoch: 2,
+            bootId: 'boot-z',
+            sequence: 1,
+            type: 'event',
+            receivedAt: new Date(),
+        });
+        expect(obsEpoch2.valid).toBe(true);
+
+        // Obsolete sequences from epoch 1 were pruned!
+        // Only entries for epoch 2 remain
+        expect(coordinator.getSeenSequencesSize()).toBe(1);
+
+        await coordinator.stop();
+    });
 });

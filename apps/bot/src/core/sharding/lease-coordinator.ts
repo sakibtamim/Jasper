@@ -17,11 +17,14 @@ export interface ObservationValidationResult {
     reason?: string;
 }
 
+export const DEFAULT_MAX_SEEN_IDEMPOTENCY_KEYS = 5000;
+
 export class ShardLeaseCoordinator {
     private store: ShardLeaseStore;
     private identity: RuntimeIdentity;
     private renewalIntervalMs: number;
     private leaseTtlMs: number;
+    private maxSeenIdempotencyKeys: number;
     private onLeaseAcquired?: (lease: ShardLeaseRecord) => void;
     private onLeaseLost?: (reason: string) => void;
     private activeWorkRegistry?: ActiveWorkRegistry;
@@ -42,6 +45,8 @@ export class ShardLeaseCoordinator {
         this.identity = { ...options.runtimeIdentity };
         this.renewalIntervalMs = options.renewalIntervalMs ?? RENEWAL_INTERVAL_MS;
         this.leaseTtlMs = options.leaseTtlMs ?? LEASE_TTL_MS;
+        this.maxSeenIdempotencyKeys =
+            options.maxSeenIdempotencyKeys ?? DEFAULT_MAX_SEEN_IDEMPOTENCY_KEYS;
         this.onLeaseAcquired = options.onLeaseAcquired;
         this.onLeaseLost = options.onLeaseLost;
         this.activeWorkRegistry = options.activeWorkRegistry;
@@ -79,6 +84,29 @@ export class ShardLeaseCoordinator {
     public expireForTesting(): void {
         if (this.currentLease) {
             this.currentLease.expiresAt = new Date(Date.now() - 1000);
+        }
+    }
+
+    public getSeenIdempotencyKeysSize(): number {
+        return this.seenIdempotencyKeys.size;
+    }
+
+    public getSeenSequencesSize(): number {
+        return this.lastSeenSequences.size;
+    }
+
+    /**
+     * Prune tracked observation sequences for obsolete fence epochs lower than currentEpoch.
+     */
+    private pruneObsoleteSequences(currentEpoch: number): void {
+        for (const key of this.lastSeenSequences.keys()) {
+            const lastColon = key.lastIndexOf(':');
+            if (lastColon !== -1) {
+                const epoch = parseInt(key.slice(lastColon + 1), 10);
+                if (!isNaN(epoch) && epoch < currentEpoch) {
+                    this.lastSeenSequences.delete(key);
+                }
+            }
         }
     }
 
@@ -130,6 +158,7 @@ export class ShardLeaseCoordinator {
         this.currentLease = acquireResult.lease;
         this.state = 'held';
         this.identity.fenceEpoch = this.currentLease.fenceEpoch;
+        this.pruneObsoleteSequences(this.currentLease.fenceEpoch);
 
         emitStructuredLog('shard_lease_acquired', {
             environment: this.currentLease.environment,
@@ -183,6 +212,8 @@ export class ShardLeaseCoordinator {
         }
 
         this.currentLease = renewResult.lease;
+        this.identity.fenceEpoch = this.currentLease.fenceEpoch;
+        this.pruneObsoleteSequences(this.currentLease.fenceEpoch);
 
         emitStructuredLog('shard_lease_renewed', {
             environment: this.currentLease.environment,
@@ -273,6 +304,10 @@ export class ShardLeaseCoordinator {
     public validateObservation(observation: ShardObservation): ObservationValidationResult {
         // 1. Fence validation
         const currentFence = this.currentLease?.fenceEpoch ?? this.identity.fenceEpoch;
+        if (currentFence !== undefined) {
+            this.pruneObsoleteSequences(currentFence);
+        }
+
         if (!this.isFenceValid() || observation.fenceEpoch !== currentFence) {
             emitStructuredLog(
                 'stale_fence_rejected',
@@ -333,6 +368,16 @@ export class ShardLeaseCoordinator {
                     valid: false,
                     reason: `Duplicate idempotency key: ${observation.idempotencyKey}`,
                 };
+            }
+
+            // Bound seenIdempotencyKeys: evict oldest keys when at capacity
+            while (this.seenIdempotencyKeys.size >= this.maxSeenIdempotencyKeys) {
+                const oldest = this.seenIdempotencyKeys.values().next().value;
+                if (oldest !== undefined) {
+                    this.seenIdempotencyKeys.delete(oldest);
+                } else {
+                    break;
+                }
             }
             this.seenIdempotencyKeys.add(observation.idempotencyKey);
         }

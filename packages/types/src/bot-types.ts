@@ -415,6 +415,7 @@ export interface RuntimeIdentity {
     shardCount: number;
     applicationCatalogRevision: number;
     fenceEpoch?: number;
+    epoch?: number;
 }
 
 export interface ShardLeaseRecord {
