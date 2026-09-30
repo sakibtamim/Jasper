@@ -135,8 +135,12 @@ export const authGuardPlugin: FastifyPluginAsync<AuthGuardOptions> = async (
     fastify.addHook('preHandler', async (request: FastifyRequest, reply: FastifyReply) => {
         const url = request.raw.url || request.url;
 
-        // Skip non-API and static routes
-        if (!url.startsWith('/api/') && !url.startsWith('/internal/')) {
+        // Skip non-API, non-internal, and non-metrics routes
+        if (
+            !url.startsWith('/api/') &&
+            !url.startsWith('/internal/') &&
+            !url.startsWith('/metrics')
+        ) {
             return;
         }
 
@@ -155,9 +159,12 @@ export const authGuardPlugin: FastifyPluginAsync<AuthGuardOptions> = async (
 
         // A. Staff / Operator Bearer Token
         const authHeader = request.headers.authorization;
-        const operatorHeader = request.headers['x-jasper-operator-token'];
-        const workloadHeader = request.headers['x-jasper-workload-token'];
-        const systemHeader = request.headers['x-jasper-system-token'];
+        const operatorHeader =
+            request.headers['x-jasper-operator-token'] ?? request.headers['x-operator-token'];
+        const workloadHeader =
+            request.headers['x-jasper-workload-token'] ?? request.headers['x-workload-token'];
+        const systemHeader =
+            request.headers['x-jasper-system-token'] ?? request.headers['x-system-token'];
 
         if (typeof operatorHeader === 'string' && operatorTokens.has(operatorHeader)) {
             principal = { type: 'staff', subject: 'operator', role: 'operator' };

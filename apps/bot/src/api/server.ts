@@ -15,10 +15,12 @@ import {
 } from '../config/env.js';
 import { getCacheStats } from '../core/cache-manager.js';
 import db from '../core/db/index.js';
+import { HealthAggregator, defaultHealthAggregator } from '../core/health/index.js';
 import logger, { getRecentLogs } from '../core/logger.js';
 import musicPlayer from '../core/music-player.js';
 import hookManager from '../core/plugins/hook-manager.js';
 import pluginManager from '../core/plugins/plugin-manager.js';
+import { metricsRegistry } from '../core/telemetry/index.js';
 import workerPool from '../core/worker-pool.js';
 import authGuardPlugin, { AuthGuardOptions } from './auth-guard.js';
 import authRoutes from './auth.js';
@@ -40,6 +42,7 @@ export interface ServerOptions extends AuthGuardOptions {
     enableLegacyDashboard?: boolean;
     enablePluginManagement?: boolean;
     fastifyOptions?: FastifyServerOptions;
+    healthAggregator?: HealthAggregator;
 }
 
 /**
@@ -110,14 +113,17 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
         membershipResolver: options.membershipResolver,
     });
 
-    // 6. Health & Diagnostic Routes
-    app.get('/health/live', { config: { auth: { public: true } } }, async () => ({
-        status: 'live',
-    }));
+    const healthAggregator = options.healthAggregator ?? defaultHealthAggregator;
 
-    app.get('/health/ready', { config: { auth: { public: true } } }, async () => ({
-        status: 'ready',
-    }));
+    // 6. Health & Diagnostic Routes
+    app.get('/health/live', { config: { auth: { public: true } } }, async (_request, reply) => {
+        return reply.status(200).send(healthAggregator.getPublicLive());
+    });
+
+    app.get('/health/ready', { config: { auth: { public: true } } }, async (_request, reply) => {
+        const result = await healthAggregator.getPublicReady();
+        return reply.status(result.statusCode).send(result.payload);
+    });
 
     app.get(
         '/internal/health',
@@ -129,16 +135,22 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
             },
         },
         async () => {
-            const workers = workerPool.getWorkers();
-            return {
-                status: 'ok',
-                profile,
-                workers: {
-                    total: workers.length,
-                    busy: workers.filter((w) => w.busy).length,
-                    ready: workers.filter((w) => w.client.isReady()).length,
+            return await healthAggregator.getInternalHealth();
+        },
+    );
+
+    app.get(
+        '/metrics',
+        {
+            config: {
+                auth: {
+                    allowedPrincipals: ['staff', 'runtime_workload'],
                 },
-            };
+            },
+        },
+        async (_request, reply) => {
+            reply.header('content-type', 'text/plain; version=0.0.4');
+            return metricsRegistry.toPrometheusText();
         },
     );
 

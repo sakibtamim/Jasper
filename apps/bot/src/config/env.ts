@@ -1,4 +1,5 @@
-import { RuntimeProfile } from '@jasper/types';
+import { RuntimeIdentity, RuntimeProfile } from '@jasper/types';
+import crypto from 'crypto';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -162,6 +163,31 @@ export const isSelfHostedProfile = RUNTIME_PROFILE === 'self-hosted';
 export const NODE_ENV = getOptionalEnv('NODE_ENV', 'production');
 export const isProduction = NODE_ENV === 'production';
 export const isDevelopment = NODE_ENV === 'development';
+
+/**
+ * Runtime Identity & Sharding Configuration (HJ-OSS-11)
+ */
+export const JASPER_ENVIRONMENT = getOptionalEnv('JASPER_ENVIRONMENT', NODE_ENV);
+export const JASPER_RELEASE = getOptionalEnv('JASPER_RELEASE', 'v1.0.0');
+export const JASPER_CELL_ID = getOptionalEnv('JASPER_CELL_ID') || undefined;
+export const JASPER_SHARD_ID = getOptionalNumber('JASPER_SHARD_ID', 0);
+export const JASPER_SHARD_COUNT = getOptionalNumber('JASPER_SHARD_COUNT', 1);
+export const JASPER_CATALOG_REVISION = getOptionalNumber('JASPER_CATALOG_REVISION', 1);
+export const JASPER_BOOT_ID = crypto.randomUUID();
+
+export function getRuntimeIdentity(overrides?: Partial<RuntimeIdentity>): RuntimeIdentity {
+    return {
+        profile: RUNTIME_PROFILE,
+        environment: JASPER_ENVIRONMENT,
+        release: JASPER_RELEASE,
+        bootId: JASPER_BOOT_ID,
+        cellId: JASPER_CELL_ID,
+        shardId: JASPER_SHARD_ID,
+        shardCount: JASPER_SHARD_COUNT,
+        applicationCatalogRevision: JASPER_CATALOG_REVISION,
+        ...overrides,
+    };
+}
 
 // ============================================================================
 // Worker Bot Tokens (Token-Safe Discovery)
