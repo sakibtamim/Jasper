@@ -23,6 +23,7 @@ import { handleAutoplay, handleRadio, playSong } from './audio/playback-engine.j
 import {
     cleanupWorkerOldQueues,
     clearAllQueues,
+    clearGuildQueues,
     deleteQueue,
     getAllQueues,
     getQueue,
@@ -1103,6 +1104,7 @@ export default {
     startRadio,
     getQueues: getAllQueues,
     clearAllQueues,
+    clearGuildQueues,
     toggleLoop,
     toggleRepeat,
     shuffleQueue,

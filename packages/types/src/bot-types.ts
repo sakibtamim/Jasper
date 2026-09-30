@@ -26,6 +26,33 @@ export interface BotCredentials extends BotIdentityInfo {
 
 /** @deprecated Use BotCredentials for internal config or BotIdentityInfo for public metadata */
 export type BotIdentityConfig = BotCredentials;
+
+// --- Guild Installation & Access Policy Types ---
+
+export type InstallationState = 'provisioning' | 'active' | 'degraded' | 'suspended' | 'deleting';
+
+export interface GuildInstallationContext {
+    guildId: string;
+    installationId: string;
+    state: InstallationState;
+    admissionRevision: number;
+    admissionExpiresAt?: Date;
+    configRevision: number;
+    enabledWorkerIds: ReadonlySet<string>;
+    enabledPluginIds: ReadonlySet<string>;
+    jasperWeight: number;
+}
+
+export interface GuildScope {
+    guildId: string;
+    installationId: string;
+}
+
+export interface GuildAccessPolicy {
+    resolve(guildId: string): Promise<GuildInstallationContext | null>;
+    mayStartWork(context: GuildInstallationContext): boolean;
+}
+
 // --- Worker Pool & Voice Lease Types ---
 
 export type VoiceLeaseState = 'acquiring' | 'active' | 'retained' | 'releasing';

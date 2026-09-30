@@ -14,6 +14,14 @@ export default {
         const queues = musicPlayer.getQueues();
         const guildId = interaction.guildId;
 
+        if (!guildId) {
+            await interaction.reply({
+                content: '🚫 **Access Denied**: This command can only be executed in a server.',
+                ephemeral: true,
+            });
+            return;
+        }
+
         const activeLines: string[] = [];
         const idleLines: string[] = [];
 
