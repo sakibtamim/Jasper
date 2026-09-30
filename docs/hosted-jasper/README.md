@@ -18,15 +18,16 @@ installation ceremony.
 
 ## Documents
 
-| Document                                      | Purpose                                                                                                                                      |
-| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| [Product brief](product-brief.md)             | Problem, vision, audiences, principles, scope, and product boundary                                                                          |
-| [Current-state audit](current-state-audit.md) | Onboarding-document review, static architecture analysis, local verification, live GitHub and staging evidence, risks, and open-issue impact |
-| [Product requirements](prd.md)                | Live PRD, complete MVP requirements and acceptance gates, plus the short-, medium-, and long-term feature index                              |
-| [Plugin feasibility](plugin-feasibility.md)   | Decision and scorecard for packaging the proprietary distribution around Jasper’s out-of-tree plugin workflow                                |
-| [MVP technical design](mvp-design.md)         | Runtime, control-plane, tenancy, onboarding, security, data, deployment, and testing design                                                  |
-| [MVP issue plan](mvp-issue-plan.md)           | Filed issue-by-issue source of truth, ownership, dependencies, sequencing, and acceptance outcomes                                           |
-| [Future phases](future-phases.md)             | Concrete design briefs for public beta, commercial launch, and the longer-term hosting platform                                              |
+| Document                                            | Purpose                                                                                                                                      |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Product brief](product-brief.md)                   | Problem, vision, audiences, principles, scope, and product boundary                                                                          |
+| [Current-state audit](current-state-audit.md)       | Onboarding-document review, static architecture analysis, local verification, live GitHub and staging evidence, risks, and open-issue impact |
+| [Product requirements](prd.md)                      | Live PRD, complete MVP requirements and acceptance gates, plus the short-, medium-, and long-term feature index                              |
+| [Plugin feasibility](plugin-feasibility.md)         | Decision and scorecard for packaging the proprietary distribution around Jasper’s out-of-tree plugin workflow                                |
+| [MVP technical design](mvp-design.md)               | Runtime, control-plane, tenancy, onboarding, security, data, deployment, and testing design                                                  |
+| [MVP issue plan](mvp-issue-plan.md)                 | Filed issue-by-issue source of truth, ownership, dependencies, sequencing, and acceptance outcomes                                           |
+| [Self-hosting & disaster recovery](self-hosting.md) | Production Docker Compose deployment architecture, automated backup/restore, and rolling upgrade runbook                                     |
+| [Future phases](future-phases.md)                   | Concrete design briefs for public beta, commercial launch, and the longer-term hosting platform                                              |
 
 ## Accepted decision
 

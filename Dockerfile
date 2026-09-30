@@ -105,6 +105,10 @@ VOLUME ["/data"]
 # Run as non-root user
 USER node
 
+# Health check
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
+  CMD curl -f http://localhost:${PORT:-3000}/health/live || exit 1
+
 # Use dumb-init as top-level PID 1 init process for signal forwarding
 ENTRYPOINT ["/usr/bin/dumb-init", "--", "/app/scripts/docker-entrypoint.sh"]
 
