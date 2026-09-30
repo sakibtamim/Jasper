@@ -13,6 +13,8 @@ interface CliArgs {
     environment?: string;
     outPath?: string;
     allowTestPlugins?: boolean;
+    enabledPlugins?: string[];
+    disabledPlugins?: string[];
 }
 
 function parseCliArgs(argv: string[]): CliArgs {
@@ -33,6 +35,22 @@ function parseCliArgs(argv: string[]): CliArgs {
             args.outPath = argv[++i];
         } else if (arg === '--allow-test-plugins') {
             args.allowTestPlugins = true;
+        } else if (arg === '--enabled-plugins') {
+            const list = argv[++i];
+            args.enabledPlugins = list
+                ? list
+                      .split(',')
+                      .map((s) => s.trim())
+                      .filter(Boolean)
+                : [];
+        } else if (arg === '--disabled-plugins') {
+            const list = argv[++i];
+            args.disabledPlugins = list
+                ? list
+                      .split(',')
+                      .map((s) => s.trim())
+                      .filter(Boolean)
+                : [];
         }
     }
     return args;
@@ -72,6 +90,8 @@ const filterTestPlugins =
             guildId,
             environment,
             filterTestPlugins,
+            enabledPlugins: cliArgs.enabledPlugins,
+            disabledPlugins: cliArgs.disabledPlugins,
         });
 
         logger.info('========================================================');

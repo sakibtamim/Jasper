@@ -34,6 +34,8 @@ export interface CommandPublisherOptions {
     releaseVersion?: string;
     callerRole?: 'controller' | 'worker';
     filterTestPlugins?: boolean;
+    enabledPlugins?: string[];
+    disabledPlugins?: string[];
     commandsDir?: string;
     pluginsDir?: string;
     // Injected commands for testing or explicit manifest generation
@@ -100,13 +102,21 @@ export function canonicalJsonStringify(val: unknown): string {
 }
 
 /**
+ * Compares two objects by name using deterministic Unicode code-point order.
+ * Independent of host locale or ICU version.
+ */
+export function compareCommandNames(a: { name: string }, b: { name: string }): number {
+    return a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
+}
+
+/**
  * Computes a SHA-256 digest of the canonical normalized command list.
  */
 export function computeCommandDigest(
     commands: RESTPostAPIChatInputApplicationCommandsJSONBody[],
 ): string {
-    // Sort commands deterministically by name
-    const sorted = [...commands].sort((a, b) => a.name.localeCompare(b.name));
+    // Sort commands deterministically by name using Unicode code-point order
+    const sorted = [...commands].sort(compareCommandNames);
     const canonical = canonicalJsonStringify(sorted);
     return crypto.createHash('sha256').update(canonical).digest('hex');
 }
@@ -250,7 +260,12 @@ export async function collectCoreCommandDescriptors(
  */
 export async function collectPluginCommandDescriptors(
     pluginsDir?: string,
-    options?: { filterTestPlugins?: boolean; environment?: string },
+    options?: {
+        filterTestPlugins?: boolean;
+        environment?: string;
+        enabledPlugins?: string[];
+        disabledPlugins?: string[];
+    },
 ): Promise<DiscoveredCommand[]> {
     const targetDir = pluginsDir ?? path.join(__dirname, '..', 'plugins');
     if (!fs.existsSync(targetDir)) {
@@ -261,13 +276,53 @@ export async function collectPluginCommandDescriptors(
         options?.filterTestPlugins ??
         (options?.environment === 'production' || options?.environment === 'hosted');
 
+    const envDisabledPlugins = process.env.DISABLED_PLUGINS
+        ? process.env.DISABLED_PLUGINS.split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
+        : [];
+    const disabledPlugins = new Set([...(options?.disabledPlugins ?? []), ...envDisabledPlugins]);
+
+    const envEnabledPlugins = process.env.ENABLED_PLUGINS
+        ? process.env.ENABLED_PLUGINS.split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
+        : [];
+    const enabledPlugins =
+        options?.enabledPlugins ?? (envEnabledPlugins.length > 0 ? envEnabledPlugins : undefined);
+
     const entries = await fs.promises.readdir(targetDir, { withFileTypes: true });
     const discovered: DiscoveredCommand[] = [];
 
     for (const entry of entries) {
-        if (!entry.isDirectory()) continue;
+        let isDir = entry.isDirectory();
+        if (!isDir && entry.isSymbolicLink()) {
+            try {
+                const stat = await fs.promises.stat(path.join(targetDir, entry.name));
+                isDir = stat.isDirectory();
+            } catch {
+                isDir = false;
+            }
+        }
+        if (!isDir) continue;
 
         const pluginId = entry.name;
+
+        // Skip explicitly disabled plugins
+        if (disabledPlugins.has(pluginId)) {
+            logger.debug(
+                `[publisher] Skipping disabled plugin "${pluginId}" from release manifest`,
+            );
+            continue;
+        }
+
+        // If an explicit enabled list is provided, skip plugins not in that list
+        if (enabledPlugins && !enabledPlugins.includes(pluginId)) {
+            logger.debug(
+                `[publisher] Skipping plugin "${pluginId}" not in enabled plugins list from release manifest`,
+            );
+            continue;
+        }
 
         // Skip test plugins when publishing for production/hosted releases
         if (shouldFilterTestPlugins && TEST_PLUGINS.includes(pluginId)) {
@@ -286,6 +341,12 @@ export async function collectPluginCommandDescriptors(
                 const manifestContent = JSON.parse(
                     await fs.promises.readFile(manifestPath, 'utf8'),
                 );
+                if (manifestContent.enabled === false || manifestContent.disabled === true) {
+                    logger.debug(
+                        `[publisher] Skipping plugin "${pluginId}" marked disabled in manifest`,
+                    );
+                    continue;
+                }
                 if (shouldFilterTestPlugins && manifestContent.testOnly) {
                     continue;
                 }
@@ -317,11 +378,69 @@ export async function collectPluginCommandDescriptors(
             const pluginModule = await import(pathToFileURL(entryPath).href);
             const plugin = pluginModule.default ?? pluginModule;
 
-            // Check for pure commands array on plugin export or module export
-            const commandsList =
+            // 1. Check for pure commands array on plugin export or module export
+            let commandsList =
                 plugin?.commands ?? pluginModule.commands ?? plugin?.commandDescriptors;
 
-            if (Array.isArray(commandsList)) {
+            // 2. Fallback check: look for commands.ts / commands.js file if not found on export
+            if (!commandsList || !Array.isArray(commandsList) || commandsList.length === 0) {
+                const commandsTsPath = path.join(pluginFolder, 'commands.ts');
+                const commandsJsPath = path.join(pluginFolder, 'commands.js');
+                const commandsFilePath = fs.existsSync(commandsTsPath)
+                    ? commandsTsPath
+                    : fs.existsSync(commandsJsPath)
+                      ? commandsJsPath
+                      : null;
+
+                if (commandsFilePath) {
+                    try {
+                        const cmdModule = await import(pathToFileURL(commandsFilePath).href);
+                        const found = cmdModule.default ?? cmdModule.commands;
+                        if (Array.isArray(found)) {
+                            commandsList = found;
+                        } else if (found && ('data' in found || 'name' in found)) {
+                            commandsList = [found];
+                        }
+                    } catch (e) {
+                        logger.warn(`[publisher] Failed to import ${commandsFilePath}: ${e}`);
+                    }
+                }
+            }
+
+            // 3. Fallback check: look for commands/ directory inside plugin
+            if (!commandsList || !Array.isArray(commandsList) || commandsList.length === 0) {
+                const pluginCommandsDir = path.join(pluginFolder, 'commands');
+                if (fs.existsSync(pluginCommandsDir)) {
+                    try {
+                        const cmdFiles = (await fs.promises.readdir(pluginCommandsDir)).filter(
+                            (file) =>
+                                (file.endsWith('.js') || file.endsWith('.ts')) &&
+                                !file.endsWith('.d.ts') &&
+                                !file.includes('.test.') &&
+                                !file.includes('.spec.'),
+                        );
+                        const fallbackCommands: unknown[] = [];
+                        for (const file of cmdFiles) {
+                            const cmdFilePath = path.join(pluginCommandsDir, file);
+                            const cmdModule = await import(pathToFileURL(cmdFilePath).href);
+                            const cmdExport =
+                                cmdModule.default ??
+                                cmdModule.command ??
+                                cmdModule.soundboardCommandDescriptor;
+                            if (cmdExport && ('data' in cmdExport || 'name' in cmdExport)) {
+                                fallbackCommands.push(cmdExport);
+                            }
+                        }
+                        if (fallbackCommands.length > 0) {
+                            commandsList = fallbackCommands;
+                        }
+                    } catch (e) {
+                        logger.warn(`[publisher] Failed to read ${pluginCommandsDir}: ${e}`);
+                    }
+                }
+            }
+
+            if (Array.isArray(commandsList) && commandsList.length > 0) {
                 for (const cmd of commandsList) {
                     const normalized = normalizeCommandPayload(cmd, `plugin:${pluginId}`);
                     discovered.push({
@@ -329,6 +448,18 @@ export async function collectPluginCommandDescriptors(
                         data: normalized,
                         source: `plugin:${pluginId}`,
                     });
+                }
+            } else {
+                // If entry file mentions registerCommand but no declarative commands were found, log warning
+                try {
+                    const entryCode = await fs.promises.readFile(entryPath, 'utf8');
+                    if (entryCode.includes('registerCommand(')) {
+                        logger.warn(
+                            `[publisher] Plugin "${pluginId}" registers commands in onLoad() but exports no declarative "commands" descriptor array. Migrate plugin to export declarative command descriptors for release publication.`,
+                        );
+                    }
+                } catch {
+                    // Ignore read error
                 }
             }
         } catch (error) {
@@ -373,6 +504,8 @@ export async function generateCommandManifest(
             collectPluginCommandDescriptors(options.pluginsDir, {
                 filterTestPlugins: options.filterTestPlugins,
                 environment,
+                enabledPlugins: options.enabledPlugins,
+                disabledPlugins: options.disabledPlugins,
             }),
         ]);
         allDiscovered = [...coreCommands, ...pluginCommands];
@@ -396,10 +529,8 @@ export async function generateCommandManifest(
         );
     }
 
-    // Sort commands deterministically by name
-    const normalizedCommands = allDiscovered
-        .map((item) => item.data)
-        .sort((a, b) => a.name.localeCompare(b.name));
+    // Sort commands deterministically by name using Unicode code-point order
+    const normalizedCommands = allDiscovered.map((item) => item.data).sort(compareCommandNames);
 
     const digest = computeCommandDigest(normalizedCommands);
 

@@ -2,6 +2,7 @@ import {
     ApplicationIntegrationType,
     InteractionContextType,
     PermissionFlagsBits,
+    RESTPostAPIChatInputApplicationCommandsJSONBody,
     Routes,
 } from 'discord.js';
 import fs from 'node:fs';
@@ -15,6 +16,7 @@ import {
     canonicalJsonStringify,
     collectCoreCommandDescriptors,
     collectPluginCommandDescriptors,
+    compareCommandNames,
     computeCommandDigest,
     generateCommandManifest,
     normalizeCommandPayload,
@@ -420,6 +422,118 @@ describe('Command Publisher & Manifest Generator (HJ-OSS-06)', () => {
                 ]);
                 expect(cmd.data.dm_permission).toBe(false);
             }
+        });
+    });
+
+    describe('Deterministic Code-Point Sorting', () => {
+        it('should sort commands deterministically by Unicode code points', () => {
+            const names = ['zeta', 'alpha', 'beta_test', 'beta-test', 'alpha1', '123'];
+            const sorted = names.map((n) => ({ name: n })).sort(compareCommandNames);
+
+            expect(sorted.map((s) => s.name)).toEqual([
+                '123',
+                'alpha',
+                'alpha1',
+                'beta-test',
+                'beta_test',
+                'zeta',
+            ]);
+        });
+    });
+
+    describe('Plugin Discovery Enhancements (Symlinks, Filters, Fallbacks)', () => {
+        it('should discover commands from symlinked plugin directories', async () => {
+            const externalPluginDir = path.join(tempDir, 'external-plugin');
+            await fs.promises.mkdir(externalPluginDir, { recursive: true });
+
+            await fs.promises.writeFile(
+                path.join(externalPluginDir, 'jasper-plugin.json'),
+                JSON.stringify({ id: 'linked-plugin', name: 'Linked Plugin', entry: 'index.js' }),
+            );
+            await fs.promises.writeFile(
+                path.join(externalPluginDir, 'index.js'),
+                `export default {
+                    name: 'Linked Plugin',
+                    commands: [{ data: { name: 'linked-cmd', description: 'From symlink' } }]
+                };`,
+            );
+
+            const testPluginsRoot = path.join(tempDir, 'plugins-root');
+            await fs.promises.mkdir(testPluginsRoot, { recursive: true });
+            await fs.promises.symlink(
+                externalPluginDir,
+                path.join(testPluginsRoot, 'linked-plugin'),
+                'dir',
+            );
+
+            const discovered = await collectPluginCommandDescriptors(testPluginsRoot);
+            expect(discovered.some((c) => c.name === 'linked-cmd')).toBe(true);
+        });
+
+        it('should respect disabledPlugins and enabledPlugins filters', async () => {
+            const pluginsRoot = path.join(tempDir, 'filter-plugins');
+            await fs.promises.mkdir(path.join(pluginsRoot, 'plugin-a'), { recursive: true });
+            await fs.promises.mkdir(path.join(pluginsRoot, 'plugin-b'), { recursive: true });
+
+            await fs.promises.writeFile(
+                path.join(pluginsRoot, 'plugin-a', 'index.js'),
+                `export default { name: 'A', commands: [{ data: { name: 'cmd-a', description: 'Desc A' } }] };`,
+            );
+            await fs.promises.writeFile(
+                path.join(pluginsRoot, 'plugin-b', 'index.js'),
+                `export default { name: 'B', commands: [{ data: { name: 'cmd-b', description: 'Desc B' } }] };`,
+            );
+
+            // Filter out plugin-a using disabledPlugins
+            const disabledResult = await collectPluginCommandDescriptors(pluginsRoot, {
+                disabledPlugins: ['plugin-a'],
+            });
+            expect(disabledResult.map((c) => c.name)).toEqual(['cmd-b']);
+
+            // Filter using enabledPlugins whitelist
+            const enabledResult = await collectPluginCommandDescriptors(pluginsRoot, {
+                enabledPlugins: ['plugin-a'],
+            });
+            expect(enabledResult.map((c) => c.name)).toEqual(['cmd-a']);
+        });
+
+        it('should skip plugins marked disabled in jasper-plugin.json manifest', async () => {
+            const pluginsRoot = path.join(tempDir, 'manifest-disabled-plugins');
+            const pluginDir = path.join(pluginsRoot, 'disabled-plugin');
+            await fs.promises.mkdir(pluginDir, { recursive: true });
+
+            await fs.promises.writeFile(
+                path.join(pluginDir, 'jasper-plugin.json'),
+                JSON.stringify({ id: 'disabled-plugin', name: 'Disabled', enabled: false }),
+            );
+            await fs.promises.writeFile(
+                path.join(pluginDir, 'index.js'),
+                `export default { name: 'Disabled', commands: [{ data: { name: 'hidden-cmd', description: 'Hidden' } }] };`,
+            );
+
+            const result = await collectPluginCommandDescriptors(pluginsRoot);
+            expect(result.some((c) => c.name === 'hidden-cmd')).toBe(false);
+        });
+
+        it('should fallback to commands.js or commands/ directory if plugin.commands is missing', async () => {
+            const pluginsRoot = path.join(tempDir, 'fallback-plugins');
+            const pluginDir = path.join(pluginsRoot, 'unmigrated-plugin');
+            const commandsSubdir = path.join(pluginDir, 'commands');
+            await fs.promises.mkdir(commandsSubdir, { recursive: true });
+
+            // Plugin index has no commands array
+            await fs.promises.writeFile(
+                path.join(pluginDir, 'index.js'),
+                `export default { name: 'Unmigrated', onLoad: () => {} };`,
+            );
+            // commands/custom.js defines the command
+            await fs.promises.writeFile(
+                path.join(commandsSubdir, 'custom.js'),
+                `export default { data: { name: 'fallback-cmd', description: 'Discovered via fallback' } };`,
+            );
+
+            const result = await collectPluginCommandDescriptors(pluginsRoot);
+            expect(result.some((c) => c.name === 'fallback-cmd')).toBe(true);
         });
     });
 });

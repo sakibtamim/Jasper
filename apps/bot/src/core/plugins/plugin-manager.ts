@@ -769,14 +769,24 @@ export class PluginManager {
                 },
             };
 
-            // Automatically register any pure declarative commands provided by the plugin
+            await plugin.onLoad(pluginContext);
+
+            // Automatically register any declarative commands provided by the plugin
+            // that were NOT already registered during onLoad
             if (Array.isArray(plugin.commands)) {
+                const registeredCommands = this.pluginCommands.get(plugin.name) || [];
                 for (const cmd of plugin.commands) {
-                    pluginContext.registerCommand(cmd);
+                    const cmdName = cmd.data?.name;
+                    if (
+                        cmdName &&
+                        !registeredCommands.includes(cmdName) &&
+                        typeof cmd.execute === 'function'
+                    ) {
+                        pluginContext.registerCommand(cmd);
+                    }
                 }
             }
 
-            await plugin.onLoad(pluginContext);
             this.plugins.set(plugin.name, {
                 plugin,
                 context: pluginContext,
@@ -787,6 +797,27 @@ export class PluginManager {
             this.pluginRouters.set(metadata.id, router);
             logger.info(`[plugins] Successfully loaded ${plugin.name}`);
         } catch (error) {
+            // Roll back any commands registered before or during failure
+            const commands = this.pluginCommands.get(plugin.name) || [];
+            if (commands.length > 0 && this.context?.client) {
+                logger.warn(
+                    `[plugins] Rolling back commands for failed plugin ${plugin.name}: ${commands.join(', ')}`,
+                );
+                for (const cmdName of commands) {
+                    this.context.client.commands.delete(cmdName);
+                }
+            }
+            this.pluginCommands.delete(plugin.name);
+
+            // Clean up any intervals registered before or during failure
+            const intervals = this.pluginIntervals.get(plugin.name);
+            if (intervals) {
+                for (const interval of intervals) {
+                    clearInterval(interval);
+                }
+                this.pluginIntervals.delete(plugin.name);
+            }
+
             logger.error(
                 `[plugins] Failed to initialize plugin ${plugin.name}: ${error instanceof Error ? error.message : String(error)}`,
             );

@@ -70,17 +70,6 @@ const SoundEffectPlugin: Plugin = {
         context.on<SongPlayData>('POST_MUSIC_PLAY', ({ song }) => {
             context.logger.info(`Started playing: ${song.title}`);
         });
-
-        // Register a test command
-        context.registerCommand({
-            data: {
-                name: 'ping-plugin',
-                description: 'Replies with Pong from the plugin!',
-            },
-            execute: async (interaction: ChatInputCommandInteraction) => {
-                await interaction.reply('Pong! 🏓 (from SoundEffectPlugin)');
-            },
-        });
     },
 
     onUnload: async (context: PluginContext) => {
