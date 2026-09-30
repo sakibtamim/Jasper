@@ -69,9 +69,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install pinned yt-dlp binary to avoid mutable runtime download
-RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/download/2025.02.19/yt-dlp -o /usr/local/bin/yt-dlp \
+RUN curl -fL https://github.com/yt-dlp/yt-dlp/releases/download/2025.02.19/yt-dlp -o /usr/local/bin/yt-dlp \
     && chmod a+rx /usr/local/bin/yt-dlp \
-    && yt-dlp --version || true
+    && /usr/local/bin/yt-dlp --version
 
 # Prepare persistent data volume directory and assign to non-root 'node' user
 RUN mkdir -p /data /app && chown -R node:node /data /app && chmod 755 /data

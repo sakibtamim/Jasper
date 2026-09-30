@@ -1,5 +1,7 @@
-import db from './core/db/index.js';
-import logger from './core/logger.js';
+process.env.SKIP_DB_INIT = 'true';
+
+const { default: logger } = await import('./core/logger.js');
+const { default: db } = await import('./core/db/index.js');
 
 async function main(): Promise<void> {
     logger.info('[migrate] Explicit database migration run initiated...');
