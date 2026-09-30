@@ -23,7 +23,6 @@ import {
     EXCLUDED_PRODUCTION_PLUGIN_IDS,
     PRODUCTION_PLUGIN_IDS,
     isExcludedFromProduction,
-    isProductionPlugin,
 } from '../../config/plugins.js';
 import logger from '../logger.js';
 import { PluginManager } from './plugin-manager.js';
