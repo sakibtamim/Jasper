@@ -3,6 +3,7 @@ import pg from 'pg';
 import { DATABASE_URL, ENCRYPTION_KEY, isProduction } from '../../config/env.js';
 import { decrypt, encrypt } from '../../utils/encryption.js';
 import logger from '../logger.js';
+import { runMigrations } from './migrations/index.js';
 import {
     DatabaseAdapter,
     PlayRecord,
@@ -22,7 +23,7 @@ export class PostgresAdapter implements DatabaseAdapter {
         // Connection string comes from DATABASE_URL env var
     }
 
-    async init(): Promise<void> {
+    async init(options?: { profile?: 'self-hosted' | 'hosted'; release?: string }): Promise<void> {
         try {
             this.pool = new Pool({
                 connectionString: DATABASE_URL,
@@ -32,114 +33,12 @@ export class PostgresAdapter implements DatabaseAdapter {
             // Test connection
             await this.pool.query('SELECT 1');
 
-            // Create tables
-            await this.pool.query(`
-        CREATE TABLE IF NOT EXISTS plays (
-          id SERIAL PRIMARY KEY,
-          user_id TEXT NOT NULL,
-          guild_id TEXT NOT NULL,
-          channel_id TEXT NOT NULL,
-          bot_name TEXT NOT NULL,
-          song_title TEXT NOT NULL,
-          song_url TEXT NOT NULL,
-          duration INTEGER NOT NULL,
-          played_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS search_cache (
-          id SERIAL PRIMARY KEY,
-          query TEXT NOT NULL UNIQUE,
-          song_title TEXT NOT NULL,
-          song_url TEXT NOT NULL,
-          duration INTEGER NOT NULL,
-          thumbnail TEXT,
-          cached_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          expires_at TIMESTAMP WITH TIME ZONE NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS audio_metadata (
-          id SERIAL PRIMARY KEY,
-          video_id TEXT NOT NULL UNIQUE,
-          title TEXT NOT NULL,
-          url TEXT NOT NULL,
-          duration INTEGER NOT NULL,
-          thumbnail TEXT,
-          search_terms TEXT NOT NULL,
-          cached_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          expires_at TIMESTAMP WITH TIME ZONE NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS cache_hits (
-          id SERIAL PRIMARY KEY,
-          entity_id TEXT NOT NULL,
-          entity_name TEXT NOT NULL,
-          entity_type TEXT NOT NULL,
-          hit_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS users (
-          id TEXT PRIMARY KEY,
-          username TEXT NOT NULL,
-          discriminator TEXT NOT NULL,
-          avatar TEXT,
-          access_token TEXT NOT NULL,
-          refresh_token TEXT NOT NULL,
-          expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS sessions (
-          id TEXT PRIMARY KEY,
-          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-          expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );
-
-
-        CREATE TABLE IF NOT EXISTS plugin_storage (
-          plugin_name TEXT NOT NULL,
-          key TEXT NOT NULL,
-          value TEXT,
-          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          PRIMARY KEY (plugin_name, key)
-        );
-
-        CREATE TABLE IF NOT EXISTS plugin_meta (
-          plugin_id TEXT PRIMARY KEY,
-          enabled BOOLEAN NOT NULL DEFAULT TRUE,
-          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS yt_dlp_cookies (
-          id SERIAL PRIMARY KEY,
-          name TEXT NOT NULL,
-          content TEXT NOT NULL,
-          is_active BOOLEAN NOT NULL DEFAULT TRUE,
-          success_count INTEGER NOT NULL DEFAULT 0,
-          failure_count INTEGER NOT NULL DEFAULT 0,
-          last_used TIMESTAMP WITH TIME ZONE,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
-
-            // Create indexes
-            await this.pool.query(`
-        CREATE INDEX IF NOT EXISTS idx_plays_user_id ON plays(user_id);
-        CREATE INDEX IF NOT EXISTS idx_plays_song_url ON plays(song_url);
-        CREATE INDEX IF NOT EXISTS idx_plays_played_at ON plays(played_at);
-        CREATE INDEX IF NOT EXISTS idx_plays_channel_id ON plays(channel_id);
-        CREATE INDEX IF NOT EXISTS idx_plays_bot_name ON plays(bot_name);
-        CREATE INDEX IF NOT EXISTS idx_search_cache_query ON search_cache(query);
-        CREATE INDEX IF NOT EXISTS idx_search_cache_expires_at ON search_cache(expires_at);
-        CREATE INDEX IF NOT EXISTS idx_audio_metadata_video_id ON audio_metadata(video_id);
-        CREATE INDEX IF NOT EXISTS idx_audio_metadata_expires_at ON audio_metadata(expires_at);
-        CREATE INDEX IF NOT EXISTS idx_cache_hits_entity_id ON cache_hits(entity_id);
-        CREATE INDEX IF NOT EXISTS idx_cache_hits_entity_type ON cache_hits(entity_type);
-        CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
-        CREATE INDEX IF NOT EXISTS idx_plugin_storage_plugin_name ON plugin_storage(plugin_name);
-      `);
+            await runMigrations({
+                dialect: 'postgres',
+                postgresPool: this.pool,
+                profile: options?.profile,
+                release: options?.release,
+            });
 
             logger.info('[db] Postgres database initialized');
         } catch (error) {
@@ -151,9 +50,11 @@ export class PostgresAdapter implements DatabaseAdapter {
     async trackPlay(record: PlayRecord): Promise<void> {
         if (!this.pool) throw new Error('Database not initialized');
 
+        const installationId = record.installationId ?? `local:${record.guildId}`;
+
         await this.pool.query(
-            `INSERT INTO plays (user_id, guild_id, channel_id, bot_name, song_title, song_url, duration, played_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            `INSERT INTO plays (user_id, guild_id, channel_id, bot_name, song_title, song_url, duration, thumbnail, installation_id, played_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
             [
                 record.userId,
                 record.guildId,
@@ -162,29 +63,47 @@ export class PostgresAdapter implements DatabaseAdapter {
                 record.songTitle,
                 record.songUrl,
                 record.duration,
+                record.thumbnail || null,
+                installationId,
                 record.playedAt,
             ],
         );
     }
 
-    async getTopSongs(limit: number = 10): Promise<SongStats[]> {
+    async getTopSongs(limit: number = 10, installationId?: string): Promise<SongStats[]> {
         if (!this.pool) throw new Error('Database not initialized');
 
-        const result = await this.pool.query(
-            `
+        const query = installationId
+            ? `
       SELECT 
         song_title as "songTitle",
         song_url as "songUrl",
         COUNT(*)::int as "playCount",
         SUM(duration)::int as "totalDuration",
-        MAX(played_at) as "lastPlayedAt"
+        MAX(played_at) as "lastPlayedAt",
+        MAX(thumbnail) as thumbnail
+      FROM plays
+      WHERE installation_id = $1
+      GROUP BY song_url, song_title
+      ORDER BY "playCount" DESC
+      LIMIT $2
+    `
+            : `
+      SELECT 
+        song_title as "songTitle",
+        song_url as "songUrl",
+        COUNT(*)::int as "playCount",
+        SUM(duration)::int as "totalDuration",
+        MAX(played_at) as "lastPlayedAt",
+        MAX(thumbnail) as thumbnail
       FROM plays
       GROUP BY song_url, song_title
       ORDER BY "playCount" DESC
       LIMIT $1
-    `,
-            [limit],
-        );
+    `;
+
+        const params = installationId ? [installationId, limit] : [limit];
+        const result = await this.pool.query(query, params);
 
         return result.rows.map((row) => ({
             ...row,
@@ -192,11 +111,23 @@ export class PostgresAdapter implements DatabaseAdapter {
         }));
     }
 
-    async getTopUsers(limit: number = 10): Promise<UserStats[]> {
+    async getTopUsers(limit: number = 10, installationId?: string): Promise<UserStats[]> {
         if (!this.pool) throw new Error('Database not initialized');
 
-        const result = await this.pool.query(
-            `
+        const query = installationId
+            ? `
+      SELECT 
+        user_id as "userId",
+        COUNT(*)::int as "playCount",
+        SUM(duration)::int as "totalDuration",
+        MAX(played_at) as "lastPlayedAt"
+      FROM plays
+      WHERE installation_id = $1
+      GROUP BY user_id
+      ORDER BY "playCount" DESC
+      LIMIT $2
+    `
+            : `
       SELECT 
         user_id as "userId",
         COUNT(*)::int as "playCount",
@@ -206,9 +137,10 @@ export class PostgresAdapter implements DatabaseAdapter {
       GROUP BY user_id
       ORDER BY "playCount" DESC
       LIMIT $1
-    `,
-            [limit],
-        );
+    `;
+
+        const params = installationId ? [installationId, limit] : [limit];
+        const result = await this.pool.query(query, params);
 
         return result.rows.map((row) => ({
             ...row,
@@ -216,18 +148,29 @@ export class PostgresAdapter implements DatabaseAdapter {
         }));
     }
 
-    async getGlobalStats(): Promise<{
+    async getGlobalStats(installationId?: string): Promise<{
         totalPlays: number;
         totalDuration: number;
     }> {
         if (!this.pool) throw new Error('Database not initialized');
 
-        const result = await this.pool.query(`
+        const query = installationId
+            ? `
       SELECT 
         COUNT(*)::int as "totalPlays",
         COALESCE(SUM(duration), 0)::int as "totalDuration"
       FROM plays
-    `);
+      WHERE installation_id = $1
+    `
+            : `
+      SELECT 
+        COUNT(*)::int as "totalPlays",
+        COALESCE(SUM(duration), 0)::int as "totalDuration"
+      FROM plays
+    `;
+
+        const params = installationId ? [installationId] : [];
+        const result = await this.pool.query(query, params);
 
         return result.rows[0];
     }
@@ -399,11 +342,25 @@ export class PostgresAdapter implements DatabaseAdapter {
         };
     }
 
-    async getTopChannels(limit: number = 10): Promise<import('./types.js').ChannelStats[]> {
+    async getTopChannels(
+        limit: number = 10,
+        installationId?: string,
+    ): Promise<import('./types.js').ChannelStats[]> {
         if (!this.pool) throw new Error('Database not initialized');
 
-        const result = await this.pool.query(
-            `SELECT 
+        const query = installationId
+            ? `SELECT 
+                guild_id as "guildId",
+                '' as "guildName",
+                channel_id as "channelId",
+                '' as "channelName",
+                COUNT(*)::int as "playCount"
+            FROM plays
+            WHERE installation_id = $1
+            GROUP BY channel_id, guild_id
+            ORDER BY "playCount" DESC
+            LIMIT $2`
+            : `SELECT 
                 guild_id as "guildId",
                 '' as "guildName",
                 channel_id as "channelId",
@@ -412,26 +369,39 @@ export class PostgresAdapter implements DatabaseAdapter {
             FROM plays
             GROUP BY channel_id, guild_id
             ORDER BY "playCount" DESC
-            LIMIT $1`,
-            [limit],
-        );
+            LIMIT $1`;
+
+        const params = installationId ? [installationId, limit] : [limit];
+        const result = await this.pool.query(query, params);
 
         return result.rows as import('./types.js').ChannelStats[];
     }
 
-    async getTopBots(limit: number = 10): Promise<import('./types.js').BotStats[]> {
+    async getTopBots(
+        limit: number = 10,
+        installationId?: string,
+    ): Promise<import('./types.js').BotStats[]> {
         if (!this.pool) throw new Error('Database not initialized');
 
-        const result = await this.pool.query(
-            `SELECT 
+        const query = installationId
+            ? `SELECT 
+                bot_name as "botName",
+                COUNT(*)::int as "playCount"
+            FROM plays
+            WHERE installation_id = $1
+            GROUP BY bot_name
+            ORDER BY "playCount" DESC
+            LIMIT $2`
+            : `SELECT 
                 bot_name as "botName",
                 COUNT(*)::int as "playCount"
             FROM plays
             GROUP BY bot_name
             ORDER BY "playCount" DESC
-            LIMIT $1`,
-            [limit],
-        );
+            LIMIT $1`;
+
+        const params = installationId ? [installationId, limit] : [limit];
+        const result = await this.pool.query(query, params);
 
         return result.rows as import('./types.js').BotStats[];
     }
@@ -789,11 +759,15 @@ export class PostgresAdapter implements DatabaseAdapter {
     }
 
     // Plugin Repository Implementation
-    async getPluginData(pluginName: string, key: string): Promise<unknown | null> {
+    async getPluginData(
+        pluginName: string,
+        key: string,
+        installationId: string = 'default',
+    ): Promise<unknown | null> {
         if (!this.pool) throw new Error('Database not initialized');
         const result = await this.pool.query(
-            'SELECT value FROM plugin_storage WHERE plugin_name = $1 AND key = $2',
-            [pluginName, key],
+            'SELECT value FROM plugin_storage WHERE plugin_name = $1 AND key = $2 AND installation_id = $3',
+            [pluginName, key, installationId],
         );
 
         if (result.rows.length === 0) return null;
@@ -805,31 +779,49 @@ export class PostgresAdapter implements DatabaseAdapter {
         }
     }
 
-    async setPluginData(pluginName: string, key: string, value: unknown): Promise<void> {
+    async setPluginData(
+        pluginName: string,
+        key: string,
+        value: unknown,
+        installationId: string = 'default',
+    ): Promise<void> {
         if (!this.pool) throw new Error('Database not initialized');
         await this.pool.query(
             `
-            INSERT INTO plugin_storage (plugin_name, key, value, updated_at)
-            VALUES ($1, $2, $3, NOW())
-            ON CONFLICT (plugin_name, key) DO UPDATE SET
+            INSERT INTO plugin_storage (plugin_name, key, value, installation_id, updated_at)
+            VALUES ($1, $2, $3, $4, NOW())
+            ON CONFLICT (plugin_name, key, installation_id) DO UPDATE SET
                 value = EXCLUDED.value,
                 updated_at = NOW()
         `,
-            [pluginName, key, JSON.stringify(value)],
+            [pluginName, key, JSON.stringify(value), installationId],
         );
     }
 
-    async deletePluginData(pluginName: string, key: string): Promise<void> {
+    async deletePluginData(
+        pluginName: string,
+        key: string,
+        installationId: string = 'default',
+    ): Promise<void> {
         if (!this.pool) throw new Error('Database not initialized');
-        await this.pool.query('DELETE FROM plugin_storage WHERE plugin_name = $1 AND key = $2', [
-            pluginName,
-            key,
-        ]);
+        await this.pool.query(
+            'DELETE FROM plugin_storage WHERE plugin_name = $1 AND key = $2 AND installation_id = $3',
+            [pluginName, key, installationId],
+        );
     }
 
-    async clearPluginData(pluginName: string): Promise<void> {
+    async clearPluginData(pluginName: string, installationId?: string): Promise<void> {
         if (!this.pool) throw new Error('Database not initialized');
-        await this.pool.query('DELETE FROM plugin_storage WHERE plugin_name = $1', [pluginName]);
+        if (installationId) {
+            await this.pool.query(
+                'DELETE FROM plugin_storage WHERE plugin_name = $1 AND installation_id = $2',
+                [pluginName, installationId],
+            );
+        } else {
+            await this.pool.query('DELETE FROM plugin_storage WHERE plugin_name = $1', [
+                pluginName,
+            ]);
+        }
     }
 
     // Plugin Meta Implementation

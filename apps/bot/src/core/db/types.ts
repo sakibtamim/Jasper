@@ -9,7 +9,10 @@ export interface PlayRecord {
     duration: number;
     thumbnail?: string;
     playedAt: Date;
+    installationId?: string;
 }
+
+export type { AppliedMigration } from './migrations/types.js';
 
 export interface UserStats {
     userId: string;
@@ -89,11 +92,11 @@ export interface Session {
 
 export interface IStatsRepository {
     trackPlay(record: PlayRecord): Promise<void>;
-    getTopSongs(limit?: number): Promise<SongStats[]>;
-    getTopUsers(limit?: number): Promise<UserStats[]>;
-    getTopChannels(limit?: number): Promise<ChannelStats[]>;
-    getTopBots(limit?: number): Promise<BotStats[]>;
-    getGlobalStats(): Promise<{ totalPlays: number; totalDuration: number }>;
+    getTopSongs(limit?: number, installationId?: string): Promise<SongStats[]>;
+    getTopUsers(limit?: number, installationId?: string): Promise<UserStats[]>;
+    getTopChannels(limit?: number, installationId?: string): Promise<ChannelStats[]>;
+    getTopBots(limit?: number, installationId?: string): Promise<BotStats[]>;
+    getGlobalStats(installationId?: string): Promise<{ totalPlays: number; totalDuration: number }>;
 }
 
 export interface ICacheRepository {
@@ -160,10 +163,19 @@ export interface IDevToolsRepository {
 }
 
 export interface IPluginRepository {
-    getPluginData(pluginName: string, key: string): Promise<unknown | null>;
-    setPluginData(pluginName: string, key: string, value: unknown): Promise<void>;
-    deletePluginData(pluginName: string, key: string): Promise<void>;
-    clearPluginData(pluginName: string): Promise<void>;
+    getPluginData(
+        pluginName: string,
+        key: string,
+        installationId?: string,
+    ): Promise<unknown | null>;
+    setPluginData(
+        pluginName: string,
+        key: string,
+        value: unknown,
+        installationId?: string,
+    ): Promise<void>;
+    deletePluginData(pluginName: string, key: string, installationId?: string): Promise<void>;
+    clearPluginData(pluginName: string, installationId?: string): Promise<void>;
 }
 
 export interface IPluginMetaRepository {

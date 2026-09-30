@@ -5,6 +5,7 @@ import path from 'path';
 import { ENCRYPTION_KEY } from '../../config/env.js';
 import { decrypt, encrypt } from '../../utils/encryption.js';
 import logger from '../logger.js';
+import { runMigrations } from './migrations/index.js';
 import {
     DatabaseAdapter,
     PlayRecord,
@@ -62,131 +63,17 @@ export class SqliteAdapter implements DatabaseAdapter {
         }
     }
 
-    async init(): Promise<void> {
+    async init(options?: { profile?: 'self-hosted' | 'hosted'; release?: string }): Promise<void> {
         try {
             this.db = new DatabaseSync(this.dbPath);
             this.db.exec('PRAGMA journal_mode = WAL');
 
-            // Create tables
-            this.db.exec(`
-        CREATE TABLE IF NOT EXISTS plays (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          user_id TEXT NOT NULL,
-          guild_id TEXT NOT NULL,
-          channel_id TEXT NOT NULL,
-          bot_name TEXT NOT NULL,
-          song_title TEXT NOT NULL,
-          song_url TEXT NOT NULL,
-          duration INTEGER NOT NULL,
-          thumbnail TEXT,
-          played_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS search_cache (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          query TEXT NOT NULL UNIQUE,
-          song_title TEXT NOT NULL,
-          song_url TEXT NOT NULL,
-          duration INTEGER NOT NULL,
-          thumbnail TEXT,
-          cached_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          expires_at DATETIME NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS audio_metadata (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          video_id TEXT NOT NULL UNIQUE,
-          title TEXT NOT NULL,
-          url TEXT NOT NULL,
-          duration INTEGER NOT NULL,
-          thumbnail TEXT,
-          search_terms TEXT NOT NULL,
-          cached_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          expires_at DATETIME NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS cache_hits (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          entity_id TEXT NOT NULL,
-          entity_name TEXT NOT NULL,
-          entity_type TEXT NOT NULL,
-          hit_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS users (
-          id TEXT PRIMARY KEY,
-          username TEXT NOT NULL,
-          discriminator TEXT NOT NULL,
-          avatar TEXT,
-          access_token TEXT NOT NULL,
-          refresh_token TEXT NOT NULL,
-          expires_at DATETIME NOT NULL,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS sessions (
-          id TEXT PRIMARY KEY,
-          user_id TEXT NOT NULL,
-          expires_at DATETIME NOT NULL,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        );
-
-
-        CREATE TABLE IF NOT EXISTS plugin_storage (
-          plugin_name TEXT NOT NULL,
-          key TEXT NOT NULL,
-          value TEXT,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          PRIMARY KEY (plugin_name, key)
-        );
-
-        CREATE TABLE IF NOT EXISTS plugin_meta (
-          plugin_id TEXT PRIMARY KEY,
-          enabled BOOLEAN NOT NULL DEFAULT 1,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS yt_dlp_cookies (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT NOT NULL,
-          content TEXT NOT NULL,
-          is_active BOOLEAN NOT NULL DEFAULT 1,
-          success_count INTEGER NOT NULL DEFAULT 0,
-          failure_count INTEGER NOT NULL DEFAULT 0,
-          last_used DATETIME,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-      `);
-
-            // Migration: Add thumbnail column if it doesn't exist
-            const tableInfo = this.db.prepare('PRAGMA table_info(plays)').all() as {
-                name: string;
-            }[];
-            const hasThumbnail = tableInfo.some((col) => col.name === 'thumbnail');
-            if (!hasThumbnail) {
-                this.db.exec('ALTER TABLE plays ADD COLUMN thumbnail TEXT');
-                logger.info('[db] Added thumbnail column to plays table');
-            }
-
-            // Create indexes for performance
-            this.db.exec(`
-        CREATE INDEX IF NOT EXISTS idx_plays_user_id ON plays(user_id);
-        CREATE INDEX IF NOT EXISTS idx_plays_song_url ON plays(song_url);
-        CREATE INDEX IF NOT EXISTS idx_plays_played_at ON plays(played_at);
-        CREATE INDEX IF NOT EXISTS idx_plays_channel_id ON plays(channel_id);
-        CREATE INDEX IF NOT EXISTS idx_plays_bot_name ON plays(bot_name);
-        CREATE INDEX IF NOT EXISTS idx_search_cache_query ON search_cache(query);
-        CREATE INDEX IF NOT EXISTS idx_search_cache_expires_at ON search_cache(expires_at);
-        CREATE INDEX IF NOT EXISTS idx_audio_metadata_video_id ON audio_metadata(video_id);
-        CREATE INDEX IF NOT EXISTS idx_audio_metadata_expires_at ON audio_metadata(expires_at);
-        CREATE INDEX IF NOT EXISTS idx_cache_hits_entity_id ON cache_hits(entity_id);
-        CREATE INDEX IF NOT EXISTS idx_cache_hits_entity_type ON cache_hits(entity_type);
-        CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
-        CREATE INDEX IF NOT EXISTS idx_plugin_storage_plugin_name ON plugin_storage(plugin_name);
-      `);
+            await runMigrations({
+                dialect: 'sqlite',
+                sqliteDb: this.db,
+                profile: options?.profile,
+                release: options?.release,
+            });
 
             logger.info(`[db] SQLite database initialized at ${this.dbPath}`);
         } catch (error) {
@@ -198,9 +85,11 @@ export class SqliteAdapter implements DatabaseAdapter {
     async trackPlay(record: PlayRecord): Promise<void> {
         if (!this.db) throw new Error('Database not initialized');
 
+        const installationId = record.installationId ?? `local:${record.guildId}`;
+
         const stmt = this.db.prepare(`
-      INSERT INTO plays (user_id, guild_id, channel_id, bot_name, song_title, song_url, duration, thumbnail, played_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO plays (user_id, guild_id, channel_id, bot_name, song_title, song_url, duration, thumbnail, installation_id, played_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
         stmt.run(
@@ -212,14 +101,30 @@ export class SqliteAdapter implements DatabaseAdapter {
             record.songUrl,
             record.duration,
             record.thumbnail || null,
+            installationId,
             record.playedAt.toISOString(),
         );
     }
 
-    async getTopSongs(limit: number = 10): Promise<SongStats[]> {
+    async getTopSongs(limit: number = 10, installationId?: string): Promise<SongStats[]> {
         if (!this.db) throw new Error('Database not initialized');
 
-        const stmt = this.db.prepare(`
+        const sql = installationId
+            ? `
+      SELECT 
+        song_title as songTitle,
+        song_url as songUrl,
+        COUNT(*) as playCount,
+        SUM(duration) as totalDuration,
+        MAX(played_at) as lastPlayedAt,
+        MAX(thumbnail) as thumbnail
+      FROM plays
+      WHERE installation_id = ?
+      GROUP BY song_url
+      ORDER BY playCount DESC
+      LIMIT ?
+    `
+            : `
       SELECT 
         song_title as songTitle,
         song_url as songUrl,
@@ -231,7 +136,7 @@ export class SqliteAdapter implements DatabaseAdapter {
       GROUP BY song_url
       ORDER BY playCount DESC
       LIMIT ?
-    `);
+    `;
 
         interface SongStatsRow {
             songTitle: string;
@@ -242,17 +147,33 @@ export class SqliteAdapter implements DatabaseAdapter {
             thumbnail?: string;
         }
 
-        const rows = stmt.all(limit) as unknown as SongStatsRow[];
+        const stmt = this.db.prepare(sql);
+        const rows = (installationId
+            ? stmt.all(installationId, limit)
+            : stmt.all(limit)) as unknown as SongStatsRow[];
         return rows.map((row) => ({
             ...row,
             lastPlayedAt: new Date(row.lastPlayedAt),
         }));
     }
 
-    async getTopUsers(limit: number = 10): Promise<UserStats[]> {
+    async getTopUsers(limit: number = 10, installationId?: string): Promise<UserStats[]> {
         if (!this.db) throw new Error('Database not initialized');
 
-        const stmt = this.db.prepare(`
+        const sql = installationId
+            ? `
+      SELECT 
+        user_id as userId,
+        COUNT(*) as playCount,
+        SUM(duration) as totalDuration,
+        MAX(played_at) as lastPlayedAt
+      FROM plays
+      WHERE installation_id = ?
+      GROUP BY user_id
+      ORDER BY playCount DESC
+      LIMIT ?
+    `
+            : `
       SELECT 
         user_id as userId,
         COUNT(*) as playCount,
@@ -262,7 +183,7 @@ export class SqliteAdapter implements DatabaseAdapter {
       GROUP BY user_id
       ORDER BY playCount DESC
       LIMIT ?
-    `);
+    `;
 
         interface UserStatsRow {
             userId: string;
@@ -271,27 +192,42 @@ export class SqliteAdapter implements DatabaseAdapter {
             lastPlayedAt: string;
         }
 
-        const rows = stmt.all(limit) as unknown as UserStatsRow[];
+        const stmt = this.db.prepare(sql);
+        const rows = (installationId
+            ? stmt.all(installationId, limit)
+            : stmt.all(limit)) as unknown as UserStatsRow[];
         return rows.map((row) => ({
             ...row,
             lastPlayedAt: new Date(row.lastPlayedAt),
         }));
     }
 
-    async getGlobalStats(): Promise<{
+    async getGlobalStats(installationId?: string): Promise<{
         totalPlays: number;
         totalDuration: number;
     }> {
         if (!this.db) throw new Error('Database not initialized');
 
-        const stmt = this.db.prepare(`
+        const sql = installationId
+            ? `
       SELECT 
         COUNT(*) as totalPlays,
         COALESCE(SUM(duration), 0) as totalDuration
       FROM plays
-    `);
+      WHERE installation_id = ?
+    `
+            : `
+      SELECT 
+        COUNT(*) as totalPlays,
+        COALESCE(SUM(duration), 0) as totalDuration
+      FROM plays
+    `;
 
-        return stmt.get() as { totalPlays: number; totalDuration: number };
+        const stmt = this.db.prepare(sql);
+        return (installationId ? stmt.get(installationId) : stmt.get()) as {
+            totalPlays: number;
+            totalDuration: number;
+        };
     }
 
     async getCachedSearchResult(
@@ -492,10 +428,27 @@ export class SqliteAdapter implements DatabaseAdapter {
         };
     }
 
-    async getTopChannels(limit: number = 10): Promise<import('./types.js').ChannelStats[]> {
+    async getTopChannels(
+        limit: number = 10,
+        installationId?: string,
+    ): Promise<import('./types.js').ChannelStats[]> {
         if (!this.db) throw new Error('Database not initialized');
 
-        const stmt = this.db.prepare(`
+        const sql = installationId
+            ? `
+      SELECT 
+        guild_id as guildId,
+        '' as guildName,
+        channel_id as channelId,
+        '' as channelName,
+        COUNT(*) as playCount
+      FROM plays
+      WHERE installation_id = ?
+      GROUP BY channel_id, guild_id
+      ORDER BY playCount DESC
+      LIMIT ?
+    `
+            : `
       SELECT 
         guild_id as guildId,
         '' as guildName,
@@ -506,15 +459,32 @@ export class SqliteAdapter implements DatabaseAdapter {
       GROUP BY channel_id, guild_id
       ORDER BY playCount DESC
       LIMIT ?
-    `);
+    `;
 
-        return stmt.all(limit) as unknown as import('./types.js').ChannelStats[];
+        const stmt = this.db.prepare(sql);
+        return (installationId
+            ? stmt.all(installationId, limit)
+            : stmt.all(limit)) as unknown as import('./types.js').ChannelStats[];
     }
 
-    async getTopBots(limit: number = 10): Promise<import('./types.js').BotStats[]> {
+    async getTopBots(
+        limit: number = 10,
+        installationId?: string,
+    ): Promise<import('./types.js').BotStats[]> {
         if (!this.db) throw new Error('Database not initialized');
 
-        const stmt = this.db.prepare(`
+        const sql = installationId
+            ? `
+      SELECT 
+        bot_name as botName,
+        COUNT(*) as playCount
+      FROM plays
+      WHERE installation_id = ?
+      GROUP BY bot_name
+      ORDER BY playCount DESC
+      LIMIT ?
+    `
+            : `
       SELECT 
         bot_name as botName,
         COUNT(*) as playCount
@@ -522,9 +492,12 @@ export class SqliteAdapter implements DatabaseAdapter {
       GROUP BY bot_name
       ORDER BY playCount DESC
       LIMIT ?
-    `);
+    `;
 
-        return stmt.all(limit) as unknown as import('./types.js').BotStats[];
+        const stmt = this.db.prepare(sql);
+        return (installationId
+            ? stmt.all(installationId, limit)
+            : stmt.all(limit)) as unknown as import('./types.js').BotStats[];
     }
 
     async trackCacheHit(
@@ -916,12 +889,16 @@ export class SqliteAdapter implements DatabaseAdapter {
     }
 
     // Plugin Repository Implementation
-    async getPluginData(pluginName: string, key: string): Promise<unknown | null> {
+    async getPluginData(
+        pluginName: string,
+        key: string,
+        installationId: string = 'default',
+    ): Promise<unknown | null> {
         if (!this.db) throw new Error('Database not initialized');
         const stmt = this.db.prepare(
-            'SELECT value FROM plugin_storage WHERE plugin_name = ? AND key = ?',
+            'SELECT value FROM plugin_storage WHERE plugin_name = ? AND key = ? AND installation_id = ?',
         );
-        const row = stmt.get(pluginName, key) as { value: string } | undefined;
+        const row = stmt.get(pluginName, key, installationId) as { value: string } | undefined;
         if (!row) return null;
         try {
             return JSON.parse(row.value);
@@ -930,30 +907,46 @@ export class SqliteAdapter implements DatabaseAdapter {
         }
     }
 
-    async setPluginData(pluginName: string, key: string, value: unknown): Promise<void> {
+    async setPluginData(
+        pluginName: string,
+        key: string,
+        value: unknown,
+        installationId: string = 'default',
+    ): Promise<void> {
         if (!this.db) throw new Error('Database not initialized');
         const stmt = this.db.prepare(`
-      INSERT INTO plugin_storage (plugin_name, key, value, updated_at)
-      VALUES (?, ?, ?, datetime('now'))
-      ON CONFLICT(plugin_name, key) DO UPDATE SET
+      INSERT INTO plugin_storage (plugin_name, key, value, installation_id, updated_at)
+      VALUES (?, ?, ?, ?, datetime('now'))
+      ON CONFLICT(plugin_name, key, installation_id) DO UPDATE SET
         value = excluded.value,
         updated_at = excluded.updated_at
     `);
-        stmt.run(pluginName, key, JSON.stringify(value));
+        stmt.run(pluginName, key, JSON.stringify(value), installationId);
     }
 
-    async deletePluginData(pluginName: string, key: string): Promise<void> {
+    async deletePluginData(
+        pluginName: string,
+        key: string,
+        installationId: string = 'default',
+    ): Promise<void> {
         if (!this.db) throw new Error('Database not initialized');
         const stmt = this.db.prepare(
-            'DELETE FROM plugin_storage WHERE plugin_name = ? AND key = ?',
+            'DELETE FROM plugin_storage WHERE plugin_name = ? AND key = ? AND installation_id = ?',
         );
-        stmt.run(pluginName, key);
+        stmt.run(pluginName, key, installationId);
     }
 
-    async clearPluginData(pluginName: string): Promise<void> {
+    async clearPluginData(pluginName: string, installationId?: string): Promise<void> {
         if (!this.db) throw new Error('Database not initialized');
-        const stmt = this.db.prepare('DELETE FROM plugin_storage WHERE plugin_name = ?');
-        stmt.run(pluginName);
+        if (installationId) {
+            const stmt = this.db.prepare(
+                'DELETE FROM plugin_storage WHERE plugin_name = ? AND installation_id = ?',
+            );
+            stmt.run(pluginName, installationId);
+        } else {
+            const stmt = this.db.prepare('DELETE FROM plugin_storage WHERE plugin_name = ?');
+            stmt.run(pluginName);
+        }
     }
 
     // Plugin Meta Implementation
