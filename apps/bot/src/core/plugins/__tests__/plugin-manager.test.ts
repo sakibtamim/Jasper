@@ -214,7 +214,9 @@ describe('PluginManager', () => {
             version: '1.0.0',
         };
 
-        await pluginManager.registerPlugin(mockPlugin, mockMetadata, '/tmp/failing-plugin');
+        await expect(
+            pluginManager.registerPlugin(mockPlugin, mockMetadata, '/tmp/failing-plugin'),
+        ).rejects.toThrow('Plugin initialization failed unexpectedly');
 
         expect(mockClient.commands.has('early-cmd')).toBe(false);
         expect(mockClient.commands.has('failing-cmd')).toBe(false);

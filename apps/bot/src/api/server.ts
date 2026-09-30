@@ -166,8 +166,14 @@ export function buildServer(options: ServerOptions = {}): FastifyInstance {
         {
             config: {
                 auth: {
-                    allowedPrincipals: ['tenant_member', 'staff'],
-                    requireGuild: true,
+                    allowedPrincipals: [
+                        'anonymous',
+                        'customer_user',
+                        'tenant_member',
+                        'staff',
+                        'runtime_workload',
+                    ],
+                    allowSelfHostedFallback: true,
                 },
             },
         },

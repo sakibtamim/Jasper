@@ -2,8 +2,18 @@
     "id": "soundboard",
     "name": "Jasper Soundboard",
     "version": "1.0.0",
+    "sdkVersion": "^1.0.0",
     "description": "Play custom sound effects in voice channels.",
     "entry": "index.ts",
+    "capabilities": [
+        "audio:play",
+        "storage:read",
+        "storage:write",
+        "routes:register",
+        "commands:register",
+        "hooks:subscribe",
+        "tasks:schedule"
+    ],
     "web": {
         "entry": "web/index.tsx",
         "navItems": [

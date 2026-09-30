@@ -26,4 +26,8 @@ export class ScopedPluginStore implements PluginStore {
     async clear(): Promise<void> {
         await db.clearPluginData(this.pluginName, this.installationId);
     }
+
+    forGuild(guildId: string): PluginStore {
+        return new ScopedPluginStore(this.pluginName, guildId);
+    }
 }

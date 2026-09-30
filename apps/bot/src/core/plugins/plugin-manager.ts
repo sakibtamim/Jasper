@@ -10,21 +10,26 @@ import {
 } from '@discordjs/voice';
 import {
     Command,
+    DisposalHandle,
     IPluginRouter,
     Plugin,
+    PluginCapability,
     PluginContext,
-    PluginRouteHandler,
+    PluginHealthContributor,
+    PluginHealthStatus,
+    PluginManifest,
+    PluginRouteDefinition,
     SlashCommandDefinition,
+    WorkerPublicState,
 } from '@jasper/types';
 import { Client, REST, Routes } from 'discord.js';
 import { FastifyInstance } from 'fastify';
 import fs from 'node:fs';
 import path from 'node:path';
-import semver from 'semver';
 import { fileURLToPath, pathToFileURL } from 'url';
 
 import { getEntryMessage } from '../../config/afr-config.js';
-import { DISCORD_CLIENT_ID, DISCORD_TOKEN, GUILD_ID } from '../../config/env.js';
+import { DISCORD_CLIENT_ID, DISCORD_TOKEN, GUILD_ID, RUNTIME_PROFILE } from '../../config/env.js';
 import { TEST_PLUGINS } from '../../config/plugins.js';
 import { PluginAudioService } from '../audio/plugin-audio-service.js';
 import { getQueue } from '../audio/queue-manager.js';
@@ -32,32 +37,16 @@ import db from '../db/index.js';
 import logger from '../logger.js';
 import workerPool from '../worker-pool.js';
 import coreDataAccessor from './core-data-accessor.js';
+import { DynamicPluginRouter } from './dynamic-plugin-router.js';
 import hookManager from './hook-manager.js';
+import { DefaultInstallationRuntimeOperations } from './installation-operations.js';
+import { isCapabilityDeclared, validatePluginManifest } from './plugin-manifest.js';
 import { PluginStorage } from './plugin-storage.js';
 import { ScopedPluginStore } from './plugin-store.js';
+import { MemoryRuntimeComponentStateStore } from './runtime-component-store.js';
+import { createSafeClientFacade } from './safe-client-facade.js';
 
-interface PluginManifest {
-    id: string;
-    name: string;
-    version: string;
-    entry?: string;
-    description?: string;
-    web?: {
-        entry: string;
-        widgets?: Array<{
-            id: string;
-            slot: string;
-            component: string;
-            order: number;
-        }>;
-        pages?: Array<{
-            id: string;
-            path: string;
-            component: string;
-            title: string;
-        }>;
-    };
-}
+export { DynamicPluginRouter } from './dynamic-plugin-router.js';
 
 interface RequestLike {
     params?: Record<string, string>;
@@ -66,6 +55,8 @@ interface RequestLike {
 
 interface ReplyLike {
     sent?: boolean;
+    code: (statusCode: number) => ReplyLike;
+    status?: (statusCode: number) => ReplyLike;
     send: (payload: unknown) => void;
     [key: string]: unknown;
 }
@@ -79,124 +70,7 @@ export const PLUGINS_DIR = path.join(__dirname, '..', '..', 'plugins');
 // Read core version from package.json
 const packageJsonPath = path.join(__dirname, '..', '..', '..', 'package.json');
 const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
-const CORE_VERSION = packageJson.version;
-
-type RouteHandler = PluginRouteHandler;
-type RouteEntry = {
-    method: string;
-    pathDef: string;
-    handler: RouteHandler;
-    regex: RegExp;
-    paramNames: string[];
-};
-
-// Escape regex special characters in a string
-function escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-export class DynamicPluginRouter implements IPluginRouter {
-    private routes: RouteEntry[] = [];
-
-    constructor(private pluginId: string) {}
-
-    private compilePath(pathStr: string) {
-        const paramNames: string[] = [];
-        // Split around :param tokens, escape static segments, reassemble
-        const parts = pathStr.split(/:([a-zA-Z0-9_]+)/g);
-        let regexStr = '';
-        for (let i = 0; i < parts.length; i++) {
-            if (i % 2 === 0) {
-                // Static segment — escape regex special chars
-                regexStr += escapeRegex(parts[i]);
-            } else {
-                // Param name
-                paramNames.push(parts[i]);
-                regexStr += '([a-zA-Z0-9_-]+)';
-            }
-        }
-        return { regex: new RegExp(`^${regexStr}$`), paramNames };
-    }
-
-    private addRoute(method: string, pathStr: string, handler: RouteHandler) {
-        let normalizedPath = pathStr.startsWith('/') ? pathStr : `/${pathStr}`;
-        if (normalizedPath.length > 1 && normalizedPath.endsWith('/')) {
-            normalizedPath = normalizedPath.slice(0, -1);
-        }
-        const { regex, paramNames } = this.compilePath(normalizedPath);
-        this.routes.push({ method, pathDef: normalizedPath, handler, regex, paramNames });
-    }
-
-    get(pathStr: string, handler: RouteHandler) {
-        this.addRoute('GET', pathStr, handler);
-        return this;
-    }
-    post(pathStr: string, handler: RouteHandler) {
-        this.addRoute('POST', pathStr, handler);
-        return this;
-    }
-    put(pathStr: string, handler: RouteHandler) {
-        this.addRoute('PUT', pathStr, handler);
-        return this;
-    }
-    delete(pathStr: string, handler: RouteHandler) {
-        this.addRoute('DELETE', pathStr, handler);
-        return this;
-    }
-    patch(pathStr: string, handler: RouteHandler) {
-        this.addRoute('PATCH', pathStr, handler);
-        return this;
-    }
-    options(pathStr: string, handler: RouteHandler) {
-        this.addRoute('OPTIONS', pathStr, handler);
-        return this;
-    }
-    all(pathStr: string, handler: RouteHandler) {
-        this.addRoute('ALL', pathStr, handler);
-        return this;
-    }
-
-    async register(
-        pluginFn: (router: DynamicPluginRouter, opts?: unknown) => void | Promise<void>,
-        opts?: unknown,
-    ) {
-        if (typeof pluginFn === 'function') {
-            await pluginFn(this, opts);
-        }
-    }
-
-    async handle(
-        method: string,
-        pathStr: string,
-        req: RequestLike,
-        reply: ReplyLike,
-    ): Promise<boolean> {
-        let normalizedPath = pathStr.startsWith('/') ? pathStr : `/${pathStr}`;
-        if (normalizedPath.length > 1 && normalizedPath.endsWith('/')) {
-            normalizedPath = normalizedPath.slice(0, -1);
-        }
-
-        for (const route of this.routes) {
-            if (route.method === method || route.method === 'ALL') {
-                const match = normalizedPath.match(route.regex);
-                if (match) {
-                    if (!req.params) {
-                        req.params = {};
-                    }
-                    route.paramNames.forEach((name, i) => {
-                        req.params![name] = match[i + 1];
-                    });
-                    const result = await route.handler(req, reply);
-                    if (result !== undefined && !reply.sent) {
-                        reply.send(result);
-                    }
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-}
+const CORE_VERSION: string = packageJson.version;
 
 export class PluginManager {
     private plugins: Map<
@@ -212,7 +86,14 @@ export class PluginManager {
     private pluginCommands: Map<string, string[]>; // Track commands registered by each plugin
     private pluginIntervals: Map<string, Set<NodeJS.Timeout>>; // Track intervals registered by each plugin
     private pluginRouters: Map<string, DynamicPluginRouter>; // O(1) plugin-id → router lookup
+    private pluginDisposalHandles: Map<string, DisposalHandle[]>; // Track all disposal handles per plugin
+    private coreCommands: Set<string>; // Core commands that cannot be overwritten
+    private registeredCommands: Map<string, string>; // commandName -> pluginName
+    private healthContributors: Map<string, PluginHealthContributor[]>; // pluginName -> contributors
     private context: PluginContext | null;
+    private rawClient: Client | null;
+    private componentStore: MemoryRuntimeComponentStateStore;
+    private installationOps: DefaultInstallationRuntimeOperations;
 
     private soundboardQueues: Map<
         string,
@@ -237,8 +118,15 @@ export class PluginManager {
         this.pluginCommands = new Map();
         this.pluginIntervals = new Map();
         this.pluginRouters = new Map();
+        this.pluginDisposalHandles = new Map();
+        this.coreCommands = new Set();
+        this.registeredCommands = new Map();
+        this.healthContributors = new Map();
         this.soundboardQueues = new Map();
         this.context = null;
+        this.rawClient = null;
+        this.componentStore = new MemoryRuntimeComponentStateStore();
+        this.installationOps = new DefaultInstallationRuntimeOperations();
     }
 
     /**
@@ -445,24 +333,35 @@ export class PluginManager {
      * Initialize the Plugin Manager with core dependencies
      */
     init(client: Client, server: FastifyInstance): void {
+        this.rawClient = client;
+
+        // Capture core commands so no plugin can overwrite them (HJ-OSS-10)
+        if (client && client.commands) {
+            this.coreCommands = new Set(Array.from(client.commands.keys()));
+        }
+
+        const safeClient = createSafeClientFacade(client, 'core');
+
         this.context = {
-            client,
-            workers: workerPool.getWorkers(),
-            server: server as unknown as IPluginRouter, // Base context; overridden per-plugin with DynamicPluginRouter
+            client: safeClient,
+            rawClient: client,
+            workers: this.getPublicWorkers(),
+            server: server as unknown as IPluginRouter,
             registerCommand: (command: SlashCommandDefinition) => {
-                // Base implementation - just registers to client
-                // This will be wrapped by the scoped context to add tracking
-                logger.info(`[plugins] Registering dynamic command: ${command.data?.name}`);
-                if (client.commands.has(command.data.name)) {
-                    logger.warn(
-                        `[plugins] Command "${command.data.name}" is being overwritten by a plugin.`,
+                if (this.coreCommands.has(command.data.name)) {
+                    throw new Error(
+                        `[plugins] Command collision rejected: Command '/${command.data.name}' collides with a core command and cannot be overwritten.`,
                     );
                 }
                 client.commands.set(command.data.name, command as unknown as Command);
+                return {
+                    dispose: () => {
+                        client.commands.delete(command.data.name);
+                    },
+                };
             },
             on: (hook, callback) => hookManager.register(hook, callback),
             db: {
-                // This will be overridden per-plugin in registerPlugin
                 plugin: new ScopedPluginStore('unknown'),
                 core: coreDataAccessor,
             },
@@ -484,7 +383,6 @@ export class PluginManager {
                         textChannelId: channelId,
                     });
                 } else if (channelId) {
-                    // Update text channel if provided
                     const q = this.soundboardQueues.get(voiceChannelId)!;
                     q.textChannelId = channelId;
                 }
@@ -505,14 +403,38 @@ export class PluginManager {
                 });
             },
             audio: new PluginAudioService('core'),
-            scheduleTask: (_intervalMs, _task) => {
-                // Base implementation - overridden by scoped context
-                logger.warn(
-                    '[plugins] scheduleTask called on base context. This should not happen.',
-                );
+            scheduleTask: (intervalMs, task) => {
+                if (intervalMs <= 0) {
+                    throw new Error('Interval must be positive');
+                }
+                const interval = setInterval(async () => {
+                    try {
+                        await task();
+                    } catch (error) {
+                        logger.error(`[plugins:core] Scheduled task failed: ${error}`);
+                    }
+                }, intervalMs);
+                return {
+                    dispose: () => clearInterval(interval),
+                };
             },
+            hasCapability: () => true,
         };
         logger.info('[plugins] PluginManager initialized');
+    }
+
+    /**
+     * Build token-free public worker states for plugins
+     */
+    private getPublicWorkers(): WorkerPublicState[] {
+        return workerPool.getWorkers().map((w) => ({
+            name: w.name,
+            role: w.role,
+            isReady: Boolean(w.client?.isReady?.()),
+            busy: w.busy,
+            guildId: w.guildId,
+            voiceChannelId: w.voiceChannelId,
+        }));
     }
 
     /**
@@ -520,6 +442,13 @@ export class PluginManager {
      */
     getPlugins() {
         return this.plugins;
+    }
+
+    /**
+     * Get core command names that are protected against collision
+     */
+    getCoreCommands(): Set<string> {
+        return new Set(this.coreCommands);
     }
 
     /**
@@ -571,9 +500,6 @@ export class PluginManager {
             }
         }
 
-        // Test plugins to disable in production by default
-        // TEST_PLUGINS imported from config
-
         for (const entry of entries) {
             // Strict Mode: Only load directories or symlinks with jasper-plugin.json
             if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
@@ -589,25 +515,29 @@ export class PluginManager {
             }
 
             try {
-                const metadata = JSON.parse(await fs.promises.readFile(metadataPath, 'utf-8'));
+                const rawMetadata = JSON.parse(await fs.promises.readFile(metadataPath, 'utf-8'));
+                const isStrict = RUNTIME_PROFILE === 'hosted';
 
-                // 1. Validate ID
-                if (!metadata.id || !/^[a-z0-9-]+$/.test(metadata.id)) {
-                    logger.error(
-                        `[plugins] Skipping plugin in ${entry.name}: Invalid or missing 'id'. Must be lowercase, alphanumeric, and dashes only.`,
-                    );
+                // 1. Validate Manifest Schema & Compatibility (HJ-OSS-10)
+                const validation = validatePluginManifest(rawMetadata, CORE_VERSION, isStrict);
+                if (!validation.valid || !validation.manifest) {
+                    const err = `Invalid plugin manifest in ${entry.name}: ${validation.errors.join('; ')}`;
+                    logger.error(`[plugins] ${err}`);
+                    if (isStrict) {
+                        throw new Error(err);
+                    }
                     continue;
                 }
+
+                const metadata = validation.manifest;
 
                 // 2. Check Enabled Status
                 let isEnabled = await this.context.db.core.isPluginEnabled(metadata.id);
 
-                // If not set in DB, determine default
                 if (isEnabled === null) {
                     const isProduction = process.env.NODE_ENV === 'production';
                     const isTestPlugin = TEST_PLUGINS.includes(metadata.id);
 
-                    // In production, disable test plugins by default
                     if (isProduction && isTestPlugin) {
                         isEnabled = false;
                         logger.info(
@@ -617,7 +547,6 @@ export class PluginManager {
                         isEnabled = true;
                     }
 
-                    // Persist default state
                     await this.context.db.core.setPluginEnabled(metadata.id, isEnabled);
                 }
 
@@ -626,18 +555,7 @@ export class PluginManager {
                     continue;
                 }
 
-                // 3. Check Version Compatibility
-                if (metadata.jasperVersion) {
-                    if (!semver.satisfies(CORE_VERSION, metadata.jasperVersion)) {
-                        logger.warn(
-                            `[plugins] ⚠️ Plugin '${metadata.name}' (${metadata.id}) requires Jasper version ${metadata.jasperVersion}, but core is ${CORE_VERSION}. Loading anyway, but issues may occur.`,
-                        );
-                    }
-                }
-
-                const entryFile = metadata.entry || 'index.js'; // Default to index.js (or index.ts in dev)
-
-                // Resolve and validate entry file to prevent directory traversal
+                const entryFile = metadata.entry || 'index.js';
                 const resolvedPluginDir = path.resolve(pluginDir);
                 let pluginPath = path.resolve(pluginDir, entryFile);
 
@@ -653,13 +571,11 @@ export class PluginManager {
 
                 if (!fs.existsSync(pluginPath)) {
                     if (entryFile.endsWith('.js')) {
-                        // Try .ts if .js missing (dev mode)
                         const tsPath = pluginPath.replace(/\.js$/, '.ts');
                         if (fs.existsSync(tsPath)) {
                             pluginPath = tsPath;
                         }
                     } else if (entryFile.endsWith('.ts')) {
-                        // Try .js if .ts missing (prod mode)
                         const jsPath = pluginPath.replace(/\.ts$/, '.js');
                         if (fs.existsSync(jsPath)) {
                             pluginPath = jsPath;
@@ -674,7 +590,6 @@ export class PluginManager {
                     continue;
                 }
 
-                // Use pathToFileURL to support Windows paths and proper ESM importing
                 const fileUrl = pathToFileURL(pluginPath).href;
                 const pluginModule = await import(fileUrl);
                 const plugin: Plugin = pluginModule.default;
@@ -684,8 +599,7 @@ export class PluginManager {
                     continue;
                 }
 
-                // Verify metadata matches code (optional, but good for consistency)
-                if (plugin.name !== metadata.name) {
+                if (plugin.name !== metadata.name && plugin.name !== metadata.id) {
                     logger.warn(
                         `[plugins] Plugin name mismatch: ${plugin.name} (code) vs ${metadata.name} (json)`,
                     );
@@ -696,6 +610,9 @@ export class PluginManager {
                 logger.error(
                     `[plugins] Failed to load plugin ${entry.name}: ${error instanceof Error ? error.message : String(error)}`,
                 );
+                if (RUNTIME_PROFILE === 'hosted') {
+                    throw error;
+                }
             }
         }
     }
@@ -713,20 +630,64 @@ export class PluginManager {
             return;
         }
 
+        // Validate manifest schema
+        const isStrict = RUNTIME_PROFILE === 'hosted';
+        const validation = validatePluginManifest(metadata, CORE_VERSION, isStrict);
+        if (!validation.valid || !validation.manifest) {
+            throw new Error(
+                `Plugin '${plugin.name}' manifest validation failed: ${validation.errors.join('; ')}`,
+            );
+        }
+
         try {
             logger.info(`[plugins] Loading plugin: ${plugin.name} v${plugin.version}`);
 
-            // Initialize command tracking for this plugin
+            // Initialize command tracking and disposal handles for this plugin
             this.pluginCommands.set(plugin.name, []);
+            this.pluginDisposalHandles.set(plugin.name, []);
 
+            const disposalList = this.pluginDisposalHandles.get(plugin.name)!;
             const router = new DynamicPluginRouter(metadata.id);
 
-            // Create a context specific to this plugin
+            // Capability helper
+            const checkCapability = (cap: PluginCapability): boolean => {
+                return isCapabilityDeclared(metadata, cap);
+            };
+
+            const assertCapability = (cap: PluginCapability): void => {
+                if (!checkCapability(cap)) {
+                    throw new Error(
+                        `[plugins:${metadata.id}] Capability denied: Plugin does not declare capability '${cap}' in its manifest.`,
+                    );
+                }
+            };
+
+            // Wrapped router to enforce capability and track route disposal
+            const originalRegisterRoute = router.registerRoute.bind(router);
+            router.registerRoute = <TReq = unknown, TRes = unknown>(
+                definition: PluginRouteDefinition<TReq, TRes>,
+            ): DisposalHandle => {
+                assertCapability('routes:register');
+                const handle = originalRegisterRoute(definition);
+                disposalList.push(handle);
+                return handle;
+            };
+
+            // Wrap Discord Client with token-free SafeClientFacade
+            const safeClient = createSafeClientFacade(
+                this.rawClient || (this.context?.client as unknown as Client),
+                metadata.id,
+            );
+
+            // Create a scoped context specific to this plugin
             const pluginContext: PluginContext = {
-                ...this.context!,
-                server: router, // DynamicPluginRouter implements IPluginRouter directly
+                client: safeClient,
+                rawClient: this.rawClient ?? undefined,
+                workers: this.getPublicWorkers(),
+                server: router,
+                manifest: Object.freeze({ ...metadata }),
                 db: {
-                    plugin: new ScopedPluginStore(metadata.id), // Use ID for DB namespace
+                    plugin: new ScopedPluginStore(metadata.id),
                     core: coreDataAccessor,
                 },
                 storage: new PluginStorage(metadata.id),
@@ -737,16 +698,74 @@ export class PluginManager {
                     warn: (msg: string) => logger.warn(`[${metadata.id}] ${msg}`),
                     error: (msg: string) => logger.error(`[${metadata.id}] ${msg}`),
                 },
-                // Override registerCommand to track commands
-                registerCommand: (command: SlashCommandDefinition) => {
-                    this.context!.registerCommand(command); // Call base implementation
+                hasCapability: (cap: PluginCapability) => checkCapability(cap),
+
+                // Register slash command with collision prevention & disposal handle (HJ-OSS-10)
+                registerCommand: (command: SlashCommandDefinition): DisposalHandle => {
+                    assertCapability('commands:register');
+
+                    const cmdName = command.data?.name;
+                    if (!cmdName) {
+                        throw new Error(`[plugins:${metadata.id}] Command data name is required`);
+                    }
+
+                    // 1. Prevent collision with core commands
+                    if (this.coreCommands.has(cmdName)) {
+                        throw new Error(
+                            `[plugins:${metadata.id}] Command collision rejected: Command '/${cmdName}' collides with a core bot command and cannot be overwritten.`,
+                        );
+                    }
+
+                    // 2. Prevent collision with other plugins
+                    const existingOwner = this.registeredCommands.get(cmdName);
+                    if (existingOwner && existingOwner !== plugin.name) {
+                        throw new Error(
+                            `[plugins:${metadata.id}] Command collision rejected: Command '/${cmdName}' is already registered by plugin '${existingOwner}'.`,
+                        );
+                    }
+
+                    const discordClient =
+                        this.rawClient || (this.context?.client as unknown as Client);
+                    if (discordClient?.commands) {
+                        discordClient.commands.set(cmdName, command as unknown as Command);
+                    }
+
+                    this.registeredCommands.set(cmdName, plugin.name);
                     const commands = this.pluginCommands.get(plugin.name) || [];
-                    if (!commands.includes(command.data.name)) {
-                        commands.push(command.data.name);
+                    if (!commands.includes(cmdName)) {
+                        commands.push(cmdName);
                         this.pluginCommands.set(plugin.name, commands);
                     }
+
+                    const handle: DisposalHandle = {
+                        dispose: () => {
+                            if (discordClient?.commands) {
+                                discordClient.commands.delete(cmdName);
+                            }
+                            this.registeredCommands.delete(cmdName);
+                            const updated = (this.pluginCommands.get(plugin.name) || []).filter(
+                                (c) => c !== cmdName,
+                            );
+                            this.pluginCommands.set(plugin.name, updated);
+                            logger.debug(`[plugins:${metadata.id}] Disposed command '/${cmdName}'`);
+                        },
+                    };
+
+                    disposalList.push(handle);
+                    return handle;
                 },
-                scheduleTask: (intervalMs, task) => {
+
+                // Hook registration with capability check & disposal handle (HJ-OSS-10)
+                on: (hook, callback): DisposalHandle => {
+                    assertCapability('hooks:subscribe');
+                    const handle = hookManager.register(hook, callback);
+                    disposalList.push(handle);
+                    return handle;
+                },
+
+                // Schedule background tasks with capability check & disposal handle (HJ-OSS-10)
+                scheduleTask: (intervalMs, task): DisposalHandle => {
+                    assertCapability('tasks:schedule');
                     if (intervalMs <= 0) {
                         throw new Error('Interval must be positive');
                     }
@@ -763,11 +782,85 @@ export class PluginManager {
                         this.pluginIntervals.set(plugin.name, new Set());
                     }
                     this.pluginIntervals.get(plugin.name)!.add(interval);
+
+                    const handle: DisposalHandle = {
+                        dispose: () => {
+                            clearInterval(interval);
+                            this.pluginIntervals.get(plugin.name)?.delete(interval);
+                            logger.debug(`[plugin:${metadata.id}] Disposed scheduled task`);
+                        },
+                    };
+
+                    disposalList.push(handle);
                     logger.debug(
                         `[plugin:${metadata.id}] Scheduled task with interval ${intervalMs}ms`,
                     );
+                    return handle;
+                },
+
+                // Audio playback with capability check (HJ-OSS-10)
+                playAudio: async (params) => {
+                    assertCapability('audio:play');
+                    const { voiceChannelId, guildId, audioPath, title, requesterId, channelId } =
+                        params;
+
+                    if (!this.soundboardQueues.has(voiceChannelId)) {
+                        this.soundboardQueues.set(voiceChannelId, {
+                            queue: [],
+                            processing: false,
+                            textChannelId: channelId,
+                        });
+                    } else if (channelId) {
+                        const q = this.soundboardQueues.get(voiceChannelId)!;
+                        q.textChannelId = channelId;
+                    }
+
+                    const queueData = this.soundboardQueues.get(voiceChannelId)!;
+
+                    return new Promise<void>((resolve, reject) => {
+                        queueData.queue.push({
+                            audioPath,
+                            title,
+                            requesterId,
+                            resolve,
+                            reject,
+                        });
+                        if (!queueData.processing) {
+                            this.processSoundboardQueue(voiceChannelId, guildId);
+                        }
+                    });
+                },
+
+                // Health contributor registration (HJ-OSS-10)
+                registerHealthContributor: (
+                    contributor: PluginHealthContributor,
+                ): DisposalHandle => {
+                    if (!this.healthContributors.has(plugin.name)) {
+                        this.healthContributors.set(plugin.name, []);
+                    }
+                    this.healthContributors.get(plugin.name)!.push(contributor);
+
+                    const handle: DisposalHandle = {
+                        dispose: () => {
+                            const list = this.healthContributors.get(plugin.name);
+                            if (list) {
+                                const idx = list.indexOf(contributor);
+                                if (idx !== -1) list.splice(idx, 1);
+                            }
+                        },
+                    };
+                    disposalList.push(handle);
+                    return handle;
                 },
             };
+
+            // Optional narrow hosted capabilities
+            if (checkCapability('component:state')) {
+                pluginContext.componentState = this.componentStore;
+            }
+            if (checkCapability('installation:runtime')) {
+                pluginContext.installationOperations = this.installationOps;
+            }
 
             await plugin.onLoad(pluginContext);
 
@@ -786,7 +879,6 @@ export class PluginManager {
                     }
                 }
             }
-
             this.plugins.set(plugin.name, {
                 plugin,
                 context: pluginContext,
@@ -799,12 +891,16 @@ export class PluginManager {
         } catch (error) {
             // Roll back any commands registered before or during failure
             const commands = this.pluginCommands.get(plugin.name) || [];
-            if (commands.length > 0 && this.context?.client) {
+            if (commands.length > 0) {
                 logger.warn(
                     `[plugins] Rolling back commands for failed plugin ${plugin.name}: ${commands.join(', ')}`,
                 );
+                const client = this.rawClient || (this.context?.client as unknown as Client);
                 for (const cmdName of commands) {
-                    this.context.client.commands.delete(cmdName);
+                    if (client?.commands) {
+                        client.commands.delete(cmdName);
+                    }
+                    this.registeredCommands.delete(cmdName);
                 }
             }
             this.pluginCommands.delete(plugin.name);
@@ -821,30 +917,63 @@ export class PluginManager {
             logger.error(
                 `[plugins] Failed to initialize plugin ${plugin.name}: ${error instanceof Error ? error.message : String(error)}`,
             );
+            // Cleanup partial registrations if load failed
+            await this.unloadPlugin(plugin.name);
+            throw error;
         }
     }
 
     /**
-     * Unload a plugin
+     * Unload a plugin deterministically (HJ-OSS-10).
+     * Deactivates all routes, unregisters commands, clears intervals, disposes hooks,
+     * and ensures no stale handlers can execute.
      */
     async unloadPlugin(name: string): Promise<void> {
         const entry = this.plugins.get(name);
-        if (!entry) return;
 
         try {
-            await entry.plugin.onUnload(entry.context);
+            if (entry) {
+                try {
+                    await entry.plugin.onUnload(entry.context);
+                } catch (e) {
+                    logger.error(
+                        `[plugins] Error in onUnload for ${name}: ${e instanceof Error ? e.message : String(e)}`,
+                    );
+                }
 
-            // Unregister commands
+                // 1. Deactivate router so all routes reject immediately
+                entry.router.deactivate();
+
+                // 2. Remove router from active routing map
+                if (entry.metadata?.id) {
+                    this.pluginRouters.delete(entry.metadata.id);
+                }
+            }
+
+            // 3. Dispose all tracked handles (hooks, tasks, commands, health)
+            const handles = this.pluginDisposalHandles.get(name) || [];
+            for (const handle of handles) {
+                try {
+                    await handle.dispose();
+                } catch (e) {
+                    logger.warn(`[plugins] Error disposing handle for ${name}: ${e}`);
+                }
+            }
+            this.pluginDisposalHandles.delete(name);
+
+            // 4. Fallback cleanup: ensure commands are removed from client
             const commands = this.pluginCommands.get(name) || [];
-            if (commands.length > 0 && this.context?.client) {
+            const discordClient = this.rawClient || (this.context?.client as unknown as Client);
+            if (commands.length > 0 && discordClient?.commands) {
                 logger.info(`[plugins] Unregistering commands for ${name}: ${commands.join(', ')}`);
                 for (const cmdName of commands) {
-                    this.context.client.commands.delete(cmdName);
+                    discordClient.commands.delete(cmdName);
+                    this.registeredCommands.delete(cmdName);
                 }
             }
             this.pluginCommands.delete(name);
 
-            // Clear intervals
+            // 5. Clear intervals
             const intervals = this.pluginIntervals.get(name);
             if (intervals) {
                 logger.info(`[plugins] Clearing ${intervals.size} scheduled tasks for ${name}`);
@@ -854,10 +983,8 @@ export class PluginManager {
                 this.pluginIntervals.delete(name);
             }
 
-            // Remove from pluginRouters map
-            if (entry.metadata?.id) {
-                this.pluginRouters.delete(entry.metadata.id);
-            }
+            // 6. Clear health contributors
+            this.healthContributors.delete(name);
 
             this.plugins.delete(name);
             logger.info(`[plugins] Unloaded plugin: ${name}`);
@@ -880,13 +1007,9 @@ export class PluginManager {
         }
 
         try {
-            // 1. Update database state
             await this.context.db.core.setPluginEnabled(pluginId, enabled);
 
-            // 2. Load or Unload
             if (enabled) {
-                // To load, we need to find the plugin directory and metadata
-                // This is a bit inefficient as we scan all plugins, but safe
                 const entries = await fs.promises.readdir(PLUGINS_DIR, {
                     withFileTypes: true,
                 });
@@ -902,10 +1025,7 @@ export class PluginManager {
 
                     const metadata = JSON.parse(await fs.promises.readFile(metadataPath, 'utf-8'));
                     if (metadata.id === pluginId) {
-                        // Found it, load it
                         const entryFile = metadata.entry || 'index.js';
-
-                        // Resolve and validate entry file to prevent directory traversal
                         const resolvedPluginDir = path.resolve(pluginDir);
                         let pluginPath = path.resolve(pluginDir, entryFile);
 
@@ -931,24 +1051,19 @@ export class PluginManager {
                         }
 
                         const fileUrl = pathToFileURL(pluginPath).href;
-                        // Cache busting for reload
                         const pluginModule = await import(`${fileUrl}?t=${Date.now()}`);
                         const plugin: Plugin = pluginModule.default;
 
                         await this.registerPlugin(plugin, metadata, pluginDir);
                         found = true;
 
-                        // Deploy commands to Discord after loading plugin
                         await this.deployCommands();
-
                         break;
                     }
                 }
 
                 if (!found) return { success: false, message: 'Plugin not found on disk' };
             } else {
-                // Disable: find plugin by name (which usually matches ID, but we should be careful)
-                // We store plugins by name in the map, but we need to find it by ID
                 let pluginName = '';
                 for (const [name, data] of this.plugins.entries()) {
                     if (data.metadata.id === pluginId) {
@@ -959,10 +1074,8 @@ export class PluginManager {
 
                 if (pluginName) {
                     await this.unloadPlugin(pluginName);
-                    // Deploy commands to Discord after unloading plugin
                     await this.deployCommands();
                 } else {
-                    // It might be already unloaded, which is fine
                     logger.info(`[plugins] Plugin ${pluginId} is already unloaded`);
                 }
             }
@@ -979,10 +1092,10 @@ export class PluginManager {
 
     /**
      * Deploy all registered commands to Discord
-     * Called after loading/unloading plugins to update slash commands
      */
     async deployCommands(): Promise<void> {
-        if (!this.context || !DISCORD_CLIENT_ID || !GUILD_ID) {
+        const discordClient = this.rawClient || (this.context?.client as unknown as Client);
+        if (!discordClient || !DISCORD_CLIENT_ID || !GUILD_ID) {
             logger.warn(
                 '[plugins] Skipping command deployment: Missing client context or Discord credentials',
             );
@@ -991,8 +1104,7 @@ export class PluginManager {
 
         try {
             logger.info('[plugins] Deploying commands to Discord...');
-            const commandsData = this.context.client.commands.map((cmd: Command) => {
-                // Handle both Builders (toJSON) and plain objects
+            const commandsData = discordClient.commands.map((cmd: Command) => {
                 return typeof cmd.data.toJSON === 'function' ? cmd.data.toJSON() : cmd.data;
             });
 
@@ -1005,6 +1117,39 @@ export class PluginManager {
         } catch (error) {
             logger.error(`[plugins] Failed to deploy commands: ${error}`);
         }
+    }
+
+    /**
+     * Get aggregate health status for a registered plugin
+     */
+    async getPluginHealth(name: string): Promise<PluginHealthStatus> {
+        const contributors = this.healthContributors.get(name);
+        if (!contributors || contributors.length === 0) {
+            return { status: 'healthy' };
+        }
+
+        let overallStatus: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
+        const details: Record<string, unknown> = {};
+
+        for (let i = 0; i < contributors.length; i++) {
+            try {
+                const res = await contributors[i]();
+                details[`contributor_${i}`] = res;
+                if (res.status === 'unhealthy') {
+                    overallStatus = 'unhealthy';
+                } else if (res.status === 'degraded' && overallStatus !== 'unhealthy') {
+                    overallStatus = 'degraded';
+                }
+            } catch (err) {
+                details[`contributor_${i}`] = {
+                    status: 'unhealthy',
+                    error: err instanceof Error ? err.message : String(err),
+                };
+                overallStatus = 'unhealthy';
+            }
+        }
+
+        return { status: overallStatus, details };
     }
 
     /**
@@ -1033,7 +1178,6 @@ export class PluginManager {
         const dbMeta = await this.context.db.core.getAllPluginMeta();
         const dbEnabledMap = new Map(dbMeta.map((m) => [m.pluginId, m.enabled]));
 
-        // Scan directory to get all available plugins
         if (fs.existsSync(PLUGINS_DIR)) {
             const entries = await fs.promises.readdir(PLUGINS_DIR, {
                 withFileTypes: true,
@@ -1048,16 +1192,10 @@ export class PluginManager {
 
                     const metadata = JSON.parse(await fs.promises.readFile(metadataPath, 'utf-8'));
 
-                    // Determine enabled status
-                    // 1. Check DB
-                    // 2. If not in DB, check if it's currently loaded
-                    // 3. If not loaded, check default logic (test plugins disabled in prod)
-
                     let enabled = false;
                     if (dbEnabledMap.has(metadata.id)) {
                         enabled = dbEnabledMap.get(metadata.id)!;
                     } else {
-                        // Fallback to loaded status
                         enabled = Array.from(this.plugins.values()).some(
                             (p) => p.metadata.id === metadata.id,
                         );
