@@ -1,5 +1,7 @@
+import { Client } from 'discord.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { loadEvents } from '../../utils/event-loader.js';
 import logger from '../logger.js';
 import workerPool from '../worker-pool.js';
 
@@ -10,6 +12,10 @@ vi.mock('../logger.js', () => ({
         warn: vi.fn(),
         error: vi.fn(),
     },
+}));
+
+vi.mock('../../utils/event-loader.js', () => ({
+    loadEvents: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('discord.js', () => {
@@ -25,6 +31,8 @@ vi.mock('discord.js', () => {
         GatewayIntentBits: {
             Guilds: 1,
             GuildVoiceStates: 2,
+            GuildMessages: 4,
+            MessageContent: 8,
         },
         ActivityType: {
             Custom: 4,
@@ -48,7 +56,7 @@ vi.mock('../../config/afr-config.js', () => ({
 describe('WorkerPool', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        // Reset workers state if possible, or just release all
+        workerPool.resetBots();
         workerPool.releaseAllWorkers();
     });
 
@@ -112,5 +120,63 @@ describe('WorkerPool', () => {
         // Check if login was called on clients (need access to client mocks, but difficult here without exposing them)
         // We can check logger instead
         expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('Logged in as'));
+    });
+
+    describe('getIntentsForRole', () => {
+        it('should return only Guilds and GuildVoiceStates for worker in any profile', () => {
+            const selfHostedIntents = workerPool.getIntentsForRole('worker', 'self-hosted');
+            expect(selfHostedIntents).toEqual([1, 2]); // Guilds (1), GuildVoiceStates (2)
+
+            const hostedIntents = workerPool.getIntentsForRole('worker', 'hosted');
+            expect(hostedIntents).toEqual([1, 2]);
+        });
+
+        it('should return Guilds, GuildVoiceStates, GuildMessages, and MessageContent for controller in self-hosted profile', () => {
+            const intents = workerPool.getIntentsForRole('controller', 'self-hosted');
+            expect(intents).toEqual([1, 2, 4, 8]); // Guilds (1), GuildVoiceStates (2), GuildMessages (4), MessageContent (8)
+        });
+
+        it('should NOT request MessageContent for controller in hosted profile', () => {
+            const intents = workerPool.getIntentsForRole('controller', 'hosted');
+            expect(intents).toEqual([1, 2, 4]); // Guilds (1), GuildVoiceStates (2), GuildMessages (4)
+            expect(intents).not.toContain(8); // No MessageContent
+        });
+    });
+
+    describe('createBots with profiles', () => {
+        it('should configure controller client without MessageContent in hosted profile', () => {
+            workerPool.createBots(undefined, 'hosted');
+            // Check that Client constructor was called with the right intents
+            const ClientMock = vi.mocked(Client);
+            const controllerCall = ClientMock.mock.calls.find((call) => {
+                const options = call[0] as { intents: number[] };
+                return options.intents.includes(4); // GuildMessages
+            });
+            expect(controllerCall).toBeDefined();
+            const controllerOptions = controllerCall![0] as { intents: number[] };
+            expect(controllerOptions.intents).toEqual([1, 2, 4]); // Guilds, GuildVoiceStates, GuildMessages
+            expect(controllerOptions.intents).not.toContain(8); // MessageContent omitted
+
+            // Worker calls should only have Guilds and GuildVoiceStates
+            const workerCalls = ClientMock.mock.calls.filter((call) => {
+                const options = call[0] as { intents: number[] };
+                return !options.intents.includes(4);
+            });
+            expect(workerCalls).toHaveLength(2);
+            for (const call of workerCalls) {
+                const options = call[0] as { intents: number[] };
+                expect(options.intents).toEqual([1, 2]);
+            }
+        });
+
+        it('should pass worker role to loadEvents during login', async () => {
+            workerPool.createBots();
+            await workerPool.loginBots();
+
+            const loadEventsMock = vi.mocked(loadEvents);
+            expect(loadEventsMock).toHaveBeenCalledWith(expect.anything(), 'Jasper', 'controller');
+            expect(loadEventsMock).toHaveBeenCalledWith(expect.anything(), 'Misty', 'worker');
+            expect(loadEventsMock).toHaveBeenCalledWith(expect.anything(), 'Tuki', 'worker');
+        });
     });
 });

@@ -33,6 +33,11 @@ Adds a new sound to the soundboard.
 - **name**: The name of the sound (max 32 chars).
 - **emoji**: An emoji to represent the sound (optional, defaults to 🔊).
 
+> **Note on Runtime Profiles:**
+>
+> - In **hosted mode** (`RUNTIME_PROFILE=hosted`), Jasper minimizes Discord permissions and does not request privileged `MessageContent` intent. Sounds must be added by specifying the `file` and `name` options directly in the `/soundboard add` slash command, or uploaded through the web dashboard.
+> - In **self-hosted mode** (`RUNTIME_PROFILE=self-hosted`), the interactive multi-step sound wizard is also available if options are omitted.
+
 ### `/soundboard ui`
 
 Creates a permanent "Soundboard" message in the channel with interactive buttons for the top 25 sounds.
