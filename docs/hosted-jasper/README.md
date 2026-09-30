@@ -18,17 +18,17 @@ installation ceremony.
 
 ## Documents
 
-| Document                                            | Purpose                                                                                                                                      |
-| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| [Product brief](product-brief.md)                   | Problem, vision, audiences, principles, scope, and product boundary                                                                          |
-| [Current-state audit](current-state-audit.md)       | Onboarding-document review, static architecture analysis, local verification, live GitHub and staging evidence, risks, and open-issue impact |
-| [Product requirements](prd.md)                      | Live PRD, complete MVP requirements and acceptance gates, plus the short-, medium-, and long-term feature index                              |
-| [Plugin feasibility](plugin-feasibility.md)         | Decision and scorecard for packaging the proprietary distribution around Jasper’s out-of-tree plugin workflow                                |
-| [MVP technical design](mvp-design.md)               | Runtime, control-plane, tenancy, onboarding, security, data, deployment, and testing design                                                  |
-| [MVP issue plan](mvp-issue-plan.md)                 | Filed issue-by-issue source of truth, ownership, dependencies, sequencing, and acceptance outcomes                                           |
-| [Self-hosting & disaster recovery](self-hosting.md) | Production Docker Compose deployment architecture, automated backup/restore, and rolling upgrade runbook                                     |
-| [Legacy deployment freeze](deployment-freeze.md)    | Policy and rollback runbook for the frozen legacy PM2 deployment workflow (HJ-OSS-16)                                                        |
-| [Future phases](future-phases.md)                   | Concrete design briefs for public beta, commercial launch, and the longer-term hosting platform                                              |
+| Document                                             | Purpose                                                                                                                                      |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Product brief](product-brief.md)                    | Problem, vision, audiences, principles, scope, and product boundary                                                                          |
+| [Current-state audit](current-state-audit.md)        | Onboarding-document review, static architecture analysis, local verification, live GitHub and staging evidence, risks, and open-issue impact |
+| [Product requirements](prd.md)                       | Live PRD, complete MVP requirements and acceptance gates, plus the short-, medium-, and long-term feature index                              |
+| [Plugin feasibility](plugin-feasibility.md)          | Decision and scorecard for packaging the proprietary distribution around Jasper’s out-of-tree plugin workflow                                |
+| [MVP technical design](mvp-design.md)                | Runtime, control-plane, tenancy, onboarding, security, data, deployment, and testing design                                                  |
+| [MVP issue plan](mvp-issue-plan.md)                  | Filed issue-by-issue source of truth, ownership, dependencies, sequencing, and acceptance outcomes                                           |
+| [Self-hosting & disaster recovery](self-hosting.md)  | Production Docker Compose deployment architecture, automated backup/restore, and rolling upgrade runbook                                     |
+| [Legacy deployment retirement](deployment-freeze.md) | Policy and migration record for the retired legacy PM2 deployment workflow in favor of Docker Compose (HJ-OSS-16 / HJ-OSS-18)                |
+| [Future phases](future-phases.md)                    | Concrete design briefs for public beta, commercial launch, and the longer-term hosting platform                                              |
 
 ## Accepted decision
 
@@ -111,8 +111,7 @@ scaffolding and issue filing; it did not authorize a production launch.
 - All 50 stable IDs are filed: 22 public Jasper items, 24 private hosted items,
   and 4 private Garage Band items. HJ-OSS-07 deliberately reuses and re-scopes
   existing issue #122.
-- The existing `deploy` branch remains a legacy self-hosted staging lane until
-  HJ-OPS-03 establishes and validates its replacement.
+- The legacy `deploy` branch and PM2 push-deployment workflow (`.github/workflows/deploy.yml`) have been permanently retired under HJ-OSS-18 in favor of the Docker Compose stack (`docker-compose.yml` / `docker-compose.quickstart.yml`).
 - Real-guild admission remains blocked on the PRD safety, product, security,
   privacy, recovery, and operations gates.
 

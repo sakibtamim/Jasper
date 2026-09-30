@@ -1,17 +1,22 @@
-# Legacy Deployment Lane Freeze & Rollback Runbook (HJ-OSS-16)
+# Legacy Deployment Lane Retirement & Rollback Record (HJ-OSS-16 / HJ-OSS-18)
 
-**Stable ID:** HJ-OSS-16  
-**Status:** Frozen  
-**Target Workflow:** [`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml)  
-**Replacement Stack:** [`docker-compose.yml`](../../docker-compose.yml) & [Production Self-Hosting Guide](self-hosting.md)
+**Stable ID:** HJ-OSS-16 (Freeze) / HJ-OSS-18 (Retirement)  
+**Status:** Permanently Retired  
+**Target Workflow:** `.github/workflows/deploy.yml` (Removed)  
+**Replacement Stack:** [`docker-compose.yml`](../../docker-compose.yml), [`docker-compose.quickstart.yml`](../../docker-compose.quickstart.yml) & [Production Self-Hosting Guide](self-hosting.md)
 
 ---
 
-## 🎯 Executive Summary & Context
+## 🎯 Executive Summary & Retirement Decision (HJ-OSS-18)
 
-Under **HJ-OSS-16**, the legacy in-place PM2 push-deployment pipeline has been **frozen**. Automatic deployment upon pushing to the `deploy` branch is permanently disabled. The pipeline is restricted to manual invocation via `workflow_dispatch` with an explicit owner confirmation gate (`confirm_frozen_deploy: true`).
+Under **HJ-OSS-16**, the legacy in-place PM2 push-deployment pipeline was **frozen** to prevent unattended in-place mutation of live bot hosts during hosted evolution.
 
-This decision isolates live environments from unintended mutation while Hosted Jasper foundations, provider contracts, and immutable container runtimes are established.
+Following the successful implementation and verification of the immutable container architecture:
+
+- **HJ-OSS-14**: Published the multi-stage OCI base image and zero-config one-container SQLite quick path (`docker-compose.quickstart.yml`).
+- **HJ-OSS-19**: Deployed the production multi-container Docker Compose stack (`docker-compose.yml`) with PostgreSQL 16 advisory locking, MinIO asset storage, non-root user execution, and automated backup/restore runbooks (`scripts/backup.sh`, `scripts/restore.sh`).
+
+Under **HJ-OSS-18**, the legacy PM2 deployment lane and its workflow file (`.github/workflows/deploy.yml`) have been **permanently retired and removed** from the repository. All manual and automated deployments must use Docker Compose.
 
 ---
 
@@ -21,6 +26,7 @@ The legacy deployment pipeline was designed as an initial single-host setup with
 
 | Dimension               | Legacy PM2 Pipeline (`deploy.yml`)            | Target Architecture (`docker-compose.yml`)                             |
 | :---------------------- | :-------------------------------------------- | :--------------------------------------------------------------------- |
+| **Status**              | **Permanently Retired (HJ-OSS-18)**           | **Active Production Standard**                                         |
 | **Trigger Policy**      | Unattended automatic push on `deploy` branch  | Immutable signed OCI release promotion                                 |
 | **Execution User**      | Host-level user (often elevated or root)      | Dedicated non-root user (`10001:10001`)                                |
 | **Atomicity**           | Destructive in-place `rm -rf` + SCP file copy | Atomic container swap & zero-downtime restart                          |
@@ -29,34 +35,28 @@ The legacy deployment pipeline was designed as an initial single-host setup with
 | **Disaster Recovery**   | Manual intervention upon failure              | Automated backup & restore (`scripts/backup.sh`, `scripts/restore.sh`) |
 | **Rollback**            | Manual Git checkout and PM2 restart           | Automated image rollback & idempotent restoration                      |
 
-### Scope of the Legacy Lane
+### Scope of the Former Legacy Lane
 
-- **Host Scope**: Exactly one target host accessed via SSH (`SSH_HOST`, `SSH_TARGET`).
+- **Host Scope**: Single target host accessed via SSH (`SSH_HOST`, `SSH_TARGET`).
 - **Guild Scope**: Single primary guild (`GUILD_ID`) configured for slash command deployment during build.
 - **Process Scope**: Monolithic Node.js PM2 process (`ecosystem.config.cjs`) on the target machine.
 
 ---
 
-## 🛡️ Enforced Freeze Controls
+## 🛡️ Historical Freeze Controls (HJ-OSS-16)
 
-1. **Push Trigger Removed**:
-   The workflow no longer responds to `git push` on `deploy` or any other branch.
-2. **Manual `workflow_dispatch` Gate**:
-   Manual invocation requires setting:
-    ```yaml
-    inputs:
-        confirm_frozen_deploy: true
-    ```
-3. **Pre-Flight Execution Halt**:
-   The very first step in both `build` and `deploy` jobs checks the `confirm_frozen_deploy` input. If `false` or unset, the workflow immediately fails with a fatal error.
-4. **Prominent Deprecation Notice**:
-   A prominent header in `.github/workflows/deploy.yml` directs all operators to the OCI container path.
+Prior to complete retirement in HJ-OSS-18, the following controls were enforced during the freeze phase:
+
+1. **Push Trigger Removed**: The workflow no longer responded to `git push` on `deploy` or any branch.
+2. **Manual `workflow_dispatch` Gate**: Execution required explicit boolean input `confirm_frozen_deploy: true`.
+3. **Pre-Flight Execution Halt**: Both `build` and `deploy` jobs immediately aborted if `confirm_frozen_deploy` was false.
+4. **Permanent Retirement (HJ-OSS-18)**: The entire `.github/workflows/deploy.yml` workflow has been deleted from version control.
 
 ---
 
-## 🚑 Emergency Rollback Procedure (Legacy Host)
+## 🚑 Historical Rollback Procedure & Migration for Legacy Hosts
 
-If an emergency manual run of the frozen legacy workflow fails or leaves the bot in an unready state on the target server, follow this rollback runbook:
+For hosts that previously ran the legacy PM2 process, operators must migrate to the Docker Compose stack. If an existing host requires emergency rollback prior to completing migration:
 
 ### 1. Connect to Host & Assess Process State
 
@@ -72,38 +72,29 @@ pm2 logs Jasper --lines 100 --err
 
 ### 2. Identify the Failure Mode
 
-- **Dependency / Build Corruption**: Missing modules or syntax errors from incomplete SCP.
+- **Dependency / Build Corruption**: Missing modules or syntax errors from legacy SCP.
 - **Port Conflict**: Process crashed but port remains bound.
 - **Discord Authentication**: Bad `DISCORD_TOKEN` or permission changes.
 - **Database Connection**: PostgreSQL unreachable or SQLite file locked.
 
-### 3. Rollback to Last Known Good State
-
-If a Git checkout or backup artifact exists on the server:
+### 3. Decommission PM2 and Migrate to Docker Compose
 
 ```bash
-# 1. Stop current failed process
-pm2 stop Jasper
+# 1. Stop and delete PM2 process permanently
+pm2 stop Jasper && pm2 delete Jasper
+pm2 save
 
-# 2. Checkout previous stable commit
-git checkout <PREVIOUS_STABLE_COMMIT>
+# 2. Preserve database data
+cp data/jasper.sqlite /data/jasper.sqlite.bak 2>/dev/null || true
 
-# 3. Clean and reinstall dependencies
-rm -rf node_modules apps/bot/dist
-pnpm install --prod --frozen-lockfile
-pnpm --filter jasper-bot run postinstall
-
-# 4. Restart process manager
-pm2 startOrRestart ecosystem.config.cjs
-
-# 5. Verify process status & logs
-pm2 status
-pm2 logs Jasper --lines 50
+# 3. Launch via Docker Compose (Quickstart or Production)
+cp .env.compose.example .env
+docker compose -f docker-compose.quickstart.yml up -d
 ```
 
-### 4. Database Recovery (If Applicable)
+### 4. Database Recovery & Restore
 
-If database state was corrupted during the failed deployment, restore from the latest verified backup using the idempotent restoration script:
+If database state was corrupted or needs to be restored from backup, use the idempotent restore script:
 
 ```bash
 ./scripts/restore.sh ./backups/latest-backup.tar.gz -f
@@ -111,26 +102,22 @@ If database state was corrupted during the failed deployment, restore from the l
 
 ---
 
-## 🚀 Migration Path: Moving to Docker Compose (HJ-OSS-19)
+## 🚀 Migration Standard: Docker Compose (HJ-OSS-14 / HJ-OSS-19)
 
-All future deployments should transition to the production Docker Compose stack:
+All future deployments exclusively use the containerized stack:
 
-1. **Verify Prerequisites**:
-   Ensure Docker and Docker Compose v2+ are installed on the host.
-2. **Setup Configuration**:
+1. **Zero-Config Quickstart (SQLite)**:
+    ```bash
+    docker compose -f docker-compose.quickstart.yml up -d
+    ```
+2. **Production Multi-Container Stack (PostgreSQL + MinIO)**:
     ```bash
     cp .env.compose.example .env
-    # Edit .env with production credentials
-    ```
-3. **Deploy with Zero-Downtime Architecture**:
-    ```bash
     docker compose up -d
     ```
-4. **Health Verification**:
+3. **Health Verification**:
     ```bash
     curl -f http://localhost:3000/health/ready
     ```
 
 Complete operational details, backup automation, and rolling upgrade procedures are documented in the [Production Self-Hosting & Disaster Recovery Guide](self-hosting.md).
-
-The eventual complete retirement of the legacy PM2 workflow is scheduled under **HJ-OSS-18**.
