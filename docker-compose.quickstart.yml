@@ -1,0 +1,39 @@
+# ==============================================================================
+# Jasper One-Container Quickstart Compose (HJ-OSS-14)
+# Zero-config self-hosted deployment with persistent SQLite volume.
+# Usage:
+#   DISCORD_TOKEN=... DISCORD_CLIENT_ID=... docker compose -f docker-compose.quickstart.yml up -d
+# ==============================================================================
+
+services:
+    jasper:
+        image: ghcr.io/sakibtamim/jasper:latest
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: jasper-quickstart
+        restart: unless-stopped
+        user: '1000:1000'
+        ports:
+            - '3000:3000'
+        environment:
+            - NODE_ENV=production
+            - RUNTIME_PROFILE=self-hosted
+            - DB_TYPE=sqlite
+            - SQLITE_PATH=/data/jasper.sqlite
+            - PORT=3000
+            - DISCORD_TOKEN=${DISCORD_TOKEN:?DISCORD_TOKEN is required}
+            - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID:?DISCORD_CLIENT_ID is required}
+            - GUILD_ID=${GUILD_ID:-}
+        volumes:
+            - jasper-sqlite-data:/data
+        healthcheck:
+            test: ['CMD', 'curl', '-f', 'http://localhost:3000/health/live']
+            interval: 15s
+            timeout: 5s
+            retries: 3
+            start_period: 15s
+
+volumes:
+    jasper-sqlite-data:
+        name: jasper-sqlite-data

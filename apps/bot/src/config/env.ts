@@ -1,6 +1,7 @@
 import { RuntimeIdentity, RuntimeProfile } from '@jasper/types';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
+import path from 'path';
 
 dotenv.config();
 
@@ -117,6 +118,10 @@ export const DB_TYPE = ((): 'sqlite' | 'postgres' => {
     return dbType as 'sqlite' | 'postgres';
 })();
 export const DATABASE_URL = getOptionalEnv('DATABASE_URL');
+export const SQLITE_PATH = getOptionalEnv(
+    'SQLITE_PATH',
+    getOptionalEnv('DATABASE_PATH', path.join(process.cwd(), 'data', 'jasper.db')),
+);
 
 /**
  * Cache Configuration

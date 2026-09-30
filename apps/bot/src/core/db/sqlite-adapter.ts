@@ -54,7 +54,11 @@ export class SqliteAdapter implements DatabaseAdapter {
     private dbPath: string;
 
     constructor(customPath?: string) {
-        this.dbPath = customPath || path.join(process.cwd(), 'data', 'jasper.db');
+        this.dbPath =
+            customPath ||
+            process.env.SQLITE_PATH ||
+            process.env.DATABASE_PATH ||
+            path.join(process.cwd(), 'data', 'jasper.db');
 
         // Ensure directory exists
         const dir = path.dirname(this.dbPath);
