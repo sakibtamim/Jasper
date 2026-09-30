@@ -1,6 +1,7 @@
 import { Queue, WorkerState } from '@jasper/types';
 
 import logger from '../logger.js';
+import { getOperationalSafetyManager } from '../safety/operational-safety.js';
 import { setVoiceStatus } from '../utils/voice-utils.js';
 import workerPool from '../worker-pool.js';
 
@@ -38,6 +39,10 @@ export function setQueue(voiceChannelId: string, queue: Queue): void {
  * @param {string} voiceChannelId
  */
 export function deleteQueue(voiceChannelId: string): void {
+    const existing = queues.get(voiceChannelId);
+    if (existing?.guildId) {
+        getOperationalSafetyManager().releaseQueue(existing.guildId, voiceChannelId);
+    }
     queues.delete(voiceChannelId);
 }
 

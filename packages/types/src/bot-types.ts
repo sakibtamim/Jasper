@@ -8,6 +8,7 @@ import {
     SlashCommandBuilder,
     TextBasedChannel,
 } from 'discord.js';
+import type { DisposalHandle } from './plugin-types.js';
 
 // --- Runtime Profile & Identity Types ---
 
@@ -503,4 +504,103 @@ export interface DrainStatus {
     timeoutMs: number;
     activeQueuesRemaining: number;
     interruptedQueuesCount: number;
+}
+
+// --- Operational Safety & Resource Limits (HJ-OSS-20) ---
+
+export interface InstallationSafetyLimits {
+    /** Max concurrent audio playback queues for this installation */
+    maxConcurrentQueues: number;
+    /** Max tracks allowed in a single queue */
+    maxTracksPerQueue: number;
+    /** Max slash command invocations allowed per minute */
+    maxCommandsPerMinute: number;
+    /** Max concurrent audio extraction/yt-dlp child processes */
+    maxConcurrentExtractions: number;
+    /** Max upload bandwidth in bytes per minute */
+    maxUploadBytesPerMinute: number;
+    /** Max download bandwidth in bytes per minute */
+    maxDownloadBytesPerMinute: number;
+}
+
+export interface CellProviderSafetyLimits {
+    /** Max concurrent audio playback queues across the entire cell/provider */
+    maxCellConcurrentQueues: number;
+    /** Max concurrent audio extraction child processes across the cell */
+    maxCellConcurrentExtractions: number;
+    /** Max command rate across all installations in the cell */
+    maxCellCommandsPerMinute: number;
+    /** Max aggregate bandwidth in bytes per minute across the cell */
+    maxCellBandwidthBytesPerMinute: number;
+}
+
+export interface OperationalSafetyConfig {
+    installationLimits: InstallationSafetyLimits;
+    cellLimits: CellProviderSafetyLimits;
+}
+
+export type SafetyResourceType =
+    | 'queue'
+    | 'track'
+    | 'command'
+    | 'extraction'
+    | 'bandwidth_upload'
+    | 'bandwidth_download';
+
+export type SafetyScope = 'installation' | 'cell';
+
+export interface SafetyCheckResult {
+    allowed: boolean;
+    resource?: SafetyResourceType;
+    scope?: SafetyScope;
+    retryAfterMs?: number;
+    reason?: string;
+    details?: {
+        current: number;
+        limit: number;
+    };
+}
+
+export interface ExtractionPermit extends DisposalHandle, SafetyCheckResult {}
+
+export interface OperationalSafetyMetrics {
+    installationId?: string;
+    resource: SafetyResourceType;
+    action: 'allow' | 'throttle' | 'reject';
+    scope: SafetyScope;
+    current: number;
+    limit: number;
+    retryAfterMs?: number;
+    timestamp: Date;
+}
+
+export interface OperationalSafetyPolicy {
+    getLimits(installationId?: string): OperationalSafetyConfig;
+}
+
+export interface OperationalSafetyManager {
+    /** Check if command invocation is permitted */
+    checkCommand(installationId: string): SafetyCheckResult;
+    /** Check if tracks can be added to queue */
+    checkQueueAdmission(
+        installationId: string,
+        currentTrackCount: number,
+        additionalTracks: number,
+    ): SafetyCheckResult;
+    /** Acquire a concurrent queue slot */
+    acquireQueue(installationId: string, voiceChannelId: string): SafetyCheckResult;
+    /** Release a concurrent queue slot */
+    releaseQueue(installationId: string, voiceChannelId: string): void;
+    /** Acquire audio extraction slot (yt-dlp child process) */
+    acquireExtraction(installationId: string): Promise<ExtractionPermit>;
+    /** Check and record upload/download bandwidth consumption */
+    checkAndRecordBandwidth(
+        installationId: string,
+        bytes: number,
+        direction: 'upload' | 'download',
+    ): SafetyCheckResult;
+    /** Retrieve telemetry metrics */
+    getMetrics(): OperationalSafetyMetrics[];
+    /** Reset counters */
+    reset(): void;
 }

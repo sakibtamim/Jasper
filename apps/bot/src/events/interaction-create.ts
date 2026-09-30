@@ -2,6 +2,7 @@ import { CacheType, Events, Interaction } from 'discord.js';
 
 import { getGuildAccessPolicy } from '../core/access-policy.js';
 import logger from '../core/logger.js';
+import { getOperationalSafetyManager } from '../core/safety/operational-safety.js';
 
 export default {
     name: Events.InteractionCreate,
@@ -93,6 +94,25 @@ export default {
             return;
         }
         logger.debug(`[events] Found command ${interaction.commandName}, executing...`);
+
+        // 4b. Operational Safety Rate Limit Check (HJ-OSS-20)
+        const safetyManager = getOperationalSafetyManager();
+        const installationId =
+            (interaction as unknown as { installation?: { installationId?: string } }).installation
+                ?.installationId || guildId;
+        const safetyCheck = safetyManager.checkCommand(installationId);
+        if (!safetyCheck.allowed) {
+            const retrySec = safetyCheck.retryAfterMs
+                ? Math.ceil(safetyCheck.retryAfterMs / 1000)
+                : 5;
+            const content = `⏳ **Temporarily Throttled**: ${safetyCheck.reason} (retry in ~${retrySec}s)`;
+            if (interaction.deferred || interaction.replied) {
+                await interaction.followUp({ content, ephemeral: true });
+            } else {
+                await interaction.reply({ content, ephemeral: true });
+            }
+            return;
+        }
 
         try {
             await command.execute(interaction);

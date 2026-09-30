@@ -5,6 +5,10 @@ import { Readable } from 'stream';
 import { findYtDlpPath, getBaseYtDlpArgs } from '../../utils/yt-dlp-helper.js';
 import cookieManager from '../cookies/cookie-manager.js';
 import logger from '../logger.js';
+import {
+    OperationalSafetyError,
+    getOperationalSafetyManager,
+} from '../safety/operational-safety.js';
 
 // Helper: Get the path to the local yt-dlp.exe
 export function getYtDlpPath(): string {
@@ -76,71 +80,97 @@ export interface PlaylistData {
     [key: string]: unknown;
 }
 
-export function fetchVideoData(url: string): Promise<VideoData> {
-    return cookieManager.withCookieRetry(async (cookiePath) => {
-        return new Promise((resolve, reject) => {
-            const ytDlpPath = getYtDlpPath();
-            // -J: Dump JSON metadata
-            const args = [...getBaseYtDlpArgs(), '-J', url];
+export async function fetchVideoData(
+    url: string,
+    installationId: string = 'global',
+): Promise<VideoData> {
+    const safety = getOperationalSafetyManager();
+    const permit = await safety.acquireExtraction(installationId);
+    if (!permit.allowed) {
+        throw new OperationalSafetyError(permit);
+    }
 
-            if (cookiePath) {
-                args.push('--cookies', cookiePath);
-            }
+    try {
+        return await cookieManager.withCookieRetry(async (cookiePath) => {
+            return new Promise((resolve, reject) => {
+                const ytDlpPath = getYtDlpPath();
+                // -J: Dump JSON metadata
+                const args = [...getBaseYtDlpArgs(), '-J', url];
 
-            const process = spawn(ytDlpPath, args);
-            let data = '';
-            let error = '';
-
-            process.stdout.on('data', (chunk) => (data += chunk));
-            process.stderr.on('data', (chunk) => (error += chunk));
-
-            process.on('close', (code) => {
-                if (code !== 0) {
-                    reject(new Error(`yt-dlp failed: ${error}`));
-                } else {
-                    try {
-                        const parsed = JSON.parse(data);
-                        resolve(parsed);
-                    } catch {
-                        reject(new Error('Failed to parse video JSON'));
-                    }
+                if (cookiePath) {
+                    args.push('--cookies', cookiePath);
                 }
+
+                const process = spawn(ytDlpPath, args);
+                let data = '';
+                let error = '';
+
+                process.stdout.on('data', (chunk) => (data += chunk));
+                process.stderr.on('data', (chunk) => (error += chunk));
+
+                process.on('close', (code) => {
+                    if (code !== 0) {
+                        reject(new Error(`yt-dlp failed: ${error}`));
+                    } else {
+                        try {
+                            const parsed = JSON.parse(data);
+                            resolve(parsed);
+                        } catch {
+                            reject(new Error('Failed to parse video JSON'));
+                        }
+                    }
+                });
             });
         });
-    });
+    } finally {
+        permit.dispose();
+    }
 }
 
-export function fetchPlaylistData(url: string): Promise<PlaylistData> {
-    return cookieManager.withCookieRetry(async (cookiePath) => {
-        return new Promise((resolve, reject) => {
-            const ytDlpPath = getYtDlpPath();
-            const args = [...getBaseYtDlpArgs(), '--flat-playlist', '-J', url];
+export async function fetchPlaylistData(
+    url: string,
+    installationId: string = 'global',
+): Promise<PlaylistData> {
+    const safety = getOperationalSafetyManager();
+    const permit = await safety.acquireExtraction(installationId);
+    if (!permit.allowed) {
+        throw new OperationalSafetyError(permit);
+    }
 
-            if (cookiePath) {
-                args.push('--cookies', cookiePath);
-            }
+    try {
+        return await cookieManager.withCookieRetry(async (cookiePath) => {
+            return new Promise((resolve, reject) => {
+                const ytDlpPath = getYtDlpPath();
+                const args = [...getBaseYtDlpArgs(), '--flat-playlist', '-J', url];
 
-            const process = spawn(ytDlpPath, args);
-            let data = '';
-            let error = '';
-
-            process.stdout.on('data', (chunk) => (data += chunk));
-            process.stderr.on('data', (chunk) => (error += chunk));
-
-            process.on('close', (code) => {
-                if (code !== 0) {
-                    reject(new Error(`yt-dlp failed: ${error}`));
-                } else {
-                    try {
-                        const parsed = JSON.parse(data);
-                        resolve(parsed);
-                    } catch {
-                        reject(new Error('Failed to parse playlist JSON'));
-                    }
+                if (cookiePath) {
+                    args.push('--cookies', cookiePath);
                 }
+
+                const process = spawn(ytDlpPath, args);
+                let data = '';
+                let error = '';
+
+                process.stdout.on('data', (chunk) => (data += chunk));
+                process.stderr.on('data', (chunk) => (error += chunk));
+
+                process.on('close', (code) => {
+                    if (code !== 0) {
+                        reject(new Error(`yt-dlp failed: ${error}`));
+                    } else {
+                        try {
+                            const parsed = JSON.parse(data);
+                            resolve(parsed);
+                        } catch {
+                            reject(new Error('Failed to parse playlist JSON'));
+                        }
+                    }
+                });
             });
         });
-    });
+    } finally {
+        permit.dispose();
+    }
 }
 
 export function createStreamProcess(url: string, seekSeconds: number = 0): ChildProcess {
