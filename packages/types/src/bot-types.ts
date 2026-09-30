@@ -53,6 +53,31 @@ export interface GuildAccessPolicy {
     mayStartWork(context: GuildInstallationContext): boolean;
 }
 
+// --- Capability Decision Port & Types (HJ-OSS-17) ---
+
+export interface CapabilityContext {
+    guildId: string;
+    installationId?: string;
+    installation?: GuildInstallationContext;
+    userId?: string;
+    metadata?: Record<string, unknown>;
+}
+
+export interface CapabilityDecision {
+    allowed: boolean;
+    reason?: string;
+    validUntil?: Date;
+}
+
+export type CapabilityDecisionResult = CapabilityDecision;
+
+export interface CapabilityDecisionPort {
+    decide(
+        context: CapabilityContext | GuildInstallationContext,
+        capabilityId: string,
+    ): Promise<CapabilityDecision>;
+}
+
 // --- Worker Pool & Voice Lease Types ---
 
 export type VoiceLeaseState = 'acquiring' | 'active' | 'retained' | 'releasing';
