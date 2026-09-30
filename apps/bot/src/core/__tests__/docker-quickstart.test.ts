@@ -77,7 +77,7 @@ describe('OCI Base Image & One-Container SQLite Quickstart (HJ-OSS-14)', () => {
 
             // Service definition
             expect(content).toContain('jasper:');
-            expect(content).toContain('user: "1000:1000"');
+            expect(content).toMatch(/user:\s*['"]1000:1000['"]/);
             expect(content).toContain('3000:3000');
 
             // Required environment variables
