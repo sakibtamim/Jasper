@@ -3,6 +3,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import {
+    DefaultOperationalSafetyManager,
+    OperationalSafetyError,
+    setOperationalSafetyManager,
+} from '../../safety/operational-safety.js';
 import { LocalPluginAssetStore } from '../local-plugin-asset-store.js';
 import { LocalSharedMediaCache } from '../local-shared-media-cache.js';
 import { LocalTenantAssetStore } from '../local-tenant-asset-store.js';
@@ -259,5 +264,73 @@ describe('Safe Media Ingestion', () => {
                 },
             ),
         ).rejects.toThrow(/HTTP 404/);
+    });
+
+    it('should reject ingestion when download bandwidth quota is exceeded', async () => {
+        const tenantStore = new LocalTenantAssetStore({ baseDir: tempDir });
+        const smallSafetyManager = new DefaultOperationalSafetyManager({
+            installationLimits: {
+                maxDownloadBytesPerMinute: 50,
+            },
+        });
+        setOperationalSafetyManager(smallSafetyManager);
+
+        fetchSpy.mockResolvedValueOnce(
+            new Response(SAMPLE_WAV, {
+                status: 200,
+                headers: {
+                    'content-type': 'audio/wav',
+                    'content-length': String(SAMPLE_WAV.length),
+                },
+            }),
+        );
+
+        // First download under limit
+        const asset = await ingestRemoteMedia(
+            {
+                url: 'https://cdn.example.com/sound1.wav',
+                dnsLookupFn: async () => ['93.184.216.34'],
+            },
+            {
+                type: 'tenant',
+                tenant: {
+                    store: tenantStore,
+                    installationId: 'inst_bandwidth',
+                    path: 'sounds/sound1.wav',
+                },
+            },
+        );
+        expect(asset).toBeDefined();
+
+        // Second download exceeds quota
+        fetchSpy.mockResolvedValueOnce(
+            new Response(SAMPLE_WAV, {
+                status: 200,
+                headers: {
+                    'content-type': 'audio/wav',
+                    'content-length': String(SAMPLE_WAV.length),
+                },
+            }),
+        );
+
+        await expect(
+            ingestRemoteMedia(
+                {
+                    url: 'https://cdn.example.com/sound2.wav',
+                    dnsLookupFn: async () => ['93.184.216.34'],
+                },
+                {
+                    type: 'tenant',
+                    tenant: {
+                        store: tenantStore,
+                        installationId: 'inst_bandwidth',
+                        path: 'sounds/sound2.wav',
+                    },
+                },
+            ),
+        ).rejects.toThrow(OperationalSafetyError);
+
+        // Reset default safety manager
+        setOperationalSafetyManager(new DefaultOperationalSafetyManager());
     });
 });

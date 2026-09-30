@@ -476,7 +476,8 @@ async function enqueue(
     await interaction.deferReply();
 
     try {
-        const track = await resolveTrack(query, interaction.user.id, interaction.user.tag);
+        const guildId = interaction.guildId || voiceChannel.guild.id;
+        const track = await resolveTrack(query, interaction.user.id, interaction.user.tag, guildId);
         const queue = await ensureQueue(interaction, voiceChannel, track);
         if (!queue) return;
 
@@ -612,7 +613,8 @@ async function enqueuePlaylist(
     await interaction.deferReply();
 
     try {
-        const data = await fetchPlaylistData(url);
+        const guildId = interaction.guildId || voiceChannel.guild.id;
+        const data = await fetchPlaylistData(url, guildId);
         let entries = data.entries || (data._type === 'playlist' ? [] : [data]);
 
         let truncated = false;
@@ -981,14 +983,29 @@ async function startRadio(interaction: ChatInputCommandInteraction): Promise<voi
         let queue = await validateAndCleanupQueue(interaction, voiceChannel.id);
 
         if (!queue) {
+            const guildId = voiceChannel.guild.id;
+            const safety = getOperationalSafetyManager().acquireQueue(guildId, voiceChannel.id);
+            if (!safety.allowed) {
+                await interaction.editReply({
+                    content: `❌ **Capacity Limit**: ${safety.reason}`,
+                });
+                return;
+            }
+
             logger.info(`[radio] No existing queue, assigning worker...`);
             const worker = await assignWorker(interaction, voiceChannel, true);
             if (!worker) {
+                getOperationalSafetyManager().releaseQueue(guildId, voiceChannel.id);
                 logger.warn(`[radio] Failed to assign worker`);
                 return;
             }
             logger.info(`[radio] Assigned worker ${worker.name}`);
-            queue = await createQueue(interaction, worker, null);
+            try {
+                queue = await createQueue(interaction, worker, null);
+            } catch (err) {
+                getOperationalSafetyManager().releaseQueue(guildId, voiceChannel.id);
+                throw err;
+            }
         } else {
             // Re-acquire worker if idle
             logger.info(`[radio] Reusing existing queue/worker ${queue.worker.name}`);

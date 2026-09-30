@@ -37,6 +37,7 @@ export async function resolveTrack(
     query: string,
     requesterId?: string,
     requesterName?: string,
+    guildId?: string,
 ): Promise<Song> {
     // Check if it's a Discord attachment URL first
     if (isAttachmentUrl(query)) {
@@ -68,7 +69,7 @@ export async function resolveTrack(
 
         // It IS a YouTube URL, proceed with yt-dlp fetch
         try {
-            const videoData = await fetchVideoData(query);
+            const videoData = await fetchVideoData(query, guildId);
             return {
                 title: videoData.title,
                 url: videoData.webpage_url || videoData.url,

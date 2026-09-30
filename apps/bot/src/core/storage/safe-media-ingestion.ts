@@ -1,6 +1,10 @@
 import { Readable } from 'node:stream';
 
 import logger from '../logger.js';
+import {
+    OperationalSafetyError,
+    getOperationalSafetyManager,
+} from '../safety/operational-safety.js';
 import { safeFetch } from './ssrf.js';
 import {
     IngestRemoteMediaOptions,
@@ -59,11 +63,26 @@ export async function ingestRemoteMedia(
     // Convert Web ReadableStream to Node.js Readable
     const nodeStream = Readable.fromWeb(response.body as import('node:stream/web').ReadableStream);
 
+    const contentLength = Number(response.headers.get('content-length') || 0);
+    const installationId =
+        destination.tenant?.installationId || destination.plugin?.installationId || 'global';
+    if (contentLength > 0 && installationId) {
+        const bandwidthCheck = getOperationalSafetyManager().checkAndRecordBandwidth(
+            installationId,
+            contentLength,
+            'download',
+        );
+        if (!bandwidthCheck.allowed) {
+            throw new OperationalSafetyError(bandwidthCheck);
+        }
+    }
+
+    let asset: StoredAsset;
     if (destination.type === 'tenant') {
         if (!destination.tenant) {
             throw new Error('Tenant destination configuration is required');
         }
-        return destination.tenant.store.put(
+        asset = await destination.tenant.store.put(
             destination.tenant.installationId,
             destination.tenant.path,
             nodeStream,
@@ -73,7 +92,7 @@ export async function ingestRemoteMedia(
         if (!destination.plugin) {
             throw new Error('Plugin destination configuration is required');
         }
-        return destination.plugin.store.put(
+        asset = await destination.plugin.store.put(
             destination.plugin.pluginId,
             destination.plugin.installationId,
             destination.plugin.path,
@@ -84,10 +103,24 @@ export async function ingestRemoteMedia(
         if (!destination.cache) {
             throw new Error('Cache destination configuration is required');
         }
-        return destination.cache.store.put(destination.cache.cacheKey, nodeStream, {
+        asset = await destination.cache.store.put(destination.cache.cacheKey, nodeStream, {
             mimeType: declaredMime,
         });
+    } else {
+        throw new Error(`Unsupported destination type: ${(destination as { type: string }).type}`);
     }
 
-    throw new Error(`Unsupported destination type: ${(destination as { type: string }).type}`);
+    // If Content-Length header was missing or zero, record bandwidth based on stored asset size
+    if (contentLength <= 0 && asset.size > 0 && installationId) {
+        const postCheck = getOperationalSafetyManager().checkAndRecordBandwidth(
+            installationId,
+            asset.size,
+            'download',
+        );
+        if (!postCheck.allowed) {
+            throw new OperationalSafetyError(postCheck);
+        }
+    }
+
+    return asset;
 }

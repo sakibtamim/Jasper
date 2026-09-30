@@ -10,6 +10,8 @@ import {
 } from 'discord.js';
 import type { DisposalHandle } from './plugin-types.js';
 
+import type { DisposalHandle } from './plugin-types.js';
+
 // --- Runtime Profile & Identity Types ---
 
 export type RuntimeProfile = 'self-hosted' | 'hosted';

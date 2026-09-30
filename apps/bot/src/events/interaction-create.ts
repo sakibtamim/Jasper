@@ -97,10 +97,7 @@ export default {
 
         // 4b. Operational Safety Rate Limit Check (HJ-OSS-20)
         const safetyManager = getOperationalSafetyManager();
-        const installationId =
-            (interaction as unknown as { installation?: { installationId?: string } }).installation
-                ?.installationId || guildId;
-        const safetyCheck = safetyManager.checkCommand(installationId);
+        const safetyCheck = safetyManager.checkCommand(guildId);
         if (!safetyCheck.allowed) {
             const retrySec = safetyCheck.retryAfterMs
                 ? Math.ceil(safetyCheck.retryAfterMs / 1000)

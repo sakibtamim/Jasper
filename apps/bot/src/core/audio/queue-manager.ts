@@ -85,6 +85,11 @@ export function cleanupWorkerOldQueues(worker: WorkerState): void {
                 queue.connection.destroy();
             }
 
+            // Release safety queue slot
+            if (queue.guildId) {
+                getOperationalSafetyManager().releaseQueue(queue.guildId, channelId);
+            }
+
             // Remove from map
             queues.delete(channelId);
         }
@@ -119,6 +124,11 @@ export function clearAllQueues() {
         // Destroy connection
         if (queue.connection) {
             queue.connection.destroy();
+        }
+
+        // Release safety queue slot
+        if (queue.guildId) {
+            getOperationalSafetyManager().releaseQueue(queue.guildId, channelId);
         }
 
         // Release worker
@@ -162,6 +172,9 @@ export function clearGuildQueues(guildId: string) {
             if (queue.connection) {
                 queue.connection.destroy();
             }
+
+            // Release safety queue slot
+            getOperationalSafetyManager().releaseQueue(guildId, channelId);
 
             // Release worker
             workerPool.releaseWorker(channelId, { guildId });
