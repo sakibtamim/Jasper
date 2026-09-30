@@ -933,7 +933,13 @@ export class PluginManager {
 
         try {
             if (entry) {
-                await entry.plugin.onUnload(entry.context);
+                try {
+                    await entry.plugin.onUnload(entry.context);
+                } catch (e) {
+                    logger.error(
+                        `[plugins] Error in onUnload for ${name}: ${e instanceof Error ? e.message : String(e)}`,
+                    );
+                }
 
                 // 1. Deactivate router so all routes reject immediately
                 entry.router.deactivate();

@@ -147,7 +147,7 @@ export class MemoryRuntimeComponentStateStore implements RuntimeComponentStateSt
 
         // Order by sequence
         eligible.sort((a, b) => a.record.sequence - b.record.sequence);
-        const claimed = eligible.slice(0, Math.max(1, limit));
+        const claimed = eligible.slice(0, Math.max(0, limit));
 
         for (const entry of claimed) {
             entry.leaseExpiresAt = now + leaseMs;
