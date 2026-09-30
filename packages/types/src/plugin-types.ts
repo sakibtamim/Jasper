@@ -1,7 +1,14 @@
 import { Client } from 'discord.js';
 import { FastifyInstance } from 'fastify';
 
-import { Queue, Song, SongStats, UserStats, WorkerState } from './bot-types.js';
+import {
+    PluginAudioEnqueueService,
+    Queue,
+    Song,
+    SongStats,
+    UserStats,
+    WorkerState,
+} from './bot-types.js';
 
 // --- Hook Data Types ---
 
@@ -150,6 +157,9 @@ export interface PluginContext {
         requesterId: string; // User who triggered this
         channelId?: string; // Text channel to send messages to
     }): Promise<void>;
+
+    // Stable Audio Enqueue & Seek Service (HJ-OSS-13)
+    audio: PluginAudioEnqueueService;
 
     // Schedule background tasks (automatically cleaned up on unload)
     scheduleTask(intervalMs: number, task: () => void | Promise<void>): void;

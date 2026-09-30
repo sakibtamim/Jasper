@@ -26,6 +26,7 @@ import { fileURLToPath, pathToFileURL } from 'url';
 import { getEntryMessage } from '../../config/afr-config.js';
 import { DISCORD_CLIENT_ID, DISCORD_TOKEN, GUILD_ID } from '../../config/env.js';
 import { TEST_PLUGINS } from '../../config/plugins.js';
+import { PluginAudioService } from '../audio/plugin-audio-service.js';
 import { getQueue } from '../audio/queue-manager.js';
 import db from '../db/index.js';
 import logger from '../logger.js';
@@ -503,6 +504,7 @@ export class PluginManager {
                     }
                 });
             },
+            audio: new PluginAudioService('core'),
             scheduleTask: (_intervalMs, _task) => {
                 // Base implementation - overridden by scoped context
                 logger.warn(
@@ -728,6 +730,7 @@ export class PluginManager {
                     core: coreDataAccessor,
                 },
                 storage: new PluginStorage(metadata.id),
+                audio: new PluginAudioService(metadata.id),
                 logger: {
                     debug: (msg: string) => logger.debug(`[${metadata.id}] ${msg}`),
                     info: (msg: string) => logger.info(`[${metadata.id}] ${msg}`),

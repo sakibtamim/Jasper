@@ -146,6 +146,74 @@ export interface RouteAuthPolicy {
     allowSelfHostedFallback?: boolean;
 }
 
+// --- Plugin Audio Enqueue Service Types (HJ-OSS-13) ---
+
+export interface EnqueueAudioTrack {
+    title: string;
+    url: string;
+    durationInSec?: number;
+    thumbnail?: string;
+    sourceType?: 'youtube' | 'attachment' | 'direct';
+    gain?: number;
+    initialSeek?: number;
+    requestedBy?: string;
+    requesterId?: string;
+}
+
+export interface EnqueueAudioOptions {
+    loopTrack?: boolean;
+    loopQueue?: boolean;
+    shuffle?: boolean;
+    gain?: number;
+    installationId?: string;
+}
+
+export interface AudioSeekResult {
+    success: boolean;
+    position: number;
+    track?: Song | null;
+}
+
+export interface PluginAudioEnqueueService {
+    /**
+     * Enqueue one or more audio tracks into active or new voice queue.
+     * Supports Discord interaction context for auto-replying/deferring.
+     */
+    enqueue(
+        interaction: ChatInputCommandInteraction,
+        tracks: EnqueueAudioTrack[],
+        sourceName?: string,
+        options?: EnqueueAudioOptions,
+    ): Promise<void>;
+
+    /**
+     * Alias for enqueue to support legacy / convenience usage.
+     */
+    enqueueSongs(
+        interaction: ChatInputCommandInteraction,
+        tracks: EnqueueAudioTrack[],
+        sourceName?: string,
+        options?: EnqueueAudioOptions,
+    ): Promise<void>;
+
+    /**
+     * Seek current playback position.
+     * When given an interaction, validates voice channel and replies to user.
+     * When given voiceChannelId and position, performs programmatic seek.
+     */
+    seek(interaction: ChatInputCommandInteraction): Promise<void>;
+    seek(voiceChannelId: string, position: number | string): Promise<AudioSeekResult>;
+    seek(
+        target: ChatInputCommandInteraction | string,
+        position?: number | string,
+    ): Promise<AudioSeekResult | void>;
+
+    /**
+     * Get active queue for voice channel.
+     */
+    getQueue(voiceChannelId: string): Queue | undefined;
+}
+
 // --- Worker Pool & Voice Lease Types ---
 
 export type VoiceLeaseState = 'acquiring' | 'active' | 'retained' | 'releasing';
@@ -233,4 +301,78 @@ export interface Command {
     data: SlashCommandBuilder | { toJSON: () => RESTPostAPIChatInputApplicationCommandsJSONBody };
     execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
     autocomplete?: (interaction: AutocompleteInteraction) => Promise<void>;
+}
+
+// --- Storage Interfaces (Installation-Scoped & Shared) ---
+
+export interface StoredAsset {
+    key: string;
+    size: number;
+    mimeType: string;
+    updatedAt: Date;
+    metadata?: Record<string, string>;
+}
+
+export interface AssetPutOptions {
+    mimeType?: string;
+    metadata?: Record<string, string>;
+}
+
+export interface TenantAssetStore {
+    put(
+        installationId: string,
+        path: string,
+        data: Buffer | Uint8Array | NodeJS.ReadableStream,
+        options?: AssetPutOptions,
+    ): Promise<StoredAsset>;
+    get(installationId: string, path: string): Promise<Buffer | null>;
+    getStream(installationId: string, path: string): Promise<NodeJS.ReadableStream | null>;
+    delete(installationId: string, path: string): Promise<boolean>;
+    list(installationId: string, prefix?: string): Promise<StoredAsset[]>;
+    stat(installationId: string, path: string): Promise<StoredAsset | null>;
+    resolve(installationId: string, path: string): { fsPath?: string; uri: string };
+}
+
+export interface PluginAssetStore {
+    put(
+        pluginId: string,
+        installationId: string,
+        path: string,
+        data: Buffer | Uint8Array | NodeJS.ReadableStream,
+        options?: AssetPutOptions,
+    ): Promise<StoredAsset>;
+    get(pluginId: string, installationId: string, path: string): Promise<Buffer | null>;
+    getStream(
+        pluginId: string,
+        installationId: string,
+        path: string,
+    ): Promise<NodeJS.ReadableStream | null>;
+    delete(pluginId: string, installationId: string, path: string): Promise<boolean>;
+    list(pluginId: string, installationId: string, prefix?: string): Promise<StoredAsset[]>;
+    stat(pluginId: string, installationId: string, path: string): Promise<StoredAsset | null>;
+    resolve(
+        pluginId: string,
+        installationId: string,
+        path: string,
+    ): { fsPath?: string; uri: string };
+}
+
+export interface SharedMediaCache {
+    put(
+        cacheKey: string,
+        data: Buffer | Uint8Array | NodeJS.ReadableStream,
+        options?: AssetPutOptions,
+    ): Promise<StoredAsset>;
+    get(cacheKey: string): Promise<Buffer | null>;
+    getStream(cacheKey: string): Promise<NodeJS.ReadableStream | null>;
+    delete(cacheKey: string): Promise<boolean>;
+    has(cacheKey: string): Promise<boolean>;
+    stat(cacheKey: string): Promise<StoredAsset | null>;
+    prune(olderThan: Date): Promise<number>;
+}
+
+export interface StorageProvider {
+    readonly tenantAssets: TenantAssetStore;
+    readonly pluginAssets: PluginAssetStore;
+    readonly sharedCache: SharedMediaCache;
 }
