@@ -34,7 +34,10 @@ print(json.dumps({
     'minio': data.get('services', {}).get('minio', {})
 }))
 `;
-            const result = spawnSync('python3', ['-c', script], { encoding: 'utf8' });
+            let result = spawnSync('python3', ['-c', script], { encoding: 'utf8' });
+            if (result.status !== 0) {
+                result = spawnSync('/usr/bin/python3', ['-c', script], { encoding: 'utf8' });
+            }
             expect(result.status).toBe(0);
 
             const parsed = JSON.parse(result.stdout);
