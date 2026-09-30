@@ -1,8 +1,8 @@
-import { BotIdentityConfig } from '@jasper/types';
+import { BotCredentials } from '@jasper/types';
 
 import { DISCORD_TOKEN, getWorkerTokens } from './env.js';
 
-export type BotConfig = BotIdentityConfig;
+export type BotConfig = BotCredentials;
 
 /**
  * Builds the bot configuration catalog for controller and worker instances.
