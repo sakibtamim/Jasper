@@ -1,4 +1,4 @@
-import { HookCallback, HookName } from '@jasper/types';
+import { DisposalHandle, HookCallback, HookName } from '@jasper/types';
 
 import logger from '../logger.js';
 
@@ -13,13 +13,37 @@ export class HookManager {
      * Register a callback for a specific hook
      * @param hook The name of the hook to subscribe to
      * @param callback The function to execute when the hook is triggered
+     * @returns A DisposalHandle to unregister the listener
      */
-    register(hook: HookName, callback: HookCallback): void {
+    register(hook: HookName, callback: HookCallback): DisposalHandle {
         if (!this.hooks.has(hook)) {
             this.hooks.set(hook, []);
         }
         this.hooks.get(hook)!.push(callback);
         logger.debug(`[hooks] Registered listener for hook: ${hook}`);
+        return {
+            dispose: () => {
+                this.unregister(hook, callback);
+            },
+        };
+    }
+
+    /**
+     * Unregister a previously registered hook callback
+     */
+    unregister(hook: HookName, callback: HookCallback): boolean {
+        const callbacks = this.hooks.get(hook);
+        if (!callbacks) return false;
+        const index = callbacks.indexOf(callback);
+        if (index !== -1) {
+            callbacks.splice(index, 1);
+            if (callbacks.length === 0) {
+                this.hooks.delete(hook);
+            }
+            logger.debug(`[hooks] Unregistered listener for hook: ${hook}`);
+            return true;
+        }
+        return false;
     }
 
     /**

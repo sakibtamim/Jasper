@@ -1,10 +1,8 @@
 {
-    "extends": "@jasper/config/tsconfig.base.json",
+    "extends": "@jasper/config/tsconfig.node.json",
     "compilerOptions": {
         "outDir": "dist",
         "rootDir": "src"
     },
-    "include": [
-        "src/**/*"
-    ]
+    "include": ["src/**/*"]
 }

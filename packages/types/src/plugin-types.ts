@@ -1,14 +1,248 @@
-import { Client } from 'discord.js';
+import { Client, ClientUser } from 'discord.js';
 import { FastifyInstance } from 'fastify';
 
 import {
+    AuthenticatedPrincipal,
+    GuildScope,
     PluginAudioEnqueueService,
+    PrincipalType,
     Queue,
     Song,
     SongStats,
     UserStats,
     WorkerState,
 } from './bot-types.js';
+
+export const JASPER_PLUGIN_SDK_VERSION = '1.0.0';
+
+// --- Capabilities ---
+
+export type PluginCapability =
+    | 'audio:play'
+    | 'audio:enqueue'
+    | 'storage:read'
+    | 'storage:write'
+    | 'routes:register'
+    | 'commands:register'
+    | 'installation:runtime'
+    | 'component:state'
+    | 'hooks:subscribe'
+    | 'tasks:schedule'
+    | string;
+
+// --- Manifest Types ---
+
+export interface PluginWebWidgetConfig {
+    id: string;
+    slot: string;
+    component: string;
+    order: number;
+}
+
+export interface PluginWebPageConfig {
+    id: string;
+    path: string;
+    component: string;
+    title: string;
+}
+
+export interface PluginWebNavItemConfig {
+    id: string;
+    label: string;
+    icon: string;
+    href: string;
+}
+
+export interface PluginWebConfig {
+    entry: string;
+    widgets?: PluginWebWidgetConfig[];
+    pages?: PluginWebPageConfig[];
+    navItems?: PluginWebNavItemConfig[];
+}
+
+export interface PluginManifest {
+    id: string;
+    name: string;
+    version: string;
+    sdkVersion?: string;
+    jasperVersion?: string; // backwards compatibility alias for sdkVersion
+    description?: string;
+    entry?: string;
+    capabilities?: PluginCapability[];
+    runtimeProfiles?: ('self-hosted' | 'hosted')[];
+    web?: PluginWebConfig;
+}
+
+// --- Disposal & Lifecycle Handle ---
+
+export interface DisposalHandle {
+    dispose: () => void | Promise<void>;
+}
+
+// --- Safe Discord Client Facade ---
+
+export interface SafePluginClient {
+    readonly user: ClientUser | null;
+    readonly isReady: () => boolean;
+    readonly options: {
+        readonly intents: import('discord.js').BitFieldResolvable<
+            import('discord.js').GatewayIntentsString,
+            number
+        >;
+    };
+    channels: {
+        fetch: (
+            id: string,
+            options?: import('discord.js').BaseFetchOptions,
+        ) => Promise<import('discord.js').Channel | null>;
+    };
+    guilds: {
+        fetch: (
+            id: string | import('discord.js').FetchGuildOptions,
+        ) => Promise<import('discord.js').Guild | null>;
+    };
+    users: {
+        fetch: (
+            id: string,
+            options?: import('discord.js').BaseFetchOptions,
+        ) => Promise<import('discord.js').User | null>;
+    };
+    on(event: string, listener: (...args: any[]) => void): DisposalHandle | SafePluginClient;
+    off(event: string, listener: (...args: any[]) => void): SafePluginClient;
+    removeListener(event: string, listener: (...args: any[]) => void): SafePluginClient;
+}
+
+// --- Worker Public State (Token-Free) ---
+
+export interface WorkerPublicState {
+    name: string;
+    role: 'controller' | 'worker';
+    isReady: boolean;
+    busy: boolean;
+    guildId: string | null;
+    voiceChannelId: string | null;
+}
+
+// --- Route Definition with Schema & Default-Deny ---
+
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'OPTIONS' | 'HEAD' | 'ALL';
+
+export interface PluginRequestContext {
+    principal: AuthenticatedPrincipal;
+    guild?: GuildScope;
+    requestId: string;
+}
+
+export type PluginRouteAccess =
+    | { kind: 'public' }
+    | {
+          kind: 'authorized';
+          policyAction: string;
+          requiredRole?: ('owner' | 'admin' | 'member')[];
+          allowedPrincipals?: PrincipalType[];
+      };
+
+export interface JsonSchemaBundle {
+    body?: Record<string, unknown>;
+    querystring?: Record<string, unknown>;
+    params?: Record<string, unknown>;
+    response?: Record<number | string, Record<string, unknown>>;
+}
+
+export interface PluginRouteDefinition<TReq = unknown, TRes = unknown> {
+    method: HttpMethod;
+    path: string;
+    access: PluginRouteAccess;
+    guildRequired?: boolean;
+    schema: JsonSchemaBundle;
+    handler: (context: PluginRequestContext, request: TReq) => Promise<TRes> | TRes;
+}
+
+// --- Health Contributor ---
+
+export interface PluginHealthStatus {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    details?: Record<string, unknown>;
+}
+
+export type PluginHealthContributor = () => Promise<PluginHealthStatus> | PluginHealthStatus;
+
+// --- Installation Runtime Operations (MVP Design §5.5) ---
+
+export interface ApplicationMembershipSnapshot {
+    scope: GuildScope;
+    applicationId: string;
+    fenceEpoch: number;
+    members: Array<{ userId: string; role: string }>;
+    timestamp: Date;
+}
+
+export interface DrainResult {
+    operationId: string;
+    drainedQueues: number;
+    releasedWorkers: number;
+    completedAt: Date;
+}
+
+export interface InstallationRuntimeOperations {
+    snapshot(scope: GuildScope): Promise<ApplicationMembershipSnapshot>;
+    drain(scope: GuildScope, operationId: string): Promise<DrainResult>;
+    leaveApplication(
+        scope: GuildScope,
+        applicationId: string,
+        operationId: string,
+        expectedFence: number,
+    ): Promise<void>;
+}
+
+// --- Runtime Component State Store (MVP Design §5.5) ---
+
+export interface VersionedValue {
+    version: number;
+    value: Uint8Array;
+    updatedAt: Date;
+}
+
+export interface FencedObservation {
+    componentId: string;
+    bootId: string;
+    sequence: number;
+    epoch: number;
+    eventType: string;
+    payload: Record<string, unknown>;
+    timestamp: Date;
+    coalesceKey?: string;
+    required?: boolean;
+}
+
+export interface RuntimeIdentity {
+    cellId: string;
+    shardId: string;
+    bootId: string;
+    epoch: number;
+}
+
+export interface RuntimeComponentStateStore {
+    get(componentId: string, key: string): Promise<VersionedValue | null>;
+    compareAndSet(
+        componentId: string,
+        key: string,
+        expectedVersion: number | null,
+        value: Uint8Array,
+    ): Promise<VersionedValue>;
+    appendObservation(record: FencedObservation): Promise<void>;
+    claimUnacknowledged(
+        componentId: string,
+        claimant: RuntimeIdentity,
+        limit: number,
+        leaseMs: number,
+    ): Promise<readonly FencedObservation[]>;
+    acknowledgeObservation(
+        recordBootId: string,
+        throughSequence: number,
+        claimant: RuntimeIdentity,
+    ): Promise<void>;
+}
 
 // --- Hook Data Types ---
 
@@ -59,6 +293,7 @@ export interface IPluginStorage {
     delete(filename: string): Promise<void>;
     list(): Promise<string[]>;
     resolve(uri: string): { fsPath: string; webUrl: string };
+    forGuild?: (guildId: string) => IPluginStorage;
 }
 
 export interface PluginStore {
@@ -68,6 +303,7 @@ export interface PluginStore {
     set(key: string, value: any): Promise<void>;
     delete(key: string): Promise<void>;
     clear(): Promise<void>;
+    forGuild?: (guildId: string) => PluginStore;
 }
 
 export interface CoreDataAccessor {
@@ -100,12 +336,14 @@ export interface SlashCommandDefinition {
 
 // --- Plugin Router Interface ---
 // Plugins receive this instead of a raw FastifyInstance.
-// Only exposes the HTTP method helpers plugins actually need.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type PluginRouteHandler = (req: any, reply: any) => Promise<any> | void;
 
 export interface IPluginRouter {
+    registerRoute<TReq = unknown, TRes = unknown>(
+        definition: PluginRouteDefinition<TReq, TRes>,
+    ): DisposalHandle;
     get(path: string, handler: PluginRouteHandler): IPluginRouter;
     post(path: string, handler: PluginRouteHandler): IPluginRouter;
     put(path: string, handler: PluginRouteHandler): IPluginRouter;
@@ -115,14 +353,18 @@ export interface IPluginRouter {
     all(path: string, handler: PluginRouteHandler): IPluginRouter;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     register(pluginFn: any, opts?: any): Promise<void>;
+    deactivate(): void;
+    isActive(): boolean;
 }
 
 // --- Plugin Context ---
 
 export interface PluginContext {
-    client: Client; // Controller client
-    workers: WorkerState[]; // Access to worker pool
+    client: SafePluginClient; // Safe facade over Discord client (no raw token)
+    rawClient?: Client; // Internal/self-hosted fallback
+    workers: WorkerPublicState[]; // Token-free worker public state
     server: IPluginRouter; // Scoped plugin router (subset of Fastify)
+    manifest?: Readonly<PluginManifest>;
 
     // Scoped logger for the plugin
     logger: {
@@ -134,19 +376,19 @@ export interface PluginContext {
 
     // Database access
     db: {
-        plugin: PluginStore; // RW access to plugin's own data
-        core: CoreDataAccessor; // RO access to core data
+        plugin: PluginStore & { forGuild: (guildId: string) => PluginStore };
+        core: CoreDataAccessor;
     };
 
     // File Storage
-    storage: IPluginStorage;
+    storage: IPluginStorage & { forGuild: (guildId: string) => IPluginStorage };
 
-    // Hook subscription
+    // Hook subscription returning DisposalHandle
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    on<T = any>(hook: HookName, handler: HookCallback<T>): void;
+    on<T = any>(hook: HookName, handler: HookCallback<T>): DisposalHandle;
 
-    // Command registration
-    registerCommand(command: SlashCommandDefinition): void;
+    // Command registration returning DisposalHandle
+    registerCommand(command: SlashCommandDefinition): DisposalHandle;
 
     // Audio playback (for plugins that need to play audio files)
     playAudio(params: {
@@ -161,8 +403,18 @@ export interface PluginContext {
     // Stable Audio Enqueue & Seek Service (HJ-OSS-13)
     audio: PluginAudioEnqueueService;
 
-    // Schedule background tasks (automatically cleaned up on unload)
-    scheduleTask(intervalMs: number, task: () => void | Promise<void>): void;
+    // Schedule background tasks (automatically cleaned up on unload) returning DisposalHandle
+    scheduleTask(intervalMs: number, task: () => void | Promise<void>): DisposalHandle;
+
+    // Health reporting
+    registerHealthContributor?: (contributor: PluginHealthContributor) => DisposalHandle;
+
+    // Narrow hosted adapter operations
+    installationOperations?: InstallationRuntimeOperations;
+    componentState?: RuntimeComponentStateStore;
+
+    // Capability verification
+    hasCapability?: (capability: PluginCapability) => boolean;
 }
 
 // --- Plugin Definition ---

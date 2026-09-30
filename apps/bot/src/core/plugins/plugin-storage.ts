@@ -106,4 +106,12 @@ export class PluginStorage implements IPluginStorage {
 
         return { fsPath, webUrl };
     }
+
+    /**
+     * Get a guild-scoped instance of PluginStorage
+     */
+    forGuild(guildId: string): IPluginStorage {
+        const safeGuildId = path.basename(guildId);
+        return new PluginStorage(path.join(this.pluginId, 'guilds', safeGuildId));
+    }
 }
