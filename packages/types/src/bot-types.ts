@@ -78,6 +78,74 @@ export interface CapabilityDecisionPort {
     ): Promise<CapabilityDecision>;
 }
 
+// --- Principal & Authorization Types (HJ-OSS-09) ---
+
+export type PrincipalType =
+    | 'anonymous'
+    | 'customer_user'
+    | 'tenant_member'
+    | 'staff'
+    | 'runtime_workload'
+    | 'system_job';
+
+export interface AnonymousPrincipal {
+    type: 'anonymous';
+}
+
+export interface CustomerUserPrincipal {
+    type: 'customer_user';
+    userId: string;
+    username: string;
+    discriminator?: string;
+    avatar?: string | null;
+}
+
+export interface TenantMemberPrincipal {
+    type: 'tenant_member';
+    userId: string;
+    username: string;
+    guildId: string;
+    role: 'owner' | 'admin' | 'member';
+    permissions?: string[];
+}
+
+export interface StaffPrincipal {
+    type: 'staff';
+    subject: string;
+    role: 'staff' | 'operator';
+    email?: string;
+}
+
+export interface RuntimeWorkloadPrincipal {
+    type: 'runtime_workload';
+    workloadId: string;
+    fenceEpoch?: number;
+    cellId?: string;
+}
+
+export interface SystemJobPrincipal {
+    type: 'system_job';
+    jobName: string;
+    allowedActions: string[];
+}
+
+export type AuthenticatedPrincipal =
+    | AnonymousPrincipal
+    | CustomerUserPrincipal
+    | TenantMemberPrincipal
+    | StaffPrincipal
+    | RuntimeWorkloadPrincipal
+    | SystemJobPrincipal;
+
+export interface RouteAuthPolicy {
+    public?: boolean;
+    allowedPrincipals?: PrincipalType[];
+    requireGuild?: boolean;
+    requiredRole?: ('owner' | 'admin' | 'member')[];
+    action?: string;
+    allowSelfHostedFallback?: boolean;
+}
+
 // --- Plugin Audio Enqueue Service Types (HJ-OSS-13) ---
 
 export interface EnqueueAudioTrack {

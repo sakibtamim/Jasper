@@ -4,6 +4,7 @@ import { FastifyPluginAsync } from 'fastify';
 
 import {
     BASE_URL,
+    COOKIE_SECRET,
     DISCORD_CLIENT_ID,
     DISCORD_CLIENT_SECRET,
     ENCRYPTION_KEY,
@@ -87,143 +88,170 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
         scope: ['identify'],
     });
 
-    fastify.get('/api/auth/callback', async (request, reply) => {
-        try {
-            let tokenResponse;
+    fastify.get(
+        '/api/auth/callback',
+        { config: { auth: { public: true } } },
+        async (request, reply) => {
             try {
-                tokenResponse =
-                    await fastify.discordOAuth2.getAccessTokenFromAuthorizationCodeFlow(request);
-            } catch (error) {
-                logger.error(
-                    `[auth] OAuth token exchange failed: ${error instanceof Error ? error.message : String(error)}`,
-                );
-                if (error instanceof Error) {
-                    throw new DiscordOAuthError(
-                        `Failed to exchange code for token: ${error.message}`,
+                let tokenResponse;
+                try {
+                    tokenResponse =
+                        await fastify.discordOAuth2.getAccessTokenFromAuthorizationCodeFlow(
+                            request,
+                        );
+                } catch (error) {
+                    logger.error(
+                        `[auth] OAuth token exchange failed: ${error instanceof Error ? error.message : String(error)}`,
+                    );
+                    if (error instanceof Error) {
+                        throw new DiscordOAuthError(
+                            `Failed to exchange code for token: ${error.message}`,
+                        );
+                    }
+                    throw new DiscordOAuthError('Failed to exchange code for token');
+                }
+
+                const tokenData = tokenResponse.token;
+
+                if (!isDiscordToken(tokenData)) {
+                    throw new DiscordOAuthError('Invalid token response from Discord');
+                }
+                const token = tokenData;
+
+                // Fetch user info from Discord
+                const userResponse = await fetch('https://discord.com/api/users/@me', {
+                    headers: {
+                        Authorization: `Bearer ${token.access_token}`,
+                    },
+                });
+
+                if (!userResponse.ok) {
+                    throw new DiscordAPIError(
+                        `Failed to fetch user info from Discord: ${userResponse.status} ${userResponse.statusText}`,
                     );
                 }
-                throw new DiscordOAuthError('Failed to exchange code for token');
+
+                const discordUserData = await userResponse.json();
+
+                if (!isDiscordUser(discordUserData)) {
+                    throw new DiscordAPIError('Invalid user data received from Discord');
+                }
+                const discordUser = discordUserData;
+
+                const avatarUrl = discordUser.avatar
+                    ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
+                    : undefined;
+
+                // Upsert user in DB
+                const user = {
+                    id: discordUser.id,
+                    username: discordUser.username,
+                    discriminator: discordUser.discriminator,
+                    avatar: avatarUrl,
+                    accessToken: encrypt(token.access_token, ENCRYPTION_KEY),
+                    refreshToken: encrypt(token.refresh_token, ENCRYPTION_KEY),
+                    expiresAt: new Date(Date.now() + token.expires_in * 1000),
+                };
+
+                try {
+                    await db.upsertUser(user);
+                } catch (error) {
+                    throw new DatabaseAuthError(`Failed to upsert user: ${error}`);
+                }
+
+                // Create session
+                const sessionId = randomUUID();
+                const session = {
+                    id: sessionId,
+                    userId: user.id,
+                    expiresAt: new Date(Date.now() + SESSION_DURATION_MS),
+                    createdAt: new Date(),
+                };
+
+                try {
+                    await db.createSession(session);
+                } catch (error) {
+                    throw new DatabaseAuthError(`Failed to create session: ${error}`);
+                }
+
+                // Set signed cookie
+                reply.setCookie('session_id', sessionId, {
+                    path: '/',
+                    httpOnly: true,
+                    secure: isProduction,
+                    sameSite: 'lax',
+                    expires: session.expiresAt,
+                    signed: Boolean(COOKIE_SECRET),
+                });
+
+                return reply.redirect(FRONTEND_URL || '/');
+            } catch (error) {
+                let userMessage = 'Login failed';
+
+                if (error instanceof DiscordAPIError) {
+                    logger.error(`[auth] Discord API error: ${error.message}`);
+                    userMessage = 'Could not fetch user info from Discord. Please try again later.';
+                } else if (error instanceof DiscordOAuthError) {
+                    logger.error(`[auth] Discord OAuth error: ${error.message}`);
+                    userMessage = 'Discord login failed. Please try again.';
+                } else if (error instanceof DatabaseAuthError) {
+                    logger.error(`[auth] Database error: ${error.message}`);
+                    userMessage = 'Internal server error during login. Please try again later.';
+                } else if (error instanceof Error) {
+                    logger.error(`[auth] Unexpected error: ${error.message}`);
+                } else {
+                    logger.error(`[auth] Unknown error: ${JSON.stringify(error)}`);
+                }
+
+                return reply.status(500).send({ error: userMessage });
             }
+        },
+    );
 
-            const tokenData = tokenResponse.token;
-
-            if (!isDiscordToken(tokenData)) {
-                throw new DiscordOAuthError('Invalid token response from Discord');
-            }
-            const token = tokenData;
-
-            // Fetch user info from Discord
-            const userResponse = await fetch('https://discord.com/api/users/@me', {
-                headers: {
-                    Authorization: `Bearer ${token.access_token}`,
+    fastify.get(
+        '/api/auth/me',
+        {
+            config: {
+                auth: {
+                    allowedPrincipals: ['customer_user', 'tenant_member', 'staff'],
                 },
-            });
-
-            if (!userResponse.ok) {
-                throw new DiscordAPIError(
-                    `Failed to fetch user info from Discord: ${userResponse.status} ${userResponse.statusText}`,
-                );
+            },
+        },
+        async (request, reply) => {
+            const user = request.user;
+            if (!user) {
+                return reply.status(401).send({ error: 'Not authenticated' });
             }
 
-            const discordUserData = await userResponse.json();
-
-            if (!isDiscordUser(discordUserData)) {
-                throw new DiscordAPIError('Invalid user data received from Discord');
-            }
-            const discordUser = discordUserData;
-
-            const avatarUrl = discordUser.avatar
-                ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
-                : undefined;
-
-            // Upsert user in DB
-            const user = {
-                id: discordUser.id,
-                username: discordUser.username,
-                discriminator: discordUser.discriminator,
-                avatar: avatarUrl,
-                accessToken: encrypt(token.access_token, ENCRYPTION_KEY),
-                refreshToken: encrypt(token.refresh_token, ENCRYPTION_KEY),
-                expiresAt: new Date(Date.now() + token.expires_in * 1000),
+            // Only return safe fields (never return tokens or cookies)
+            const sanitizedUser = {
+                id: user.id,
+                username: user.username,
+                discriminator: user.discriminator,
+                avatar: user.avatar,
             };
+            return { user: sanitizedUser };
+        },
+    );
 
-            try {
-                await db.upsertUser(user);
-            } catch (error) {
-                throw new DatabaseAuthError(`Failed to upsert user: ${error}`);
+    fastify.post(
+        '/api/auth/logout',
+        {
+            config: {
+                auth: {
+                    allowedPrincipals: ['customer_user', 'tenant_member', 'staff'],
+                },
+            },
+        },
+        async (request, reply) => {
+            const sessionId = request.cookies.session_id;
+            if (sessionId) {
+                await db.deleteSession(sessionId);
             }
-
-            // Create session
-            const sessionId = randomUUID();
-            const session = {
-                id: sessionId,
-                userId: user.id,
-                expiresAt: new Date(Date.now() + SESSION_DURATION_MS),
-                createdAt: new Date(),
-            };
-
-            try {
-                await db.createSession(session);
-            } catch (error) {
-                throw new DatabaseAuthError(`Failed to create session: ${error}`);
-            }
-
-            // Set cookie
-            reply.setCookie('session_id', sessionId, {
-                path: '/',
-                httpOnly: true,
-                secure: isProduction,
-                sameSite: 'lax',
-                expires: session.expiresAt,
-            });
-
-            return reply.redirect(FRONTEND_URL || '/');
-        } catch (error) {
-            let userMessage = 'Login failed';
-
-            if (error instanceof DiscordAPIError) {
-                logger.error(`[auth] Discord API error: ${error.message}`);
-                userMessage = 'Could not fetch user info from Discord. Please try again later.';
-            } else if (error instanceof DiscordOAuthError) {
-                logger.error(`[auth] Discord OAuth error: ${error.message}`);
-                userMessage = 'Discord login failed. Please try again.';
-            } else if (error instanceof DatabaseAuthError) {
-                logger.error(`[auth] Database error: ${error.message}`);
-                userMessage = 'Internal server error during login. Please try again later.';
-            } else if (error instanceof Error) {
-                logger.error(`[auth] Unexpected error: ${error.message}`);
-            } else {
-                logger.error(`[auth] Unknown error: ${JSON.stringify(error)}`);
-            }
-
-            return reply.status(500).send({ error: userMessage });
-        }
-    });
-
-    fastify.get('/api/auth/me', async (request, reply) => {
-        const user = request.user;
-        if (!user) {
-            return reply.status(401).send({ error: 'Not authenticated' });
-        }
-
-        // Only return safe fields
-        const sanitizedUser = {
-            id: user.id,
-            username: user.username,
-            discriminator: user.discriminator,
-            avatar: user.avatar,
-        };
-        return { user: sanitizedUser };
-    });
-
-    fastify.post('/api/auth/logout', async (request, reply) => {
-        const sessionId = request.cookies.session_id;
-        if (sessionId) {
-            await db.deleteSession(sessionId);
-        }
-        reply.clearCookie('session_id', { path: '/' });
-        return { success: true };
-    });
+            reply.clearCookie('session_id', { path: '/' });
+            return { success: true };
+        },
+    );
 };
 
 export default authRoutes;

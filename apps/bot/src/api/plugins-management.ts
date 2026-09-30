@@ -9,201 +9,244 @@ import { PluginStorage } from '../core/plugins/plugin-storage.js';
 
 export default async function pluginsManagementRoutes(server: FastifyInstance) {
     // List all installed plugins (backend & frontend)
-    server.get('/', async (_request, _reply) => {
-        const pluginsMap = pluginManager.getPlugins();
-        const pluginsList = Array.from(pluginsMap.values()).map((p) => ({
-            id: p.metadata.id,
-            name: p.metadata.name,
-            version: p.metadata.version,
-            description: p.metadata.description,
-            web: p.metadata.web, // Include web config to detect frontend plugins
-        }));
-        return { plugins: pluginsList };
-    });
+    server.get(
+        '/',
+        {
+            config: {
+                auth: {
+                    allowedPrincipals: ['staff', 'tenant_member', 'customer_user'],
+                },
+            },
+        },
+        async (_request, _reply) => {
+            const pluginsMap = pluginManager.getPlugins();
+            const pluginsList = Array.from(pluginsMap.values()).map((p) => ({
+                id: p.metadata.id,
+                name: p.metadata.name,
+                version: p.metadata.version,
+                description: p.metadata.description,
+                web: p.metadata.web, // Include web config to detect frontend plugins
+            }));
+            return { plugins: pluginsList };
+        },
+    );
 
     // --- Storage API ---
 
     // Get file content
-    server.get('/:pluginId/storage/:filename', async (request, reply) => {
-        const { pluginId, filename } = request.params as {
-            pluginId: string;
-            filename: string;
-        };
-        const storage = new PluginStorage(pluginId);
+    server.get(
+        '/:pluginId/storage/:filename',
+        {
+            config: {
+                auth: {
+                    allowedPrincipals: ['staff', 'tenant_member'],
+                },
+            },
+        },
+        async (request, reply) => {
+            const { pluginId, filename } = request.params as {
+                pluginId: string;
+                filename: string;
+            };
+            const storage = new PluginStorage(pluginId);
 
-        try {
-            const buffer = await storage.get(filename);
-            // Determine content type based on extension (basic)
-            const ext = path.extname(filename).toLowerCase();
-            let contentType = 'application/octet-stream';
-            if (ext === '.png') contentType = 'image/png';
-            if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
-            if (ext === '.gif') contentType = 'image/gif';
-            if (ext === '.json') contentType = 'application/json';
-            if (ext === '.txt') contentType = 'text/plain';
+            try {
+                const buffer = await storage.get(filename);
+                // Determine content type based on extension (basic)
+                const ext = path.extname(filename).toLowerCase();
+                let contentType = 'application/octet-stream';
+                if (ext === '.png') contentType = 'image/png';
+                if (ext === '.jpg' || ext === '.jpeg') contentType = 'image/jpeg';
+                if (ext === '.gif') contentType = 'image/gif';
+                if (ext === '.json') contentType = 'application/json';
+                if (ext === '.txt') contentType = 'text/plain';
 
-            reply.type(contentType);
-            return buffer;
-        } catch {
-            return reply.code(404).send({ message: 'File not found' });
-        }
-    });
+                reply.type(contentType);
+                return buffer;
+            } catch {
+                return reply.code(404).send({ message: 'File not found' });
+            }
+        },
+    );
 
     // List files
-    server.get('/:pluginId/storage', async (request, _reply) => {
-        const { pluginId } = request.params as { pluginId: string };
-        const storage = new PluginStorage(pluginId);
-        try {
-            const files = await storage.list();
-            return { files };
-        } catch {
-            return { files: [] };
-        }
-    });
+    server.get(
+        '/:pluginId/storage',
+        {
+            config: {
+                auth: {
+                    allowedPrincipals: ['staff', 'tenant_member'],
+                },
+            },
+        },
+        async (request, _reply) => {
+            const { pluginId } = request.params as { pluginId: string };
+            const storage = new PluginStorage(pluginId);
+            try {
+                const files = await storage.list();
+                return { files };
+            } catch {
+                return { files: [] };
+            }
+        },
+    );
 
-    // Upload file
-    server.post('/:pluginId/storage', async (request, reply) => {
-        // Auth check
-        const user = (request as unknown as { user: { username: string } }).user;
-        if (!user) {
-            return reply.code(401).send({ message: 'Unauthorized' });
-        }
+    // Upload file (staff only)
+    server.post(
+        '/:pluginId/storage',
+        {
+            config: {
+                auth: {
+                    allowedPrincipals: ['staff'],
+                    action: 'plugins:upload',
+                },
+            },
+        },
+        async (request, reply) => {
+            const { pluginId } = request.params as { pluginId: string };
+            const data = await request.file();
 
-        const { pluginId } = request.params as { pluginId: string };
-        const data = await request.file();
+            if (!data) {
+                return reply.code(400).send({ message: 'No file uploaded' });
+            }
 
-        if (!data) {
-            return reply.code(400).send({ message: 'No file uploaded' });
-        }
+            const storage = new PluginStorage(pluginId);
+            try {
+                const buffer = await data.toBuffer();
+                const uri = await storage.save(data.filename, buffer);
+                const { webUrl } = storage.resolve(uri);
+                return { success: true, uri, url: webUrl };
+            } catch (error) {
+                logger.error(`[storage] Upload failed: ${error}`);
+                return reply.code(500).send({ message: 'Upload failed' });
+            }
+        },
+    );
 
-        const storage = new PluginStorage(pluginId);
-        try {
-            const buffer = await data.toBuffer();
-            const uri = await storage.save(data.filename, buffer);
-            const { webUrl } = storage.resolve(uri);
-            return { success: true, uri, url: webUrl };
-        } catch (error) {
-            logger.error(`[storage] Upload failed: ${error}`);
-            return reply.code(500).send({ message: 'Upload failed' });
-        }
-    });
+    // Delete file (staff only)
+    server.delete(
+        '/:pluginId/storage/:filename',
+        {
+            config: {
+                auth: {
+                    allowedPrincipals: ['staff'],
+                    action: 'plugins:delete',
+                },
+            },
+        },
+        async (request, reply) => {
+            const { pluginId, filename } = request.params as {
+                pluginId: string;
+                filename: string;
+            };
+            const storage = new PluginStorage(pluginId);
 
-    // Delete file
-    server.delete('/:pluginId/storage/:filename', async (request, reply) => {
-        // Auth check
-        const user = (request as unknown as { user: { username: string } }).user;
-        if (!user) {
-            return reply.code(401).send({ message: 'Unauthorized' });
-        }
+            try {
+                await storage.delete(filename);
+                return { success: true };
+            } catch {
+                return reply.code(500).send({ message: 'Delete failed' });
+            }
+        },
+    );
 
-        const { pluginId, filename } = request.params as {
-            pluginId: string;
-            filename: string;
-        };
-        const storage = new PluginStorage(pluginId);
+    server.post(
+        '/install',
+        {
+            config: {
+                auth: {
+                    allowedPrincipals: ['staff'],
+                    action: 'plugins:install',
+                },
+            },
+        },
+        async (request, reply) => {
+            const user = request.user;
+            const username = user?.username || 'operator';
 
-        try {
-            await storage.delete(filename);
-            return { success: true };
-        } catch {
-            return reply.code(500).send({ message: 'Delete failed' });
-        }
-    });
+            const data = await request.file();
+            if (!data) {
+                return reply.code(400).send({ message: 'No file uploaded' });
+            }
 
-    server.post('/install', async (request, reply) => {
-        // 1. Authentication Check (P0)
-        // The global onRequest hook attaches 'user' to the request if a valid session exists.
-        const user = (request as unknown as { user: { username: string } }).user;
-        if (!user) {
-            return reply.code(401).send({
-                message: 'Unauthorized: You must be logged in to install plugins.',
-            });
-        }
+            if (!data.filename.endsWith('.zip')) {
+                return reply.code(400).send({ message: 'File must be a .zip archive' });
+            }
 
-        // Optional: Add role check here if needed (e.g., if (user.role !== 'admin'))
+            const tempExtractDir = path.join(PLUGINS_DIR, `temp_extract_${Date.now()}`);
 
-        const data = await request.file();
-        if (!data) {
-            return reply.code(400).send({ message: 'No file uploaded' });
-        }
+            try {
+                const buffer = await data.toBuffer();
+                const zip = new AdmZip(buffer);
+                const zipEntries = zip.getEntries();
 
-        if (!data.filename.endsWith('.zip')) {
-            return reply.code(400).send({ message: 'File must be a .zip archive' });
-        }
+                // 2. Zip Slip Prevention (P1)
+                // Validate all entries before extracting
+                for (const entry of zipEntries) {
+                    const entryName = entry.entryName;
+                    const targetPath = path.join(tempExtractDir, entryName);
 
-        const tempExtractDir = path.join(PLUGINS_DIR, `temp_extract_${Date.now()}`);
+                    // Prevent directory traversal attacks
+                    const resolvedTargetPath = path.resolve(targetPath);
+                    const resolvedTempDir = path.resolve(tempExtractDir);
+                    if (!resolvedTargetPath.startsWith(resolvedTempDir + path.sep)) {
+                        throw new Error(`Malicious zip entry detected: ${entryName}`);
+                    }
+                }
 
-        try {
-            const buffer = await data.toBuffer();
-            const zip = new AdmZip(buffer);
-            const zipEntries = zip.getEntries();
+                // If validation passes, extract
+                if (!fs.existsSync(tempExtractDir)) {
+                    await fs.promises.mkdir(tempExtractDir, { recursive: true });
+                }
 
-            // 2. Zip Slip Prevention (P1)
-            // Validate all entries before extracting
-            for (const entry of zipEntries) {
-                const entryName = entry.entryName;
-                const targetPath = path.join(tempExtractDir, entryName);
+                zip.extractAllTo(tempExtractDir, true);
 
-                // Prevent directory traversal attacks
-                const resolvedTargetPath = path.resolve(targetPath);
-                const resolvedTempDir = path.resolve(tempExtractDir);
-                if (!resolvedTargetPath.startsWith(resolvedTempDir + path.sep)) {
-                    throw new Error(`Malicious zip entry detected: ${entryName}`);
+                // 3. Validate Manifest
+                const manifestPath = path.join(tempExtractDir, 'jasper-plugin.json');
+                if (!fs.existsSync(manifestPath)) {
+                    throw new Error('Invalid plugin: jasper-plugin.json not found');
+                }
+
+                const manifest = JSON.parse(await fs.promises.readFile(manifestPath, 'utf-8'));
+                if (!manifest.id || !/^[a-z0-9-]+$/.test(manifest.id)) {
+                    throw new Error('Invalid plugin ID in manifest');
+                }
+
+                // 4. Move to plugins directory
+                const targetDir = path.join(PLUGINS_DIR, manifest.id);
+
+                // Remove existing if any
+                if (fs.existsSync(targetDir)) {
+                    await fs.promises.rm(targetDir, { recursive: true, force: true });
+                }
+
+                await fs.promises.rename(tempExtractDir, targetDir);
+
+                logger.info(
+                    `[plugins] Installed plugin: ${manifest.id} v${manifest.version} by ${username}`,
+                );
+
+                return {
+                    success: true,
+                    message: `Plugin ${manifest.id} installed successfully`,
+                };
+            } catch (error) {
+                logger.error(`[plugins] Installation failed: ${error}`);
+                return reply.code(500).send({
+                    message: 'Installation failed. Check server logs for details.',
+                });
+            } finally {
+                // Cleanup
+                if (fs.existsSync(tempExtractDir)) {
+                    await fs.promises
+                        .rm(tempExtractDir, { recursive: true, force: true })
+                        .catch((err) => {
+                            logger.warn(
+                                `[plugins] Failed to clean up temp directory ${tempExtractDir}: ${err}`,
+                            );
+                        });
                 }
             }
-
-            // If validation passes, extract
-            if (!fs.existsSync(tempExtractDir)) {
-                await fs.promises.mkdir(tempExtractDir, { recursive: true });
-            }
-
-            zip.extractAllTo(tempExtractDir, true);
-
-            // 3. Validate Manifest
-            const manifestPath = path.join(tempExtractDir, 'jasper-plugin.json');
-            if (!fs.existsSync(manifestPath)) {
-                throw new Error('Invalid plugin: jasper-plugin.json not found');
-            }
-
-            const manifest = JSON.parse(await fs.promises.readFile(manifestPath, 'utf-8'));
-            if (!manifest.id || !/^[a-z0-9-]+$/.test(manifest.id)) {
-                throw new Error('Invalid plugin ID in manifest');
-            }
-
-            // 4. Move to plugins directory
-            const targetDir = path.join(PLUGINS_DIR, manifest.id);
-
-            // Remove existing if any
-            if (fs.existsSync(targetDir)) {
-                await fs.promises.rm(targetDir, { recursive: true, force: true });
-            }
-
-            await fs.promises.rename(tempExtractDir, targetDir);
-
-            logger.info(
-                `[plugins] Installed plugin: ${manifest.id} v${manifest.version} by ${user.username}`,
-            );
-
-            return {
-                success: true,
-                message: `Plugin ${manifest.id} installed successfully`,
-            };
-        } catch (error) {
-            logger.error(`[plugins] Installation failed: ${error}`);
-            return reply.code(500).send({
-                message: 'Installation failed. Check server logs for details.',
-            });
-        } finally {
-            // Cleanup
-            if (fs.existsSync(tempExtractDir)) {
-                await fs.promises
-                    .rm(tempExtractDir, { recursive: true, force: true })
-                    .catch((err) => {
-                        logger.warn(
-                            `[plugins] Failed to clean up temp directory ${tempExtractDir}: ${err}`,
-                        );
-                    });
-            }
-        }
-    });
+        },
+    );
 }

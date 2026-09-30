@@ -9,30 +9,36 @@ import logger from '../core/logger.js';
 import pluginManager, { PLUGINS_DIR } from '../core/plugins/plugin-manager.js';
 
 const devtoolsRoutes: FastifyPluginAsync = async (fastify) => {
-    // Middleware to check if user is authenticated
-    fastify.addHook('onRequest', async (request, reply) => {
-        // Allow public access to global stats
-        if (
-            request.url === '/api/devtools/stats' ||
-            request.url.startsWith('/api/devtools/stats?')
-        ) {
-            return;
-        }
+    const devtoolsConfig = {
+        auth: {
+            allowedPrincipals: ['staff' as const],
+            action: 'devtools:manage',
+        },
+    };
 
-        if (!request.user) {
-            return reply.status(401).send({ error: 'Unauthorized' });
+    // Middleware to enforce staff authentication for DevTools
+    fastify.addHook('preHandler', async (request, reply) => {
+        if (request.principal?.type !== 'staff') {
+            if (!request.principal || request.principal.type === 'anonymous') {
+                return reply
+                    .status(401)
+                    .send({ error: 'Unauthorized: staff authentication required' });
+            }
+            return reply
+                .status(403)
+                .send({ error: 'Forbidden: staff principal required for DevTools' });
         }
     });
 
     // 1. Global Stats (Enhanced)
-    fastify.get('/api/devtools/stats', async (_request, _reply) => {
+    fastify.get('/api/devtools/stats', { config: devtoolsConfig }, async (_request, _reply) => {
         const globalStats = await db.getGlobalStats();
         const cacheStats = await db.getCacheStats();
         return { ...globalStats, ...cacheStats };
     });
 
     // 2. Users Management
-    fastify.get('/api/devtools/users', async (request, _reply) => {
+    fastify.get('/api/devtools/users', { config: devtoolsConfig }, async (request, _reply) => {
         const { limit = '50', offset = '0' } = request.query as {
             limit?: string;
             offset?: string;
@@ -41,7 +47,11 @@ const devtoolsRoutes: FastifyPluginAsync = async (fastify) => {
         const offsetNum = Math.max(0, parseInt(offset, 10) || 0);
 
         const result = await db.getAllUsers(limitNum, offsetNum);
-        return result;
+        // Security requirement: Never return decrypted or raw OAuth tokens
+        const sanitizedUsers = result.users.map(
+            ({ accessToken: _a, refreshToken: _r, ...safeUser }) => safeUser,
+        );
+        return { users: sanitizedUsers, total: result.total };
     });
 
     fastify.delete('/api/devtools/users/:id', async (request, reply) => {
@@ -323,10 +333,16 @@ const devtoolsRoutes: FastifyPluginAsync = async (fastify) => {
     );
 
     // 7. Cookie Management
-    fastify.get('/api/devtools/cookies', async (_request, reply) => {
+    fastify.get('/api/devtools/cookies', { config: devtoolsConfig }, async (_request, reply) => {
         try {
             const cookies = await db.getCookies();
-            reply.send({ cookies });
+            // Security requirement: Never return decrypted or raw media cookie content
+            const sanitizedCookies = cookies.map(({ content, ...cookie }) => ({
+                ...cookie,
+                hasContent: Boolean(content && content.length > 0),
+                contentLength: content ? content.length : 0,
+            }));
+            reply.send({ cookies: sanitizedCookies });
         } catch (error) {
             logger.error(`[api] Failed to get cookies: ${error}`);
             reply.status(500).send({ error: 'Failed to get cookies' });

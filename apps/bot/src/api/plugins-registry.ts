@@ -4,7 +4,7 @@ import pluginManager from '../core/plugins/plugin-manager.js';
 
 export default async function pluginsRegistryRoutes(server: FastifyInstance) {
     // GET /api/plugins/registry
-    server.get('/registry', async (_request, _reply) => {
+    server.get('/registry', { config: { auth: { public: true } } }, async (_request, _reply) => {
         const plugins = pluginManager.getPlugins();
         const registry = [];
 

@@ -64,8 +64,16 @@ const playerRoutes: FastifyPluginAsync = async (fastify) => {
         }
     };
 
-    fastify.post('/api/player/seek', handleSeek);
-    fastify.post('/seek', handleSeek);
+    const seekConfig = {
+        auth: {
+            allowedPrincipals: ['tenant_member' as const, 'staff' as const],
+            requireGuild: true,
+            action: 'playback:seek',
+        },
+    };
+
+    fastify.post('/api/player/seek', { config: seekConfig }, handleSeek);
+    fastify.post('/seek', { config: seekConfig }, handleSeek);
 };
 
 export default playerRoutes;
