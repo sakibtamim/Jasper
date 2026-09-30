@@ -8,7 +8,6 @@ import {
     SlashCommandBuilder,
     TextBasedChannel,
 } from 'discord.js';
-import type { DisposalHandle } from './plugin-types.js';
 
 import type { DisposalHandle } from './plugin-types.js';
 
