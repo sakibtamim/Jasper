@@ -15,6 +15,7 @@ import {
     ModalBuilder,
     ModalSubmitInteraction,
     SlashCommandBuilder,
+    SlashCommandSubcommandsOnlyBuilder,
     StringSelectMenuBuilder,
     TextInputBuilder,
     TextInputStyle,
@@ -52,8 +53,8 @@ export function isMessageContentSupported(context?: PluginContext): boolean {
     return true;
 }
 
-export const registerCommand = (context: PluginContext) => {
-    const data = new SlashCommandBuilder()
+export function buildSoundboardCommandData(): SlashCommandSubcommandsOnlyBuilder {
+    return new SlashCommandBuilder()
         .setName('soundboard')
         .setDescription('Jasper Soundboard System')
         .addSubcommand((sub) =>
@@ -98,9 +99,18 @@ export const registerCommand = (context: PluginContext) => {
                         .setRequired(false),
                 ),
         );
+}
 
+export const soundboardCommandData = buildSoundboardCommandData();
+
+export const soundboardCommandDescriptor = {
+    data: soundboardCommandData.toJSON(),
+    execute: async () => {},
+};
+
+export const registerCommand = (context: PluginContext) => {
     context.registerCommand({
-        data: data.toJSON(),
+        data: soundboardCommandData.toJSON(),
         execute: async (interaction: ChatInputCommandInteraction) => {
             if (!interaction.guild) return;
 

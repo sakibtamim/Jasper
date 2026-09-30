@@ -14,12 +14,14 @@ if (DB_TYPE === 'postgres') {
     db = new SqliteAdapter();
 }
 
-// Initialize DB
-try {
-    await db.init();
-} catch (err) {
-    logger.error(`[db] Failed to initialize database: ${err}`);
-    throw err;
+// Initialize DB unless explicitly skipped (e.g. during release-time command publishing)
+if (process.env.SKIP_DB_INIT !== 'true') {
+    try {
+        await db.init();
+    } catch (err) {
+        logger.error(`[db] Failed to initialize database: ${err}`);
+        throw err;
+    }
 }
 
 export function getDatabase(): DatabaseAdapter {

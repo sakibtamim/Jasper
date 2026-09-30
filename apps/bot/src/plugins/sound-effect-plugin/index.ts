@@ -12,6 +12,17 @@ const SoundEffectPlugin: Plugin = {
     name: 'Sound Effect Plugin',
     version: '1.0.0',
     description: 'Plays a sound effect when the bot joins a channel.',
+    commands: [
+        {
+            data: {
+                name: 'ping-plugin',
+                description: 'Replies with Pong from the plugin!',
+            },
+            execute: async (interaction: ChatInputCommandInteraction) => {
+                await interaction.reply('Pong! 🏓 (from SoundEffectPlugin)');
+            },
+        },
+    ],
 
     onLoad: async (context: PluginContext) => {
         context.logger.info('Loaded!');
@@ -58,17 +69,6 @@ const SoundEffectPlugin: Plugin = {
         // Hook: POST_MUSIC_PLAY
         context.on<SongPlayData>('POST_MUSIC_PLAY', ({ song }) => {
             context.logger.info(`Started playing: ${song.title}`);
-        });
-
-        // Register a test command
-        context.registerCommand({
-            data: {
-                name: 'ping-plugin',
-                description: 'Replies with Pong from the plugin!',
-            },
-            execute: async (interaction: ChatInputCommandInteraction) => {
-                await interaction.reply('Pong! 🏓 (from SoundEffectPlugin)');
-            },
         });
     },
 

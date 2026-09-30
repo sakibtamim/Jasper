@@ -120,4 +120,104 @@ describe('PluginManager', () => {
         expect(plugins.has('test-plugin')).toBe(false);
         expect(mockPlugin.onUnload).toHaveBeenCalled();
     });
+
+    it('should automatically register declarative commands if not registered during onLoad', async () => {
+        pluginManager.init(mockClient, mockServer as unknown as import('fastify').FastifyInstance);
+
+        const mockExecute = vi.fn();
+        const mockPlugin = {
+            name: 'declarative-plugin',
+            version: '1.0.0',
+            commands: [
+                {
+                    data: { name: 'declarative-cmd', description: 'Declarative test command' },
+                    execute: mockExecute,
+                },
+            ],
+            onLoad: vi.fn(),
+            onUnload: vi.fn(),
+        };
+
+        const mockMetadata = {
+            id: 'declarative-plugin',
+            name: 'Declarative Plugin',
+            version: '1.0.0',
+        };
+
+        await pluginManager.registerPlugin(mockPlugin, mockMetadata, '/tmp/declarative-plugin');
+
+        expect(mockClient.commands.has('declarative-cmd')).toBe(true);
+        expect(mockClient.commands.get('declarative-cmd')?.execute).toBe(mockExecute);
+    });
+
+    it('should not overwrite commands already registered during onLoad', async () => {
+        pluginManager.init(mockClient, mockServer as unknown as import('fastify').FastifyInstance);
+
+        const liveExecute = vi.fn();
+        const dummyExecute = vi.fn();
+
+        const mockPlugin = {
+            name: 'priority-plugin',
+            version: '1.0.0',
+            commands: [
+                {
+                    data: { name: 'priority-cmd', description: 'Dummy descriptor' },
+                    execute: dummyExecute,
+                },
+            ],
+            onLoad: vi.fn(async (ctx) => {
+                ctx.registerCommand({
+                    data: { name: 'priority-cmd', description: 'Live handler' },
+                    execute: liveExecute,
+                });
+            }),
+            onUnload: vi.fn(),
+        };
+
+        const mockMetadata = {
+            id: 'priority-plugin',
+            name: 'Priority Plugin',
+            version: '1.0.0',
+        };
+
+        await pluginManager.registerPlugin(mockPlugin, mockMetadata, '/tmp/priority-plugin');
+
+        expect(mockClient.commands.has('priority-cmd')).toBe(true);
+        expect(mockClient.commands.get('priority-cmd')?.execute).toBe(liveExecute);
+    });
+
+    it('should roll back registered commands if plugin onLoad throws an error', async () => {
+        pluginManager.init(mockClient, mockServer as unknown as import('fastify').FastifyInstance);
+
+        const mockPlugin = {
+            name: 'failing-plugin',
+            version: '1.0.0',
+            commands: [
+                {
+                    data: { name: 'failing-cmd', description: 'Should be rolled back' },
+                    execute: vi.fn(),
+                },
+            ],
+            onLoad: vi.fn(async (ctx) => {
+                ctx.registerCommand({
+                    data: { name: 'early-cmd', description: 'Registered before crash' },
+                    execute: vi.fn(),
+                });
+                throw new Error('Plugin initialization failed unexpectedly');
+            }),
+            onUnload: vi.fn(),
+        };
+
+        const mockMetadata = {
+            id: 'failing-plugin',
+            name: 'Failing Plugin',
+            version: '1.0.0',
+        };
+
+        await pluginManager.registerPlugin(mockPlugin, mockMetadata, '/tmp/failing-plugin');
+
+        expect(mockClient.commands.has('early-cmd')).toBe(false);
+        expect(mockClient.commands.has('failing-cmd')).toBe(false);
+        expect(pluginManager.getPlugins().has('failing-plugin')).toBe(false);
+    });
 });
