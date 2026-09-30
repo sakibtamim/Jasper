@@ -7,3 +7,4 @@ export * from './Loader';
 export * from './Image';
 export * from './Icon';
 export * from './Modal';
+export * from './SeekBar';

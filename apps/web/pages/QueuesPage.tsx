@@ -1,4 +1,5 @@
 import { useEffect, useState } from '@jasper/elements';
+import { SeekBar } from '@jasper/ui';
 import {
     ChevronDown,
     ChevronLeft,
@@ -10,7 +11,7 @@ import {
     PlayCircle,
 } from 'lucide-react';
 
-import { fetchQueues } from '../services/client';
+import { fetchQueues, seekPlayback } from '../services/client';
 
 interface Song {
     title: string;
@@ -211,6 +212,45 @@ function QueueCard({ queue, isExpanded, onToggle, formatDuration, formatEta }: Q
     const maxInitialSongs = 10;
     const maxExpandedSongs = 20;
 
+    const [cardCurrentTime, setCardCurrentTime] = useState<number>(() => {
+        if (!queue.nowPlaying?.startTime) return 0;
+        return Math.max(0, Math.floor((Date.now() - queue.nowPlaying.startTime) / 1000));
+    });
+    const [isSeekingCard, setIsSeekingCard] = useState(false);
+
+    useEffect(() => {
+        if (!queue.nowPlaying?.startTime) {
+            setCardCurrentTime(0);
+            return;
+        }
+
+        const updateTime = () => {
+            if (queue.nowPlaying?.startTime && !isSeekingCard) {
+                setCardCurrentTime(
+                    Math.max(0, Math.floor((Date.now() - queue.nowPlaying.startTime) / 1000)),
+                );
+            }
+        };
+
+        updateTime();
+        const timer = setInterval(updateTime, 1000);
+        return () => clearInterval(timer);
+    }, [queue.nowPlaying?.startTime, isSeekingCard]);
+
+    const handleCardSeek = async (sec: number) => {
+        if (!queue.nowPlaying) return;
+        setIsSeekingCard(true);
+        setCardCurrentTime(sec);
+        queue.nowPlaying.startTime = Date.now() - sec * 1000;
+        try {
+            await seekPlayback(queue.voiceChannelId, sec);
+        } catch (err: unknown) {
+            console.error('Failed to seek from QueueCard:', err);
+        } finally {
+            setIsSeekingCard(false);
+        }
+    };
+
     // Filter out currently playing song if it's at the top of the queue
     let filteredSongs = queue.songs || [];
     if (
@@ -284,22 +324,24 @@ function QueueCard({ queue, isExpanded, onToggle, formatDuration, formatEta }: Q
                                 {queue.nowPlaying.title}
                             </a>
 
-                            {/* Progress Bar */}
-                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 mt-2 mb-1 overflow-hidden">
-                                {queue.nowPlaying.startTime && queue.nowPlaying.duration && (
-                                    <div
-                                        className="bg-brand-primary h-1.5 rounded-full transition-all duration-1000"
-                                        style={{
-                                            width: `${Math.min(100, Math.max(0, ((Date.now() - queue.nowPlaying.startTime) / 1000 / queue.nowPlaying.duration) * 100))}%`,
-                                        }}
-                                    ></div>
-                                )}
+                            {/* Interactive Seek Bar */}
+                            <div className="mt-2 mb-1">
+                                <SeekBar
+                                    currentTime={cardCurrentTime}
+                                    duration={queue.nowPlaying.duration || 0}
+                                    isLive={
+                                        queue.nowPlaying.duration <= 0 ||
+                                        queue.nowPlaying.requestedBy === 'Radio'
+                                    }
+                                    onSeek={handleCardSeek}
+                                    onChange={(sec) => setCardCurrentTime(sec)}
+                                    size="sm"
+                                    showTime={true}
+                                />
                             </div>
 
                             <div className="flex items-center justify-between mt-1 text-xs text-gray-500 dark:text-gray-400">
                                 <div className="flex items-center gap-2">
-                                    <span>{formatDuration(queue.nowPlaying.duration)}</span>
-                                    <span>•</span>
                                     <span>
                                         {queue.nowPlaying.requestedBy === 'Radio'
                                             ? `Enqueued by Radio ${queue.workerName} 📻 🐱`

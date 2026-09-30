@@ -42,6 +42,21 @@ export async function logout() {
     window.location.reload();
 }
 
+export async function seekPlayback(voiceChannelId: string, position: number | string) {
+    const res = await fetch(`${API_BASE}/player/seek`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ voiceChannelId, position }),
+    });
+    if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to seek playback: ${res.statusText}`);
+    }
+    return res.json();
+}
+
 export const apiClient = {
     fetchWorkers,
     fetchQueues,
@@ -50,4 +65,5 @@ export const apiClient = {
     fetchLogs,
     fetchAuthStatus,
     logout,
+    seekPlayback,
 };
