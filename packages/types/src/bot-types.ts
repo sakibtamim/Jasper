@@ -78,6 +78,74 @@ export interface CapabilityDecisionPort {
     ): Promise<CapabilityDecision>;
 }
 
+// --- Plugin Audio Enqueue Service Types (HJ-OSS-13) ---
+
+export interface EnqueueAudioTrack {
+    title: string;
+    url: string;
+    durationInSec?: number;
+    thumbnail?: string;
+    sourceType?: 'youtube' | 'attachment' | 'direct';
+    gain?: number;
+    initialSeek?: number;
+    requestedBy?: string;
+    requesterId?: string;
+}
+
+export interface EnqueueAudioOptions {
+    loopTrack?: boolean;
+    loopQueue?: boolean;
+    shuffle?: boolean;
+    gain?: number;
+    installationId?: string;
+}
+
+export interface AudioSeekResult {
+    success: boolean;
+    position: number;
+    track?: Song | null;
+}
+
+export interface PluginAudioEnqueueService {
+    /**
+     * Enqueue one or more audio tracks into active or new voice queue.
+     * Supports Discord interaction context for auto-replying/deferring.
+     */
+    enqueue(
+        interaction: ChatInputCommandInteraction,
+        tracks: EnqueueAudioTrack[],
+        sourceName?: string,
+        options?: EnqueueAudioOptions,
+    ): Promise<void>;
+
+    /**
+     * Alias for enqueue to support legacy / convenience usage.
+     */
+    enqueueSongs(
+        interaction: ChatInputCommandInteraction,
+        tracks: EnqueueAudioTrack[],
+        sourceName?: string,
+        options?: EnqueueAudioOptions,
+    ): Promise<void>;
+
+    /**
+     * Seek current playback position.
+     * When given an interaction, validates voice channel and replies to user.
+     * When given voiceChannelId and position, performs programmatic seek.
+     */
+    seek(interaction: ChatInputCommandInteraction): Promise<void>;
+    seek(voiceChannelId: string, position: number | string): Promise<AudioSeekResult>;
+    seek(
+        target: ChatInputCommandInteraction | string,
+        position?: number | string,
+    ): Promise<AudioSeekResult | void>;
+
+    /**
+     * Get active queue for voice channel.
+     */
+    getQueue(voiceChannelId: string): Queue | undefined;
+}
+
 // --- Worker Pool & Voice Lease Types ---
 
 export type VoiceLeaseState = 'acquiring' | 'active' | 'retained' | 'releasing';
