@@ -147,4 +147,104 @@ describe('SqliteAdapter', () => {
         expect(randomSong).not.toBeNull();
         expect(randomSong!.thumbnail).toBeUndefined();
     });
+
+    it('should isolate plays and stats by installationId', async () => {
+        const record1 = {
+            userId: 'user1',
+            guildId: 'guild1',
+            channelId: 'channel1',
+            botName: 'Bot1',
+            songTitle: 'Tenant 1 Song',
+            songUrl: 'https://example.com/1',
+            duration: 100,
+            playedAt: new Date(),
+            installationId: 'inst-1',
+        };
+        const record2 = {
+            userId: 'user2',
+            guildId: 'guild2',
+            channelId: 'channel2',
+            botName: 'Bot2',
+            songTitle: 'Tenant 2 Song',
+            songUrl: 'https://example.com/2',
+            duration: 200,
+            playedAt: new Date(),
+            installationId: 'inst-2',
+        };
+        const recordDefault = {
+            userId: 'user3',
+            guildId: 'guild3',
+            channelId: 'channel3',
+            botName: 'Bot3',
+            songTitle: 'Self-Hosted Song',
+            songUrl: 'https://example.com/3',
+            duration: 300,
+            playedAt: new Date(),
+        };
+
+        await adapter.trackPlay(record1);
+        await adapter.trackPlay(record2);
+        await adapter.trackPlay(recordDefault);
+
+        // Scoped stats for inst-1
+        const inst1Songs = await adapter.getTopSongs(10, 'inst-1');
+        expect(inst1Songs).toHaveLength(1);
+        expect(inst1Songs[0].songTitle).toBe('Tenant 1 Song');
+
+        const inst1Stats = await adapter.getGlobalStats('inst-1');
+        expect(inst1Stats.totalPlays).toBe(1);
+        expect(inst1Stats.totalDuration).toBe(100);
+
+        const inst1Channels = await adapter.getTopChannels(10, 'inst-1');
+        expect(inst1Channels).toHaveLength(1);
+        expect(inst1Channels[0].channelId).toBe('channel1');
+
+        const inst1Bots = await adapter.getTopBots(10, 'inst-1');
+        expect(inst1Bots).toHaveLength(1);
+        expect(inst1Bots[0].botName).toBe('Bot1');
+
+        // Scoped stats for inst-2
+        const inst2Songs = await adapter.getTopSongs(10, 'inst-2');
+        expect(inst2Songs).toHaveLength(1);
+        expect(inst2Songs[0].songTitle).toBe('Tenant 2 Song');
+
+        // Scoped stats for default (local:guild3)
+        const defaultSongs = await adapter.getTopSongs(10, 'local:guild3');
+        expect(defaultSongs).toHaveLength(1);
+        expect(defaultSongs[0].songTitle).toBe('Self-Hosted Song');
+
+        // Unscoped global stats returns all
+        const allSongs = await adapter.getTopSongs(10);
+        expect(allSongs).toHaveLength(3);
+        const globalStats = await adapter.getGlobalStats();
+        expect(globalStats.totalPlays).toBe(3);
+        expect(globalStats.totalDuration).toBe(600);
+    });
+
+    it('should isolate plugin storage by installationId', async () => {
+        await adapter.setPluginData('soundboard', 'theme', { mode: 'dark' }, 'inst-1');
+        await adapter.setPluginData('soundboard', 'theme', { mode: 'light' }, 'inst-2');
+        await adapter.setPluginData('soundboard', 'theme', { mode: 'system' });
+
+        expect(await adapter.getPluginData('soundboard', 'theme', 'inst-1')).toEqual({
+            mode: 'dark',
+        });
+        expect(await adapter.getPluginData('soundboard', 'theme', 'inst-2')).toEqual({
+            mode: 'light',
+        });
+        expect(await adapter.getPluginData('soundboard', 'theme')).toEqual({ mode: 'system' });
+
+        // Delete from inst-1
+        await adapter.deletePluginData('soundboard', 'theme', 'inst-1');
+        expect(await adapter.getPluginData('soundboard', 'theme', 'inst-1')).toBeNull();
+        expect(await adapter.getPluginData('soundboard', 'theme', 'inst-2')).toEqual({
+            mode: 'light',
+        });
+        expect(await adapter.getPluginData('soundboard', 'theme')).toEqual({ mode: 'system' });
+
+        // Clear inst-2
+        await adapter.clearPluginData('soundboard', 'inst-2');
+        expect(await adapter.getPluginData('soundboard', 'theme', 'inst-2')).toBeNull();
+        expect(await adapter.getPluginData('soundboard', 'theme')).toEqual({ mode: 'system' });
+    });
 });

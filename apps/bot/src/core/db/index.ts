@@ -28,3 +28,4 @@ export function getDatabase(): DatabaseAdapter {
 
 export default db;
 export * from './types.js';
+export * from './migrations/index.js';
