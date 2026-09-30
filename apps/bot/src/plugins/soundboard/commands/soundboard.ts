@@ -23,7 +23,6 @@ import {
 import { getRuntimeProfile } from '../../../config/env.js';
 import { playSoundboardClip } from '../services/playback.js';
 import { SoundService } from '../services/sound-service.js';
-import { Sound } from '../types.js';
 
 /**
  * Determine whether message content intent is available for chat message collection.
@@ -134,8 +133,9 @@ async function handleMenuCommand(interaction: ChatInputCommandInteraction, conte
         return;
     }
 
-    // Fetch sounds
-    const sounds = ((await context.db.plugin.get('sounds')) as Sound[]) || [];
+    // Fetch sounds scoped to guild
+    const soundService = new SoundService(context);
+    const sounds = await soundService.getSounds(interaction.guildId!);
 
     if (sounds.length === 0) {
         await interaction.reply({
@@ -235,7 +235,8 @@ async function handlePlayCommand(interaction: ChatInputCommandInteraction, conte
         );
 
         // Get sound details for the reply
-        const sounds = ((await context.db.plugin.get('sounds')) as Sound[]) || [];
+        const soundService = new SoundService(context);
+        const sounds = await soundService.getSounds(interaction.guildId!);
         const sound = sounds.find((s) => s.id === soundId);
         const soundName = sound ? `${sound.emoji} ${sound.name}` : 'Sound';
 
@@ -249,7 +250,8 @@ async function handlePlayCommand(interaction: ChatInputCommandInteraction, conte
 }
 
 async function handleUICommand(interaction: ChatInputCommandInteraction, context: PluginContext) {
-    const sounds = ((await context.db.plugin.get('sounds')) as Sound[]) || [];
+    const soundService = new SoundService(context);
+    const sounds = await soundService.getSounds(interaction.guildId!);
 
     if (sounds.length === 0) {
         await interaction.reply({
@@ -362,9 +364,16 @@ async function handleAddCommand(interaction: ChatInputCommandInteraction, contex
         const filename = `${Date.now()}-${file.name}`;
         const uri = await context.storage.save(filename, buffer);
 
-        // Add to DB
+        // Add to DB scoped to guild
         const soundService = new SoundService(context);
-        const newSound = await soundService.addSound(name, emoji, uri, interaction.user.id);
+        const newSound = await soundService.addSound(
+            name,
+            emoji,
+            uri,
+            interaction.user.id,
+            interaction.guildId!,
+            interaction.guildId!,
+        );
 
         await interaction.editReply(`✅ Sound **${emoji} ${name}** added successfully!`);
 
@@ -398,7 +407,8 @@ export const handleAutocomplete = async (
     context: PluginContext,
 ) => {
     const focusedValue = interaction.options.getFocused().toLowerCase();
-    const sounds = ((await context.db.plugin.get('sounds')) as Sound[]) || [];
+    const soundService = new SoundService(context);
+    const sounds = await soundService.getSounds(interaction.guildId || undefined);
 
     const filtered = sounds.filter(
         (sound) =>
@@ -517,7 +527,8 @@ export const handleButtonInteraction = async (
             interaction.channelId,
         );
 
-        const sounds = ((await context.db.plugin.get('sounds')) as Sound[]) || [];
+        const soundService = new SoundService(context);
+        const sounds = await soundService.getSounds(interaction.guildId!);
         const sound = sounds.find((s) => s.id === soundId);
         const soundName = sound ? `${sound.emoji} ${sound.name}` : 'Sound';
 
@@ -645,9 +656,16 @@ export const handleModalSubmit = async (
             const filename = `${Date.now()}-${attachment.name}`;
             const uri = await context.storage.save(filename, buffer);
 
-            // Add to DB
+            // Add to DB scoped to guild
             const soundService = new SoundService(context);
-            await soundService.addSound(name, emoji, uri, interaction.user.id);
+            await soundService.addSound(
+                name,
+                emoji,
+                uri,
+                interaction.user.id,
+                interaction.guildId!,
+                interaction.guildId!,
+            );
 
             await interaction.followUp({
                 content: `✅ Sound **${emoji} ${name}** added successfully!`,

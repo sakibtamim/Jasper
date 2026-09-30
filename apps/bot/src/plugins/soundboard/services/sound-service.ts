@@ -18,11 +18,20 @@ export class SoundService {
         return ((await this.context.db.plugin.get('plays')) as Play[]) || [];
     }
 
-    async getSounds(): Promise<Sound[]> {
-        return this.getDbSounds();
+    async getSounds(guildId?: string): Promise<Sound[]> {
+        const sounds = await this.getDbSounds();
+        if (!guildId) return sounds;
+        return sounds.filter((s) => s.guildId === guildId || (!s.guildId && s.isGlobal));
     }
 
-    async addSound(name: string, emoji: string, fileUri: string, userId: string): Promise<Sound> {
+    async addSound(
+        name: string,
+        emoji: string,
+        fileUri: string,
+        userId: string,
+        guildId: string = 'global',
+        installationId?: string,
+    ): Promise<Sound> {
         const sounds = await this.getDbSounds();
 
         const newSound: Sound = {
@@ -32,6 +41,8 @@ export class SoundService {
             fileUri,
             createdAt: Date.now(),
             createdByUserId: userId,
+            guildId,
+            installationId: installationId || guildId,
         };
 
         sounds.push(newSound);
@@ -40,13 +51,18 @@ export class SoundService {
         return newSound;
     }
 
-    async deleteSound(id: string): Promise<boolean> {
+    async deleteSound(id: string, guildId?: string): Promise<boolean> {
         const sounds = await this.getDbSounds();
         const soundIndex = sounds.findIndex((s) => s.id === id);
 
         if (soundIndex === -1) return false;
 
         const sound = sounds[soundIndex];
+
+        // Guild isolation check
+        if (guildId && sound.guildId && sound.guildId !== guildId) {
+            throw new Error('Unauthorized: sound belongs to a different guild');
+        }
 
         // Delete file from storage
         let filename = sound.fileUri;
@@ -71,11 +87,16 @@ export class SoundService {
      * Delete only the database record for a sound, without attempting to delete the file.
      * Useful for cleanup of orphaned database entries where the file is already missing.
      */
-    async deleteSoundRecord(id: string): Promise<boolean> {
+    async deleteSoundRecord(id: string, guildId?: string): Promise<boolean> {
         const sounds = await this.getDbSounds();
         const soundIndex = sounds.findIndex((s) => s.id === id);
 
         if (soundIndex === -1) return false;
+
+        const sound = sounds[soundIndex];
+        if (guildId && sound.guildId && sound.guildId !== guildId) {
+            throw new Error('Unauthorized: sound belongs to a different guild');
+        }
 
         sounds.splice(soundIndex, 1);
         await this.saveDbSounds(sounds);
@@ -86,6 +107,7 @@ export class SoundService {
     async updateSound(
         id: string,
         updates: { name?: string; emoji?: string },
+        guildId?: string,
     ): Promise<Sound | null> {
         const sounds = await this.getDbSounds();
         const soundIndex = sounds.findIndex((s) => s.id === id);
@@ -93,6 +115,11 @@ export class SoundService {
         if (soundIndex === -1) return null;
 
         const sound = sounds[soundIndex];
+
+        // Guild isolation check
+        if (guildId && sound.guildId && sound.guildId !== guildId) {
+            throw new Error('Unauthorized: sound belongs to a different guild');
+        }
 
         if (updates.name) sound.name = updates.name;
         if (updates.emoji) sound.emoji = updates.emoji;
@@ -103,14 +130,19 @@ export class SoundService {
         return sound;
     }
 
-    async getStats(): Promise<SoundboardStats> {
+    async getStats(guildId?: string): Promise<SoundboardStats> {
         const plays = await this.getDbPlays();
         const sounds = await this.getDbSounds();
+
+        const scopedPlays = guildId ? plays.filter((p) => p.guildId === guildId) : plays;
+        const scopedSounds = guildId
+            ? sounds.filter((s) => s.guildId === guildId || (!s.guildId && s.isGlobal))
+            : sounds;
 
         const soundMap = new Map<string, { name: string; emoji: string; count: number }>();
 
         // Initialize map
-        for (const sound of sounds) {
+        for (const sound of scopedSounds) {
             soundMap.set(sound.id, {
                 name: sound.name,
                 emoji: sound.emoji,
@@ -119,7 +151,7 @@ export class SoundService {
         }
 
         // Count plays
-        for (const play of plays) {
+        for (const play of scopedPlays) {
             const entry = soundMap.get(play.soundId);
             if (entry) {
                 entry.count++;
@@ -132,7 +164,7 @@ export class SoundService {
             .slice(0, 10);
 
         return {
-            totalPlays: plays.length,
+            totalPlays: scopedPlays.length,
             topSounds,
         };
     }

@@ -1,5 +1,5 @@
-import { React, useEffect, useState } from '@jasper/elements';
-import { usePluginStorage } from '@jasper/hooks';
+import { React, useContext, useEffect, useState } from '@jasper/elements';
+import { AuthContext, usePluginStorage } from '@jasper/hooks';
 import { Badge, Button, Card, Input, Loader } from '@jasper/ui';
 import { Edit2, Music, Play, Plus, Trash2, Upload, X } from 'lucide-react';
 
@@ -9,6 +9,10 @@ interface Sound {
     emoji: string;
     fileUri: string;
     createdAt: number;
+    createdByUserId?: string;
+    guildId?: string;
+    installationId?: string;
+    isGlobal?: boolean;
 }
 
 interface Stats {
@@ -22,6 +26,17 @@ interface Stats {
 }
 
 export const SoundboardPage = () => {
+    const auth = useContext(AuthContext);
+    const user = auth?.user;
+
+    const [guildId, setGuildId] = useState<string>(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('guildId') || localStorage.getItem('jasper_selected_guild_id') || '';
+        }
+        return '';
+    });
+
     const [sounds, setSounds] = useState<Sound[]>([]);
     const [stats, setStats] = useState<Stats | null>(null);
     const [loading, setLoading] = useState(true);
@@ -42,9 +57,12 @@ export const SoundboardPage = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
+            const query = guildId ? `?guildId=${encodeURIComponent(guildId)}` : '';
+            const headers: Record<string, string> = guildId ? { 'x-guild-id': guildId } : {};
+
             const [soundsRes, statsRes] = await Promise.all([
-                fetch('/api/plugins/soundboard/sounds'),
-                fetch('/api/plugins/soundboard/stats'),
+                fetch(`/api/plugins/soundboard/sounds${query}`, { headers }),
+                fetch(`/api/plugins/soundboard/stats${query}`, { headers }),
             ]);
 
             const soundsData = await soundsRes.json();
@@ -61,23 +79,36 @@ export const SoundboardPage = () => {
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [guildId]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!name || !emoji) return;
 
+        if (!guildId) {
+            alert('A Server (Guild) ID is required to scope this soundboard operation.');
+            return;
+        }
+
         setUploading(true);
         try {
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+                'x-guild-id': guildId,
+            };
+
             if (editingSound) {
                 // UPDATE Mode
                 const res = await fetch(`/api/plugins/soundboard/sounds/${editingSound.id}`, {
                     method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, emoji }),
+                    headers,
+                    body: JSON.stringify({ name, emoji, guildId }),
                 });
 
-                if (!res.ok) throw new Error('Failed to update sound');
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.error || 'Failed to update sound');
+                }
 
                 // Reset
                 setEditingSound(null);
@@ -92,15 +123,21 @@ export const SoundboardPage = () => {
                 // 2. Create Sound
                 const res = await fetch('/api/plugins/soundboard/sounds', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers,
                     body: JSON.stringify({
                         name,
                         emoji,
                         fileUri: uploadResult.uri,
+                        guildId,
+                        installationId: guildId,
+                        userId: user?.id,
                     }),
                 });
 
-                if (!res.ok) throw new Error('Failed to create sound');
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.error || 'Failed to create sound');
+                }
 
                 // Reset form
                 setIsAdding(false);
@@ -113,9 +150,10 @@ export const SoundboardPage = () => {
 
             // Refresh
             fetchData();
-        } catch (err) {
+        } catch (err: unknown) {
             console.error('Operation failed', err);
-            alert(editingSound ? 'Failed to update sound' : 'Failed to add sound');
+            const msg = err instanceof Error ? err.message : String(err);
+            alert(editingSound ? `Failed to update sound: ${msg}` : `Failed to add sound: ${msg}`);
         } finally {
             setUploading(false);
         }
@@ -125,22 +163,44 @@ export const SoundboardPage = () => {
         if (!confirm('Are you sure you want to delete this sound?')) return;
 
         try {
-            await fetch(`/api/plugins/soundboard/sounds/${id}`, { method: 'DELETE' });
+            const query = guildId ? `?guildId=${encodeURIComponent(guildId)}` : '';
+            const headers: Record<string, string> = guildId ? { 'x-guild-id': guildId } : {};
+            const res = await fetch(`/api/plugins/soundboard/sounds/${id}${query}`, {
+                method: 'DELETE',
+                headers,
+            });
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || 'Failed to delete sound');
+            }
             fetchData();
         } catch (err) {
             console.error('Delete failed', err);
+            const msg = err instanceof Error ? err.message : String(err);
+            alert(`Delete failed: ${msg}`);
         }
     };
 
     const handleClearData = async () => {
-        if (!confirm('Are you sure you want to clear ALL soundboard data? This cannot be undone!'))
+        if (!confirm('Are you sure you want to clear soundboard data? This cannot be undone!'))
             return;
 
         try {
-            await fetch('/api/plugins/soundboard/data', { method: 'DELETE' });
+            const query = guildId ? `?guildId=${encodeURIComponent(guildId)}` : '';
+            const headers: Record<string, string> = guildId ? { 'x-guild-id': guildId } : {};
+            const res = await fetch(`/api/plugins/soundboard/data${query}`, {
+                method: 'DELETE',
+                headers,
+            });
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || 'Failed to clear data');
+            }
             fetchData();
         } catch (err) {
             console.error('Clear data failed', err);
+            const msg = err instanceof Error ? err.message : String(err);
+            alert(`Clear data failed: ${msg}`);
         }
     };
 
@@ -217,7 +277,24 @@ export const SoundboardPage = () => {
                         Manage custom sound effects for your server.
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <label className="text-xs text-gray-500 font-medium whitespace-nowrap">
+                            Server ID:
+                        </label>
+                        <Input
+                            value={guildId}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                setGuildId(val);
+                                if (typeof window !== 'undefined') {
+                                    localStorage.setItem('jasper_selected_guild_id', val);
+                                }
+                            }}
+                            placeholder="All / Enter Guild ID"
+                            className="w-40 text-xs h-7"
+                        />
+                    </div>
                     {stats && (
                         <div className="hidden md:flex items-center gap-4 mr-4 text-sm text-gray-500">
                             <div className="flex items-center gap-1">
@@ -277,7 +354,7 @@ export const SoundboardPage = () => {
 
                         <form
                             onSubmit={handleSubmit}
-                            className="grid grid-cols-1 md:grid-cols-3 gap-6"
+                            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
                         >
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -307,6 +384,24 @@ export const SoundboardPage = () => {
                                 </p>
                             </div>
 
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    Server (Guild) ID
+                                </label>
+                                <Input
+                                    value={guildId}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setGuildId(val);
+                                        if (typeof window !== 'undefined') {
+                                            localStorage.setItem('jasper_selected_guild_id', val);
+                                        }
+                                    }}
+                                    placeholder="e.g. 123456789012345678"
+                                    required
+                                />
+                            </div>
+
                             {!editingSound && (
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -322,7 +417,7 @@ export const SoundboardPage = () => {
                                 </div>
                             )}
 
-                            <div className="md:col-span-3 flex justify-end gap-2 pt-2">
+                            <div className="col-span-full flex justify-end gap-2 pt-2">
                                 <Button
                                     type="button"
                                     variant="secondary"

@@ -24,6 +24,14 @@ export async function playSoundboardClip(
         throw new Error('Sound not found');
     }
 
+    // Guild isolation check
+    if (sound.guildId && sound.guildId !== guildId && !sound.isGlobal) {
+        logger.warn(
+            `[Soundboard] Guild ${guildId} attempted to play sound ${soundId} belonging to guild ${sound.guildId}`,
+        );
+        throw new Error('Sound not found or not accessible in this guild');
+    }
+
     // 2. Validate and resolve file
     const fileUri = sound.fileUri;
 

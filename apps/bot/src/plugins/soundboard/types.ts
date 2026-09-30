@@ -5,6 +5,9 @@ export interface Sound {
     fileUri: string; // storage://soundboard/filename.mp3
     createdAt: number;
     createdByUserId: string;
+    guildId: string;
+    installationId?: string;
+    isGlobal?: boolean;
 }
 
 export interface Play {
