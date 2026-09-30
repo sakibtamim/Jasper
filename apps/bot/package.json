@@ -13,6 +13,8 @@
         "typecheck": "tsc --noEmit",
         "deploy:commands": "tsx src/deploy-commands.ts",
         "deploy:commands:prod": "node dist/deploy-commands.js",
+        "db:migrate": "node dist/migrate.js",
+        "db:migrate:dev": "tsx src/migrate.ts",
         "test": "vitest",
         "plugin:scaffold": "tsx scripts/scaffold-plugin.ts",
         "plugin:list": "tsx scripts/plugin-list.ts",
