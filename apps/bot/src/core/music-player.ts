@@ -1025,6 +1025,52 @@ async function shuffleQueue(interaction: ChatInputCommandInteraction): Promise<v
     await interaction.reply('🔀 **Queue shuffled successfully!**');
 }
 
+async function seekQueue(
+    voiceChannelId: string,
+    position: number | string,
+): Promise<{ success: boolean; position: number; track: Song }> {
+    const queue = getQueue(voiceChannelId);
+    if (!queue || !queue.nowPlaying) {
+        throw new Error('There is nothing currently playing to seek in.');
+    }
+
+    const positionStr = typeof position === 'number' ? String(position) : position;
+    const targetSeconds = parseSeekPosition(positionStr, queue.nowPlaying.durationInSec);
+
+    if (targetSeconds === null || targetSeconds < 0) {
+        throw new Error(
+            `Invalid seek position: "${positionStr}". Please provide a valid timestamp (e.g. 1:30, 90s, 2m, 50%).`,
+        );
+    }
+
+    // Mark seeking flag so onIdle does not advance queue
+    queue.seeking = true;
+
+    if (queue.streamProcess) {
+        try {
+            queue.streamProcess.kill('SIGKILL');
+        } catch {
+            // Ignore error
+        }
+        queue.streamProcess = null;
+    }
+
+    queue.player.stop(true);
+
+    try {
+        await playSong(queue, targetSeconds);
+        queue.seeking = false;
+        return {
+            success: true,
+            position: targetSeconds,
+            track: queue.nowPlaying,
+        };
+    } catch (err) {
+        queue.seeking = false;
+        throw err;
+    }
+}
+
 async function seek(interaction: ChatInputCommandInteraction): Promise<void> {
     const voiceChannel = await validateInteraction(interaction);
     if (!voiceChannel) return;
@@ -1055,34 +1101,18 @@ async function seek(interaction: ChatInputCommandInteraction): Promise<void> {
 
     await interaction.deferReply();
 
-    // Mark seeking flag so onIdle does not advance queue
-    queue.seeking = true;
-
-    if (queue.streamProcess) {
-        try {
-            queue.streamProcess.kill('SIGKILL');
-        } catch {
-            // Ignore error
-        }
-        queue.streamProcess = null;
-    }
-
-    queue.player.stop(true);
-
     try {
-        await playSong(queue, targetSeconds);
-        queue.seeking = false;
+        const result = await seekQueue(voiceChannel.id, positionStr);
 
         const percent =
-            queue.nowPlaying.durationInSec > 0
-                ? ` (${Math.round((targetSeconds / queue.nowPlaying.durationInSec) * 100)}%)`
+            result.track.durationInSec > 0
+                ? ` (${Math.round((result.position / result.track.durationInSec) * 100)}%)`
                 : '';
 
         await interaction.editReply(
-            `⏩ Seeked to **${formatDuration(targetSeconds)}**${percent} in **${queue.nowPlaying.title}**.`,
+            `⏩ Seeked to **${formatDuration(result.position)}**${percent} in **${result.track.title}**.`,
         );
     } catch (err) {
-        queue.seeking = false;
         const message = err instanceof Error ? err.message : String(err);
         logger.error(`[seek] Failed to seek: ${message}`);
         await interaction.editReply(`❌ Failed to seek: ${message}`);
@@ -1107,4 +1137,5 @@ export default {
     toggleRepeat,
     shuffleQueue,
     seek,
+    seekQueue,
 };

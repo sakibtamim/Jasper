@@ -163,4 +163,86 @@ describe('musicPlayer.seek', () => {
         expect(seekOpt).toBeDefined();
         expect(seekOpt?.description).toContain('Start playback from timestamp or offset');
     });
+
+    describe('musicPlayer.seekQueue', () => {
+        it('should throw error if no active queue exists', async () => {
+            await expect(musicPlayer.seekQueue('non-existent-channel', 60)).rejects.toThrow(
+                'There is nothing currently playing to seek in.',
+            );
+        });
+
+        it('should throw error if position is invalid or exceeds duration', async () => {
+            const queue: Queue = {
+                voiceChannelId: mockVoiceChannelId,
+                guildId: mockGuildId,
+                nowPlaying: {
+                    title: 'Test Song',
+                    url: 'https://youtube.com/watch?v=123',
+                    durationInSec: 100,
+                    requestedBy: 'Tester',
+                },
+                songs: [],
+                player: { stop: vi.fn() } as unknown as any,
+            } as unknown as Queue;
+            setQueue(mockVoiceChannelId, queue);
+
+            await expect(musicPlayer.seekQueue(mockVoiceChannelId, '10:00')).rejects.toThrow(
+                'Invalid seek position',
+            );
+        });
+
+        it('should seek using numeric seconds and return result', async () => {
+            const mockStop = vi.fn();
+            const mockKill = vi.fn();
+            const queue: Queue = {
+                voiceChannelId: mockVoiceChannelId,
+                guildId: mockGuildId,
+                nowPlaying: {
+                    title: 'Test Song',
+                    url: 'https://youtube.com/watch?v=123',
+                    durationInSec: 200,
+                    requestedBy: 'Tester',
+                },
+                songs: [],
+                player: { stop: mockStop } as unknown as any,
+                streamProcess: { kill: mockKill } as unknown as any,
+            } as unknown as Queue;
+            setQueue(mockVoiceChannelId, queue);
+
+            const result = await musicPlayer.seekQueue(mockVoiceChannelId, 45);
+
+            expect(mockKill).toHaveBeenCalledWith('SIGKILL');
+            expect(mockStop).toHaveBeenCalledWith(true);
+            expect(playbackEngine.playSong).toHaveBeenCalledWith(queue, 45);
+            expect(result).toEqual({
+                success: true,
+                position: 45,
+                track: queue.nowPlaying,
+            });
+            expect(queue.seeking).toBe(false);
+        });
+
+        it('should seek using string timestamp like 1:15', async () => {
+            const mockStop = vi.fn();
+            const queue: Queue = {
+                voiceChannelId: mockVoiceChannelId,
+                guildId: mockGuildId,
+                nowPlaying: {
+                    title: 'Test Song',
+                    url: 'https://youtube.com/watch?v=123',
+                    durationInSec: 200,
+                    requestedBy: 'Tester',
+                },
+                songs: [],
+                player: { stop: mockStop } as unknown as any,
+            } as unknown as Queue;
+            setQueue(mockVoiceChannelId, queue);
+
+            const result = await musicPlayer.seekQueue(mockVoiceChannelId, '1:15');
+
+            expect(playbackEngine.playSong).toHaveBeenCalledWith(queue, 75);
+            expect(result.position).toBe(75);
+            expect(queue.seeking).toBe(false);
+        });
+    });
 });

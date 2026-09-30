@@ -2,10 +2,11 @@ import { Outlet } from '@jasper/elements';
 import { Github, Globe, MessageCircle, Music, Wrench } from 'lucide-react';
 
 import Header from './Header';
+import PlayerBar from './PlayerBar';
 
 export default function Layout() {
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300 pb-20 md:pb-24">
             <Header />
 
             {/* Main Content */}
@@ -91,6 +92,8 @@ export default function Layout() {
                     </div>
                 </div>
             </footer>
+
+            <PlayerBar />
         </div>
     );
 }

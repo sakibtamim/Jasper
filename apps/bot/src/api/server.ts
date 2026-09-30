@@ -17,6 +17,7 @@ import authRoutes from './auth.js';
 import devtoolsRoutes from './devtools.js';
 import pluginsManagementRoutes from './plugins-management.js';
 import pluginsRegistryRoutes from './plugins-registry.js';
+import playerRoutes from './routes/player.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -70,6 +71,7 @@ server.addHook('onRequest', async (request, reply) => {
 // Register Auth Routes
 server.register(authRoutes);
 server.register(devtoolsRoutes);
+server.register(playerRoutes);
 server.register(pluginsRegistryRoutes, { prefix: '/api/plugins' });
 server.register(pluginsManagementRoutes, { prefix: '/api/plugins' });
 // Serve Plugin Assets
