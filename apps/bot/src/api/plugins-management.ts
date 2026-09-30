@@ -12,6 +12,7 @@ import {
 } from '../core/plugins/packager.js';
 import pluginManager, { PLUGINS_DIR } from '../core/plugins/plugin-manager.js';
 import { PluginStorage } from '../core/plugins/plugin-storage.js';
+import { getOperationalSafetyManager } from '../core/safety/operational-safety.js';
 
 export default async function pluginsManagementRoutes(server: FastifyInstance) {
     // List all installed plugins (backend & frontend)
@@ -119,6 +120,14 @@ export default async function pluginsManagementRoutes(server: FastifyInstance) {
             const storage = new PluginStorage(pluginId);
             try {
                 const buffer = await data.toBuffer();
+                const safety = getOperationalSafetyManager().checkAndRecordBandwidth(
+                    'global',
+                    buffer.length,
+                    'upload',
+                );
+                if (!safety.allowed) {
+                    return reply.code(429).send({ message: safety.reason });
+                }
                 const uri = await storage.save(data.filename, buffer);
                 const { webUrl } = storage.resolve(uri);
                 return { success: true, uri, url: webUrl };
@@ -189,6 +198,14 @@ export default async function pluginsManagementRoutes(server: FastifyInstance) {
                 }
 
                 const buffer = await data.toBuffer();
+                const safety = getOperationalSafetyManager().checkAndRecordBandwidth(
+                    'global',
+                    buffer.length,
+                    'upload',
+                );
+                if (!safety.allowed) {
+                    return reply.code(429).send({ message: safety.reason });
+                }
 
                 // 2. Archive verification & tamper check
                 const verification = await verifyPluginArchive(buffer);

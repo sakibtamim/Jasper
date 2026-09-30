@@ -1,6 +1,7 @@
 import { Queue, WorkerState } from '@jasper/types';
 
 import logger from '../logger.js';
+import { getOperationalSafetyManager } from '../safety/operational-safety.js';
 import { setVoiceStatus } from '../utils/voice-utils.js';
 import workerPool from '../worker-pool.js';
 
@@ -38,6 +39,10 @@ export function setQueue(voiceChannelId: string, queue: Queue): void {
  * @param {string} voiceChannelId
  */
 export function deleteQueue(voiceChannelId: string): void {
+    const existing = queues.get(voiceChannelId);
+    if (existing?.guildId) {
+        getOperationalSafetyManager().releaseQueue(existing.guildId, voiceChannelId);
+    }
     queues.delete(voiceChannelId);
 }
 
@@ -80,6 +85,11 @@ export function cleanupWorkerOldQueues(worker: WorkerState): void {
                 queue.connection.destroy();
             }
 
+            // Release safety queue slot
+            if (queue.guildId) {
+                getOperationalSafetyManager().releaseQueue(queue.guildId, channelId);
+            }
+
             // Remove from map
             queues.delete(channelId);
         }
@@ -114,6 +124,11 @@ export function clearAllQueues() {
         // Destroy connection
         if (queue.connection) {
             queue.connection.destroy();
+        }
+
+        // Release safety queue slot
+        if (queue.guildId) {
+            getOperationalSafetyManager().releaseQueue(queue.guildId, channelId);
         }
 
         // Release worker
@@ -157,6 +172,9 @@ export function clearGuildQueues(guildId: string) {
             if (queue.connection) {
                 queue.connection.destroy();
             }
+
+            // Release safety queue slot
+            getOperationalSafetyManager().releaseQueue(guildId, channelId);
 
             // Release worker
             workerPool.releaseWorker(channelId, { guildId });

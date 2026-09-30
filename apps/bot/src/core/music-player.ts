@@ -33,6 +33,10 @@ import { fetchPlaylistData } from './audio/stream-handler.js';
 import { resolveTrack } from './audio/track-resolver.js';
 import logger from './logger.js';
 import hookManager from './plugins/hook-manager.js';
+import {
+    OperationalSafetyError,
+    getOperationalSafetyManager,
+} from './safety/operational-safety.js';
 import { getAutoplayButton } from './ui/player-controls.js';
 import {
     formatDuration,
@@ -410,10 +414,30 @@ async function ensureQueue(
     let queue = await validateAndCleanupQueue(interaction, voiceChannel.id);
 
     if (!queue) {
-        const worker = await assignWorker(interaction, voiceChannel, true); // NEW connection
-        if (!worker) return null;
+        const guildId = voiceChannel.guild.id;
+        const safety = getOperationalSafetyManager().acquireQueue(guildId, voiceChannel.id);
+        if (!safety.allowed) {
+            const content = `❌ **Capacity Limit**: ${safety.reason}`;
+            if (interaction.deferred || interaction.replied) {
+                await interaction.editReply({ content });
+            } else {
+                await interaction.reply({ content, ephemeral: true });
+            }
+            return null;
+        }
 
-        queue = await createQueue(interaction, worker, track);
+        const worker = await assignWorker(interaction, voiceChannel, true); // NEW connection
+        if (!worker) {
+            getOperationalSafetyManager().releaseQueue(guildId, voiceChannel.id);
+            return null;
+        }
+
+        try {
+            queue = await createQueue(interaction, worker, track);
+        } catch (err) {
+            getOperationalSafetyManager().releaseQueue(guildId, voiceChannel.id);
+            throw err;
+        }
     } else {
         // Queue exists. If it was idle, the worker was marked as free.
         // We need to mark it as busy again before adding a new song.
@@ -452,7 +476,8 @@ async function enqueue(
     await interaction.deferReply();
 
     try {
-        const track = await resolveTrack(query, interaction.user.id, interaction.user.tag);
+        const guildId = interaction.guildId || voiceChannel.guild.id;
+        const track = await resolveTrack(query, interaction.user.id, interaction.user.tag, guildId);
         const queue = await ensureQueue(interaction, voiceChannel, track);
         if (!queue) return;
 
@@ -487,6 +512,19 @@ async function enqueue(
                 });
                 return;
             }
+        }
+
+        // Check queue admission capacity (HJ-OSS-20)
+        const admission = getOperationalSafetyManager().checkQueueAdmission(
+            queue.guildId,
+            queue.songs.length,
+            1,
+        );
+        if (!admission.allowed) {
+            await interaction.editReply({
+                content: `❌ **Cannot Add Track**: ${admission.reason}`,
+            });
+            return;
         }
 
         if (options.position === 'next') {
@@ -540,6 +578,16 @@ async function enqueue(
             }
         }
     } catch (error: unknown) {
+        if (error instanceof OperationalSafetyError) {
+            const retrySec = error.result.retryAfterMs
+                ? Math.ceil(error.result.retryAfterMs / 1000)
+                : undefined;
+            const retryHint = retrySec ? ` (retry in ~${retrySec}s)` : '';
+            await interaction.editReply(
+                `❌ **Resource Limit**: ${error.result.reason}${retryHint}`,
+            );
+            return;
+        }
         const msg = error instanceof Error ? error.message : String(error);
         logger.error(`Enqueue error: ${msg} `);
         await interaction.editReply(`❌ Error: ${msg} `);
@@ -565,7 +613,8 @@ async function enqueuePlaylist(
     await interaction.deferReply();
 
     try {
-        const data = await fetchPlaylistData(url);
+        const guildId = interaction.guildId || voiceChannel.guild.id;
+        const data = await fetchPlaylistData(url, guildId);
         let entries = data.entries || (data._type === 'playlist' ? [] : [data]);
 
         let truncated = false;
@@ -581,6 +630,19 @@ async function enqueuePlaylist(
 
         const queue = await ensureQueue(interaction, voiceChannel, null);
         if (!queue) return;
+
+        // Check queue admission capacity (HJ-OSS-20)
+        const admission = getOperationalSafetyManager().checkQueueAdmission(
+            queue.guildId,
+            queue.songs.length,
+            entries.length,
+        );
+        if (!admission.allowed) {
+            await interaction.editReply({
+                content: `❌ **Cannot Add Playlist**: ${admission.reason}`,
+            });
+            return;
+        }
 
         const songsToAdd: Song[] = entries.map((entry) => ({
             title: entry.title || 'Unknown Title',
@@ -609,6 +671,16 @@ async function enqueuePlaylist(
             }**${truncatedMsg}`,
         );
     } catch (error: unknown) {
+        if (error instanceof OperationalSafetyError) {
+            const retrySec = error.result.retryAfterMs
+                ? Math.ceil(error.result.retryAfterMs / 1000)
+                : undefined;
+            const retryHint = retrySec ? ` (retry in ~${retrySec}s)` : '';
+            await interaction.editReply(
+                `❌ **Resource Limit**: ${error.result.reason}${retryHint}`,
+            );
+            return;
+        }
         const msg = error instanceof Error ? error.message : String(error);
         logger.error(`Playlist error: ${msg}`);
         await interaction.editReply(`❌ Failed to load playlist: ${msg}`);
@@ -642,6 +714,19 @@ async function enqueueSongs(
 
         const queue = await ensureQueue(interaction, voiceChannel, null);
         if (!queue) return;
+
+        // Check queue admission capacity (HJ-OSS-20)
+        const admission = getOperationalSafetyManager().checkQueueAdmission(
+            queue.guildId,
+            queue.songs.length,
+            songs.length,
+        );
+        if (!admission.allowed) {
+            await interaction.editReply({
+                content: `❌ **Cannot Add Songs**: ${admission.reason}`,
+            });
+            return;
+        }
 
         let songsToAdd: Song[] = songs.map((song) => {
             const newSong: Song = {
@@ -898,14 +983,29 @@ async function startRadio(interaction: ChatInputCommandInteraction): Promise<voi
         let queue = await validateAndCleanupQueue(interaction, voiceChannel.id);
 
         if (!queue) {
+            const guildId = voiceChannel.guild.id;
+            const safety = getOperationalSafetyManager().acquireQueue(guildId, voiceChannel.id);
+            if (!safety.allowed) {
+                await interaction.editReply({
+                    content: `❌ **Capacity Limit**: ${safety.reason}`,
+                });
+                return;
+            }
+
             logger.info(`[radio] No existing queue, assigning worker...`);
             const worker = await assignWorker(interaction, voiceChannel, true);
             if (!worker) {
+                getOperationalSafetyManager().releaseQueue(guildId, voiceChannel.id);
                 logger.warn(`[radio] Failed to assign worker`);
                 return;
             }
             logger.info(`[radio] Assigned worker ${worker.name}`);
-            queue = await createQueue(interaction, worker, null);
+            try {
+                queue = await createQueue(interaction, worker, null);
+            } catch (err) {
+                getOperationalSafetyManager().releaseQueue(guildId, voiceChannel.id);
+                throw err;
+            }
         } else {
             // Re-acquire worker if idle
             logger.info(`[radio] Reusing existing queue/worker ${queue.worker.name}`);

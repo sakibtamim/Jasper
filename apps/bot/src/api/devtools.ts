@@ -165,7 +165,7 @@ const devtoolsRoutes: FastifyPluginAsync = async (fastify) => {
 
             try {
                 const url = `https://www.youtube.com/watch?v=${videoId}`;
-                const videoData = await fetchVideoData(url);
+                const videoData = await fetchVideoData(url, 'operator');
 
                 if (videoData.thumbnail) {
                     await db.updateAudioThumbnail(videoId, videoData.thumbnail);
