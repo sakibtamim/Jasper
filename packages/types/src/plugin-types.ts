@@ -7,6 +7,7 @@ import {
     PluginAudioEnqueueService,
     PrincipalType,
     Queue,
+    RuntimeProfile,
     Song,
     SongStats,
     UserStats,
@@ -426,4 +427,94 @@ export interface Plugin {
     commands?: SlashCommandDefinition[];
     onLoad: (context: PluginContext) => Promise<void>;
     onUnload: (context: PluginContext) => Promise<void>;
+}
+
+// --- Deterministic Artifacts & Trust Policy (HJ-OSS-12) ---
+
+export interface PluginArtifactFileEntry {
+    path: string;
+    sha256: string;
+    size: number;
+}
+
+export interface PluginArtifactManifest {
+    id: string;
+    name: string;
+    version: string;
+    sdkVersion: string;
+    entry: string;
+    capabilities: PluginCapability[];
+    archiveSha256: string;
+    files: PluginArtifactFileEntry[];
+    createdAt: string;
+    signer?: string;
+    signature?: string;
+    web?: PluginWebConfig;
+    sbom?: {
+        format: string;
+        dependencies?: Record<string, string>;
+    };
+}
+
+export interface PluginPackageResult {
+    pluginId: string;
+    version: string;
+    archiveBuffer: Buffer;
+    archiveSha256: string;
+    manifest: PluginArtifactManifest;
+    fileCount: number;
+    totalBytes: number;
+}
+
+export interface PackagePluginOptions {
+    pluginDir: string;
+    outDir?: string;
+    filterDevFiles?: boolean;
+    signer?: string;
+    signature?: string;
+    signFn?: (manifest: PluginArtifactManifest, archiveBuffer: Buffer) => Promise<string> | string;
+    sbom?: {
+        format: string;
+        dependencies?: Record<string, string>;
+    };
+    fixedDate?: Date;
+}
+
+export type PluginSignatureVerifier = (
+    manifest: PluginArtifactManifest,
+    archiveBuffer: Buffer,
+) => Promise<boolean> | boolean;
+
+export interface PluginTrustPolicy {
+    profile: RuntimeProfile;
+    allowBrowserUploads?: boolean;
+    allowlistPluginIds?: readonly string[];
+    trustedSigners?: readonly string[];
+    requireSignatures?: boolean;
+    signatureVerifier?: PluginSignatureVerifier;
+}
+
+export interface PluginIntegrityVerificationResult {
+    valid: boolean;
+    pluginId?: string;
+    version?: string;
+    archiveSha256?: string;
+    errors: string[];
+    manifest?: PluginArtifactManifest;
+}
+
+export interface ProductionPluginReleaseMetadata {
+    releaseVersion: string;
+    generatedAt: string;
+    inventory: Array<{
+        id: string;
+        name: string;
+        version: string;
+        archiveSha256: string;
+        status: 'production' | 'preview';
+    }>;
+    excludedPlugins: string[];
+    manifestDigest: string;
+    signature?: string;
+    signer?: string;
 }
