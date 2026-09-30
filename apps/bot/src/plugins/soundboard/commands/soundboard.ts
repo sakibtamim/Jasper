@@ -8,6 +8,8 @@ import {
     ButtonStyle,
     ChatInputCommandInteraction,
     ComponentType,
+    GatewayIntentBits,
+    IntentsBitField,
     Message,
     MessageFlags,
     ModalBuilder,
@@ -18,9 +20,38 @@ import {
     TextInputStyle,
 } from 'discord.js';
 
+import { getRuntimeProfile } from '../../../config/env.js';
 import { playSoundboardClip } from '../services/playback.js';
 import { SoundService } from '../services/sound-service.js';
 import { Sound } from '../types.js';
+
+/**
+ * Determine whether message content intent is available for chat message collection.
+ * In hosted mode or when MessageContent intent is not requested on the client, returns false.
+ */
+export function isMessageContentSupported(context?: PluginContext): boolean {
+    try {
+        const profile = getRuntimeProfile();
+        if (profile === 'hosted') {
+            return false;
+        }
+    } catch {
+        // Fallback to client gateway intents inspection
+    }
+
+    if (context?.client?.options?.intents) {
+        try {
+            const bitfield = new IntentsBitField(context.client.options.intents);
+            if (!bitfield.has(GatewayIntentBits.MessageContent)) {
+                return false;
+            }
+        } catch {
+            return false;
+        }
+    }
+
+    return true;
+}
 
 export const registerCommand = (context: PluginContext) => {
     const data = new SlashCommandBuilder()
@@ -267,8 +298,21 @@ async function handleAddCommand(interaction: ChatInputCommandInteraction, contex
     const name = interaction.options.getString('name');
     const emoji = interaction.options.getString('emoji') || '🔊';
 
-    // If arguments are missing, show the "UI" (Modal Flow)
+    // If arguments are missing, check if interactive wizard / message collection is available
     if (!file || !name) {
+        if (!isMessageContentSupported(context)) {
+            await interaction.reply({
+                content:
+                    '👋 **Add a New Sound**\n\n' +
+                    'Interactive chat message upload is disabled in hosted mode because privileged Message Content intent is not requested.\n\n' +
+                    'Please provide both the file and name directly using command arguments:\n' +
+                    '`/soundboard add file:[upload] name:[name] emoji:[emoji]`\n\n' +
+                    '💡 You can also upload sound files directly via the web dashboard.',
+                flags: MessageFlags.Ephemeral,
+            });
+            return;
+        }
+
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder()
                 .setCustomId('soundboard_add_modal_btn')
@@ -385,6 +429,15 @@ export const handleButtonInteraction = async (
 ) => {
     // Handle Add Sound Wizard Button
     if (interaction.customId === 'soundboard_add_modal_btn') {
+        if (!isMessageContentSupported(context)) {
+            await interaction.reply({
+                content:
+                    '❌ The interactive sound wizard is disabled in hosted mode because Message Content intent is not requested. Please use `/soundboard add file:[upload] name:[name]` directly or upload via the web dashboard.',
+                flags: MessageFlags.Ephemeral,
+            });
+            return;
+        }
+
         const modal = new ModalBuilder()
             .setCustomId('soundboard_add_modal')
             .setTitle('Add New Sound');
@@ -490,6 +543,15 @@ export const handleModalSubmit = async (
     context: PluginContext,
 ) => {
     if (interaction.customId !== 'soundboard_add_modal') return;
+
+    if (!isMessageContentSupported(context)) {
+        await interaction.reply({
+            content:
+                '❌ The interactive sound wizard is disabled in hosted mode because Message Content intent is not requested. Please use `/soundboard add file:[upload] name:[name]` directly or upload via the web dashboard.',
+            flags: MessageFlags.Ephemeral,
+        });
+        return;
+    }
 
     const name = interaction.fields.getTextInputValue('sound_name');
     const emoji = interaction.fields.getTextInputValue('sound_emoji') || '🔊';

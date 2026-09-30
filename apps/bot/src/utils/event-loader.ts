@@ -1,4 +1,4 @@
-import { Client } from 'discord.js';
+import { Client, Events } from 'discord.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'url';
@@ -12,21 +12,32 @@ const __dirname = path.dirname(__filename);
 // We assume this file is always in src/utils
 const EVENTS_DIR = path.join(__dirname, '..', 'events');
 
+/**
+ * Worker bots are restricted to lifecycle and voice events only.
+ * They MUST NOT register interactionCreate listeners.
+ */
+export const WORKER_ALLOWED_EVENTS = new Set<string>([Events.ClientReady, Events.VoiceStateUpdate]);
+
 export async function loadEvents(
     client: Client,
     workerName: string = 'Unknown Bot',
+    role?: 'controller' | 'worker',
+    eventsDir: string = EVENTS_DIR,
 ): Promise<void> {
-    if (!fs.existsSync(EVENTS_DIR)) {
-        logger.warn(`[event-loader] Events directory not found at ${EVENTS_DIR}`);
+    if (!fs.existsSync(eventsDir)) {
+        logger.warn(`[event-loader] Events directory not found at ${eventsDir}`);
         return;
     }
 
-    const eventFiles = (await fs.promises.readdir(EVENTS_DIR)).filter(
+    const effectiveRole: 'controller' | 'worker' =
+        role ?? (client as unknown as { role?: 'controller' | 'worker' }).role ?? 'worker';
+
+    const eventFiles = (await fs.promises.readdir(eventsDir)).filter(
         (file) => (file.endsWith('.js') || file.endsWith('.ts')) && !file.endsWith('.d.ts'),
     );
 
     for (const file of eventFiles) {
-        const filePath = path.join(EVENTS_DIR, file);
+        const filePath = path.join(eventsDir, file);
         try {
             const eventModule = await import(filePath);
             const event = eventModule.default;
@@ -34,6 +45,15 @@ export async function loadEvents(
             if (!event || !event.name || !event.execute) {
                 logger.warn(
                     `[event-loader] Event file ${file} is missing required exports (name, execute).`,
+                );
+                continue;
+            }
+
+            // Event separation: Worker clients MUST NOT register interactionCreate listeners.
+            // Only controller registers interactionCreate. Workers only register ready and voiceStateUpdate.
+            if (effectiveRole === 'worker' && !WORKER_ALLOWED_EVENTS.has(event.name)) {
+                logger.debug(
+                    `[event-loader] Skipping event ${event.name} for worker ${workerName} (workers only handle ready and voiceStateUpdate)`,
                 );
                 continue;
             }

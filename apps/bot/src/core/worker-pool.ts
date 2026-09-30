@@ -1,8 +1,9 @@
-import { WorkerState } from '@jasper/types';
+import { RuntimeProfile, WorkerState } from '@jasper/types';
 import { ActivityType, Client, GatewayIntentBits } from 'discord.js';
 
 import { JASPER_WEIGHT } from '../config/afr-config.js';
-import bots from '../config/bots.js';
+import bots, { BotConfig } from '../config/bots.js';
+import { getRuntimeProfile } from '../config/env.js';
 import { loadEvents } from '../utils/event-loader.js';
 import logger from './logger.js';
 import hookManager from './plugins/hook-manager.js';
@@ -11,20 +12,47 @@ import hookManager from './plugins/hook-manager.js';
 const workers: WorkerState[] = [];
 
 /**
+ * Determine the gateway intents required for a given bot role and runtime profile.
+ *
+ * - Controller (hosted): Guilds, GuildVoiceStates, GuildMessages (MessageContent omitted)
+ * - Controller (self-hosted): Guilds, GuildVoiceStates, GuildMessages, MessageContent
+ * - Worker (all profiles): Guilds, GuildVoiceStates only
+ */
+export function getIntentsForRole(
+    role: 'controller' | 'worker',
+    profile: RuntimeProfile = getRuntimeProfile(),
+): GatewayIntentBits[] {
+    if (role === 'worker') {
+        return [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates];
+    }
+
+    const intents = [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildVoiceStates,
+        GatewayIntentBits.GuildMessages,
+    ];
+
+    if (profile === 'self-hosted') {
+        intents.push(GatewayIntentBits.MessageContent);
+    }
+
+    return intents;
+}
+
+/**
  * Create all bot clients defined in config but do not login yet
+ * @param {BotConfig[]} [botConfigs=bots]
+ * @param {RuntimeProfile} [profile=getRuntimeProfile()]
  * @returns {WorkerState[]}
  */
-function createBots(): WorkerState[] {
+function createBots(
+    botConfigs: BotConfig[] = bots,
+    profile: RuntimeProfile = getRuntimeProfile(),
+): WorkerState[] {
     if (workers.length > 0) return workers;
 
-    for (const botConfig of bots) {
-        const intents = [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates];
-
-        // Only the controller needs message content/guild messages for plugins/commands
-        if (botConfig.role === 'controller') {
-            intents.push(GatewayIntentBits.GuildMessages);
-            intents.push(GatewayIntentBits.MessageContent);
-        }
+    for (const botConfig of botConfigs) {
+        const intents = getIntentsForRole(botConfig.role, profile);
 
         const client = new Client({
             intents: intents,
@@ -91,7 +119,7 @@ async function loginBots(): Promise<void> {
 
         try {
             // Load events for this worker
-            await loadEvents(worker.client, worker.name);
+            await loadEvents(worker.client, worker.name, worker.role);
 
             await worker.client.login(botConfig.token);
             logger.info(
@@ -309,6 +337,13 @@ function releaseAllWorkers(): void {
     logger.info('[workerpool] All workers released to idle state');
 }
 
+/**
+ * Reset worker states (primarily for testing)
+ */
+function resetBots(): void {
+    workers.length = 0;
+}
+
 export default {
     createBots,
     loginBots,
@@ -319,4 +354,18 @@ export default {
     releaseWorker,
     getWorkers: (): WorkerState[] => [...workers], // Return a copy for inspection
     releaseAllWorkers,
+    getIntentsForRole,
+    resetBots,
+};
+
+export {
+    createBots,
+    loginBots,
+    getController,
+    allocateWorker,
+    findWorkerByVoiceChannel,
+    setWorkerBusy,
+    releaseWorker,
+    releaseAllWorkers,
+    resetBots,
 };
