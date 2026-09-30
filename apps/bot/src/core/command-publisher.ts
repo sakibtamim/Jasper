@@ -13,7 +13,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { getWorkerTokens } from '../config/env.js';
-import { TEST_PLUGINS } from '../config/plugins.js';
+import { TEST_PLUGINS, isExcludedFromProduction } from '../config/plugins.js';
 import logger from './logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -324,9 +324,14 @@ export async function collectPluginCommandDescriptors(
             continue;
         }
 
-        // Skip test plugins when publishing for production/hosted releases
-        if (shouldFilterTestPlugins && TEST_PLUGINS.includes(pluginId)) {
-            logger.debug(`[publisher] Skipping test plugin "${pluginId}" from release manifest`);
+        // Skip test plugins and excluded production plugins when publishing for production/hosted releases
+        if (
+            shouldFilterTestPlugins &&
+            (TEST_PLUGINS.includes(pluginId) || isExcludedFromProduction(pluginId))
+        ) {
+            logger.debug(
+                `[publisher] Skipping excluded/test plugin "${pluginId}" from release manifest`,
+            );
             continue;
         }
 

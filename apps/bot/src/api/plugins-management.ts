@@ -3,7 +3,13 @@ import { FastifyInstance } from 'fastify';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { RUNTIME_PROFILE } from '../config/env.js';
 import logger from '../core/logger.js';
+import {
+    assertPluginTrust,
+    unpackPluginArchive,
+    verifyPluginArchive,
+} from '../core/plugins/packager.js';
 import pluginManager, { PLUGINS_DIR } from '../core/plugins/plugin-manager.js';
 import { PluginStorage } from '../core/plugins/plugin-storage.js';
 
@@ -173,79 +179,60 @@ export default async function pluginsManagementRoutes(server: FastifyInstance) {
                 return reply.code(400).send({ message: 'File must be a .zip archive' });
             }
 
-            const tempExtractDir = path.join(PLUGINS_DIR, `temp_extract_${Date.now()}`);
-
             try {
+                // 1. Hosted runtime check: fail closed on browser / API uploads
+                if (RUNTIME_PROFILE === 'hosted') {
+                    await assertPluginTrust(
+                        { id: 'browser-upload', name: 'upload', version: '0.0.0' } as any,
+                        { profile: RUNTIME_PROFILE, isBrowserUpload: true },
+                    );
+                }
+
                 const buffer = await data.toBuffer();
-                const zip = new AdmZip(buffer);
-                const zipEntries = zip.getEntries();
 
-                // 2. Zip Slip Prevention (P1)
-                // Validate all entries before extracting
-                for (const entry of zipEntries) {
-                    const entryName = entry.entryName;
-                    const targetPath = path.join(tempExtractDir, entryName);
-
-                    // Prevent directory traversal attacks
-                    const resolvedTargetPath = path.resolve(targetPath);
-                    const resolvedTempDir = path.resolve(tempExtractDir);
-                    if (!resolvedTargetPath.startsWith(resolvedTempDir + path.sep)) {
-                        throw new Error(`Malicious zip entry detected: ${entryName}`);
-                    }
+                // 2. Archive verification & tamper check
+                const verification = await verifyPluginArchive(buffer);
+                if (!verification.valid || !verification.manifest) {
+                    return reply.code(400).send({
+                        message: `Invalid plugin archive: ${verification.errors.join('; ')}`,
+                    });
                 }
 
-                // If validation passes, extract
-                if (!fs.existsSync(tempExtractDir)) {
-                    await fs.promises.mkdir(tempExtractDir, { recursive: true });
-                }
+                // 3. Trust policy check
+                await assertPluginTrust(verification.manifest, {
+                    profile: RUNTIME_PROFILE,
+                    isBrowserUpload: false,
+                });
 
-                zip.extractAllTo(tempExtractDir, true);
-
-                // 3. Validate Manifest
-                const manifestPath = path.join(tempExtractDir, 'jasper-plugin.json');
-                if (!fs.existsSync(manifestPath)) {
-                    throw new Error('Invalid plugin: jasper-plugin.json not found');
-                }
-
-                const manifest = JSON.parse(await fs.promises.readFile(manifestPath, 'utf-8'));
-                if (!manifest.id || !/^[a-z0-9-]+$/.test(manifest.id)) {
-                    throw new Error('Invalid plugin ID in manifest');
-                }
-
-                // 4. Move to plugins directory
-                const targetDir = path.join(PLUGINS_DIR, manifest.id);
-
-                // Remove existing if any
+                // 4. Safe unpack into target directory
+                const targetDir = path.join(PLUGINS_DIR, verification.manifest.id);
                 if (fs.existsSync(targetDir)) {
                     await fs.promises.rm(targetDir, { recursive: true, force: true });
                 }
 
-                await fs.promises.rename(tempExtractDir, targetDir);
+                await unpackPluginArchive(buffer, targetDir);
 
                 logger.info(
-                    `[plugins] Installed plugin: ${manifest.id} v${manifest.version} by ${username}`,
+                    `[plugins] Installed plugin: ${verification.manifest.id} v${verification.manifest.version} by ${username}`,
                 );
 
                 return {
                     success: true,
-                    message: `Plugin ${manifest.id} installed successfully`,
+                    message: `Plugin ${verification.manifest.id} installed successfully`,
                 };
             } catch (error) {
                 logger.error(`[plugins] Installation failed: ${error}`);
-                return reply.code(500).send({
-                    message: 'Installation failed. Check server logs for details.',
-                });
-            } finally {
-                // Cleanup
-                if (fs.existsSync(tempExtractDir)) {
-                    await fs.promises
-                        .rm(tempExtractDir, { recursive: true, force: true })
-                        .catch((err) => {
-                            logger.warn(
-                                `[plugins] Failed to clean up temp directory ${tempExtractDir}: ${err}`,
-                            );
-                        });
-                }
+                const message = error instanceof Error ? error.message : 'Installation failed.';
+                return reply
+                    .code(
+                        error instanceof Error &&
+                            error.message.includes('Hosted runtime profile violation')
+                            ? 403
+                            : 500,
+                    )
+                    .send({
+                        message,
+                    });
             }
         },
     );
