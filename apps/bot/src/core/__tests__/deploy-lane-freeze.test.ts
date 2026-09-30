@@ -46,6 +46,7 @@ describe('Legacy Deploy Lane Retirement (HJ-OSS-18 / HJ-OSS-16)', () => {
         expect(docContent).toMatch(/docker-compose\.yml/);
         expect(docContent).toMatch(/docker-compose\.quickstart\.yml/);
         expect(docContent).toMatch(/pm2/i);
+        expect(docContent).toMatch(/data\/jasper\.db/);
         expect(docContent).toMatch(/restore\.sh/);
         expect(docContent).toMatch(/backup\.sh/);
     });

@@ -85,7 +85,7 @@ pm2 stop Jasper && pm2 delete Jasper
 pm2 save
 
 # 2. Preserve database data
-cp data/jasper.sqlite /data/jasper.sqlite.bak 2>/dev/null || true
+cp "${SQLITE_PATH:-data/jasper.db}" "${SQLITE_PATH:-data/jasper.db}.bak" 2>/dev/null || true
 
 # 3. Launch via Docker Compose (Quickstart or Production)
 cp .env.compose.example .env
