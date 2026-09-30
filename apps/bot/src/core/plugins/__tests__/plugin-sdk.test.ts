@@ -336,6 +336,30 @@ describe('Plugin SDK vNext & Contract (HJ-OSS-10)', () => {
             expect(capturedContext.componentState).toBeDefined();
             expect(capturedContext.installationOperations).toBeDefined();
         });
+
+        it('does NOT expose componentState and installationOperations to legacy plugins without explicit capabilities', async () => {
+            let capturedContext: any = null;
+
+            const plugin: Plugin = {
+                name: 'legacy-plugin-mock',
+                version: '1.0.0',
+                onLoad: async (context) => {
+                    capturedContext = context;
+                },
+                onUnload: vi.fn(),
+            };
+
+            const metadata: PluginManifest = {
+                id: 'legacy-plugin-mock',
+                name: 'legacy-plugin-mock',
+                version: '1.0.0',
+                // capabilities omitted (legacy)
+            };
+
+            await pluginManager.registerPlugin(plugin, metadata, '/tmp/legacy');
+            expect(capturedContext.componentState).toBeUndefined();
+            expect(capturedContext.installationOperations).toBeUndefined();
+        });
     });
 
     describe('4. Typed Route Registration & Default-Deny Auth', () => {

@@ -105,9 +105,15 @@ export function validatePluginManifest(
     };
 }
 
+export const PRIVILEGED_CAPABILITIES: readonly PluginCapability[] = [
+    'installation:runtime',
+    'component:state',
+];
+
 /**
  * Checks whether a capability is permitted for the given plugin manifest.
- * For legacy plugins omitting 'capabilities', all standard capabilities are permitted.
+ * For legacy plugins omitting 'capabilities', standard capabilities are permitted,
+ * but privileged capabilities (installation:runtime, component:state) must be explicitly opted into.
  * For versioned plugins declaring 'capabilities', only explicitly listed capabilities are permitted.
  */
 export function isCapabilityDeclared(
@@ -115,7 +121,10 @@ export function isCapabilityDeclared(
     capability: PluginCapability,
 ): boolean {
     if (!manifest || manifest.capabilities === undefined) {
-        // Legacy plugin fallback: allow standard capabilities
+        // Privileged capabilities require explicit declaration even in legacy plugins
+        if (PRIVILEGED_CAPABILITIES.includes(capability)) {
+            return false;
+        }
         return true;
     }
 
