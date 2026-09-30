@@ -2,74 +2,70 @@ import fs from 'fs';
 import path from 'path';
 import { describe, expect, it } from 'vitest';
 
-describe('Legacy Deploy Lane Freeze (HJ-OSS-16)', () => {
+describe('Legacy Deploy Lane Retirement (HJ-OSS-18 / HJ-OSS-16)', () => {
     const projectRoot = path.resolve(__dirname, '../../../../..');
     const deployWorkflowPath = path.join(projectRoot, '.github/workflows/deploy.yml');
+    const workflowsDir = path.join(projectRoot, '.github/workflows');
     const freezeDocPath = path.join(projectRoot, 'docs/hosted-jasper/deployment-freeze.md');
+    const readmeDocPath = path.join(projectRoot, 'docs/hosted-jasper/README.md');
     const selfHostingDocPath = path.join(projectRoot, 'docs/hosted-jasper/self-hosting.md');
     const dockerComposePath = path.join(projectRoot, 'docker-compose.yml');
+    const dockerComposeQuickstartPath = path.join(projectRoot, 'docker-compose.quickstart.yml');
+    const dockerfilePath = path.join(projectRoot, 'Dockerfile');
+    const dockerignorePath = path.join(projectRoot, '.dockerignore');
+    const entrypointScriptPath = path.join(projectRoot, 'scripts/docker-entrypoint.sh');
     const composeEnvPath = path.join(projectRoot, '.env.compose.example');
     const restoreScriptPath = path.join(projectRoot, 'scripts/restore.sh');
     const backupScriptPath = path.join(projectRoot, 'scripts/backup.sh');
 
-    it('should have the legacy deploy.yml workflow present', () => {
-        expect(fs.existsSync(deployWorkflowPath)).toBe(true);
+    it('should have permanently removed the legacy deploy.yml workflow', () => {
+        expect(fs.existsSync(deployWorkflowPath)).toBe(false);
     });
 
-    it('should contain a prominent freeze and deprecation header referencing HJ-OSS-16', () => {
-        const content = fs.readFileSync(deployWorkflowPath, 'utf8');
-
-        // Verify deprecation notice headers
-        expect(content).toMatch(/FREEZE NOTICE/i);
-        expect(content).toMatch(/HJ-OSS-16/);
-        expect(content).toMatch(/docker-compose\.yml/);
-        expect(content).toMatch(/confirm_frozen_deploy/);
+    it('should ensure no remaining GitHub workflows trigger unauthenticated PM2 or deploy branch deployments', () => {
+        if (fs.existsSync(workflowsDir)) {
+            const files = fs
+                .readdirSync(workflowsDir)
+                .filter((f) => f.endsWith('.yml') || f.endsWith('.yaml'));
+            for (const file of files) {
+                const content = fs.readFileSync(path.join(workflowsDir, file), 'utf8');
+                // Ensure no workflow runs PM2 deployments or SSH/SCP in-place host deployments
+                expect(content).not.toMatch(/pm2\s+(?:startOrRestart|restart|start)/);
+                expect(content).not.toMatch(/appleboy\/(?:ssh|scp)-action/);
+            }
+        }
     });
 
-    it('should have push triggers permanently disabled and require workflow_dispatch with confirm_frozen_deploy gate (Node-native)', () => {
-        const content = fs.readFileSync(deployWorkflowPath, 'utf8');
-
-        // Parse triggers under 'on:' without relying on external python or PyYAML
-        const onBlockMatch = content.match(/\non:\s*\n([\s\S]*?)(?=\n[a-zA-Z0-9_-]+:|$)/);
-        expect(onBlockMatch).toBeTruthy();
-        const onBlock = onBlockMatch ? onBlockMatch[1] : '';
-
-        // 1. Push and pull_request triggers must be absent from 'on:'
-        expect(onBlock).not.toMatch(/^\s*push\s*:/m);
-        expect(onBlock).not.toMatch(/^\s*pull_request\s*:/m);
-
-        // 2. workflow_dispatch must be active
-        expect(onBlock).toMatch(/^\s*workflow_dispatch\s*:/m);
-
-        // 3. confirm_frozen_deploy boolean gate must be present and default to false
-        expect(onBlock).toMatch(/confirm_frozen_deploy\s*:/);
-        expect(onBlock).toMatch(/type:\s*boolean/);
-        expect(onBlock).toMatch(/required:\s*true/);
-        expect(onBlock).toMatch(/default:\s*false/);
-    });
-
-    it('should include validation steps rejecting execution when confirm_frozen_deploy is false', () => {
-        const content = fs.readFileSync(deployWorkflowPath, 'utf8');
-
-        // Check for gate checks in workflow steps
-        expect(content).toMatch(/inputs\.confirm_frozen_deploy/);
-        expect(content).toMatch(/Deployment rejected/i);
-    });
-
-    it('should have comprehensive deployment freeze documentation and rollback runbook', () => {
+    it('should have comprehensive deployment retirement documentation referencing HJ-OSS-18 and Docker Compose', () => {
         expect(fs.existsSync(freezeDocPath)).toBe(true);
         const docContent = fs.readFileSync(freezeDocPath, 'utf8');
 
         expect(docContent).toMatch(/HJ-OSS-16/);
-        expect(docContent).toMatch(/Rollback/i);
+        expect(docContent).toMatch(/HJ-OSS-18/);
+        expect(docContent).toMatch(/Permanently Retired/i);
         expect(docContent).toMatch(/docker-compose\.yml/);
-        expect(docContent).toMatch(/confirm_frozen_deploy/);
+        expect(docContent).toMatch(/docker-compose\.quickstart\.yml/);
         expect(docContent).toMatch(/pm2/i);
+        expect(docContent).toMatch(/data\/jasper\.db/);
+        expect(docContent).toMatch(/restore\.sh/);
+        expect(docContent).toMatch(/backup\.sh/);
     });
 
-    it('should ensure all replacement stack and disaster recovery artifacts referenced in docs exist', () => {
-        // Verifies targets referenced in deployment-freeze.md to guarantee no broken links or missing runbook tools
+    it('should document legacy deploy lane retirement in docs/hosted-jasper/README.md', () => {
+        expect(fs.existsSync(readmeDocPath)).toBe(true);
+        const readmeContent = fs.readFileSync(readmeDocPath, 'utf8');
+
+        expect(readmeContent).toMatch(/HJ-OSS-18/);
+        expect(readmeContent).toMatch(/docker-compose/i);
+        expect(readmeContent).toMatch(/retired/i);
+    });
+
+    it('should ensure all replacement Docker Compose and disaster recovery artifacts exist', () => {
         expect(fs.existsSync(dockerComposePath)).toBe(true);
+        expect(fs.existsSync(dockerComposeQuickstartPath)).toBe(true);
+        expect(fs.existsSync(dockerfilePath)).toBe(true);
+        expect(fs.existsSync(dockerignorePath)).toBe(true);
+        expect(fs.existsSync(entrypointScriptPath)).toBe(true);
         expect(fs.existsSync(selfHostingDocPath)).toBe(true);
         expect(fs.existsSync(composeEnvPath)).toBe(true);
         expect(fs.existsSync(restoreScriptPath)).toBe(true);
