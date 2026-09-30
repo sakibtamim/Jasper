@@ -402,3 +402,105 @@ export interface PublishResult {
     target: 'global' | `guild:${string}` | 'dry-run';
     error?: string;
 }
+
+// --- Runtime Identity, Sharding, Health & Drain Types (HJ-OSS-11) ---
+
+export interface RuntimeIdentity {
+    profile: RuntimeProfile;
+    environment: string;
+    release: string;
+    bootId: string;
+    cellId?: string;
+    shardId: number;
+    shardCount: number;
+    applicationCatalogRevision: number;
+    fenceEpoch?: number;
+    epoch?: number;
+}
+
+export interface ShardLeaseRecord {
+    environment: string;
+    shardId: number;
+    shardCount: number;
+    catalogRevision: number;
+    fenceEpoch: number;
+    holderId: string;
+    bootId: string;
+    cellId?: string;
+    release: string;
+    acquiredAt: Date;
+    renewedAt: Date;
+    expiresAt: Date;
+    version: number;
+}
+
+export interface ShardObservation {
+    cellId?: string;
+    fenceEpoch: number;
+    bootId: string;
+    sequence: number;
+    type: string;
+    payload?: Record<string, unknown>;
+    receivedAt: Date;
+    idempotencyKey?: string;
+}
+
+export interface ActiveWorkMarker {
+    installationId: string;
+    queueId: string;
+    guildId: string;
+    voiceChannelId?: string;
+    bootId: string;
+    fenceEpoch: number;
+    startedAt: Date;
+}
+
+export interface WorkInterruptionEvent {
+    installationId: string;
+    queueId: string;
+    guildId: string;
+    voiceChannelId?: string;
+    bootId: string;
+    fenceEpoch: number;
+    interruptedAt: Date;
+    reason: 'fence_loss' | 'drain_timeout' | 'crash' | 'partition';
+}
+
+export type HealthStatus = 'live' | 'ready' | 'degraded' | 'unready' | 'draining' | 'dead';
+
+export interface ComponentHealth {
+    name: string;
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    message?: string;
+    lastCheckedAt: Date;
+    details?: Record<string, unknown>;
+}
+
+export interface HealthReport {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    live: boolean;
+    ready: boolean;
+    degraded: boolean;
+    draining: boolean;
+    fenceValid: boolean;
+    profile: RuntimeProfile;
+    environment: string;
+    release: string;
+    bootId: string;
+    cellId?: string;
+    shardId: number;
+    shardCount: number;
+    fenceEpoch?: number;
+    components: Record<string, ComponentHealth>;
+}
+
+export type DrainState = 'idle' | 'draining' | 'drained' | 'forced';
+
+export interface DrainStatus {
+    state: DrainState;
+    startedAt?: Date;
+    completedAt?: Date;
+    timeoutMs: number;
+    activeQueuesRemaining: number;
+    interruptedQueuesCount: number;
+}

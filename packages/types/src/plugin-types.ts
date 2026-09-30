@@ -7,6 +7,7 @@ import {
     PluginAudioEnqueueService,
     PrincipalType,
     Queue,
+    RuntimeIdentity,
     RuntimeProfile,
     Song,
     SongStats,
@@ -214,13 +215,6 @@ export interface FencedObservation {
     timestamp: Date;
     coalesceKey?: string;
     required?: boolean;
-}
-
-export interface RuntimeIdentity {
-    cellId: string;
-    shardId: string;
-    bootId: string;
-    epoch: number;
 }
 
 export interface RuntimeComponentStateStore {
