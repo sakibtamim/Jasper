@@ -83,7 +83,7 @@ git commit -S -m "hotfix(staging): <concise summary of incident mitigation>"
 
 Hotfixes applied to the `deploy` lane **may or may not get absorbed back into `master`** once the freeze concludes.
 
-Because `master` has substantially evolved (introducing the containerized architecture in HJ-OSS-18/19 and public safety policy in HJ-OSS-20), each hotfix must undergo an **Absorption Evaluation**:
+Because `master` has substantially evolved (introducing the containerized architecture in HJ-OSS-14/19, retiring legacy workflows in HJ-OSS-18, and enforcing public safety policies in HJ-OSS-20), each hotfix must undergo an **Absorption Evaluation**:
 
 ```mermaid
 graph TD
