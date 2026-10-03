@@ -6,6 +6,7 @@ import workerPool from '../../worker-pool.js';
 import {
     cleanupWorkerOldQueues,
     clearAllQueues,
+    clearGuildQueues,
     deleteQueue,
     getAllQueues,
     getQueue,
@@ -13,6 +14,12 @@ import {
 } from '../queue-manager.js';
 
 // Mocks
+vi.mock('../../safety/operational-safety.js', () => ({
+    getOperationalSafetyManager: vi.fn(() => ({
+        releaseQueue: vi.fn(),
+    })),
+}));
+
 vi.mock('../../utils/voice-utils.js', () => ({
     setVoiceStatus: vi.fn(),
 }));
@@ -43,7 +50,9 @@ describe('QueueManager', () => {
         connection: {
             destroy: vi.fn(),
         } as unknown as import('@discordjs/voice').VoiceConnection,
-        player: {} as unknown as import('@discordjs/voice').AudioPlayer,
+        player: {
+            stop: vi.fn(),
+        } as unknown as import('@discordjs/voice').AudioPlayer,
         songs: [],
         nowPlaying: null,
         autoplay: false,
@@ -99,6 +108,12 @@ describe('QueueManager', () => {
             cleanupWorkerOldQueues(mockQueue.worker);
 
             expect(clearTimeoutSpy).toHaveBeenCalledWith(mockTimeout);
+            expect(mockQueue.idleTimeout).toBeNull();
+            expect(mockQueue.stopping).toBe(true);
+            expect(mockQueue.isRadio).toBe(false);
+            expect(mockQueue.player.stop).toHaveBeenCalled();
+            expect(mockQueue.songs).toEqual([]);
+            expect(mockQueue.nowPlaying).toBeNull();
             expect(voiceUtils.setVoiceStatus).toHaveBeenCalledWith(
                 mockQueue.worker.client,
                 mockVoiceChannelId,
@@ -135,6 +150,45 @@ describe('QueueManager', () => {
             expect(workerPool.releaseWorker).toHaveBeenCalledWith(mockVoiceChannelId);
             expect(workerPool.releaseWorker).toHaveBeenCalledWith('voice-456');
             expect(mockQueue.connection.destroy).toHaveBeenCalled();
+        });
+    });
+
+    describe('clearGuildQueues', () => {
+        it('should clear queues strictly for the given guild and enforce full teardown', () => {
+            const queueInGuild: Queue = {
+                ...mockQueue,
+                idleTimeout: setTimeout(() => {}, 1000),
+                isRadio: true,
+                songs: [{ title: 'Track 1' } as unknown as import('@jasper/types').Song],
+                nowPlaying: { title: 'Track 0' } as unknown as import('@jasper/types').Song,
+                player: { stop: vi.fn() } as unknown as import('@discordjs/voice').AudioPlayer,
+                connection: {
+                    destroy: vi.fn(),
+                } as unknown as import('@discordjs/voice').VoiceConnection,
+            };
+            const queueOtherGuild: Queue = {
+                ...mockQueue,
+                voiceChannelId: 'voice-456',
+                guildId: 'guild-999',
+            };
+
+            setQueue(mockVoiceChannelId, queueInGuild);
+            setQueue('voice-456', queueOtherGuild);
+
+            clearGuildQueues(mockGuildId);
+
+            expect(getQueue(mockVoiceChannelId)).toBeUndefined();
+            expect(getQueue('voice-456')).toBe(queueOtherGuild);
+            expect(queueInGuild.stopping).toBe(true);
+            expect(queueInGuild.isRadio).toBe(false);
+            expect(queueInGuild.idleTimeout).toBeNull();
+            expect(queueInGuild.songs).toEqual([]);
+            expect(queueInGuild.nowPlaying).toBeNull();
+            expect(queueInGuild.player.stop).toHaveBeenCalled();
+            expect(queueInGuild.connection.destroy).toHaveBeenCalled();
+            expect(workerPool.releaseWorker).toHaveBeenCalledWith(mockVoiceChannelId, {
+                guildId: mockGuildId,
+            });
         });
     });
 });

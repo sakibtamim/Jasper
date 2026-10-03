@@ -59,9 +59,16 @@ export function cleanupWorkerOldQueues(worker: WorkerState): void {
                 `[cleanup] Found old queue for ${worker.name} in channel ${channelId}, cleaning up before reassignment`,
             );
 
+            queue.stopping = true;
+            queue.isRadio = false;
+            queue.songs = [];
+            queue.nowPlaying = null;
+            queue.player?.stop?.();
+
             // Clear idle timeout
             if (queue.idleTimeout) {
                 clearTimeout(queue.idleTimeout);
+                queue.idleTimeout = null;
             }
 
             // Clear voice status
@@ -100,9 +107,16 @@ export function clearAllQueues() {
     logger.info(`[catastrophicreset] Clearing ${queues.size} active queues`);
 
     for (const [channelId, queue] of queues.entries()) {
+        queue.stopping = true;
+        queue.isRadio = false;
+        queue.songs = [];
+        queue.nowPlaying = null;
+        queue.player?.stop?.();
+
         // Clear idle timeout
         if (queue.idleTimeout) {
             clearTimeout(queue.idleTimeout);
+            queue.idleTimeout = null;
         }
 
         // Clear voice status
@@ -147,9 +161,16 @@ export function clearGuildQueues(guildId: string) {
 
     for (const [channelId, queue] of queues.entries()) {
         if (queue.guildId === guildId) {
+            queue.stopping = true;
+            queue.isRadio = false;
+            queue.songs = [];
+            queue.nowPlaying = null;
+            queue.player?.stop?.();
+
             // Clear idle timeout
             if (queue.idleTimeout) {
                 clearTimeout(queue.idleTimeout);
+                queue.idleTimeout = null;
             }
 
             // Clear voice status
