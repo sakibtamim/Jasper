@@ -42,7 +42,9 @@ describe('QueueManager', () => {
         connection: {
             destroy: vi.fn(),
         } as unknown as import('@discordjs/voice').VoiceConnection,
-        player: {} as unknown as import('@discordjs/voice').AudioPlayer,
+        player: {
+            stop: vi.fn(),
+        } as unknown as import('@discordjs/voice').AudioPlayer,
         songs: [],
         nowPlaying: null,
         autoplay: false,
@@ -98,6 +100,12 @@ describe('QueueManager', () => {
             cleanupWorkerOldQueues(mockQueue.worker);
 
             expect(clearTimeoutSpy).toHaveBeenCalledWith(mockTimeout);
+            expect(mockQueue.idleTimeout).toBeNull();
+            expect(mockQueue.stopping).toBe(true);
+            expect(mockQueue.isRadio).toBe(false);
+            expect(mockQueue.player.stop).toHaveBeenCalled();
+            expect(mockQueue.songs).toEqual([]);
+            expect(mockQueue.nowPlaying).toBeNull();
             expect(voiceUtils.setVoiceStatus).toHaveBeenCalledWith(
                 mockQueue.worker.client,
                 mockVoiceChannelId,
