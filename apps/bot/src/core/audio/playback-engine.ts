@@ -495,9 +495,10 @@ export async function playSong(queue: Queue, customSeekSeconds: number = 0): Pro
                     } else if (i.customId === 'stop') {
                         await i.reply({ content: `⏹️ **Stopped** by ${i.user.username}` });
                         queue.stopping = true;
+                        queue.isRadio = false;
                         setVoiceStatus(queue.worker.client, queue.voiceChannelId, '');
                         queue.songs = [];
-                        queue.player.stop();
+                        queue.player?.stop?.();
                         if (
                             queue.connection &&
                             queue.connection.state.status !== VoiceConnectionStatus.Destroyed
@@ -557,11 +558,11 @@ export async function playSong(queue: Queue, customSeekSeconds: number = 0): Pro
 
         queue.songs.shift();
 
-        // If Radio mode is active and we failed, try next song immediately
-        if (queue.songs.length === 0 && queue.isRadio) {
+        // If Radio mode is active and we failed, try next song immediately (unless queue is stopping)
+        if (queue.songs.length === 0 && queue.isRadio && !queue.stopping) {
             logger.info('[playback] Song failed in Radio mode, skipping to next...');
             await handleRadio(queue);
-        } else {
+        } else if (!queue.stopping) {
             await playSong(queue);
         }
     }

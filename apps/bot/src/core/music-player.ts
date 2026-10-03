@@ -126,7 +126,15 @@ async function validateAndCleanupQueue(
         );
 
         // Clear old connection
-        if (queue.idleTimeout) clearTimeout(queue.idleTimeout);
+        queue.stopping = true;
+        queue.isRadio = false;
+        queue.songs = [];
+        queue.nowPlaying = null;
+        queue.player?.stop?.();
+        if (queue.idleTimeout) {
+            clearTimeout(queue.idleTimeout);
+            queue.idleTimeout = null;
+        }
         setVoiceStatus(queue.worker.client, queue.voiceChannelId, '');
         if (queue.connection) queue.connection.destroy();
         deleteQueue(queue.voiceChannelId);
@@ -203,9 +211,15 @@ async function createQueue(
                 `[connection] Cleaning up voice connection for channel ${voiceChannel.id} (worker ${worker.name}) due to ${reason}`,
             );
             queue.stopping = true;
-            queue.player.stop();
+            queue.isRadio = false;
+            queue.songs = [];
+            queue.nowPlaying = null;
+            queue.player?.stop?.();
 
-            if (queue.idleTimeout) clearTimeout(queue.idleTimeout);
+            if (queue.idleTimeout) {
+                clearTimeout(queue.idleTimeout);
+                queue.idleTimeout = null;
+            }
             setVoiceStatus(queue.worker.client, queue.voiceChannelId, '');
 
             if (queue.streamProcess) {
@@ -347,6 +361,11 @@ async function createQueue(
                         logger.info(
                             `Disconnecting from ${queue.voiceChannelId} after 5 minutes of idle time`,
                         );
+                        queue.stopping = true;
+                        queue.isRadio = false;
+                        queue.songs = [];
+                        queue.nowPlaying = null;
+                        queue.player?.stop?.();
                         // Clear voice status before disconnecting
                         setVoiceStatus(queue.worker.client, queue.voiceChannelId, '');
                         if (
@@ -400,6 +419,9 @@ async function reacquireIdleWorker(
             );
             return false;
         }
+        // Cancel the 5-minute idle countdown so it does not destroy connection during active playback
+        clearTimeout(queue.idleTimeout);
+        queue.idleTimeout = null;
         // Re-acquire the worker for this queue by marking it as busy.
         workerPool.setWorkerBusy(queue.worker, queue.guildId, queue.voiceChannelId);
     }

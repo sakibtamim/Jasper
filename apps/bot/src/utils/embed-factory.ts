@@ -10,7 +10,7 @@ function escapeMarkdownText(text: string): string {
     return text.replace(/([\\\[\]()*_~`])/g, '\\$1');
 }
 
-function sanitizeUrl(url: string): string | null {
+export function sanitizeUrl(url: string): string | null {
     if (!url) return null;
     const trimmed = url.trim();
     const isHttp = /^https?:\/\//i.test(trimmed);
@@ -61,7 +61,7 @@ export function songAddedEmbed(
     return baseEmbed()
         .setTitle(`${devPrefix}✅ Added to queue`)
         .setDescription(formatDescription(title, url))
-        .setThumbnail(thumbnail || null)
+        .setThumbnail(thumbnail ? sanitizeUrl(thumbnail) : null)
         .setFooter({ text: `${botName} • ${workerName}` });
 }
 
@@ -78,7 +78,7 @@ export function nowPlayingEmbed(
     return baseEmbed()
         .setTitle(`${devPrefix}▶️ Now Playing`)
         .setDescription(formatDescription(title, url))
-        .setThumbnail(thumbnail || null)
+        .setThumbnail(thumbnail ? sanitizeUrl(thumbnail) : null)
         .setFooter({ text: `${botName} • ${workerName}` });
 }
 
@@ -95,7 +95,7 @@ export function radioEmbed(
     return baseEmbed()
         .setTitle(`${devPrefix}📻 Radio Mode`)
         .setDescription(formatDescription(title, url))
-        .setThumbnail(thumbnail || null)
+        .setThumbnail(thumbnail ? sanitizeUrl(thumbnail) : null)
         .setFooter({ text: `Enqueued by Radio ${botName} 📻` });
 }
 
