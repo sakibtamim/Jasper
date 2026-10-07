@@ -2,9 +2,8 @@
 
 Status: **Accepted**
 Version: **1.0**
-Last repository and live-state verification: **2026-07-25**
-Implementation status: **MVP issues filed; implementation has not started and no
-product code has been changed**
+Last repository and live-state verification: **2026-10-07**
+Implementation status: **Wave 0 (Governance & CI), Wave 1 (OSS Multi-Tenant Contracts & Isolation), and Wave 2 (Control Plane, Billing, Provisioning, Fleet Orchestration & Runtime Adapter) COMPLETED and verified. Subagent Ladder audit passed on `jasper-hosted` (`main`). Wave 3 (Portal & Onboarding) queued.**
 
 This directory is the accepted definition of Hosted Jasper: a provider-operated,
 zero-infrastructure Jasper experience that preserves the complete, first-class
