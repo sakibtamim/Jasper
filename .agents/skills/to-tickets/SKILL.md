@@ -114,7 +114,7 @@ When converting specifications into GitHub issues:
     - Use human-readable descriptions (e.g., "Implement Dynamic API Port Allocation").
     - **Do NOT** prefix issue titles with conventional commit tags (e.g., no `feat:`, `fix:`).
 
-2. **Required Issue Structure** (per `.agent/rules/workflow.md`):
+2. **Required Issue Structure** (per `.agents/rules/workflow.md`):
     - **Objective / Preamble**: High-level problem and motivation.
     - **Acceptance Criteria**: Checkbox list (`- [ ] ...`) of concrete requirements.
     - **Implementation Brief**: Technical architecture and affected packages/modules.

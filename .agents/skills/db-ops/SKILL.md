@@ -6,7 +6,7 @@ description: >-
     running hermetic migrations, or executing non-interactive database CLI invocations without terminal hangs.
 ---
 
-<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-License-Identifier: MIT -->
 <!-- Copyright (c) 2026 Arafat Zahan (@kuasha420) -->
 <!-- Corporate Stewardship & Infrastructure: Purrfect Software Limited (PSL) -->
 <!-- Governed by: ICARO-42/b Ordinance (Company-Supported Personal IP Framework) -->
@@ -170,7 +170,7 @@ When databases run inside local or remote Docker containers:
 
 ### 4.1 Non-Interactive Docker CLI Exec Invariant
 
-Never use `docker exec -it` in automated subagents (the `-t` allocates a pseudo-TTY which breaks pipe buffers and causes hangouts). Always use `docker exec -i` or omit `-t`:
+Never use `docker exec -it` in automated subagents (the `-t` allocates a pseudo-TTY which breaks pipe buffers and causes hangs). Always use `docker exec -i` or omit `-t`:
 
 ```bash
 # Query PostgreSQL container non-interactively

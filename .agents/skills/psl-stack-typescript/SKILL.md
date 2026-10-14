@@ -6,7 +6,7 @@ description: >-
     or establishing bounded module boundaries.
 ---
 
-<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-License-Identifier: MIT -->
 <!-- Copyright (c) 2026 Arafat Zahan (@kuasha420) -->
 <!-- Corporate Stewardship & Infrastructure: Purrfect Software Limited (PSL) -->
 <!-- Governed by: ICARO-42/b Ordinance (Company-Supported Personal IP Framework) -->
@@ -104,7 +104,7 @@ When a repository is configured with `"type": "module"` in `package.json`:
 
 - Production scripts and packages should prefer standard ESM syntax (`import`, `export`).
 - When authoring standalone CLI scripts or build tools that must use synchronous module resolution, name them explicitly with `.cjs`.
-- Automated diagnostics (`psl doctor`) enforce this invariant by auditing `.js` files for CommonJS patterns when `"type": "module"` is declared.
+- Automated diagnostics (`agyis doctor`) enforce this invariant by auditing `.js` files for CommonJS patterns when `"type": "module"` is declared.
 
 ---
 
