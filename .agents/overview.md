@@ -4,7 +4,7 @@
 
 ## 📚 Documentation Index
 
-All core rules and development protocols have been consolidated under `.agent/rules/`:
+All core rules and development protocols have been consolidated under `.agents/rules/`:
 
 - **Main Agent Instructions**: [rules/README.md](rules/README.md)
 - **Project Architecture & Tech Stack**: [rules/overview.md](rules/overview.md)
